@@ -967,7 +967,8 @@ function normalizeMetaAd(ad, campaignNameMap) {
 
     const installs = getAction('app_install') || getAction('omni_app_install');
     const signups = getAction('complete_registration') || getAction('omni_complete_registration');
-    const spend = parseFloat(insights.spend) || 0;
+    const spendRaw = parseFloat(insights.spend) || 0;
+    const spend = spendRaw * 1.18; // 18% tax multiplier
     const impressions = parseFloat(insights.impressions) || 0;
     const clicks = parseFloat(insights.clicks) || 0;
 
@@ -989,7 +990,7 @@ function normalizeMetaAd(ad, campaignNameMap) {
         date: dateStr,
         spent: spend,
         impressions: impressions,
-        cpm: parseFloat(insights.cpm) || 0,
+        cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
         clicks: clicks,
         ctr: parseFloat(insights.ctr) || 0,
         installs: installs,
