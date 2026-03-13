@@ -529,7 +529,7 @@ function renderDashboard() {
 }
 
 function renderAlerts() {
-    const live = allData.filter(d => d.live === 'Live');
+    const live = filteredData.filter(d => d.live === 'Live');
 
     // Red alerts: signup cost > 1000 OR d0 trial cost > 3500
     const redAlerts = live.filter(d =>
@@ -603,7 +603,7 @@ function renderAlerts() {
 
 // ---- Alerts Page ----
 function renderAlertsPage() {
-    const live = allData.filter(d => d.live === 'Live');
+    const live = filteredData.filter(d => d.live === 'Live');
 
     const redAlerts = live.filter(d =>
         (d.signupCost > 1000) || (d.d0TrialCost > 3500)
@@ -712,7 +712,7 @@ function renderAlertsPage() {
 
 // ---- Live Creatives Dashboard ----
 function renderLiveDashboard() {
-    const live = allData.filter(d => d.live === 'Live');
+    const live = filteredData.filter(d => d.live === 'Live');
 
     const liveSpend = live.reduce((s, d) => s + d.spent, 0);
     const liveInstalls = live.reduce((s, d) => s + d.installs, 0);
@@ -1184,9 +1184,14 @@ function updateMetaStatus(connected, errorMsg) {
         fetchBtn.disabled = false;
         document.getElementById('metaUserName').textContent = metaUserName;
         document.getElementById('metaCreativeCount').textContent = metaData.length;
-        document.getElementById('metaAdAccountSelect').innerHTML =
-            metaCampaignIds.map(c => `<option value="${c.id}">${c.name}</option>`).join('') ||
-            `<option value="${META_AD_ACCOUNT_ID}">${META_AD_ACCOUNT_ID}</option>`;
+        const campaignInfoEl = document.getElementById('metaCampaignInfo');
+        if (campaignInfoEl) {
+            campaignInfoEl.textContent = metaCampaignIds.length + ' targeted (' + metaCampaignIds.map(c => c.name.split('_')[0]).join(', ') + ')';
+        }
+        const matchedEl = document.getElementById('metaMatchedCount');
+        if (matchedEl) {
+            matchedEl.textContent = allData.filter(d => d._source === 'merged').length;
+        }
     } else {
         statusEl.innerHTML = '<span class="status-dot disconnected"></span><span class="status-text">Error: ' + (errorMsg || 'Not connected') + '</span>';
         detailsEl.style.display = 'none';
