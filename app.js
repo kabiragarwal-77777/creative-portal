@@ -1080,7 +1080,7 @@ document.getElementById('clearDates').addEventListener('click', () => {
 document.getElementById('refreshBtn').addEventListener('click', fetchData);
 
 // ---- Meta Ads Integration ----
-const META_ACCESS_TOKEN = 'EAAHDBv0GZCRYBQyK7aPCLInqIH1BCZAl5p3CLHZAngLOWT00ZAcXe84uW9CHogplylkwyovDH9473hg6CMEArA9ZAyR6wKJK3MIrLvb9YHqQDiLVSDw08MMSEBu5kucQr9TNZClZATU8FvB8XHVHuDyEKzZBhjFYA4saidojpVmZAQYpwd1ukGsGkuCvg56MDLwZDZD';
+const META_ACCESS_TOKEN = 'EAAHDBv0GZCRYBQ79GPcDBCVPZCAbpSFyK0gMBr3MZAiwxS1ZABaTR1m52pYVzSznFzW7uAcmVMZAKQkUEEfau6hD4Lr2GHTIicKlAWTZCSN2pGR7jfhaqZAMePxj5B5FAnhsbnbZAkliHtFN8G3sz2ZB05b6HnwlVQlQZBwN60COYhjeIzYHY4Vg6PFMvQddtKAD0N';
 const META_AD_ACCOUNT_ID = 'act_725019929189148';
 const TARGET_CAMPAIGNS = [
     'Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225',
