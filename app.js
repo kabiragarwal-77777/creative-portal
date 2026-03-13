@@ -131,6 +131,13 @@ function normalizeData() {
             d6ROAS: parsePercent(get(['D6 ROAS'])),
             overallROAS: parsePercent(get(['Overall ROAS'])),
             overallRevenue: parseNum(get(['Overall revenue'])),
+            p0p1: parseNum(get(['P0P1'])),
+            p0p1Pct: parsePercent(get(['P0P1%'])),
+            p0p1Cost: parseNum(get(['P0P1 Cost'])),
+            d0Trials: parseNum(get(['D0_Trial', 'D0 Trial'])),
+            d0TrialCost: parseNum(get(['D0 Trial Cost'])),
+            d0: parseNum(get(['D0'])),
+            d0CAC: parseNum(get(['D0 CAC'])),
             hook: parsePercent(get(['Hook'])),
             hold: parsePercent(get(['Hold'])),
             fullPlay: parsePercent(get(['Full'])),
@@ -255,6 +262,13 @@ function mergeDataSources() {
                 d6ROAS: sheetsRow.d6ROAS,
                 overallROAS: sheetsRow.overallROAS,
                 overallRevenue: sheetsRow.overallRevenue,
+                p0p1: sheetsRow.p0p1,
+                p0p1Pct: sheetsRow.p0p1Pct,
+                p0p1Cost: sheetsRow.p0p1Cost,
+                d0Trials: sheetsRow.d0Trials,
+                d0TrialCost: sheetsRow.d0TrialCost,
+                d0: sheetsRow.d0,
+                d0CAC: sheetsRow.d0CAC,
                 hook: sheetsRow.hook,
                 hold: sheetsRow.hold,
                 fullPlay: sheetsRow.fullPlay,
@@ -372,6 +386,18 @@ function renderDashboard() {
     const avgCTR = withCTR.length ? withCTR.reduce((s, d) => s + d.ctr, 0) / withCTR.length : 0;
     const withROAS = data.filter(d => d.d6ROAS > 0);
     const avgROAS = withROAS.length ? withROAS.reduce((s, d) => s + d.d6ROAS, 0) / withROAS.length : 0;
+    const withOverallROAS = data.filter(d => d.overallROAS > 0);
+    const avgOverallROAS = withOverallROAS.length ? withOverallROAS.reduce((s, d) => s + d.overallROAS, 0) / withOverallROAS.length : 0;
+    const withSignupCost = data.filter(d => d.signupCost > 0);
+    const avgSignupCost = withSignupCost.length ? withSignupCost.reduce((s, d) => s + d.signupCost, 0) / withSignupCost.length : 0;
+    const withP0P1Cost = data.filter(d => d.p0p1Cost > 0);
+    const avgP0P1Cost = withP0P1Cost.length ? withP0P1Cost.reduce((s, d) => s + d.p0p1Cost, 0) / withP0P1Cost.length : 0;
+    const withD0CAC = data.filter(d => d.d0CAC > 0);
+    const avgD0CAC = withD0CAC.length ? withD0CAC.reduce((s, d) => s + d.d0CAC, 0) / withD0CAC.length : 0;
+    const withD0TrialCost = data.filter(d => d.d0TrialCost > 0);
+    const avgD0TrialCost = withD0TrialCost.length ? withD0TrialCost.reduce((s, d) => s + d.d0TrialCost, 0) / withD0TrialCost.length : 0;
+    const withD6CAC = data.filter(d => d.d6CAC > 0);
+    const avgD6CAC = withD6CAC.length ? withD6CAC.reduce((s, d) => s + d.d6CAC, 0) / withD6CAC.length : 0;
 
     const mergedCount = data.filter(d => d._source === 'merged').length;
     const metaOnlyCount = data.filter(d => d._source === 'meta').length;
@@ -395,6 +421,18 @@ function renderDashboard() {
     document.getElementById('kpiSignupsSub').textContent = `${totalInstalls ? ((totalSignups / totalInstalls) * 100).toFixed(1) : 0}% of installs`;
     document.getElementById('kpiROAS').textContent = avgROAS.toFixed(1) + '%';
     document.getElementById('kpiROASSub').textContent = `Across ${withROAS.length} creatives`;
+    document.getElementById('kpiOverallROAS').textContent = avgOverallROAS.toFixed(1) + '%';
+    document.getElementById('kpiOverallROASSub').textContent = `Across ${withOverallROAS.length} creatives`;
+    document.getElementById('kpiSignupCost').textContent = '₹' + Math.round(avgSignupCost);
+    document.getElementById('kpiSignupCostSub').textContent = `Across ${withSignupCost.length} creatives`;
+    document.getElementById('kpiP0P1Cost').textContent = '₹' + Math.round(avgP0P1Cost);
+    document.getElementById('kpiP0P1CostSub').textContent = `Across ${withP0P1Cost.length} creatives`;
+    document.getElementById('kpiD0CAC').textContent = '₹' + Math.round(avgD0CAC);
+    document.getElementById('kpiD0CACSub').textContent = `Across ${withD0CAC.length} creatives`;
+    document.getElementById('kpiD0TrialCost').textContent = '₹' + Math.round(avgD0TrialCost);
+    document.getElementById('kpiD0TrialCostSub').textContent = `Across ${withD0TrialCost.length} creatives`;
+    document.getElementById('kpiD6CAC').textContent = '₹' + Math.round(avgD6CAC);
+    document.getElementById('kpiD6CACSub').textContent = `Across ${withD6CAC.length} creatives`;
 
     // Performance distribution
     const perfCounts = {};
@@ -454,7 +492,7 @@ function renderDashboard() {
     document.getElementById('recentTable').innerHTML = `
         <table>
             <thead><tr>
-                <th>Creative</th><th>Type</th><th>Date</th><th>Spend</th><th>CTR</th><th>CPI</th><th>Signups</th><th>D6 ROAS</th><th>Status</th>
+                <th>Creative</th><th>Type</th><th>Date</th><th>Spend</th><th>CTR</th><th>CPI</th><th>Signups</th><th>D6 ROAS</th><th>Signup Cost</th><th>D0 Trial Cost</th><th>Status</th>
             </tr></thead>
             <tbody>${recent.map(d => `<tr>
                 <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis">${shortName(d.name)}</td>
@@ -465,13 +503,91 @@ function renderDashboard() {
                 <td>${d.cpi ? '₹' + Math.round(d.cpi) : '-'}</td>
                 <td>${d.signups || 0}</td>
                 <td style="color:${d.d6ROAS > 25 ? 'var(--green)' : d.d6ROAS > 10 ? 'var(--orange)' : 'var(--red)'}">${d.d6ROAS ? d.d6ROAS.toFixed(1) + '%' : '-'}</td>
+                <td>${d.signupCost ? '₹' + Math.round(d.signupCost) : '-'}</td>
+                <td>${d.d0TrialCost ? '₹' + Math.round(d.d0TrialCost) : '-'}</td>
                 <td>${perfBadge(d.testPerf)}</td>
             </tr>`).join('')}</tbody>
         </table>
     `;
 
+    // Render alerts
+    renderAlerts();
+
     // Render live dashboard below
     renderLiveDashboard();
+}
+
+function renderAlerts() {
+    const live = allData.filter(d => d.live === 'Live');
+
+    // Red alerts: signup cost > 1000 OR d0 trial cost > 3500
+    const redAlerts = live.filter(d =>
+        (d.signupCost > 1000) || (d.d0TrialCost > 3500)
+    );
+
+    // Green alerts: d6 ROAS > 25% OR d0 trial cost < 2000 (and > 0)
+    const greenAlerts = live.filter(d =>
+        (d.d6ROAS > 25) || (d.d0TrialCost > 0 && d.d0TrialCost < 2000)
+    );
+
+    const alertsContainer = document.getElementById('alertsSection');
+    if (!alertsContainer) return;
+
+    let html = '';
+
+    // Red alerts
+    html += `<div class="alerts-panel alerts-red">
+        <div class="alerts-header">
+            <span class="alerts-icon">&#9888;</span>
+            <h3>Red Alerts</h3>
+            <span class="alerts-count">${redAlerts.length}</span>
+        </div>
+        <div class="alerts-body">`;
+
+    if (redAlerts.length) {
+        html += redAlerts.map(d => {
+            const reasons = [];
+            if (d.signupCost > 1000) reasons.push(`Signup Cost: ₹${Math.round(d.signupCost)}`);
+            if (d.d0TrialCost > 3500) reasons.push(`D0 Trial Cost: ₹${Math.round(d.d0TrialCost)}`);
+            return `<div class="alert-item alert-item-red">
+                <div class="alert-name">${shortName(d.name)}</div>
+                <div class="alert-reasons">${reasons.join(' | ')}</div>
+                <div class="alert-extra">${d.type} | Spend: ${formatINR(d.spent)} | CPI: ${d.cpi ? '₹' + Math.round(d.cpi) : '-'}</div>
+            </div>`;
+        }).join('');
+    } else {
+        html += '<p class="alerts-empty">No red alerts. All live creatives within thresholds.</p>';
+    }
+
+    html += `</div></div>`;
+
+    // Green alerts
+    html += `<div class="alerts-panel alerts-green">
+        <div class="alerts-header">
+            <span class="alerts-icon">&#10004;</span>
+            <h3>Green Alerts</h3>
+            <span class="alerts-count">${greenAlerts.length}</span>
+        </div>
+        <div class="alerts-body">`;
+
+    if (greenAlerts.length) {
+        html += greenAlerts.map(d => {
+            const reasons = [];
+            if (d.d6ROAS > 25) reasons.push(`D6 ROAS: ${d.d6ROAS.toFixed(1)}%`);
+            if (d.d0TrialCost > 0 && d.d0TrialCost < 2000) reasons.push(`D0 Trial Cost: ₹${Math.round(d.d0TrialCost)}`);
+            return `<div class="alert-item alert-item-green">
+                <div class="alert-name">${shortName(d.name)}</div>
+                <div class="alert-reasons">${reasons.join(' | ')}</div>
+                <div class="alert-extra">${d.type} | Spend: ${formatINR(d.spent)} | D6 ROAS: ${d.d6ROAS ? d.d6ROAS.toFixed(1) + '%' : '-'}</div>
+            </div>`;
+        }).join('');
+    } else {
+        html += '<p class="alerts-empty">No green alerts among live creatives.</p>';
+    }
+
+    html += `</div></div>`;
+
+    alertsContainer.innerHTML = html;
 }
 
 // ---- Live Creatives Dashboard ----
@@ -511,7 +627,7 @@ function renderLiveDashboard() {
     document.getElementById('liveCreativesTable').innerHTML = live.length ? `
         <table>
             <thead><tr>
-                <th>#</th><th>Creative</th><th>Type</th><th>Date</th><th>Spend</th><th>CTR</th><th>CPI</th><th>Installs</th><th>Signups</th><th>Signup%</th><th>Hook%</th><th>Hold%</th><th>D6 ROAS</th><th>Overall ROAS</th><th>Perf.</th><th>Source</th>
+                <th>#</th><th>Creative</th><th>Type</th><th>Date</th><th>Spend</th><th>CTR</th><th>CPI</th><th>Installs</th><th>Signups</th><th>Signup%</th><th>Hook%</th><th>Hold%</th><th>D6 ROAS</th><th>Overall ROAS</th><th>Signup Cost</th><th>P0P1 Cost</th><th>D0 Trial Cost</th><th>D0 CAC</th><th>D6 CAC</th><th>Perf.</th><th>Source</th>
             </tr></thead>
             <tbody>${live.map((d, i) => `<tr>
                 <td>${i + 1}</td>
@@ -528,6 +644,11 @@ function renderLiveDashboard() {
                 <td>${d.hold ? d.hold.toFixed(1) + '%' : '-'}</td>
                 <td style="color:${roasColor(d.d6ROAS)}">${d.d6ROAS ? d.d6ROAS.toFixed(1) + '%' : '-'}</td>
                 <td style="color:${roasColor(d.overallROAS)}">${d.overallROAS ? d.overallROAS.toFixed(1) + '%' : '-'}</td>
+                <td>${d.signupCost ? '₹' + Math.round(d.signupCost) : '-'}</td>
+                <td>${d.p0p1Cost ? '₹' + Math.round(d.p0p1Cost) : '-'}</td>
+                <td>${d.d0TrialCost ? '₹' + Math.round(d.d0TrialCost) : '-'}</td>
+                <td>${d.d0CAC ? '₹' + Math.round(d.d0CAC) : '-'}</td>
+                <td>${d.d6CAC ? '₹' + Math.round(d.d6CAC) : '-'}</td>
                 <td>${perfBadge(d.testPerf)}</td>
                 <td>${sourceBadge(d._source)}</td>
             </tr>`).join('')}</tbody>
@@ -567,7 +688,7 @@ function renderTable() {
     document.getElementById('tableCount').textContent = `${data.length} creatives`;
     const thead = document.querySelector('#creativesTable thead');
     const tbody = document.querySelector('#creativesTable tbody');
-    const cols = ['#', 'Name', 'Type', 'Date', 'Spend', 'Impr.', 'CPM', 'CTR', 'Installs', 'CPI', 'Signups', 'Signup%', 'Hook%', 'Hold%', 'D6 ROAS', 'Overall ROAS', 'Status', 'Perf.', 'Source'];
+    const cols = ['#', 'Name', 'Type', 'Date', 'Spend', 'Impr.', 'CPM', 'CTR', 'Installs', 'CPI', 'Signups', 'Signup%', 'Hook%', 'Hold%', 'D6 ROAS', 'Overall ROAS', 'Signup Cost', 'P0P1 Cost', 'D0 Trial Cost', 'D0 CAC', 'D6 CAC', 'Status', 'Perf.', 'Source'];
     thead.innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
     tbody.innerHTML = data.map((d, i) => `<tr>
         <td>${i + 1}</td>
@@ -586,6 +707,11 @@ function renderTable() {
         <td>${d.hold ? d.hold.toFixed(1) + '%' : '-'}</td>
         <td style="color:${roasColor(d.d6ROAS)}">${d.d6ROAS ? d.d6ROAS.toFixed(1) + '%' : '-'}</td>
         <td style="color:${roasColor(d.overallROAS)}">${d.overallROAS ? d.overallROAS.toFixed(1) + '%' : '-'}</td>
+        <td>${d.signupCost ? '₹' + Math.round(d.signupCost) : '-'}</td>
+        <td>${d.p0p1Cost ? '₹' + Math.round(d.p0p1Cost) : '-'}</td>
+        <td>${d.d0TrialCost ? '₹' + Math.round(d.d0TrialCost) : '-'}</td>
+        <td>${d.d0CAC ? '₹' + Math.round(d.d0CAC) : '-'}</td>
+        <td>${d.d6CAC ? '₹' + Math.round(d.d6CAC) : '-'}</td>
         <td><span class="cc-badge ${d.live === 'Live' ? 'badge-live' : 'badge-paused'}">${d.live}</span></td>
         <td>${perfBadge(d.testPerf)}</td>
         <td>${sourceBadge(d._source)}</td>
@@ -768,6 +894,8 @@ function creativeCard(d, showScore = false) {
                 <div class="cc-metric"><div class="cc-metric-label">Signups</div><div class="cc-metric-value">${d.signups || '-'}</div></div>
                 <div class="cc-metric"><div class="cc-metric-label">D6 ROAS</div><div class="cc-metric-value" style="color:${roasColor(d.d6ROAS)}">${d.d6ROAS ? d.d6ROAS.toFixed(1) + '%' : '-'}</div></div>
                 <div class="cc-metric"><div class="cc-metric-label">${d.type === 'Video' ? 'Hook%' : 'Signup%'}</div><div class="cc-metric-value">${d.type === 'Video' ? (d.hook ? d.hook.toFixed(1) + '%' : '-') : (d.signupPct ? d.signupPct.toFixed(1) + '%' : '-')}</div></div>
+                <div class="cc-metric"><div class="cc-metric-label">Signup Cost</div><div class="cc-metric-value">${d.signupCost ? '₹' + Math.round(d.signupCost) : '-'}</div></div>
+                <div class="cc-metric"><div class="cc-metric-label">D0 Trial Cost</div><div class="cc-metric-value">${d.d0TrialCost ? '₹' + Math.round(d.d0TrialCost) : '-'}</div></div>
             </div>
             <div class="cc-date">${d.date || ''} | <span class="cc-badge ${d.live === 'Live' ? 'badge-live' : 'badge-paused'}">${d.live}</span> ${sourceBadge(d._source)}</div>
         </div>
@@ -780,13 +908,13 @@ function showLoading(show) {
 
 // ---- CSV Export ----
 document.getElementById('exportBtn')?.addEventListener('click', () => {
-    const headers = ['Name', 'Type', 'Date', 'Spend', 'Impressions', 'CPM', 'CTR', 'Installs', 'CPI', 'Signups', 'Signup%', 'Hook%', 'Hold%', 'D6 ROAS', 'Overall ROAS', 'Status', 'Performance', 'Source'];
+    const headers = ['Name', 'Type', 'Date', 'Spend', 'Impressions', 'CPM', 'CTR', 'Installs', 'CPI', 'Signups', 'Signup Cost', 'Signup%', 'Hook%', 'Hold%', 'D6 ROAS', 'Overall ROAS', 'P0P1', 'P0P1%', 'P0P1 Cost', 'D0 Trials', 'D0 Trial Cost', 'D0', 'D0 CAC', 'D6 CAC', 'Status', 'Performance', 'Source'];
     const csvRows = [headers.join(',')];
     filteredData.forEach(d => {
         csvRows.push([
             `"${d.name}"`, d.type, d.date, d.spent, d.impressions, d.cpm,
-            d.ctr, d.installs, d.cpi, d.signups, d.signupPct,
-            d.hook, d.hold, d.d6ROAS, d.overallROAS, d.live, d.testPerf, d._source
+            d.ctr, d.installs, d.cpi, d.signups, d.signupCost, d.signupPct,
+            d.hook, d.hold, d.d6ROAS, d.overallROAS, d.p0p1, d.p0p1Pct, d.p0p1Cost, d.d0Trials, d.d0TrialCost, d.d0, d.d0CAC, d.d6CAC, d.live, d.testPerf, d._source
         ].join(','));
     });
     const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
@@ -1003,6 +1131,13 @@ function normalizeMetaAd(ad, campaignNameMap) {
         d6ROAS: 0,
         overallROAS: 0,
         overallRevenue: 0,
+        p0p1: 0,
+        p0p1Pct: 0,
+        p0p1Cost: 0,
+        d0Trials: 0,
+        d0TrialCost: 0,
+        d0: 0,
+        d0CAC: 0,
         hook: 0,
         hold: 0,
         fullPlay: 0,
