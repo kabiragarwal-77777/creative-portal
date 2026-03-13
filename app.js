@@ -1081,6 +1081,7 @@ document.getElementById('refreshBtn').addEventListener('click', fetchData);
 
 // ---- Meta Ads Integration ----
 const META_ACCESS_TOKEN = 'EAAHDBv0GZCRYBQ79GPcDBCVPZCAbpSFyK0gMBr3MZAiwxS1ZABaTR1m52pYVzSznFzW7uAcmVMZAKQkUEEfau6hD4Lr2GHTIicKlAWTZCSN2pGR7jfhaqZAMePxj5B5FAnhsbnbZAkliHtFN8G3sz2ZB05b6HnwlVQlQZBwN60COYhjeIzYHY4Vg6PFMvQddtKAD0N';
+const META_APP_SECRET_PROOF = 'bd732bb6efaa55bed93840ec4a3d302a3de1134a82fe698620890a703ab38388';
 const META_AD_ACCOUNT_ID = 'act_725019929189148';
 const TARGET_CAMPAIGNS = [
     'Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225',
@@ -1108,7 +1109,7 @@ function getMetaDateRange() {
 
 // Step 1: Look up campaign IDs by name
 async function fetchTargetCampaignIds() {
-    const url = `https://graph.facebook.com/v21.0/${META_AD_ACCOUNT_ID}/campaigns?fields=id,name&limit=100&access_token=${encodeURIComponent(META_ACCESS_TOKEN)}`;
+    const url = `https://graph.facebook.com/v21.0/${META_AD_ACCOUNT_ID}/campaigns?fields=id,name&limit=100&access_token=${encodeURIComponent(META_ACCESS_TOKEN)}&appsecret_proof=${META_APP_SECRET_PROOF}`;
     const allCampaigns = await fetchMetaPage(url, []);
     const matched = allCampaigns.filter(c => TARGET_CAMPAIGNS.includes(c.name.trim()));
     console.log(`Meta: found ${matched.length}/${TARGET_CAMPAIGNS.length} target campaigns`, matched.map(c => c.name));
@@ -1120,7 +1121,7 @@ async function fetchTargetCampaignIds() {
 async function fetchAdsFromCampaign(campaignId) {
     const { since, until } = getMetaDateRange();
     const fields = 'name,status,created_time,campaign_id,campaign{name},creative{title,body,thumbnail_url},insights.time_range({"since":"' + since + '","until":"' + until + '"}){spend,impressions,cpm,clicks,ctr,actions,cost_per_action_type,video_thruplay_watched_actions,video_p25_watched_actions,video_p50_watched_actions,video_p75_watched_actions,video_p100_watched_actions}';
-    const url = `https://graph.facebook.com/v21.0/${campaignId}/ads?fields=${encodeURIComponent(fields)}&limit=100&access_token=${encodeURIComponent(META_ACCESS_TOKEN)}`;
+    const url = `https://graph.facebook.com/v21.0/${campaignId}/ads?fields=${encodeURIComponent(fields)}&limit=100&access_token=${encodeURIComponent(META_ACCESS_TOKEN)}&appsecret_proof=${META_APP_SECRET_PROOF}`;
     return fetchMetaPage(url, []);
 }
 
@@ -1128,14 +1129,15 @@ async function fetchAdsFromCampaign(campaignId) {
 async function fetchMetaData() {
     try {
         // Validate token & get user info
-        const meResp = await fetch(`https://graph.facebook.com/me?access_token=${encodeURIComponent(META_ACCESS_TOKEN)}`);
+        // Validate token by fetching campaigns directly (app tokens return empty from /me)
+        const meResp = await fetch(`https://graph.facebook.com/me?fields=id,name&access_token=${encodeURIComponent(META_ACCESS_TOKEN)}&appsecret_proof=${META_APP_SECRET_PROOF}`);
         const meData = await meResp.json();
         if (meData.error) {
             console.error('Meta token invalid:', meData.error.message);
             updateMetaStatus(false, meData.error.message);
             return;
         }
-        metaUserName = meData.name || 'Connected';
+        metaUserName = meData.name || 'App Connected';
         metaConnected = true;
 
         // Find target campaign IDs
