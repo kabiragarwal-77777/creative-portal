@@ -1051,19 +1051,30 @@ document.getElementById('statusFilter').addEventListener('change', () => renderC
 document.getElementById('perfFilter').addEventListener('change', () => renderCurrentView());
 document.getElementById('sourceFilter').addEventListener('change', () => renderCurrentView());
 // Flatpickr calendar date pickers
-const fpConfig = {
-    dateFormat: 'Y-m-d',
-    altInput: true,
-    altFormat: 'd M Y',
-    theme: 'dark',
-    allowInput: false,
-    onChange: () => renderCurrentView()
-};
-flatpickr('#dateFrom', fpConfig);
-flatpickr('#dateTo', fpConfig);
+function initDatePickers() {
+    if (typeof flatpickr === 'undefined') {
+        // Fallback: use change events if flatpickr not loaded
+        document.getElementById('dateFrom').addEventListener('change', () => renderCurrentView());
+        document.getElementById('dateTo').addEventListener('change', () => renderCurrentView());
+        return;
+    }
+    const fpConfig = {
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altFormat: 'd M Y',
+        theme: 'dark',
+        allowInput: false,
+        onChange: () => renderCurrentView()
+    };
+    flatpickr('#dateFrom', fpConfig);
+    flatpickr('#dateTo', fpConfig);
+}
+initDatePickers();
 document.getElementById('clearDates').addEventListener('click', () => {
-    document.getElementById('dateFrom')._flatpickr.clear();
-    document.getElementById('dateTo')._flatpickr.clear();
+    const fromEl = document.getElementById('dateFrom');
+    const toEl = document.getElementById('dateTo');
+    if (fromEl._flatpickr) { fromEl._flatpickr.clear(); } else { fromEl.value = ''; }
+    if (toEl._flatpickr) { toEl._flatpickr.clear(); } else { toEl.value = ''; }
     renderCurrentView();
 });
 document.getElementById('refreshBtn').addEventListener('click', fetchData);
