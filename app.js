@@ -1050,8 +1050,22 @@ document.getElementById('typeFilter').addEventListener('change', () => renderCur
 document.getElementById('statusFilter').addEventListener('change', () => renderCurrentView());
 document.getElementById('perfFilter').addEventListener('change', () => renderCurrentView());
 document.getElementById('sourceFilter').addEventListener('change', () => renderCurrentView());
-document.getElementById('dateFrom').addEventListener('change', () => renderCurrentView());
-document.getElementById('dateTo').addEventListener('change', () => renderCurrentView());
+// Flatpickr calendar date pickers
+const fpConfig = {
+    dateFormat: 'Y-m-d',
+    altInput: true,
+    altFormat: 'd M Y',
+    theme: 'dark',
+    allowInput: false,
+    onChange: () => renderCurrentView()
+};
+flatpickr('#dateFrom', fpConfig);
+flatpickr('#dateTo', fpConfig);
+document.getElementById('clearDates').addEventListener('click', () => {
+    document.getElementById('dateFrom')._flatpickr.clear();
+    document.getElementById('dateTo')._flatpickr.clear();
+    renderCurrentView();
+});
 document.getElementById('refreshBtn').addEventListener('click', fetchData);
 
 // ---- Meta Ads Integration ----

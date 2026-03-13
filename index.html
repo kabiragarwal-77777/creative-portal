@@ -7,6 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
 </head>
 <body>
     <div class="app">
@@ -65,9 +67,10 @@
                     </div>
                     <div class="date-filter">
                         <label>From</label>
-                        <input type="date" id="dateFrom">
+                        <input type="text" id="dateFrom" placeholder="Select date" readonly>
                         <label>To</label>
-                        <input type="date" id="dateTo">
+                        <input type="text" id="dateTo" placeholder="Select date" readonly>
+                        <button id="clearDates" class="clear-dates-btn" title="Clear dates">&#10005;</button>
                     </div>
                     <div class="filters">
                         <select id="typeFilter">
@@ -386,6 +389,7 @@
         </main>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -167,6 +167,7 @@ body {
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+    max-width: 70%;
 }
 
 .search-box input {
@@ -182,6 +183,13 @@ body {
 }
 
 .search-box input:focus { border-color: var(--accent); }
+
+.filters {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
 
 .filters select {
     background: var(--bg-card);
@@ -1033,7 +1041,7 @@ tr:hover td {
     font-weight: 500;
 }
 
-.date-filter input[type="date"] {
+.date-filter input[type="text"] {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -1043,10 +1051,28 @@ tr:hover td {
     font-family: 'Inter', sans-serif;
     outline: none;
     transition: border-color 0.15s;
+    width: 110px;
+    cursor: pointer;
 }
 
-.date-filter input[type="date"]:focus {
+.date-filter input[type="text"]:focus {
     border-color: var(--accent);
+}
+
+.clear-dates-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: 12px;
+    padding: 5px 8px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.clear-dates-btn:hover {
+    color: var(--red);
+    border-color: var(--red);
 }
 
 /* Alerts Page */
