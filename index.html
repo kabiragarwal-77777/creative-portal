@@ -37,6 +37,10 @@
                 <a href="#" class="nav-item" data-view="scorecard">
                     <span class="nav-icon">&#9733;</span> Scorecard
                 </a>
+                <div class="nav-divider"></div>
+                <a href="#" class="nav-item" data-view="accounts">
+                    <span class="nav-icon">&#9881;</span> Accounts
+                </a>
             </nav>
             <div class="sidebar-footer">
                 <button id="refreshBtn" class="refresh-btn">&#8635; Refresh Data</button>
@@ -74,6 +78,12 @@
                             <option value="Try">Try</option>
                             <option value="Failed">Failed</option>
                             <option value="Drop">Drop</option>
+                        </select>
+                        <select id="sourceFilter">
+                            <option value="all">All Sources</option>
+                            <option value="merged">Merged</option>
+                            <option value="sheets">Sheets Only</option>
+                            <option value="meta">Meta Only</option>
                         </select>
                     </div>
                 </div>
@@ -256,10 +266,75 @@
                 <div id="scorecardContent"></div>
             </div>
 
+            <!-- Accounts View -->
+            <div id="accountsView" class="view">
+                <div class="accounts-container">
+                    <div class="account-card">
+                        <div class="account-card-header">
+                            <div class="account-platform-icon meta-icon">f</div>
+                            <div>
+                                <h3>Meta Ads</h3>
+                                <p class="account-desc">Connect your Meta Business account to pull ad creative data directly from Facebook & Instagram Ads.</p>
+                            </div>
+                        </div>
+                        <div id="metaAccountStatus" class="account-status">
+                            <span class="status-dot disconnected"></span>
+                            <span class="status-text">Not connected</span>
+                        </div>
+                        <div id="metaAccountDetails" class="account-details" style="display:none;">
+                            <div class="account-info-row">
+                                <span class="account-info-label">User</span>
+                                <span class="account-info-value" id="metaUserName">--</span>
+                            </div>
+                            <div class="account-info-row">
+                                <span class="account-info-label">Campaigns</span>
+                                <span class="account-info-value" id="metaCampaignInfo">0 targeted</span>
+                            </div>
+                            <div class="account-info-row">
+                                <span class="account-info-label">Date Range</span>
+                                <select id="metaDateRange" class="account-select">
+                                    <option value="last_30d">Last 30 days</option>
+                                    <option value="last_14d">Last 14 days</option>
+                                    <option value="last_7d">Last 7 days</option>
+                                    <option value="last_90d">Last 90 days</option>
+                                </select>
+                            </div>
+                            <div class="account-info-row">
+                                <span class="account-info-label">Ads Fetched</span>
+                                <span class="account-info-value" id="metaCreativeCount">0</span>
+                            </div>
+                            <div class="account-info-row">
+                                <span class="account-info-label">Matched with Sheets</span>
+                                <span class="account-info-value" id="metaMatchedCount">0</span>
+                            </div>
+                        </div>
+                        <div class="account-actions">
+                            <button id="metaConnectBtn" class="btn-meta" onclick="metaConnect()">Reconnect Meta</button>
+                            <button id="metaDisconnectBtn" class="btn-disconnect" style="display:none;" onclick="metaDisconnect()">Disconnect</button>
+                            <button id="metaFetchBtn" class="btn-fetch" style="display:none;" onclick="metaFetchAds()">Fetch Ad Data</button>
+                        </div>
+                    </div>
+
+                    <div class="account-card" style="opacity:0.5;">
+                        <div class="account-card-header">
+                            <div class="account-platform-icon sheets-icon">S</div>
+                            <div>
+                                <h3>Google Sheets</h3>
+                                <p class="account-desc">Primary data source. Creative performance data is pulled from a shared Google Sheet.</p>
+                            </div>
+                        </div>
+                        <div class="account-status">
+                            <span class="status-dot connected"></span>
+                            <span class="status-text">Connected (Always on)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Loading Overlay -->
             <div id="loadingOverlay" class="loading-overlay">
                 <div class="spinner"></div>
-                <p>Fetching data from Google Sheets...</p>
+                <p id="loadingText">Fetching data from Google Sheets & Meta...</p>
             </div>
         </main>
     </div>

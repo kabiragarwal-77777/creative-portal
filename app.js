@@ -3,6 +3,7 @@ const SHEET_NAME = 'Creative Performance Tracker-Auto';
 
 let allData = [];
 let filteredData = [];
+let sheetsData = []; // Preserved copy of sheets-only data for merging
 
 // ---- Data Fetch using Google Visualization JSONP (bypasses CORS) ----
 async function fetchData() {
@@ -140,9 +141,12 @@ function normalizeData() {
             testPerf: get(['Test Perf']),
             week: get(['Week']),
             year: get(['Year']),
-            _raw: d
+            _raw: d,
+            _source: 'sheets'
         };
     }).filter(d => d.name && d.name !== 'Row 0' && d.name.includes('FB_'));
+    // Preserve sheets data for merge with Meta
+    sheetsData = allData.map(d => ({ ...d }));
 }
 
 function detectType(name) {
@@ -180,18 +184,135 @@ function formatNum(n) {
     return Math.round(n).toLocaleString();
 }
 
+// ---- Data Merging (Meta API + Google Sheets) ----
+function normalizeCreativeName(name) {
+    if (!name) return '';
+    return name.trim().toLowerCase().replace(/\s+/g, '_');
+}
+
+function stripCreativePrefix(name) {
+    if (!name) return '';
+    return name.replace(/^FB_MOF_(Video_|Static_)?/i, '').trim().toLowerCase().replace(/\s+/g, '_');
+}
+
+function mergeDataSources() {
+    if (!metaData.length) {
+        allData = sheetsData.slice();
+        return;
+    }
+
+    // Build lookup from sheets data by normalized name
+    const sheetsMap = new Map();
+    sheetsData.forEach(d => {
+        sheetsMap.set(normalizeCreativeName(d.name), d);
+    });
+
+    // Also build a fallback map with prefix stripped
+    const sheetsFallbackMap = new Map();
+    sheetsData.forEach(d => {
+        const stripped = stripCreativePrefix(d.name);
+        if (stripped) sheetsFallbackMap.set(stripped, d);
+    });
+
+    const merged = [];
+    const matchedSheetNames = new Set();
+
+    // Match each Meta ad against sheets data
+    metaData.forEach(metaAd => {
+        const metaKey = normalizeCreativeName(metaAd.name);
+        const metaStripped = stripCreativePrefix(metaAd.name);
+
+        // Primary match: exact normalized name
+        let sheetsRow = sheetsMap.get(metaKey);
+        // Fallback: stripped prefix match
+        if (!sheetsRow && metaStripped) {
+            sheetsRow = sheetsFallbackMap.get(metaStripped);
+        }
+
+        if (sheetsRow) {
+            matchedSheetNames.add(normalizeCreativeName(sheetsRow.name));
+            // Merged record: Meta real-time + Sheets enrichment
+            merged.push({
+                sno: 0,
+                name: metaAd.name,
+                type: metaAd.type || sheetsRow.type,
+                date: sheetsRow.date || metaAd.date,
+                // Real-time from Meta
+                spent: metaAd.spent,
+                impressions: metaAd.impressions,
+                cpm: metaAd.cpm,
+                clicks: metaAd.clicks,
+                ctr: metaAd.ctr,
+                installs: metaAd.installs,
+                cpi: metaAd.cpi,
+                live: metaAd.live,
+                // Enrichment from Sheets
+                signups: sheetsRow.signups,
+                signupCost: sheetsRow.signupCost,
+                signupPct: sheetsRow.signupPct,
+                d6: sheetsRow.d6,
+                d6CAC: sheetsRow.d6CAC,
+                d6ROAS: sheetsRow.d6ROAS,
+                overallROAS: sheetsRow.overallROAS,
+                overallRevenue: sheetsRow.overallRevenue,
+                hook: sheetsRow.hook,
+                hold: sheetsRow.hold,
+                fullPlay: sheetsRow.fullPlay,
+                thruPlays: sheetsRow.thruPlays || metaAd.thruPlays,
+                threeSecViews: sheetsRow.threeSecViews,
+                nextSteps: sheetsRow.nextSteps,
+                testPerf: sheetsRow.testPerf,
+                week: sheetsRow.week,
+                year: sheetsRow.year,
+                campaignId: metaAd.campaignId,
+                campaignName: metaAd.campaignName,
+                _raw: metaAd._raw,
+                _rawSheets: sheetsRow._raw,
+                _source: 'merged'
+            });
+        } else {
+            // Unmatched Meta ad
+            merged.push({ ...metaAd, _source: 'meta' });
+        }
+    });
+
+    // Add unmatched sheets rows
+    sheetsData.forEach(d => {
+        if (!matchedSheetNames.has(normalizeCreativeName(d.name))) {
+            merged.push({ ...d, _source: 'sheets' });
+        }
+    });
+
+    // Re-number
+    merged.forEach((d, i) => { d.sno = i + 1; });
+
+    const matchedCount = merged.filter(d => d._source === 'merged').length;
+    const metaOnly = merged.filter(d => d._source === 'meta').length;
+    const sheetsOnly = merged.filter(d => d._source === 'sheets').length;
+    console.log(`Merge: ${matchedCount} matched, ${metaOnly} meta-only, ${sheetsOnly} sheets-only (total: ${merged.length})`);
+
+    allData = merged;
+}
+
 // ---- Filters ----
 function applyFilters() {
     const search = document.getElementById('searchInput').value.toLowerCase();
     const type = document.getElementById('typeFilter').value;
     const status = document.getElementById('statusFilter').value;
     const perf = document.getElementById('perfFilter').value;
+    const source = document.getElementById('sourceFilter').value;
 
     filteredData = allData.filter(d => {
         if (search && !d.name.toLowerCase().includes(search)) return false;
         if (type !== 'all' && d.type !== type) return false;
         if (status !== 'all' && d.live !== status) return false;
         if (perf !== 'all' && d.testPerf !== perf) return false;
+        if (source !== 'all') {
+            const s = d._source || 'sheets';
+            if (source === 'meta' && s !== 'meta') return false;
+            if (source === 'sheets' && s !== 'sheets') return false;
+            if (source === 'merged' && s !== 'merged') return false;
+        }
         return true;
     });
 }
@@ -203,7 +324,8 @@ const views = {
     new: { title: 'New This Week', subtitle: 'Recently launched creatives' },
     top: { title: 'Top Performers', subtitle: 'Best performing creatives by key metrics' },
     failures: { title: 'Underperformers', subtitle: 'Creatives that need attention or removal' },
-    scorecard: { title: 'Scorecard', subtitle: 'Detailed performance scorecard per creative' }
+    scorecard: { title: 'Scorecard', subtitle: 'Detailed performance scorecard per creative' },
+    accounts: { title: 'Accounts', subtitle: 'Manage connected ad platform accounts' }
 };
 
 document.querySelectorAll('.nav-item').forEach(item => {
@@ -234,6 +356,7 @@ function renderCurrentView() {
     else if (view === 'top') renderTop();
     else if (view === 'failures') renderFailures();
     else if (view === 'scorecard') renderScorecardView();
+    else if (view === 'accounts') renderAccountsView();
 }
 
 // ---- Dashboard ----
@@ -250,8 +373,14 @@ function renderDashboard() {
     const withROAS = data.filter(d => d.d6ROAS > 0);
     const avgROAS = withROAS.length ? withROAS.reduce((s, d) => s + d.d6ROAS, 0) / withROAS.length : 0;
 
+    const mergedCount = data.filter(d => d._source === 'merged').length;
+    const metaOnlyCount = data.filter(d => d._source === 'meta').length;
+    const sheetsOnlyCount = data.filter(d => d._source === 'sheets').length;
+
     document.getElementById('kpiTotal').textContent = data.length;
-    document.getElementById('kpiTotalSub').textContent = `${data.filter(d => d.type === 'Video').length} video, ${data.filter(d => d.type === 'Static').length} static`;
+    document.getElementById('kpiTotalSub').textContent = mergedCount
+        ? `${mergedCount} merged, ${metaOnlyCount} meta, ${sheetsOnlyCount} sheets`
+        : `${data.filter(d => d.type === 'Video').length} video, ${data.filter(d => d.type === 'Static').length} static`;
     document.getElementById('kpiLive').textContent = liveCount;
     document.getElementById('kpiLiveSub').textContent = `${data.length - liveCount} paused`;
     document.getElementById('kpiSpend').textContent = formatINR(totalSpend);
@@ -382,7 +511,7 @@ function renderLiveDashboard() {
     document.getElementById('liveCreativesTable').innerHTML = live.length ? `
         <table>
             <thead><tr>
-                <th>#</th><th>Creative</th><th>Type</th><th>Date</th><th>Spend</th><th>CTR</th><th>CPI</th><th>Installs</th><th>Signups</th><th>Signup%</th><th>Hook%</th><th>Hold%</th><th>D6 ROAS</th><th>Overall ROAS</th><th>Perf.</th>
+                <th>#</th><th>Creative</th><th>Type</th><th>Date</th><th>Spend</th><th>CTR</th><th>CPI</th><th>Installs</th><th>Signups</th><th>Signup%</th><th>Hook%</th><th>Hold%</th><th>D6 ROAS</th><th>Overall ROAS</th><th>Perf.</th><th>Source</th>
             </tr></thead>
             <tbody>${live.map((d, i) => `<tr>
                 <td>${i + 1}</td>
@@ -400,6 +529,7 @@ function renderLiveDashboard() {
                 <td style="color:${roasColor(d.d6ROAS)}">${d.d6ROAS ? d.d6ROAS.toFixed(1) + '%' : '-'}</td>
                 <td style="color:${roasColor(d.overallROAS)}">${d.overallROAS ? d.overallROAS.toFixed(1) + '%' : '-'}</td>
                 <td>${perfBadge(d.testPerf)}</td>
+                <td>${sourceBadge(d._source)}</td>
             </tr>`).join('')}</tbody>
         </table>
     ` : '<p style="color:var(--text-dim);padding:20px;">No live creatives found.</p>';
@@ -437,7 +567,7 @@ function renderTable() {
     document.getElementById('tableCount').textContent = `${data.length} creatives`;
     const thead = document.querySelector('#creativesTable thead');
     const tbody = document.querySelector('#creativesTable tbody');
-    const cols = ['#', 'Name', 'Type', 'Date', 'Spend', 'Impr.', 'CPM', 'CTR', 'Installs', 'CPI', 'Signups', 'Signup%', 'Hook%', 'Hold%', 'D6 ROAS', 'Overall ROAS', 'Status', 'Perf.'];
+    const cols = ['#', 'Name', 'Type', 'Date', 'Spend', 'Impr.', 'CPM', 'CTR', 'Installs', 'CPI', 'Signups', 'Signup%', 'Hook%', 'Hold%', 'D6 ROAS', 'Overall ROAS', 'Status', 'Perf.', 'Source'];
     thead.innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
     tbody.innerHTML = data.map((d, i) => `<tr>
         <td>${i + 1}</td>
@@ -458,6 +588,7 @@ function renderTable() {
         <td style="color:${roasColor(d.overallROAS)}">${d.overallROAS ? d.overallROAS.toFixed(1) + '%' : '-'}</td>
         <td><span class="cc-badge ${d.live === 'Live' ? 'badge-live' : 'badge-paused'}">${d.live}</span></td>
         <td>${perfBadge(d.testPerf)}</td>
+        <td>${sourceBadge(d._source)}</td>
     </tr>`).join('');
 }
 
@@ -610,6 +741,12 @@ function perfBadge(perf) {
     return `<span class="cc-badge ${cls[perf] || ''}">${perf}</span>`;
 }
 
+function sourceBadge(source) {
+    if (source === 'merged') return '<span class="cc-badge badge-merged">MERGED</span>';
+    if (source === 'meta') return '<span class="cc-badge badge-meta">META</span>';
+    return '<span class="cc-badge badge-sheets">SHEETS</span>';
+}
+
 function creativeCard(d, showScore = false) {
     const score = computeScore(d);
     return `
@@ -632,7 +769,7 @@ function creativeCard(d, showScore = false) {
                 <div class="cc-metric"><div class="cc-metric-label">D6 ROAS</div><div class="cc-metric-value" style="color:${roasColor(d.d6ROAS)}">${d.d6ROAS ? d.d6ROAS.toFixed(1) + '%' : '-'}</div></div>
                 <div class="cc-metric"><div class="cc-metric-label">${d.type === 'Video' ? 'Hook%' : 'Signup%'}</div><div class="cc-metric-value">${d.type === 'Video' ? (d.hook ? d.hook.toFixed(1) + '%' : '-') : (d.signupPct ? d.signupPct.toFixed(1) + '%' : '-')}</div></div>
             </div>
-            <div class="cc-date">${d.date || ''} | <span class="cc-badge ${d.live === 'Live' ? 'badge-live' : 'badge-paused'}">${d.live}</span></div>
+            <div class="cc-date">${d.date || ''} | <span class="cc-badge ${d.live === 'Live' ? 'badge-live' : 'badge-paused'}">${d.live}</span> ${sourceBadge(d._source)}</div>
         </div>
     `;
 }
@@ -643,13 +780,13 @@ function showLoading(show) {
 
 // ---- CSV Export ----
 document.getElementById('exportBtn')?.addEventListener('click', () => {
-    const headers = ['Name', 'Type', 'Date', 'Spend', 'Impressions', 'CPM', 'CTR', 'Installs', 'CPI', 'Signups', 'Signup%', 'Hook%', 'Hold%', 'D6 ROAS', 'Overall ROAS', 'Status', 'Performance'];
+    const headers = ['Name', 'Type', 'Date', 'Spend', 'Impressions', 'CPM', 'CTR', 'Installs', 'CPI', 'Signups', 'Signup%', 'Hook%', 'Hold%', 'D6 ROAS', 'Overall ROAS', 'Status', 'Performance', 'Source'];
     const csvRows = [headers.join(',')];
     filteredData.forEach(d => {
         csvRows.push([
             `"${d.name}"`, d.type, d.date, d.spent, d.impressions, d.cpm,
             d.ctr, d.installs, d.cpi, d.signups, d.signupPct,
-            d.hook, d.hold, d.d6ROAS, d.overallROAS, d.live, d.testPerf
+            d.hook, d.hold, d.d6ROAS, d.overallROAS, d.live, d.testPerf, d._source
         ].join(','));
     });
     const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
@@ -664,7 +801,241 @@ document.getElementById('searchInput').addEventListener('input', () => renderCur
 document.getElementById('typeFilter').addEventListener('change', () => renderCurrentView());
 document.getElementById('statusFilter').addEventListener('change', () => renderCurrentView());
 document.getElementById('perfFilter').addEventListener('change', () => renderCurrentView());
+document.getElementById('sourceFilter').addEventListener('change', () => renderCurrentView());
 document.getElementById('refreshBtn').addEventListener('click', fetchData);
 
+// ---- Meta Ads Integration ----
+const META_ACCESS_TOKEN = 'EAAHDBv0GZCRYBQyK7aPCLInqIH1BCZAl5p3CLHZAngLOWT00ZAcXe84uW9CHogplylkwyovDH9473hg6CMEArA9ZAyR6wKJK3MIrLvb9YHqQDiLVSDw08MMSEBu5kucQr9TNZClZATU8FvB8XHVHuDyEKzZBhjFYA4saidojpVmZAQYpwd1ukGsGkuCvg56MDLwZDZD';
+const META_AD_ACCOUNT_ID = 'act_725019929189148';
+const TARGET_CAMPAIGNS = [
+    'Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225',
+    'Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125'
+];
+let metaData = [];
+let metaUserName = '';
+let metaConnected = false;
+let metaCampaignIds = []; // { id, name } pairs
+
+function getMetaDateRange() {
+    const rangeEl = document.getElementById('metaDateRange');
+    const range = rangeEl ? rangeEl.value : 'last_30d';
+    const now = new Date();
+    const end = now.toISOString().split('T')[0];
+    let start;
+    switch (range) {
+        case 'last_7d': start = new Date(now - 7 * 86400000); break;
+        case 'last_14d': start = new Date(now - 14 * 86400000); break;
+        case 'last_90d': start = new Date(now - 90 * 86400000); break;
+        default: start = new Date(now - 30 * 86400000);
+    }
+    return { since: start.toISOString().split('T')[0], until: end };
+}
+
+// Step 1: Look up campaign IDs by name
+async function fetchTargetCampaignIds() {
+    const url = `https://graph.facebook.com/v21.0/${META_AD_ACCOUNT_ID}/campaigns?fields=id,name&limit=100&access_token=${encodeURIComponent(META_ACCESS_TOKEN)}`;
+    const allCampaigns = await fetchMetaPage(url, []);
+    const matched = allCampaigns.filter(c => TARGET_CAMPAIGNS.includes(c.name.trim()));
+    console.log(`Meta: found ${matched.length}/${TARGET_CAMPAIGNS.length} target campaigns`, matched.map(c => c.name));
+    if (!matched.length) throw new Error('No target campaigns found in this ad account');
+    return matched.map(c => ({ id: c.id, name: c.name }));
+}
+
+// Step 2: Fetch ads from a specific campaign
+async function fetchAdsFromCampaign(campaignId) {
+    const { since, until } = getMetaDateRange();
+    const fields = 'name,status,created_time,campaign_id,campaign{name},creative{title,body,thumbnail_url},insights.time_range({"since":"' + since + '","until":"' + until + '"}){spend,impressions,cpm,clicks,ctr,actions,cost_per_action_type,video_thruplay_watched_actions,video_p25_watched_actions,video_p50_watched_actions,video_p75_watched_actions,video_p100_watched_actions}';
+    const url = `https://graph.facebook.com/v21.0/${campaignId}/ads?fields=${encodeURIComponent(fields)}&limit=100&access_token=${encodeURIComponent(META_ACCESS_TOKEN)}`;
+    return fetchMetaPage(url, []);
+}
+
+// Main Meta fetch: validate token, find campaigns, fetch ads
+async function fetchMetaData() {
+    try {
+        // Validate token & get user info
+        const meResp = await fetch(`https://graph.facebook.com/me?access_token=${encodeURIComponent(META_ACCESS_TOKEN)}`);
+        const meData = await meResp.json();
+        if (meData.error) {
+            console.error('Meta token invalid:', meData.error.message);
+            updateMetaStatus(false, meData.error.message);
+            return;
+        }
+        metaUserName = meData.name || 'Connected';
+        metaConnected = true;
+
+        // Find target campaign IDs
+        metaCampaignIds = await fetchTargetCampaignIds();
+
+        // Fetch ads from all target campaigns in parallel
+        const adArrays = await Promise.all(
+            metaCampaignIds.map(c => fetchAdsFromCampaign(c.id))
+        );
+        const allAds = adArrays.flat();
+
+        // Find campaign name for each ad
+        const campaignNameMap = {};
+        metaCampaignIds.forEach(c => { campaignNameMap[c.id] = c.name; });
+
+        metaData = allAds.map(ad => normalizeMetaAd(ad, campaignNameMap));
+        console.log(`Meta: loaded ${metaData.length} ads from ${metaCampaignIds.length} campaigns`);
+
+        // Merge with sheets data
+        mergeDataSources();
+
+        updateMetaStatus(true);
+        renderCurrentView();
+    } catch (err) {
+        console.error('Meta fetch error:', err);
+        updateMetaStatus(false, err.message);
+    }
+}
+
+function updateMetaStatus(connected, errorMsg) {
+    const statusEl = document.getElementById('metaAccountStatus');
+    const detailsEl = document.getElementById('metaAccountDetails');
+    const connectBtn = document.getElementById('metaConnectBtn');
+    const disconnectBtn = document.getElementById('metaDisconnectBtn');
+    const fetchBtn = document.getElementById('metaFetchBtn');
+
+    if (!statusEl) return;
+
+    if (connected) {
+        statusEl.innerHTML = '<span class="status-dot connected"></span><span class="status-text">Connected as ' + metaUserName + '</span>';
+        detailsEl.style.display = 'block';
+        connectBtn.style.display = 'none';
+        disconnectBtn.style.display = 'inline-block';
+        fetchBtn.style.display = 'inline-block';
+        fetchBtn.textContent = 'Refresh Meta Data';
+        fetchBtn.disabled = false;
+        document.getElementById('metaUserName').textContent = metaUserName;
+        document.getElementById('metaCreativeCount').textContent = metaData.length;
+        document.getElementById('metaAdAccountSelect').innerHTML =
+            metaCampaignIds.map(c => `<option value="${c.id}">${c.name}</option>`).join('') ||
+            `<option value="${META_AD_ACCOUNT_ID}">${META_AD_ACCOUNT_ID}</option>`;
+    } else {
+        statusEl.innerHTML = '<span class="status-dot disconnected"></span><span class="status-text">Error: ' + (errorMsg || 'Not connected') + '</span>';
+        detailsEl.style.display = 'none';
+        connectBtn.style.display = 'inline-block';
+        disconnectBtn.style.display = 'none';
+        fetchBtn.style.display = 'none';
+    }
+}
+
+function metaConnect() {
+    fetchMetaData();
+}
+
+function metaDisconnect() {
+    allData = sheetsData.slice();
+    metaData = [];
+    metaConnected = false;
+    updateMetaStatus(false, 'Disconnected');
+    renderCurrentView();
+}
+
+function metaFetchAds() {
+    const fetchBtn = document.getElementById('metaFetchBtn');
+    if (fetchBtn) {
+        fetchBtn.textContent = 'Fetching...';
+        fetchBtn.disabled = true;
+    }
+    fetchMetaData();
+}
+
+// Generic paginated Meta API fetch
+function fetchMetaPage(url, accumulated) {
+    return fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) throw new Error(data.error.message);
+            const items = accumulated.concat(data.data || []);
+            if (data.paging && data.paging.next && items.length < 500) {
+                return fetchMetaPage(data.paging.next, items);
+            }
+            return items;
+        });
+}
+
+function normalizeMetaAd(ad, campaignNameMap) {
+    const insights = (ad.insights && ad.insights.data && ad.insights.data[0]) || {};
+    const actions = insights.actions || [];
+
+    const getAction = (type) => {
+        const a = actions.find(x => x.action_type === type);
+        return a ? parseFloat(a.value) : 0;
+    };
+
+    const installs = getAction('app_install') || getAction('omni_app_install');
+    const signups = getAction('complete_registration') || getAction('omni_complete_registration');
+    const spend = parseFloat(insights.spend) || 0;
+    const impressions = parseFloat(insights.impressions) || 0;
+    const clicks = parseFloat(insights.clicks) || 0;
+
+    const isVideo = ad.name && (ad.name.toLowerCase().includes('video') || ad.name.includes('VID'));
+    const isActive = ad.status === 'ACTIVE';
+
+    let dateStr = '';
+    if (ad.created_time) {
+        const dt = new Date(ad.created_time);
+        dateStr = dt.toLocaleDateString('en-GB');
+    }
+
+    const campaignName = (ad.campaign && ad.campaign.name) || (campaignNameMap && campaignNameMap[ad.campaign_id]) || '';
+
+    return {
+        sno: 0,
+        type: isVideo ? 'Video' : 'Static',
+        name: ad.name || 'Untitled Ad',
+        date: dateStr,
+        spent: spend,
+        impressions: impressions,
+        cpm: parseFloat(insights.cpm) || 0,
+        clicks: clicks,
+        ctr: parseFloat(insights.ctr) || 0,
+        installs: installs,
+        cpi: installs > 0 ? spend / installs : 0,
+        signups: signups,
+        signupCost: signups > 0 ? spend / signups : 0,
+        signupPct: installs > 0 ? (signups / installs) * 100 : 0,
+        d6: 0,
+        d6CAC: 0,
+        d6ROAS: 0,
+        overallROAS: 0,
+        overallRevenue: 0,
+        hook: 0,
+        hold: 0,
+        fullPlay: 0,
+        thruPlays: parseFloat((insights.video_thruplay_watched_actions || [{}])[0].value) || 0,
+        threeSecViews: 0,
+        nextSteps: '',
+        live: isActive ? 'Live' : 'Paused',
+        testPerf: '',
+        week: '',
+        year: '',
+        campaignId: ad.campaign_id || '',
+        campaignName: campaignName,
+        _raw: ad,
+        _source: 'meta'
+    };
+}
+
+function renderAccountsView() {
+    updateMetaStatus(metaConnected, metaConnected ? null : 'Click Connect to fetch');
+    const campaignInfoEl = document.getElementById('metaCampaignInfo');
+    const matchedEl = document.getElementById('metaMatchedCount');
+    if (campaignInfoEl) {
+        campaignInfoEl.textContent = metaCampaignIds.length
+            ? metaCampaignIds.map(c => c.name.split('_')[0]).join(', ')
+            : TARGET_CAMPAIGNS.length + ' targeted';
+    }
+    if (matchedEl) {
+        matchedEl.textContent = allData.filter(d => d._source === 'merged').length;
+    }
+}
+
 // ---- Init ----
-fetchData();
+async function init() {
+    await fetchData();
+    fetchMetaData();
+}
+init();
