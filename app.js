@@ -315,12 +315,21 @@ function applyFilters() {
     const status = document.getElementById('statusFilter').value;
     const perf = document.getElementById('perfFilter').value;
     const source = document.getElementById('sourceFilter').value;
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value;
+    const dateFromTs = dateFrom ? new Date(dateFrom).getTime() : 0;
+    const dateToTs = dateTo ? new Date(dateTo + 'T23:59:59').getTime() : Infinity;
 
     filteredData = allData.filter(d => {
         if (search && !d.name.toLowerCase().includes(search)) return false;
         if (type !== 'all' && d.type !== type) return false;
         if (status !== 'all' && d.live !== status) return false;
         if (perf !== 'all' && d.testPerf !== perf) return false;
+        if (dateFrom || dateTo) {
+            const dTs = parseDate(d.date);
+            if (dTs && (dTs < dateFromTs || dTs > dateToTs)) return false;
+            if (!dTs && (dateFrom || dateTo)) return false;
+        }
         if (source !== 'all') {
             const s = d._source || 'sheets';
             if (source === 'meta' && s !== 'meta') return false;
@@ -339,6 +348,7 @@ const views = {
     top: { title: 'Top Performers', subtitle: 'Best performing creatives by key metrics' },
     failures: { title: 'Underperformers', subtitle: 'Creatives that need attention or removal' },
     scorecard: { title: 'Scorecard', subtitle: 'Detailed performance scorecard per creative' },
+    alerts: { title: 'Alerts', subtitle: 'Live creative alerts based on performance thresholds' },
     accounts: { title: 'Accounts', subtitle: 'Manage connected ad platform accounts' }
 };
 
@@ -370,6 +380,7 @@ function renderCurrentView() {
     else if (view === 'top') renderTop();
     else if (view === 'failures') renderFailures();
     else if (view === 'scorecard') renderScorecardView();
+    else if (view === 'alerts') renderAlertsPage();
     else if (view === 'accounts') renderAccountsView();
 }
 
@@ -588,6 +599,115 @@ function renderAlerts() {
     html += `</div></div>`;
 
     alertsContainer.innerHTML = html;
+}
+
+// ---- Alerts Page ----
+function renderAlertsPage() {
+    const live = allData.filter(d => d.live === 'Live');
+
+    const redAlerts = live.filter(d =>
+        (d.signupCost > 1000) || (d.d0TrialCost > 3500)
+    );
+
+    const greenAlerts = live.filter(d =>
+        (d.d6ROAS > 25) || (d.d0TrialCost > 0 && d.d0TrialCost < 2000)
+    );
+
+    const container = document.getElementById('alertsPageContent');
+    if (!container) return;
+
+    function alertMetricsRow(d) {
+        return `<div class="alert-metrics">
+            <div class="alert-metric"><span class="alert-metric-label">Spend</span><span class="alert-metric-value">${formatINR(d.spent)}</span></div>
+            <div class="alert-metric"><span class="alert-metric-label">CPI</span><span class="alert-metric-value" style="color:${cpiColor(d.cpi)}">${d.cpi ? '₹' + Math.round(d.cpi) : '-'}</span></div>
+            <div class="alert-metric"><span class="alert-metric-label">CTR</span><span class="alert-metric-value">${d.ctr ? d.ctr.toFixed(2) + '%' : '-'}</span></div>
+            <div class="alert-metric"><span class="alert-metric-label">Installs</span><span class="alert-metric-value">${d.installs || '-'}</span></div>
+            <div class="alert-metric"><span class="alert-metric-label">Signups</span><span class="alert-metric-value">${d.signups || '-'}</span></div>
+            <div class="alert-metric"><span class="alert-metric-label">Signup Cost</span><span class="alert-metric-value">${d.signupCost ? '₹' + Math.round(d.signupCost) : '-'}</span></div>
+            <div class="alert-metric"><span class="alert-metric-label">Signup%</span><span class="alert-metric-value">${d.signupPct ? d.signupPct.toFixed(1) + '%' : '-'}</span></div>
+            <div class="alert-metric"><span class="alert-metric-label">P0P1 Cost</span><span class="alert-metric-value">${d.p0p1Cost ? '₹' + Math.round(d.p0p1Cost) : '-'}</span></div>
+            <div class="alert-metric"><span class="alert-metric-label">D0 Trial Cost</span><span class="alert-metric-value">${d.d0TrialCost ? '₹' + Math.round(d.d0TrialCost) : '-'}</span></div>
+            <div class="alert-metric"><span class="alert-metric-label">D0 CAC</span><span class="alert-metric-value">${d.d0CAC ? '₹' + Math.round(d.d0CAC) : '-'}</span></div>
+            <div class="alert-metric"><span class="alert-metric-label">D6 CAC</span><span class="alert-metric-value">${d.d6CAC ? '₹' + Math.round(d.d6CAC) : '-'}</span></div>
+            <div class="alert-metric"><span class="alert-metric-label">D6 ROAS</span><span class="alert-metric-value" style="color:${roasColor(d.d6ROAS)}">${d.d6ROAS ? d.d6ROAS.toFixed(1) + '%' : '-'}</span></div>
+            <div class="alert-metric"><span class="alert-metric-label">Overall ROAS</span><span class="alert-metric-value" style="color:${roasColor(d.overallROAS)}">${d.overallROAS ? d.overallROAS.toFixed(1) + '%' : '-'}</span></div>
+            <div class="alert-metric"><span class="alert-metric-label">Hook%</span><span class="alert-metric-value">${d.hook ? d.hook.toFixed(1) + '%' : '-'}</span></div>
+            <div class="alert-metric"><span class="alert-metric-label">Hold%</span><span class="alert-metric-value">${d.hold ? d.hold.toFixed(1) + '%' : '-'}</span></div>
+            <div class="alert-metric"><span class="alert-metric-label">Perf.</span><span class="alert-metric-value">${perfBadge(d.testPerf)}</span></div>
+        </div>`;
+    }
+
+    let html = '';
+
+    // Red alerts panel
+    html += `<div class="alerts-page-panel alerts-red">
+        <div class="alerts-header">
+            <span class="alerts-icon">&#9888;</span>
+            <h3>Red Alerts</h3>
+            <span class="alerts-count">${redAlerts.length}</span>
+        </div>
+        <div class="alerts-page-body">`;
+
+    if (redAlerts.length) {
+        html += redAlerts.map(d => {
+            const reasons = [];
+            if (d.signupCost > 1000) reasons.push(`Signup Cost: ₹${Math.round(d.signupCost)} (> ₹1,000)`);
+            if (d.d0TrialCost > 3500) reasons.push(`D0 Trial Cost: ₹${Math.round(d.d0TrialCost)} (> ₹3,500)`);
+            return `<div class="alert-page-item alert-item-red">
+                <div class="alert-page-top">
+                    <div>
+                        <div class="alert-name">${shortName(d.name)}</div>
+                        <div class="alert-reasons">${reasons.join(' | ')}</div>
+                    </div>
+                    <div style="display:flex;gap:4px;align-items:center;">
+                        <span class="cc-badge ${d.type === 'Video' ? 'badge-video' : 'badge-static'}">${d.type}</span>
+                        ${sourceBadge(d._source)}
+                    </div>
+                </div>
+                ${alertMetricsRow(d)}
+            </div>`;
+        }).join('');
+    } else {
+        html += '<p class="alerts-empty">No red alerts. All live creatives within thresholds.</p>';
+    }
+
+    html += `</div></div>`;
+
+    // Green alerts panel
+    html += `<div class="alerts-page-panel alerts-green">
+        <div class="alerts-header">
+            <span class="alerts-icon">&#10004;</span>
+            <h3>Green Alerts</h3>
+            <span class="alerts-count">${greenAlerts.length}</span>
+        </div>
+        <div class="alerts-page-body">`;
+
+    if (greenAlerts.length) {
+        html += greenAlerts.map(d => {
+            const reasons = [];
+            if (d.d6ROAS > 25) reasons.push(`D6 ROAS: ${d.d6ROAS.toFixed(1)}% (> 25%)`);
+            if (d.d0TrialCost > 0 && d.d0TrialCost < 2000) reasons.push(`D0 Trial Cost: ₹${Math.round(d.d0TrialCost)} (< ₹2,000)`);
+            return `<div class="alert-page-item alert-item-green">
+                <div class="alert-page-top">
+                    <div>
+                        <div class="alert-name">${shortName(d.name)}</div>
+                        <div class="alert-reasons">${reasons.join(' | ')}</div>
+                    </div>
+                    <div style="display:flex;gap:4px;align-items:center;">
+                        <span class="cc-badge ${d.type === 'Video' ? 'badge-video' : 'badge-static'}">${d.type}</span>
+                        ${sourceBadge(d._source)}
+                    </div>
+                </div>
+                ${alertMetricsRow(d)}
+            </div>`;
+        }).join('');
+    } else {
+        html += '<p class="alerts-empty">No green alerts among live creatives.</p>';
+    }
+
+    html += `</div></div>`;
+
+    container.innerHTML = html;
 }
 
 // ---- Live Creatives Dashboard ----
@@ -930,6 +1050,8 @@ document.getElementById('typeFilter').addEventListener('change', () => renderCur
 document.getElementById('statusFilter').addEventListener('change', () => renderCurrentView());
 document.getElementById('perfFilter').addEventListener('change', () => renderCurrentView());
 document.getElementById('sourceFilter').addEventListener('change', () => renderCurrentView());
+document.getElementById('dateFrom').addEventListener('change', () => renderCurrentView());
+document.getElementById('dateTo').addEventListener('change', () => renderCurrentView());
 document.getElementById('refreshBtn').addEventListener('click', fetchData);
 
 // ---- Meta Ads Integration ----
