@@ -528,18 +528,53 @@ function renderDashboard() {
     renderLiveDashboard();
 }
 
+// Shared alert classification logic
+function classifyAlerts(creatives) {
+    const eligible = creatives.filter(d => d.spent >= 15000);
+
+    const redAlerts = eligible.filter(d => {
+        // D6 ROAS > 28% = never red
+        if (d.d6ROAS > 28) return false;
+        // Count breaches: signup cost > 1000, d0 trial cost > 3500, d6 CAC > 15000
+        let breaches = 0;
+        if (d.signupCost > 1000) breaches++;
+        if (d.d0TrialCost > 3500) breaches++;
+        if (d.d6CAC > 15000) breaches++;
+        return breaches >= 2;
+    });
+
+    const greenAlerts = eligible.filter(d => {
+        // D6 ROAS > 28% = always green
+        if (d.d6ROAS > 28) return true;
+        // Count green hits: signup cost < 500, d0 trial cost < 2500, d6 CAC < 12000
+        let hits = 0;
+        if (d.signupCost > 0 && d.signupCost < 500) hits++;
+        if (d.d0TrialCost > 0 && d.d0TrialCost < 2500) hits++;
+        if (d.d6CAC > 0 && d.d6CAC < 12000) hits++;
+        return hits >= 2;
+    });
+
+    return { redAlerts, greenAlerts };
+}
+
+function getAlertReasons(d, type) {
+    const reasons = [];
+    if (type === 'red') {
+        if (d.signupCost > 1000) reasons.push(`Signup Cost: ₹${Math.round(d.signupCost)} (> ₹1,000)`);
+        if (d.d0TrialCost > 3500) reasons.push(`D0 Trial Cost: ₹${Math.round(d.d0TrialCost)} (> ₹3,500)`);
+        if (d.d6CAC > 15000) reasons.push(`D6 CAC: ₹${Math.round(d.d6CAC)} (> ₹15,000)`);
+    } else {
+        if (d.d6ROAS > 28) reasons.push(`D6 ROAS: ${d.d6ROAS.toFixed(1)}% (> 28%)`);
+        if (d.signupCost > 0 && d.signupCost < 500) reasons.push(`Signup Cost: ₹${Math.round(d.signupCost)} (< ₹500)`);
+        if (d.d0TrialCost > 0 && d.d0TrialCost < 2500) reasons.push(`D0 Trial Cost: ₹${Math.round(d.d0TrialCost)} (< ₹2,500)`);
+        if (d.d6CAC > 0 && d.d6CAC < 12000) reasons.push(`D6 CAC: ₹${Math.round(d.d6CAC)} (< ₹12,000)`);
+    }
+    return reasons;
+}
+
 function renderAlerts() {
     const live = filteredData.filter(d => d.live === 'Live');
-
-    // Red alerts: signup cost > 1000 OR d0 trial cost > 3500
-    const redAlerts = live.filter(d =>
-        (d.signupCost > 1000) || (d.d0TrialCost > 3500)
-    );
-
-    // Green alerts: d6 ROAS > 25% OR d0 trial cost < 2000 (and > 0)
-    const greenAlerts = live.filter(d =>
-        (d.d6ROAS > 25) || (d.d0TrialCost > 0 && d.d0TrialCost < 2000)
-    );
+    const { redAlerts, greenAlerts } = classifyAlerts(live);
 
     const alertsContainer = document.getElementById('alertsSection');
     if (!alertsContainer) return;
@@ -557,13 +592,11 @@ function renderAlerts() {
 
     if (redAlerts.length) {
         html += redAlerts.map(d => {
-            const reasons = [];
-            if (d.signupCost > 1000) reasons.push(`Signup Cost: ₹${Math.round(d.signupCost)}`);
-            if (d.d0TrialCost > 3500) reasons.push(`D0 Trial Cost: ₹${Math.round(d.d0TrialCost)}`);
+            const reasons = getAlertReasons(d, 'red');
             return `<div class="alert-item alert-item-red">
                 <div class="alert-name">${shortName(d.name)}</div>
                 <div class="alert-reasons">${reasons.join(' | ')}</div>
-                <div class="alert-extra">${d.type} | Spend: ${formatINR(d.spent)} | CPI: ${d.cpi ? '₹' + Math.round(d.cpi) : '-'}</div>
+                <div class="alert-extra">${d.type} | Spend: ${formatINR(d.spent)} | D6 ROAS: ${d.d6ROAS ? d.d6ROAS.toFixed(1) + '%' : '-'}</div>
             </div>`;
         }).join('');
     } else {
@@ -583,9 +616,7 @@ function renderAlerts() {
 
     if (greenAlerts.length) {
         html += greenAlerts.map(d => {
-            const reasons = [];
-            if (d.d6ROAS > 25) reasons.push(`D6 ROAS: ${d.d6ROAS.toFixed(1)}%`);
-            if (d.d0TrialCost > 0 && d.d0TrialCost < 2000) reasons.push(`D0 Trial Cost: ₹${Math.round(d.d0TrialCost)}`);
+            const reasons = getAlertReasons(d, 'green');
             return `<div class="alert-item alert-item-green">
                 <div class="alert-name">${shortName(d.name)}</div>
                 <div class="alert-reasons">${reasons.join(' | ')}</div>
@@ -604,14 +635,7 @@ function renderAlerts() {
 // ---- Alerts Page ----
 function renderAlertsPage() {
     const live = filteredData.filter(d => d.live === 'Live');
-
-    const redAlerts = live.filter(d =>
-        (d.signupCost > 1000) || (d.d0TrialCost > 3500)
-    );
-
-    const greenAlerts = live.filter(d =>
-        (d.d6ROAS > 25) || (d.d0TrialCost > 0 && d.d0TrialCost < 2000)
-    );
+    const { redAlerts, greenAlerts } = classifyAlerts(live);
 
     const container = document.getElementById('alertsPageContent');
     if (!container) return;
@@ -650,9 +674,7 @@ function renderAlertsPage() {
 
     if (redAlerts.length) {
         html += redAlerts.map(d => {
-            const reasons = [];
-            if (d.signupCost > 1000) reasons.push(`Signup Cost: ₹${Math.round(d.signupCost)} (> ₹1,000)`);
-            if (d.d0TrialCost > 3500) reasons.push(`D0 Trial Cost: ₹${Math.round(d.d0TrialCost)} (> ₹3,500)`);
+            const reasons = getAlertReasons(d, 'red');
             return `<div class="alert-page-item alert-item-red">
                 <div class="alert-page-top">
                     <div>
@@ -684,9 +706,7 @@ function renderAlertsPage() {
 
     if (greenAlerts.length) {
         html += greenAlerts.map(d => {
-            const reasons = [];
-            if (d.d6ROAS > 25) reasons.push(`D6 ROAS: ${d.d6ROAS.toFixed(1)}% (> 25%)`);
-            if (d.d0TrialCost > 0 && d.d0TrialCost < 2000) reasons.push(`D0 Trial Cost: ₹${Math.round(d.d0TrialCost)} (< ₹2,000)`);
+            const reasons = getAlertReasons(d, 'green');
             return `<div class="alert-page-item alert-item-green">
                 <div class="alert-page-top">
                     <div>
