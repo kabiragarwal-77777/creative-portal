@@ -1145,19 +1145,10 @@ async function fetchAdsFromCampaign(campaignId) {
     return fetchMetaPage(url, []);
 }
 
-// Main Meta fetch: validate token, find campaigns, fetch ads
+// Main Meta fetch: find campaigns, fetch ads
 async function fetchMetaData() {
     try {
-        // Validate token & get user info
-        // Validate token by fetching campaigns directly (app tokens return empty from /me)
-        const meResp = await fetch(`https://graph.facebook.com/me?fields=id,name&access_token=${encodeURIComponent(META_ACCESS_TOKEN)}&appsecret_proof=${META_APP_SECRET_PROOF}`);
-        const meData = await meResp.json();
-        if (meData.error) {
-            console.error('Meta token invalid:', meData.error.message);
-            updateMetaStatus(false, meData.error.message);
-            return;
-        }
-        metaUserName = meData.name || 'App Connected';
+        metaUserName = 'App Connected';
         metaConnected = true;
 
         // Find target campaign IDs
@@ -1246,6 +1237,10 @@ function metaFetchAds() {
 
 // Generic paginated Meta API fetch
 function fetchMetaPage(url, accumulated) {
+    // Ensure appsecret_proof is on every request (pagination URLs may lack it)
+    if (!url.includes('appsecret_proof')) {
+        url += (url.includes('?') ? '&' : '?') + 'appsecret_proof=' + META_APP_SECRET_PROOF;
+    }
     return fetch(url)
         .then(r => r.json())
         .then(data => {
