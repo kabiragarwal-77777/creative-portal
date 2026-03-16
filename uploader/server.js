@@ -170,12 +170,60 @@ async function downloadDriveFile(driveUrl) {
     const fileId = extractDriveFileId(driveUrl);
     if (!fileId) throw new Error(`Could not extract Google Drive file ID from: ${driveUrl}`);
 
-    const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`;
-    const resp = await fetch(downloadUrl, { redirect: 'follow' });
-    if (!resp.ok) throw new Error(`Failed to download from Google Drive: HTTP ${resp.status}`);
+    // Step 1: Hit the download URL to get cookies + confirm token
+    let downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+    let resp = await fetch(downloadUrl, { redirect: 'manual' });
 
-    const contentType = resp.headers.get('content-type') || 'application/octet-stream';
-    const contentDisp = resp.headers.get('content-disposition') || '';
+    // Collect cookies from all responses (needed for large file virus scan bypass)
+    let cookies = (resp.headers.getSetCookie?.() || []).map(c => c.split(';')[0]).join('; ');
+
+    // Follow redirects manually to collect cookies
+    while (resp.status >= 300 && resp.status < 400) {
+        const location = resp.headers.get('location');
+        if (!location) break;
+        resp = await fetch(location, { redirect: 'manual', headers: cookies ? { cookie: cookies } : {} });
+        const newCookies = resp.headers.getSetCookie?.() || [];
+        if (newCookies.length) {
+            const existing = new Map(cookies.split('; ').filter(Boolean).map(c => { const [k,...v] = c.split('='); return [k, v.join('=')]; }));
+            newCookies.forEach(c => { const [k,...v] = c.split(';')[0].split('='); existing.set(k, v.join('=')); });
+            cookies = [...existing.entries()].map(([k,v]) => `${k}=${v}`).join('; ');
+        }
+    }
+
+    let contentType = resp.headers.get('content-type') || 'application/octet-stream';
+    let contentDisp = resp.headers.get('content-disposition') || '';
+
+    // If we got HTML back, Google is showing a virus scan warning page
+    if (contentType.includes('text/html')) {
+        const html = await resp.text();
+
+        // Extract confirm token + uuid from the warning page
+        const confirmMatch = html.match(/confirm=([a-zA-Z0-9_-]+)/) || html.match(/name="confirm"\s+value="([^"]+)"/);
+        const uuidMatch = html.match(/uuid=([a-zA-Z0-9_-]+)/) || html.match(/name="uuid"\s+value="([^"]+)"/);
+
+        // Retry with confirm token + cookies
+        let retryUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=${confirmMatch ? confirmMatch[1] : 't'}`;
+        if (uuidMatch) retryUrl += `&uuid=${uuidMatch[1]}`;
+        console.log(`[DRIVE] Large file detected, retrying with confirm token + cookies`);
+        resp = await fetch(retryUrl, { redirect: 'follow', headers: cookies ? { cookie: cookies } : {} });
+        contentType = resp.headers.get('content-type') || 'application/octet-stream';
+        contentDisp = resp.headers.get('content-disposition') || '';
+
+        // If still HTML, try drive.usercontent.google.com with cookies
+        if (contentType.includes('text/html')) {
+            console.log(`[DRIVE] Trying usercontent endpoint`);
+            resp = await fetch(`https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`, {
+                redirect: 'follow',
+                headers: cookies ? { cookie: cookies } : {},
+            });
+            contentType = resp.headers.get('content-type') || 'application/octet-stream';
+            contentDisp = resp.headers.get('content-disposition') || '';
+        }
+
+        if (contentType.includes('text/html')) {
+            throw new Error(`Google Drive download failed for large file. Try making the file publicly accessible or use a smaller file. File ID: ${fileId}`);
+        }
+    }
 
     // Try to get filename from content-disposition
     let filename = `drive_${fileId}`;
@@ -196,6 +244,17 @@ async function downloadDriveFile(driveUrl) {
     const tmpPath = path.join(tmpDir, `meta_upload_${Date.now()}_${filename}`);
     const fileStream = fs.createWriteStream(tmpPath);
     await pipeline(resp.body, fileStream);
+
+    // Verify we didn't download an HTML page
+    const fileSize = fs.statSync(tmpPath).size;
+    console.log(`[DRIVE DOWNLOAD] ${filename} | type=${contentType} | size=${fileSize} bytes`);
+    if (fileSize < 1000) {
+        const preview = fs.readFileSync(tmpPath, 'utf8').substring(0, 200);
+        if (preview.includes('<html') || preview.includes('<!DOCTYPE')) {
+            cleanupTempFile(tmpPath);
+            throw new Error(`Google Drive download failed: received HTML instead of file. Preview: ${preview.substring(0, 100)}`);
+        }
+    }
 
     return { tmpPath, contentType, filename };
 }
@@ -614,11 +673,17 @@ app.post('/api/execute-full', async (req, res) => {
             targeting.publisher_platforms = Array.isArray(pubPlatforms) ? pubPlatforms : String(pubPlatforms).split(/[,|]/).map(s => s.trim()).filter(Boolean);
 
             // Positions (auto-correct 'reels' to 'facebook_reels' for FB positions)
-            const fbPositions = config.facebook_positions || ['feed', 'video_feeds', 'story', 'facebook_reels', 'facebook_reels_overlay', 'profile_feed', 'instream_video', 'marketplace', 'search'];
-            targeting.facebook_positions = (Array.isArray(fbPositions) ? fbPositions : String(fbPositions).split(/[,|]/).map(s => s.trim()).filter(Boolean))
+            const videoOnlyFbPositions = ['video_feeds', 'instream_video'];
+            let fbPositions = config.facebook_positions || ['feed', 'video_feeds', 'story', 'facebook_reels', 'facebook_reels_overlay', 'profile_feed', 'instream_video', 'marketplace', 'search'];
+            fbPositions = (Array.isArray(fbPositions) ? fbPositions : String(fbPositions).split(/[,|]/).map(s => s.trim()).filter(Boolean))
                 .map(p => p === 'reels' ? 'facebook_reels' : p);
+            // Remove video-only placements for image ads
+            if (assetType === 'image') {
+                fbPositions = fbPositions.filter(p => !videoOnlyFbPositions.includes(p));
+            }
+            targeting.facebook_positions = fbPositions;
 
-            const igPositions = config.instagram_positions || ['stream', 'story', 'reels', 'explore', 'explore_home', 'ig_search', 'profile_reels', 'profile_feed'];
+            const igPositions = config.instagram_positions || ['stream', 'story', 'reels', 'explore', 'ig_search', 'profile_reels', 'profile_feed'];
             targeting.instagram_positions = Array.isArray(igPositions) ? igPositions : String(igPositions).split(/[,|]/).map(s => s.trim()).filter(Boolean);
 
             // Custom audiences (filter out "null" and empty strings)
@@ -639,6 +704,7 @@ app.post('/api/execute-full', async (req, res) => {
                 object_store_url: config.object_store_url || config.app_store_url || '',
             };
         }
+        // Deferred deep link added below after linkUrl is defined
 
         // ------------------------------------------------------------------
         // Step 1: Upload assets (horizontal, vertical, square)
@@ -771,6 +837,8 @@ app.post('/api/execute-full', async (req, res) => {
         adsetParams.start_time = config.start_time || new Date().toISOString();
         if (config.end_time) adsetParams.end_time = config.end_time;
         adsetParams.targeting = JSON.stringify(targeting);
+        const linkUrl = config.link_url || '';
+        const storeUrl = config.object_store_url || '';
         if (promotedObject) adsetParams.promoted_object = JSON.stringify(promotedObject);
 
         // India securities & investments regulatory requirement
@@ -797,9 +865,7 @@ app.post('/api/execute-full', async (req, res) => {
         const bodyText = config.primary_text || config.body_text || '';
         const titleText = config.headline || config.title_text || '';
         const descText = config.description || config.description_text || '';
-        const ctaType = config.cta || config.call_to_action || 'INSTALL_MOBILE_APP';
-        const linkUrl = config.link_url || '';
-        const storeUrl = config.object_store_url || '';
+        const ctaType = config.cta || config.call_to_action || 'SUBSCRIBE';
         // For app install campaigns, asset_feed_spec link_urls must use the store URL
         const feedLinkUrl = storeUrl || linkUrl;
         const pageId = config.page_id || '';
@@ -826,34 +892,37 @@ app.post('/api/execute-full', async (req, res) => {
                     videos.push(entry);
                 }
 
+                // Build link_urls with deeplink if provided
+                const vidLinkUrl = { website_url: feedLinkUrl, display_url: '' };
+                if (linkUrl && linkUrl !== feedLinkUrl) vidLinkUrl.deeplink_url = linkUrl;
+
                 const vidFeedSpec = {
                     videos,
-                    ad_formats: ['SINGLE_VIDEO'],
+                    ad_formats: ['AUTOMATIC_FORMAT'],
                     bodies: [{ text: bodyText }],
                     titles: [{ text: titleText }],
                     descriptions: [{ text: descText }],
                     call_to_action_types: [ctaType],
-                    link_urls: [{ website_url: feedLinkUrl }],
+                    link_urls: [vidLinkUrl],
+                    optimization_type: 'PLACEMENT',
                     asset_customization_rules: [
                         {
-                            customization_spec: { publisher_platforms: ['facebook'], facebook_positions: ['feed', 'video_feeds', 'instream_video', 'profile_feed'] },
-                            video_label: { name: 'square' },
-                        },
-                        {
-                            customization_spec: { publisher_platforms: ['facebook'], facebook_positions: ['story', 'facebook_reels', 'facebook_reels_overlay'] },
+                            // Vertical placements (FB + IG combined)
+                            customization_spec: { publisher_platforms: ['facebook', 'instagram'], facebook_positions: ['story', 'facebook_reels'], instagram_positions: ['story', 'reels', 'profile_reels', 'ig_search'] },
                             video_label: { name: 'vertical' },
+                            priority: 1,
                         },
                         {
-                            customization_spec: { publisher_platforms: ['facebook'], facebook_positions: ['search', 'marketplace'] },
+                            // Horizontal placements
+                            customization_spec: { publisher_platforms: ['facebook'], facebook_positions: ['search'] },
                             video_label: { name: 'horizontal' },
+                            priority: 2,
                         },
                         {
-                            customization_spec: { publisher_platforms: ['instagram'], instagram_positions: ['stream', 'explore', 'explore_home', 'ig_search', 'profile_feed'] },
+                            // Catch-all: square for everything else (feed, profile_feed, marketplace, reels_overlay, IG stream, explore, etc.)
+                            customization_spec: {},
                             video_label: { name: 'square' },
-                        },
-                        {
-                            customization_spec: { publisher_platforms: ['instagram'], instagram_positions: ['story', 'reels', 'profile_reels'] },
-                            video_label: { name: 'vertical' },
+                            priority: 3,
                         },
                     ],
                 };
@@ -871,34 +940,37 @@ app.post('/api/execute-full', async (req, res) => {
                     images.push({ hash: assets.square.imageHash, adlabels: [{ name: 'square' }] });
                 }
 
+                // Build link_urls with deeplink if provided
+                const imgLinkUrl = { website_url: feedLinkUrl, display_url: '' };
+                if (linkUrl && linkUrl !== feedLinkUrl) imgLinkUrl.deeplink_url = linkUrl;
+
                 const imgFeedSpec = {
                     images,
-                    ad_formats: ['SINGLE_IMAGE'],
+                    ad_formats: ['AUTOMATIC_FORMAT'],
                     bodies: [{ text: bodyText }],
                     titles: [{ text: titleText }],
                     descriptions: [{ text: descText }],
                     call_to_action_types: [ctaType],
-                    link_urls: [{ website_url: feedLinkUrl }],
+                    link_urls: [imgLinkUrl],
+                    optimization_type: 'PLACEMENT',
                     asset_customization_rules: [
                         {
-                            customization_spec: { publisher_platforms: ['facebook'], facebook_positions: ['feed', 'video_feeds', 'instream_video', 'profile_feed'] },
-                            image_label: { name: 'square' },
-                        },
-                        {
-                            customization_spec: { publisher_platforms: ['facebook'], facebook_positions: ['story', 'facebook_reels', 'facebook_reels_overlay'] },
+                            // Vertical placements (FB + IG combined)
+                            customization_spec: { publisher_platforms: ['facebook', 'instagram'], facebook_positions: ['story', 'facebook_reels'], instagram_positions: ['story', 'reels', 'profile_reels', 'ig_search'] },
                             image_label: { name: 'vertical' },
+                            priority: 1,
                         },
                         {
-                            customization_spec: { publisher_platforms: ['facebook'], facebook_positions: ['search', 'marketplace'] },
+                            // Horizontal placements
+                            customization_spec: { publisher_platforms: ['facebook'], facebook_positions: ['search'] },
                             image_label: { name: 'horizontal' },
+                            priority: 2,
                         },
                         {
-                            customization_spec: { publisher_platforms: ['instagram'], instagram_positions: ['stream', 'explore', 'explore_home', 'ig_search', 'profile_feed'] },
+                            // Catch-all: square for everything else (feed, profile_feed, marketplace, reels_overlay, IG stream, explore, etc.)
+                            customization_spec: {},
                             image_label: { name: 'square' },
-                        },
-                        {
-                            customization_spec: { publisher_platforms: ['instagram'], instagram_positions: ['story', 'reels', 'profile_reels'] },
-                            image_label: { name: 'vertical' },
+                            priority: 3,
                         },
                     ],
                 };
@@ -911,11 +983,6 @@ app.post('/api/execute-full', async (req, res) => {
                 const igActorId = config.instagram_actor_id || '17841452244426405';
                 storySpec.instagram_user_id = igActorId;
                 creativeParams.object_story_spec = JSON.stringify(storySpec);
-            }
-
-            // Add deferred deep link if link_url differs from store URL
-            if (linkUrl && linkUrl !== feedLinkUrl) {
-                creativeParams.link_deep_link_url = linkUrl;
             }
 
             const creativeData = await metaPost(`/${META_AD_ACCOUNT_ID}/adcreatives`, creativeParams);
@@ -945,7 +1012,7 @@ app.post('/api/execute-full', async (req, res) => {
                 }]);
             }
 
-            // No extra deeplink params needed on the ad - it's set on the creative
+            // Deep link is now set via call_to_actions in asset_feed_spec
 
             const adData = await metaPost(`/${META_AD_ACCOUNT_ID}/ads`, adParams);
             logStep('create_ad', true, { adId: adData.id });
