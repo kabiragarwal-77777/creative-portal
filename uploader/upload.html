@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meta Ad Uploader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-body: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-input: #1a1a2e;
+            --bg-hover: #22223a;
+            --bg-terminal: #08080d;
+            --accent: #6c5ce7;
+            --accent-hover: #7f71ee;
+            --green: #00d4aa;
+            --red: #ff6b6b;
+            --yellow: #ffd93d;
+            --text: #e0e0e0;
+            --text-dim: #888;
+            --text-muted: #555;
+            --border: #2a2a3e;
+            --radius: 10px;
+            --radius-sm: 6px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-body);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-body); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+        /* Header */
+        .page-header {
+            background: linear-gradient(135deg, #12121a 0%, #1a1a2e 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 28px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .page-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .page-header h1 span { color: var(--accent); }
+        .page-header p {
+            color: var(--text-dim);
+            font-size: 13px;
+            margin-top: 2px;
+        }
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-dim);
+            background: var(--bg-input);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: background 0.3s;
+        }
+        .status-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+        .status-dot.error { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+        /* Layout */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 32px 40px 80px;
+        }
+
+        /* Section Cards */
+        .section-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 28px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        .section-header:hover { background: var(--bg-hover); }
+        .section-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-number {
+            background: var(--accent);
+            color: #fff;
+            width: 26px; height: 26px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .section-toggle {
+            font-size: 18px;
+            color: var(--text-dim);
+            transition: transform 0.3s;
+        }
+        .section-toggle.collapsed { transform: rotate(-90deg); }
+        .section-body {
+            padding: 24px 28px;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            overflow: hidden;
+        }
+        .section-body.collapsed {
+            max-height: 0 !important;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        /* Form Elements */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px 28px;
+        }
+        .form-grid.three-col {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+        .form-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group label .required {
+            color: var(--red);
+            margin-left: 2px;
+        }
+        input[type="text"],
+        input[type="number"],
+        input[type="datetime-local"],
+        input[type="url"],
+        select,
+        textarea {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            padding: 10px 14px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15);
+        }
+        input.invalid, select.invalid, textarea.invalid {
+            border-color: var(--red);
+            box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.15);
+        }
+        textarea { resize: vertical; min-height: 80px; }
+        select { cursor: pointer; }
+        select option { background: var(--bg-input); color: var(--text); }
+
+        /* Radio / Checkbox groups */
+        .radio-group, .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .radio-group label, .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--text);
+            text-transform: none;
+            letter-spacing: 0;
+            cursor: pointer;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .radio-group label:hover, .checkbox-group label:hover {
+            border-color: var(--accent);
+            background: var(--bg-hover);
+        }
+        .radio-group input:checked + span,
+        .checkbox-group input:checked + span {
+            color: var(--accent);
+        }
+        .radio-group label:has(input:checked),
+        .checkbox-group label:has(input:checked) {
+            border-color: var(--accent);
+            background: rgba(108, 92, 231, 0.1);
+        }
+        input[type="radio"], input[type="checkbox"] {
+            accent-color: var(--accent);
+            width: 14px; height: 14px;
+            cursor: pointer;
+        }
+
+        /* Sub-section headings */
+        .sub-heading {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 24px 0 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            grid-column: 1 / -1;
+        }
+        .sub-heading:first-child { margin-top: 0; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 10px 22px;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+        .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        .btn-primary:active { transform: translateY(0); }
+        .btn-secondary {
+            background: var(--bg-input);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { border-color: var(--accent); background: var(--bg-hover); }
+        .btn-success {
+            background: var(--green);
+            color: #0a0a0f;
+        }
+        .btn-success:hover { background: #00e6b8; }
+        .btn-danger {
+            background: var(--red);
+            color: #fff;
+        }
+        .btn-danger:hover { background: #ff8585; }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .btn-lg {
+            padding: 14px 36px;
+            font-size: 16px;
+            border-radius: var(--radius);
+        }
+
+        /* Toggle switch for Manual Entry */
+        .toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        .toggle-label { font-size: 14px; color: var(--text-dim); }
+        .toggle-label.active { color: var(--accent); font-weight: 600; }
+        .toggle {
+            width: 44px; height: 24px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .toggle.on { background: var(--accent); border-color: var(--accent); }
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 18px; height: 18px;
+            background: #fff;
+            border-radius: 50%;
+            top: 2px; left: 2px;
+            transition: transform 0.2s;
+        }
+        .toggle.on::after { transform: translateX(20px); }
+
+        /* Sheet table */
+        .sheet-table-wrap {
+            max-height: 320px;
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            margin-top: 16px;
+        }
+        .sheet-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .sheet-table th {
+            background: var(--bg-input);
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-dim);
+            position: sticky;
+            top: 0;
+            white-space: nowrap;
+        }
+        .sheet-table td {
+            padding: 8px 14px;
+            border-top: 1px solid var(--border);
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .sheet-table tr:hover td { background: var(--bg-hover); }
+        .sheet-table .btn { padding: 5px 12px; font-size: 12px; }
+
+        /* Campaign info */
+        .campaign-info {
+            display: flex;
+            gap: 20px;
+            margin-top: 12px;
+        }
+        .campaign-info .info-badge {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+        }
+
+        /* Preview Card */
+        .preview-card {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            display: none;
+        }
+        .preview-card.show { display: block; }
+        .preview-card h3 {
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: var(--accent);
+        }
+        .preview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 32px;
+        }
+        .preview-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .preview-item .label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .preview-item .value {
+            font-size: 14px;
+            color: var(--text);
+            word-break: break-all;
+        }
+        .preview-item .value.empty { color: var(--text-muted); font-style: italic; }
+        .preview-divider {
+            grid-column: 1 / -1;
+            height: 1px;
+            background: var(--border);
+            margin: 8px 0;
+        }
+
+        /* Execution Actions */
+        .exec-actions {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        /* Execution Log */
+        .exec-log {
+            background: var(--bg-terminal);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            max-height: 420px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+        .log-entry {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .log-entry .log-time {
+            color: var(--text-muted);
+            white-space: nowrap;
+            min-width: 80px;
+        }
+        .log-entry .log-icon {
+            min-width: 18px;
+            text-align: center;
+        }
+        .log-entry .log-msg { flex: 1; }
+        .log-entry.pending .log-icon { color: var(--yellow); }
+        .log-entry.success .log-icon { color: var(--green); }
+        .log-entry.error .log-icon { color: var(--red); }
+        .log-entry.error .log-msg { color: var(--red); }
+        .log-entry.info .log-icon { color: var(--accent); }
+        .log-result {
+            margin-top: 12px;
+            padding: 14px;
+            border-radius: var(--radius-sm);
+        }
+        .log-result.success {
+            background: rgba(0, 212, 170, 0.08);
+            border: 1px solid rgba(0, 212, 170, 0.3);
+        }
+        .log-result.error {
+            background: rgba(255, 107, 107, 0.08);
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            color: var(--red);
+        }
+        .log-result a { color: var(--green); text-decoration: underline; }
+
+        /* Spinner */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid var(--border);
+            border-top-color: var(--yellow);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px;
+            max-width: 480px;
+            width: 90%;
+            text-align: center;
+        }
+        .modal h3 { font-size: 18px; margin-bottom: 12px; }
+        .modal p { color: var(--text-dim); font-size: 14px; margin-bottom: 24px; }
+        .modal-actions { display: flex; gap: 12px; justify-content: center; }
+
+        /* Hidden helper */
+        .hidden { display: none !important; }
+
+        /* Responsive */
+        @media (max-width: 800px) {
+            .page-header { padding: 20px; flex-direction: column; gap: 12px; }
+            .container { padding: 20px; }
+            .form-grid, .form-grid.three-col { grid-template-columns: 1fr; }
+            .preview-grid { grid-template-columns: 1fr; }
+            .section-body { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="page-header">
+    <div>
+        <h1>Meta <span>Ad Uploader</span></h1>
+        <p>Automated ad creation from spreadsheet config</p>
+    </div>
+    <div class="connection-status">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Checking connection...</span>
+    </div>
+</header>
+
+<div class="container">
+
+    <!-- Section 1: Source Config -->
+    <div class="section-card">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">1</span> Source Config</h2>
+            <span class="section-toggle">&#9662;</span>
+        </div>
+        <div class="section-body">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Google Sheet ID</label>
+                    <input type="text" id="sheetId" placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
+                </div>
+                <div class="form-group">
+                    <label>Tab Name</label>
+                    <input type="text" id="tabName" placeholder="e.g. Sheet1">
+                </div>
+            </div>
+            <div style="margin-top: 16px;">
+                <button class="btn btn-primary" onclick="loadSheetData()">&#9655; Load Sheet Data</button>
+            </div>
+
+            <div class="toggle-wrap">
+                <span class="toggle-label" id="toggleLabelSheet">Sheet Mode</span>
+                <div class="toggle" id="manualToggle" onclick="toggleManualEntry()"></div>
+                <span class="toggle-label" id="toggleLabelManual">Manual Entry</span>
+            </div>
+
+            <div id="sheetTableWrap" class="sheet-table-wrap hidden">
+                <table class="sheet-table" id="sheetTable">
+                    <thead><tr id="sheetHead"></tr></thead>
+                    <tbody id="sheetBody"></tbody>
+                </table>
+            </div>
+            <p id="sheetStatus" style="color: var(--text-muted); font-size: 13px; margin-top: 10px;"></p>
+        </div>
+    </div>
+
+    <!-- Section 2: Campaign Selection -->
+    <div class="section-card">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">2</span> Campaign Selection</h2>
+            <span class="section-toggle">&#9662;</span>
+        </div>
+        <div class="section-body">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Campaign <span class="required">*</span></label>
+                    <select id="campaignId">
+                        <option value="">Loading campaigns...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="campaign-info" id="campaignInfo" style="display:none;">
+                <span class="info-badge" id="campaignObjective"></span>
+                <span class="info-badge" id="campaignStatus"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: Adset Configuration -->
+    <div class="section-card">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">3</span> Adset Configuration</h2>
+            <span class="section-toggle">&#9662;</span>
+        </div>
+        <div class="section-body">
+            <div class="form-grid">
+
+                <!-- Basic -->
+                <div class="sub-heading">Basic</div>
+
+                <div class="form-group">
+                    <label>Adset Name <span class="required">*</span></label>
+                    <input type="text" id="adsetName" placeholder="My Adset">
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="adsetStatus">
+                        <option value="PAUSED" selected>PAUSED</option>
+                        <option value="ACTIVE">ACTIVE</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Budget Type</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="budgetType" value="daily" checked onchange="toggleBudgetType()"><span>Daily Budget</span></label>
+                        <label><input type="radio" name="budgetType" value="lifetime" onchange="toggleBudgetType()"><span>Lifetime Budget</span></label>
+                    </div>
+                </div>
+                <div class="form-group" id="budgetGroup">
+                    <label id="budgetLabel">Daily Budget (INR) <span class="required">*</span></label>
+                    <input type="number" id="budget" placeholder="e.g. 500" min="1">
+                </div>
+
+                <div class="form-group">
+                    <label>Bid Strategy</label>
+                    <select id="bidStrategy" onchange="toggleBidAmount()">
+                        <option value="LOWEST_COST_WITHOUT_CAP">Lowest Cost (No Cap)</option>
+                        <option value="LOWEST_COST_WITH_BID_CAP">Lowest Cost (Bid Cap)</option>
+                        <option value="COST_CAP">Cost Cap</option>
+                    </select>
+                </div>
+                <div class="form-group hidden" id="bidAmountGroup">
+                    <label>Bid Amount (INR) <span class="required">*</span></label>
+                    <input type="number" id="bidAmount" placeholder="e.g. 25" min="0" step="0.01">
+                </div>
+
+                <div class="form-group">
+                    <label>Billing Event</label>
+                    <select id="billingEvent">
+                        <option value="IMPRESSIONS" selected>IMPRESSIONS</option>
+                        <option value="LINK_CLICKS">LINK_CLICKS</option>
+                        <option value="APP_INSTALLS">APP_INSTALLS</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Optimization Goal</label>
+                    <select id="optimizationGoal">
+                        <option value="APP_INSTALLS" selected>APP_INSTALLS</option>
+                        <option value="OFFSITE_CONVERSIONS">OFFSITE_CONVERSIONS</option>
+                        <option value="LINK_CLICKS">LINK_CLICKS</option>
+                        <option value="REACH">REACH</option>
+                        <option value="IMPRESSIONS">IMPRESSIONS</option>
+                    </select>
+                </div>
+
+                <!-- Schedule -->
+                <div class="sub-heading">Schedule</div>
+
+                <div class="form-group">
+                    <label>Start Time <span class="required">*</span></label>
+                    <input type="datetime-local" id="startTime">
+                </div>
+                <div class="form-group">
+                    <label>End Time</label>
+                    <input type="datetime-local" id="endTime">
+                </div>
+
+                <!-- Targeting -->
+                <div class="sub-heading">Targeting</div>
+
+                <div class="form-group">
+                    <label>Age Min</label>
+                    <input type="number" id="ageMin" value="18" min="13" max="65">
+                </div>
+                <div class="form-group">
+                    <label>Age Max</label>
+                    <input type="number" id="ageMax" value="65" min="13" max="65">
+                </div>
+
+                <div class="form-group">
+                    <label>Genders</label>
+                    <select id="genders">
+                        <option value="0">All</option>
+                        <option value="1">Male</option>
+                        <option value="2">Female</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Countries (comma-separated codes)</label>
+                    <input type="text" id="geoCountries" value="IN" placeholder="e.g. IN,US">
+                </div>
+
+                <div class="form-group">
+                    <label>Device Platforms</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" name="devicePlatform" value="mobile" checked><span>Mobile</span></label>
+                        <label><input type="checkbox" name="devicePlatform" value="desktop"><span>Desktop</span></label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Operating System</label>
+                    <select id="osTarget">
+                        <option value="Android" selected>Android</option>
+                        <option value="iOS">iOS</option>
+                        <option value="All">All</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Min OS Version</label>
+                    <input type="text" id="minOsVersion" placeholder="e.g. 8.0">
+                </div>
+                <div class="form-group"></div>
+
+                <div class="form-group full-width">
+                    <label>Publisher Platforms</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" name="publisherPlatform" value="facebook" checked><span>Facebook</span></label>
+                        <label><input type="checkbox" name="publisherPlatform" value="instagram" checked><span>Instagram</span></label>
+                        <label><input type="checkbox" name="publisherPlatform" value="audience_network"><span>Audience Network</span></label>
+                        <label><input type="checkbox" name="publisherPlatform" value="messenger"><span>Messenger</span></label>
+                    </div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Facebook Positions</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" name="fbPosition" value="feed" checked><span>Feed</span></label>
+                        <label><input type="checkbox" name="fbPosition" value="video_feeds" checked><span>Video Feeds</span></label>
+                        <label><input type="checkbox" name="fbPosition" value="story" checked><span>Story</span></label>
+                        <label><input type="checkbox" name="fbPosition" value="reels" checked><span>Reels</span></label>
+                        <label><input type="checkbox" name="fbPosition" value="marketplace"><span>Marketplace</span></label>
+                        <label><input type="checkbox" name="fbPosition" value="search"><span>Search</span></label>
+                        <label><input type="checkbox" name="fbPosition" value="instream_video"><span>Instream Video</span></label>
+                    </div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Instagram Positions</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" name="igPosition" value="stream" checked><span>Stream</span></label>
+                        <label><input type="checkbox" name="igPosition" value="story" checked><span>Story</span></label>
+                        <label><input type="checkbox" name="igPosition" value="reels" checked><span>Reels</span></label>
+                        <label><input type="checkbox" name="igPosition" value="explore" checked><span>Explore</span></label>
+                        <label><input type="checkbox" name="igPosition" value="explore_home" checked><span>Explore Home</span></label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Custom Audiences</label>
+                    <textarea id="customAudiences" placeholder="Paste audience IDs, one per line" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Excluded Audiences</label>
+                    <textarea id="excludedAudiences" placeholder="Paste audience IDs, one per line" rows="3"></textarea>
+                </div>
+
+                <!-- Promoted Object -->
+                <div class="sub-heading">Promoted Object (App Install)</div>
+
+                <div class="form-group">
+                    <label>Application ID <span class="required">*</span></label>
+                    <input type="text" id="appId" placeholder="e.g. 123456789">
+                </div>
+                <div class="form-group">
+                    <label>Object Store URL <span class="required">*</span></label>
+                    <input type="text" id="objectStoreUrl" placeholder="https://play.google.com/store/apps/details?id=...">
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 4: Ad Configuration -->
+    <div class="section-card">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">4</span> Ad Configuration</h2>
+            <span class="section-toggle">&#9662;</span>
+        </div>
+        <div class="section-body">
+            <div class="form-grid">
+
+                <!-- Basic -->
+                <div class="sub-heading">Basic</div>
+
+                <div class="form-group">
+                    <label>Ad Name <span class="required">*</span></label>
+                    <input type="text" id="adName" placeholder="My Ad">
+                </div>
+                <div class="form-group">
+                    <label>Ad Status</label>
+                    <select id="adStatus">
+                        <option value="PAUSED" selected>PAUSED</option>
+                        <option value="ACTIVE">ACTIVE</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Creative Name <span class="required">*</span></label>
+                    <input type="text" id="creativeName" placeholder="My Creative">
+                </div>
+                <div class="form-group"></div>
+
+                <!-- Creative Content -->
+                <div class="sub-heading">Creative Content</div>
+
+                <div class="form-group full-width">
+                    <label>Primary Text / Body <span class="required">*</span></label>
+                    <textarea id="primaryText" placeholder="Your ad copy here..." rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Headline <span class="required">*</span></label>
+                    <input type="text" id="headline" placeholder="Catchy headline">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" id="description" placeholder="Optional description">
+                </div>
+                <div class="form-group">
+                    <label>Call to Action</label>
+                    <select id="cta">
+                        <option value="INSTALL_MOBILE_APP" selected>INSTALL_MOBILE_APP</option>
+                        <option value="LEARN_MORE">LEARN_MORE</option>
+                        <option value="SIGN_UP">SIGN_UP</option>
+                        <option value="DOWNLOAD">DOWNLOAD</option>
+                        <option value="GET_OFFER">GET_OFFER</option>
+                        <option value="SHOP_NOW">SHOP_NOW</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Link URL <span class="required">*</span></label>
+                    <input type="text" id="linkUrl" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>URL Tags (UTM params)</label>
+                    <input type="text" id="urlTags" placeholder="utm_source=meta&utm_medium=paid">
+                </div>
+
+                <!-- Creative Assets -->
+                <div class="sub-heading">Creative Assets</div>
+
+                <div class="form-group full-width">
+                    <label>Creative Type</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="creativeType" value="VIDEO" checked onchange="toggleCreativeType()"><span>Video</span></label>
+                        <label><input type="radio" name="creativeType" value="IMAGE" onchange="toggleCreativeType()"><span>Image</span></label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Horizontal Asset &mdash; 16:9 / Landscape <span class="required">*</span></label>
+                    <input type="text" id="assetHorizontal" placeholder="Google Drive URL">
+                </div>
+                <div class="form-group">
+                    <label>Vertical Asset &mdash; 9:16 / Portrait <span class="required">*</span></label>
+                    <input type="text" id="assetVertical" placeholder="Google Drive URL">
+                </div>
+                <div class="form-group">
+                    <label>Square Asset &mdash; 1:1 / Square <span class="required">*</span></label>
+                    <input type="text" id="assetSquare" placeholder="Google Drive URL">
+                </div>
+                <div class="form-group"></div>
+
+                <div id="thumbnailFields">
+                    <div class="form-grid" style="margin-top: 4px;">
+                        <div class="form-group">
+                            <label>Thumbnail Horizontal URL</label>
+                            <input type="text" id="thumbHorizontal" placeholder="Google Drive URL (optional)">
+                        </div>
+                        <div class="form-group">
+                            <label>Thumbnail Vertical URL</label>
+                            <input type="text" id="thumbVertical" placeholder="Google Drive URL (optional)">
+                        </div>
+                        <div class="form-group">
+                            <label>Thumbnail Square URL</label>
+                            <input type="text" id="thumbSquare" placeholder="Google Drive URL (optional)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page -->
+                <div class="sub-heading">Page</div>
+
+                <div class="form-group">
+                    <label>Facebook Page <span class="required">*</span></label>
+                    <select id="pageId">
+                        <option value="">Loading pages...</option>
+                    </select>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 5: Preview & Execute -->
+    <div class="section-card">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">5</span> Preview &amp; Execute</h2>
+            <span class="section-toggle">&#9662;</span>
+        </div>
+        <div class="section-body">
+            <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                <button class="btn btn-secondary" onclick="showPreview()">&#128065; Preview</button>
+                <button class="btn btn-primary btn-lg" id="createBtn" onclick="confirmExecute()">&#9889; Create Ad</button>
+            </div>
+
+            <div class="preview-card" id="previewCard">
+                <h3>Ad Creation Preview</h3>
+                <div class="preview-grid" id="previewGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 6: Execution Log -->
+    <div class="section-card">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">6</span> Execution Log</h2>
+            <span class="section-toggle">&#9662;</span>
+        </div>
+        <div class="section-body">
+            <div class="exec-log" id="execLog">
+                <div style="color: var(--text-muted);">Execution log will appear here when you create an ad.</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal-overlay" id="confirmModal">
+    <div class="modal">
+        <h3>Confirm Ad Creation</h3>
+        <p>This will create an adset and ad on your Meta account. The adset will be set to <strong id="confirmStatus">PAUSED</strong>. Continue?</p>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="executeCreate()">Yes, Create</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    // ─── State ──────────────────────────────────────────────
+    let sheetRows = [];
+    let sheetHeaders = [];
+    let campaigns = [];
+    let pages = [];
+    let customAudiencesList = [];
+    let isManualEntry = false;
+
+    const API_BASE = ''; // Same origin; adjust if needed
+
+    // ─── Helpers ────────────────────────────────────────────
+    function $(id) { return document.getElementById(id); }
+    function qs(sel) { return document.querySelector(sel); }
+    function qsa(sel) { return document.querySelectorAll(sel); }
+
+    function getCheckedValues(name) {
+        return Array.from(qsa(`input[name="${name}"]:checked`)).map(cb => cb.value);
+    }
+
+    function setCheckedValues(name, values) {
+        qsa(`input[name="${name}"]`).forEach(cb => {
+            cb.checked = values.includes(cb.value);
+        });
+    }
+
+    function timeStamp() {
+        const d = new Date();
+        return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    async function apiFetch(url, options = {}) {
+        const res = await fetch(API_BASE + url, options);
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`HTTP ${res.status}: ${text}`);
+        }
+        return res.json();
+    }
+
+    // ─── Section Toggle ─────────────────────────────────────
+    window.toggleSection = function (header) {
+        const body = header.nextElementSibling;
+        const arrow = header.querySelector('.section-toggle');
+        body.classList.toggle('collapsed');
+        arrow.classList.toggle('collapsed');
+    };
+
+    // ─── Connection Check ───────────────────────────────────
+    async function checkConnection() {
+        try {
+            const data = await apiFetch('/api/campaigns');
+            $('statusDot').className = 'status-dot connected';
+            $('statusText').textContent = 'Connected to Meta';
+            return data;
+        } catch (e) {
+            $('statusDot').className = 'status-dot error';
+            $('statusText').textContent = 'Connection failed';
+            return null;
+        }
+    }
+
+    // ─── Load Campaigns ─────────────────────────────────────
+    async function loadCampaigns() {
+        try {
+            const data = await apiFetch('/api/campaigns');
+            campaigns = data.campaigns || data.data || data || [];
+            if (!Array.isArray(campaigns)) campaigns = [];
+            const sel = $('campaignId');
+            sel.innerHTML = '<option value="">— Select Campaign —</option>';
+            campaigns.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = `${c.name} (${c.id})`;
+                opt.dataset.objective = c.objective || '';
+                opt.dataset.status = c.status || c.effective_status || '';
+                sel.appendChild(opt);
+            });
+        } catch (e) {
+            const sel = $('campaignId');
+            sel.innerHTML = '<option value="">Failed to load campaigns</option>';
+        }
+    }
+
+    $('campaignId').addEventListener('change', function () {
+        const opt = this.selectedOptions[0];
+        if (opt && opt.value) {
+            $('campaignInfo').style.display = 'flex';
+            $('campaignObjective').textContent = 'Objective: ' + (opt.dataset.objective || 'N/A');
+            $('campaignStatus').textContent = 'Status: ' + (opt.dataset.status || 'N/A');
+        } else {
+            $('campaignInfo').style.display = 'none';
+        }
+    });
+
+    // ─── Load Pages ─────────────────────────────────────────
+    async function loadPages() {
+        try {
+            const data = await apiFetch('/api/pages');
+            pages = data.pages || data.data || data || [];
+            if (!Array.isArray(pages)) pages = [];
+            const sel = $('pageId');
+            sel.innerHTML = '<option value="">— Select Page —</option>';
+            pages.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${p.name} (${p.id})`;
+                sel.appendChild(opt);
+            });
+        } catch (e) {
+            const sel = $('pageId');
+            sel.innerHTML = '<option value="">Failed to load pages</option>';
+        }
+    }
+
+    // ─── Load Custom Audiences ──────────────────────────────
+    async function loadCustomAudiences() {
+        try {
+            const data = await apiFetch('/api/custom-audiences');
+            customAudiencesList = data.audiences || data.data || data || [];
+        } catch (e) {
+            // Silently fail; user can enter IDs manually
+        }
+    }
+
+    // ─── Sheet Data ─────────────────────────────────────────
+    window.loadSheetData = async function () {
+        const sheetId = $('sheetId').value.trim();
+        const tabName = $('tabName').value.trim();
+        if (!sheetId) { $('sheetStatus').textContent = 'Please enter a Sheet ID.'; return; }
+
+        $('sheetStatus').textContent = 'Loading...';
+        try {
+            const url = `/api/sheet-data?sheetId=${encodeURIComponent(sheetId)}&tabName=${encodeURIComponent(tabName)}`;
+            const data = await apiFetch(url);
+            sheetRows = data.rows || data.data || data || [];
+            if (sheetRows.length > 0) {
+                sheetHeaders = Object.keys(sheetRows[0]);
+                renderSheetTable();
+                $('sheetStatus').textContent = `Loaded ${sheetRows.length} row(s).`;
+            } else {
+                $('sheetStatus').textContent = 'No rows found.';
+            }
+        } catch (e) {
+            $('sheetStatus').textContent = 'Error: ' + e.message;
+        }
+    };
+
+    function renderSheetTable() {
+        const wrap = $('sheetTableWrap');
+        wrap.classList.remove('hidden');
+        const head = $('sheetHead');
+        const body = $('sheetBody');
+        head.innerHTML = '<th>#</th>' + sheetHeaders.map(h => `<th>${esc(h)}</th>`).join('') + '<th></th>';
+        body.innerHTML = sheetRows.map((row, i) => {
+            const cells = sheetHeaders.map(h => `<td title="${esc(String(row[h] || ''))}">${esc(String(row[h] || ''))}</td>`).join('');
+            return `<tr><td>${i + 1}</td>${cells}<td><button class="btn btn-secondary" onclick="selectRow(${i})">Select</button></td></tr>`;
+        }).join('');
+    }
+
+    function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    let selectedSheetRowIndex = null; // track which sheet row is selected (0-indexed into data rows)
+
+    window.selectRow = function (idx) {
+        const row = sheetRows[idx];
+        if (!row) return;
+        selectedSheetRowIndex = idx;
+
+        // Map sheet columns to form fields. This mapping is flexible — column names are case-insensitive, with fallback aliases.
+        function val(keys) {
+            for (const k of keys) {
+                for (const h of sheetHeaders) {
+                    if (h.toLowerCase().replace(/[\s_-]/g, '') === k.toLowerCase().replace(/[\s_-]/g, '')) {
+                        if (row[h] !== undefined && row[h] !== '') return String(row[h]);
+                    }
+                }
+            }
+            return '';
+        }
+
+        function setVal(id, keys) {
+            const v = val(keys);
+            if (v) $(id).value = v;
+        }
+
+        function setSelect(id, keys) {
+            const v = val(keys);
+            if (v) {
+                const sel = $(id);
+                for (const opt of sel.options) {
+                    if (opt.value === v || opt.textContent.includes(v)) { sel.value = opt.value; break; }
+                }
+                sel.dispatchEvent(new Event('change'));
+            }
+        }
+
+        // Adset
+        setVal('adsetName', ['adsetname', 'adset_name', 'adsetName']);
+        setSelect('adsetStatus', ['adsetstatus', 'adset_status']);
+        setVal('budget', ['budget', 'dailybudget', 'daily_budget', 'lifetimebudget', 'lifetime_budget']);
+        setSelect('bidStrategy', ['bidstrategy', 'bid_strategy']);
+        setVal('bidAmount', ['bidamount', 'bid_amount']);
+        setSelect('billingEvent', ['billingevent', 'billing_event']);
+        setSelect('optimizationGoal', ['optimizationgoal', 'optimization_goal']);
+        // Parse Google Sheets Date() format to datetime-local input value
+        function parseSheetDate(v) {
+            if (!v) return '';
+            const m = String(v).match(/^Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)$/);
+            if (m) {
+                const d = new Date(+m[1], +m[2], +m[3], +m[4], +m[5], +m[6]);
+                return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + 'T' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+            }
+            return v;
+        }
+        const stVal = val(['starttime', 'start_time']);
+        if (stVal) $('startTime').value = parseSheetDate(stVal);
+        const etVal = val(['endtime', 'end_time']);
+        if (etVal) $('endTime').value = parseSheetDate(etVal);
+        setVal('ageMin', ['agemin', 'age_min']);
+        setVal('ageMax', ['agemax', 'age_max']);
+        setSelect('genders', ['genders', 'gender']);
+        setVal('geoCountries', ['countries', 'geocountries', 'geo_countries']);
+        setSelect('osTarget', ['os', 'operatingsystem', 'os_target']);
+        setVal('minOsVersion', ['minosversion', 'min_os_version']);
+        setVal('appId', ['appid', 'application_id', 'app_id']);
+        setVal('objectStoreUrl', ['objectstoreurl', 'object_store_url', 'storeurl', 'store_url']);
+
+        // Ad
+        setVal('adName', ['adname', 'ad_name']);
+        setSelect('adStatus', ['adstatus', 'ad_status']);
+        setVal('creativeName', ['creativename', 'creative_name']);
+        setVal('primaryText', ['primarytext', 'primary_text', 'body', 'adcopy', 'ad_copy']);
+        setVal('headline', ['headline']);
+        setVal('description', ['description']);
+        setSelect('cta', ['cta', 'calltoaction', 'call_to_action']);
+        setVal('linkUrl', ['linkurl', 'link_url', 'link', 'deeplink']);
+        setVal('urlTags', ['urltags', 'url_tags', 'utmparams', 'utm']);
+
+        // Assets
+        setVal('assetHorizontal', ['horizontalasset', 'horizontal_asset', 'asset_horizontal', 'landscape', '169']);
+        setVal('assetVertical', ['verticalasset', 'vertical_asset', 'asset_vertical', 'portrait', '916']);
+        setVal('assetSquare', ['squareasset', 'square_asset', 'asset_square', 'square', '11']);
+        setVal('thumbHorizontal', ['thumbhorizontal', 'thumbnail_horizontal', 'thumb_horizontal']);
+        setVal('thumbVertical', ['thumbvertical', 'thumbnail_vertical', 'thumb_vertical']);
+        setVal('thumbSquare', ['thumbsquare', 'thumbnail_square', 'thumb_square']);
+
+        // Creative type
+        const ct = val(['creativetype', 'creative_type', 'type']);
+        if (ct) {
+            const radio = qs(`input[name="creativeType"][value="${ct.toUpperCase()}"]`);
+            if (radio) { radio.checked = true; toggleCreativeType(); }
+        }
+
+        // Budget type
+        const bt = val(['budgettype', 'budget_type']);
+        if (bt) {
+            const radio = qs(`input[name="budgetType"][value="${bt.toLowerCase()}"]`);
+            if (radio) { radio.checked = true; toggleBudgetType(); }
+        }
+
+        // Audiences (pipe-separated in sheet, newline-separated in textarea)
+        const ca = val(['customaudiences', 'custom_audiences']);
+        if (ca) $('customAudiences').value = ca.split('|').join('\n');
+        const ea = val(['excludedaudiences', 'excluded_audiences']);
+        if (ea) $('excludedAudiences').value = ea.split('|').join('\n');
+
+        // Excluded countries & regions (passed through to server via collectFormData)
+        // Store on hidden fields or pass directly — we'll inject into collectFormData
+        window._sheetExcludedCountries = val(['excludedcountries', 'excluded_countries']);
+        window._sheetExcludedRegions = val(['excludedregions', 'excluded_regions']);
+
+        // Platforms & positions (checkboxes — check matching values from pipe-separated sheet data)
+        function setCheckboxes(nameAttr, keys) {
+            const v = val(keys);
+            if (!v) return;
+            const values = v.split('|').map(s => s.trim().toLowerCase());
+            document.querySelectorAll(`input[name="${nameAttr}"]`).forEach(cb => {
+                cb.checked = values.includes(cb.value.toLowerCase());
+            });
+        }
+        setCheckboxes('devicePlatform', ['deviceplatforms', 'device_platforms']);
+        setCheckboxes('publisherPlatform', ['publisherplatforms', 'publisher_platforms']);
+        setCheckboxes('fbPosition', ['facebookpositions', 'facebook_positions']);
+        setCheckboxes('igPosition', ['instagrampositions', 'instagram_positions']);
+
+        // Status (adset status from sheet 'status' column)
+        const st = val(['status']);
+        if (st) {
+            const sel = $('adsetStatus');
+            for (const opt of sel.options) {
+                if (opt.value === st) { sel.value = opt.value; break; }
+            }
+        }
+
+        // Page — force-add option if not in dropdown (app-scoped token won't list pages)
+        const pageVal = val(['pageid', 'page_id', 'facebookpage', 'facebook_page']);
+        if (pageVal) {
+            const pageSel = $('pageId');
+            let found = false;
+            for (const opt of pageSel.options) { if (opt.value === pageVal) { found = true; break; } }
+            if (!found) { const opt = document.createElement('option'); opt.value = pageVal; opt.textContent = 'Page ' + pageVal; pageSel.appendChild(opt); }
+            pageSel.value = pageVal;
+        }
+
+        // Campaign — force-add option if not yet loaded
+        const campVal = val(['campaignid', 'campaign_id']);
+        if (campVal) {
+            const campSel = $('campaignId');
+            let found = false;
+            for (const opt of campSel.options) { if (opt.value === campVal) { found = true; break; } }
+            if (!found) { const opt = document.createElement('option'); opt.value = campVal; opt.textContent = 'Campaign ' + campVal; campSel.appendChild(opt); }
+            campSel.value = campVal;
+        }
+
+        $('sheetStatus').textContent = `Row ${idx + 1} loaded into form.`;
+    };
+
+    // ─── Manual Entry Toggle ────────────────────────────────
+    window.toggleManualEntry = function () {
+        isManualEntry = !isManualEntry;
+        const t = $('manualToggle');
+        t.classList.toggle('on', isManualEntry);
+        $('toggleLabelSheet').classList.toggle('active', !isManualEntry);
+        $('toggleLabelManual').classList.toggle('active', isManualEntry);
+    };
+
+    // ─── Budget Type Toggle ─────────────────────────────────
+    window.toggleBudgetType = function () {
+        const isDaily = qs('input[name="budgetType"]:checked').value === 'daily';
+        $('budgetLabel').innerHTML = (isDaily ? 'Daily Budget' : 'Lifetime Budget') + ' (INR) <span class="required">*</span>';
+    };
+
+    // ─── Bid Amount Toggle ──────────────────────────────────
+    window.toggleBidAmount = function () {
+        const strategy = $('bidStrategy').value;
+        const show = strategy === 'LOWEST_COST_WITH_BID_CAP' || strategy === 'COST_CAP';
+        $('bidAmountGroup').classList.toggle('hidden', !show);
+    };
+
+    // ─── Creative Type Toggle ───────────────────────────────
+    window.toggleCreativeType = function () {
+        const isVideo = qs('input[name="creativeType"]:checked').value === 'VIDEO';
+        $('thumbnailFields').classList.toggle('hidden', !isVideo);
+    };
+
+    // ─── Collect Form Data ──────────────────────────────────
+    function collectFormData() {
+        const budgetType = qs('input[name="budgetType"]:checked').value;
+        const creativeType = qs('input[name="creativeType"]:checked').value;
+        const genderVal = parseInt($('genders').value);
+        const gendersArr = genderVal === 0 ? [] : [genderVal];
+
+        const data = {
+            // Campaign
+            campaign_id: $('campaignId').value,
+
+            // Adset
+            adset_name: $('adsetName').value.trim(),
+            adset_status: $('adsetStatus').value,
+            budget_type: budgetType,
+            budget: $('budget').value,
+            bid_strategy: $('bidStrategy').value,
+            bid_amount: $('bidAmount').value || null,
+            billing_event: $('billingEvent').value,
+            optimization_goal: $('optimizationGoal').value,
+            start_time: $('startTime').value,
+            end_time: $('endTime').value || null,
+
+            // Targeting
+            age_min: parseInt($('ageMin').value) || 18,
+            age_max: parseInt($('ageMax').value) || 65,
+            genders: gendersArr,
+            geo_countries: $('geoCountries').value.split(',').map(s => s.trim()).filter(Boolean),
+            device_platforms: getCheckedValues('devicePlatform'),
+            os_target: $('osTarget').value,
+            min_os_version: $('minOsVersion').value.trim() || null,
+            publisher_platforms: getCheckedValues('publisherPlatform'),
+            facebook_positions: getCheckedValues('fbPosition'),
+            instagram_positions: getCheckedValues('igPosition'),
+            custom_audiences: $('customAudiences').value.trim().split('\n').filter(Boolean),
+            excluded_audiences: $('excludedAudiences').value.trim().split('\n').filter(Boolean),
+            excluded_countries: window._sheetExcludedCountries || '',
+            excluded_regions: window._sheetExcludedRegions || '',
+
+            // Promoted Object
+            app_id: $('appId').value.trim(),
+            object_store_url: $('objectStoreUrl').value.trim(),
+
+            // Ad
+            ad_name: $('adName').value.trim(),
+            ad_status: $('adStatus').value,
+            creative_name: $('creativeName').value.trim(),
+            primary_text: $('primaryText').value.trim(),
+            headline: $('headline').value.trim(),
+            description: $('description').value.trim(),
+            cta: $('cta').value,
+            link_url: $('linkUrl').value.trim(),
+            url_tags: $('urlTags').value.trim(),
+
+            // Creative assets
+            creative_type: creativeType,
+            asset_horizontal: $('assetHorizontal').value.trim(),
+            asset_vertical: $('assetVertical').value.trim(),
+            asset_square: $('assetSquare').value.trim(),
+            thumb_horizontal: $('thumbHorizontal').value.trim() || null,
+            thumb_vertical: $('thumbVertical').value.trim() || null,
+            thumb_square: $('thumbSquare').value.trim() || null,
+
+            // Page
+            page_id: $('pageId').value,
+        };
+
+        return data;
+    }
+
+    // ─── Validation ─────────────────────────────────────────
+    function validate() {
+        const required = [
+            ['campaignId', 'Campaign'],
+            ['adsetName', 'Adset Name'],
+            ['budget', 'Budget'],
+            ['appId', 'Application ID'],
+            ['objectStoreUrl', 'Object Store URL'],
+            ['adName', 'Ad Name'],
+            ['primaryText', 'Primary Text'],
+            ['linkUrl', 'Link URL'],
+            ['assetHorizontal', 'Horizontal Asset'],
+            ['assetVertical', 'Vertical Asset'],
+            ['assetSquare', 'Square Asset'],
+            ['pageId', 'Facebook Page'],
+        ];
+
+        // Check bid amount if needed
+        const strategy = $('bidStrategy').value;
+        if (strategy === 'LOWEST_COST_WITH_BID_CAP' || strategy === 'COST_CAP') {
+            required.push(['bidAmount', 'Bid Amount']);
+        }
+
+        // Clear previous
+        qsa('.invalid').forEach(el => el.classList.remove('invalid'));
+
+        const missing = [];
+        for (const [id, label] of required) {
+            const el = $(id);
+            const val = el.tagName === 'SELECT' ? el.value : el.value.trim();
+            if (!val) {
+                el.classList.add('invalid');
+                missing.push(label);
+            }
+        }
+
+        if (missing.length) {
+            alert('Please fill in required fields:\n\n' + missing.join('\n'));
+            return false;
+        }
+        return true;
+    }
+
+    // ─── Preview ────────────────────────────────────────────
+    window.showPreview = function () {
+        const d = collectFormData();
+        const card = $('previewCard');
+        const grid = $('previewGrid');
+
+        function item(label, value) {
+            const cls = value ? 'value' : 'value empty';
+            const display = value || 'Not set';
+            return `<div class="preview-item"><div class="label">${label}</div><div class="${cls}">${esc(String(display))}</div></div>`;
+        }
+        function divider() { return '<div class="preview-divider"></div>'; }
+
+        const budgetLabel = d.budget_type === 'daily' ? 'Daily Budget' : 'Lifetime Budget';
+        const genderText = d.genders.length === 0 ? 'All' : (d.genders[0] === 1 ? 'Male' : 'Female');
+
+        grid.innerHTML = [
+            item('Campaign ID', d.campaign_id),
+            item('Adset Name', d.adset_name),
+            divider(),
+            item(budgetLabel, d.budget ? '₹' + d.budget : ''),
+            item('Bid Strategy', d.bid_strategy),
+            item('Billing Event', d.billing_event),
+            item('Optimization Goal', d.optimization_goal),
+            item('Status', d.adset_status),
+            item('Start Time', d.start_time),
+            divider(),
+            item('Ages', d.age_min + ' – ' + d.age_max),
+            item('Gender', genderText),
+            item('Countries', d.geo_countries.join(', ')),
+            item('Devices', d.device_platforms.join(', ')),
+            item('OS', d.os_target + (d.min_os_version ? ' ' + d.min_os_version + '+' : '')),
+            item('Publishers', d.publisher_platforms.join(', ')),
+            divider(),
+            item('Ad Name', d.ad_name),
+            item('Creative Type', d.creative_type),
+            item('Headline', d.headline),
+            item('CTA', d.cta),
+            divider(),
+            item('Horizontal Asset', d.asset_horizontal),
+            item('Vertical Asset', d.asset_vertical),
+            item('Square Asset', d.asset_square),
+        ].join('');
+
+        card.classList.add('show');
+    };
+
+    // ─── Confirm Modal ──────────────────────────────────────
+    window.confirmExecute = function () {
+        if (!validate()) return;
+        $('confirmStatus').textContent = $('adsetStatus').value;
+        $('confirmModal').classList.add('show');
+    };
+
+    window.closeModal = function () {
+        $('confirmModal').classList.remove('show');
+    };
+
+    // ─── Execution Log Helpers ──────────────────────────────
+    let logCounter = 0;
+
+    function clearLog() {
+        $('execLog').innerHTML = '';
+        logCounter = 0;
+    }
+
+    function addLogEntry(msg, status) {
+        const id = 'log-' + (++logCounter);
+        let icon = '';
+        if (status === 'pending') icon = '<span class="spinner"></span>';
+        else if (status === 'success') icon = '&#10003;';
+        else if (status === 'error') icon = '&#10007;';
+        else if (status === 'info') icon = '&#9679;';
+
+        const entry = document.createElement('div');
+        entry.className = 'log-entry ' + status;
+        entry.id = id;
+        entry.innerHTML = `<span class="log-time">${timeStamp()}</span><span class="log-icon">${icon}</span><span class="log-msg">${msg}</span>`;
+        $('execLog').appendChild(entry);
+        $('execLog').scrollTop = $('execLog').scrollHeight;
+        return id;
+    }
+
+    function updateLogEntry(id, msg, status) {
+        const entry = document.getElementById(id);
+        if (!entry) return;
+        let icon = '';
+        if (status === 'success') icon = '&#10003;';
+        else if (status === 'error') icon = '&#10007;';
+        else if (status === 'pending') icon = '<span class="spinner"></span>';
+        entry.className = 'log-entry ' + status;
+        entry.querySelector('.log-icon').innerHTML = icon;
+        if (msg) entry.querySelector('.log-msg').textContent = msg;
+    }
+
+    function addLogResult(html, status) {
+        const div = document.createElement('div');
+        div.className = 'log-result ' + status;
+        div.innerHTML = html;
+        $('execLog').appendChild(div);
+        $('execLog').scrollTop = $('execLog').scrollHeight;
+    }
+
+    // ─── Execute Creation ───────────────────────────────────
+    window.executeCreate = async function () {
+        closeModal();
+        clearLog();
+
+        const data = collectFormData();
+        const createBtn = $('createBtn');
+        createBtn.disabled = true;
+
+        addLogEntry('Starting ad creation pipeline...', 'info');
+
+        // Step-based UI updates
+        const steps = [
+            { key: 'upload_horizontal', msg: 'Uploading horizontal asset...' },
+            { key: 'upload_vertical', msg: 'Uploading vertical asset...' },
+            { key: 'upload_square', msg: 'Uploading square asset...' },
+            { key: 'create_adset', msg: 'Creating adset...' },
+            { key: 'create_creative', msg: 'Creating ad creative...' },
+            { key: 'create_ad', msg: 'Creating ad...' },
+        ];
+
+        const logIds = {};
+        for (const step of steps) {
+            logIds[step.key] = addLogEntry(step.msg, 'pending');
+        }
+
+        try {
+            const res = await fetch(API_BASE + '/api/execute-full', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...data,
+                    _sheetRowIndex: selectedSheetRowIndex != null ? selectedSheetRowIndex + 2 : null, // +2: row 1=headers, data starts at row 2
+                    _sheetTabName: $('tabName').value.trim() || 'Sheet1',
+                }),
+            });
+
+            const result = await res.json();
+
+            if (!res.ok) {
+                // Mark remaining as error
+                for (const step of steps) {
+                    updateLogEntry(logIds[step.key], null, 'error');
+                }
+                addLogResult('Error: ' + esc(result.error || result.message || JSON.stringify(result)), 'error');
+                createBtn.disabled = false;
+                return;
+            }
+
+            // Update step statuses from response
+            // Server returns steps as array: [{ step: 'upload_video_horizontal', success: true, ... }]
+            const stepArr = Array.isArray(result.steps) ? result.steps : [];
+            const stepMap = {};
+            for (const s of stepArr) stepMap[s.step] = s;
+
+            // Map server step names to frontend step keys
+            const serverKeyMap = {
+                upload_horizontal: ['upload_video_horizontal', 'upload_image_horizontal'],
+                upload_vertical: ['upload_video_vertical', 'upload_image_vertical'],
+                upload_square: ['upload_video_square', 'upload_image_square'],
+                create_adset: ['create_adset'],
+                create_creative: ['create_creative'],
+                create_ad: ['create_ad'],
+            };
+
+            for (const step of steps) {
+                const candidates = serverKeyMap[step.key] || [step.key];
+                let matched = null;
+                for (const c of candidates) {
+                    if (stepMap[c]) { matched = stepMap[c]; break; }
+                }
+                if (matched) {
+                    if (matched.success) {
+                        const extra = matched.adsetId ? ` (${matched.adsetId})` : matched.creativeId ? ` (${matched.creativeId})` : matched.adId ? ` (${matched.adId})` : matched.videoId ? ` (${matched.videoId})` : matched.imageHash ? ` (${matched.imageHash.slice(0,12)}...)` : '';
+                        updateLogEntry(logIds[step.key], step.msg.replace('...', '') + ' — Done' + extra, 'success');
+                    } else {
+                        updateLogEntry(logIds[step.key], matched.error || 'Failed', 'error');
+                    }
+                } else if (result.success) {
+                    updateLogEntry(logIds[step.key], step.msg.replace('...', '') + ' — Done', 'success');
+                }
+            }
+
+            // Show final result
+            if (result.ad_id || result.adId) {
+                const adId = result.ad_id || result.adId;
+                const adsManagerUrl = `https://www.facebook.com/adsmanager/manage/ads?act=${result.account_id || ''}&selected_ad_ids=${adId}`;
+                addLogResult(
+                    `Ad created successfully!<br>Ad ID: <strong>${esc(adId)}</strong><br><a href="${adsManagerUrl}" target="_blank">View in Ads Manager &#8594;</a>`,
+                    'success'
+                );
+            } else if (result.success) {
+                addLogResult('Ad creation completed successfully!<br>' + esc(JSON.stringify(result)), 'success');
+            } else {
+                addLogResult('Unexpected response:<br>' + esc(JSON.stringify(result)), 'error');
+            }
+
+        } catch (e) {
+            for (const step of steps) {
+                updateLogEntry(logIds[step.key], null, 'error');
+            }
+            addLogResult('Request failed: ' + esc(e.message), 'error');
+        }
+
+        createBtn.disabled = false;
+    };
+
+    // ─── Initialize ─────────────────────────────────────────
+    async function init() {
+        toggleBidAmount();
+        toggleCreativeType();
+        toggleBudgetType();
+
+        // Set default start time to now + 1 hour
+        const now = new Date();
+        now.setHours(now.getHours() + 1);
+        now.setMinutes(0, 0, 0);
+        $('startTime').value = now.toISOString().slice(0, 16);
+
+        // Load data in parallel
+        await Promise.allSettled([
+            checkConnection(),
+            loadCampaigns(),
+            loadPages(),
+            loadCustomAudiences(),
+        ]);
+    }
+
+    init();
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "meta-ad-uploader",
+  "version": "1.0.0",
+  "description": "Automated Meta ad upload tool - reads config from Google Sheets, creates adsets and ads with multi-size creatives",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "form-data": "^4.0.0"
+  }
+}
