@@ -683,7 +683,7 @@ app.post('/api/execute-full', async (req, res) => {
             }
             targeting.facebook_positions = fbPositions;
 
-            const igPositions = config.instagram_positions || ['stream', 'story', 'reels', 'explore', 'ig_search', 'profile_reels', 'profile_feed'];
+            const igPositions = config.instagram_positions || ['stream', 'story', 'reels', 'ig_search', 'profile_reels', 'profile_feed'];
             targeting.instagram_positions = Array.isArray(igPositions) ? igPositions : String(igPositions).split(/[,|]/).map(s => s.trim()).filter(Boolean);
 
             // Custom audiences (filter out "null" and empty strings)
@@ -747,74 +747,95 @@ app.post('/api/execute-full', async (req, res) => {
             }
             await Promise.all(uploadPromises);
         } else {
-            // Upload videos sequentially, then poll
+            // Upload videos in parallel (download + upload)
             const sizes = ['horizontal', 'vertical', 'square'];
+            const videoUploadPromises = [];
             for (const size of sizes) {
                 const driveUrl = driveUrls[size];
                 if (!driveUrl) {
                     logStep(`upload_video_${size}`, false, { error: `${size} drive URL not provided` });
                     continue;
                 }
-
-                let tmpPath = null;
-                try {
-                    const file = await downloadDriveFile(driveUrl);
-                    tmpPath = file.tmpPath;
-                    const videoTitle = config.creative_name || config.adset_name || 'Ad Video';
-                    const data = await metaPostForm(`/${META_AD_ACCOUNT_ID}/advideos`, tmpPath, file.filename, file.contentType, { title: `${videoTitle} (${size})` });
-                    const videoId = data.id;
-                    if (!videoId) throw new Error('No video ID returned');
-
-                    // Poll for ready
-                    const timeoutMs = 180000;
-                    const pollInterval = 3000;
-                    const startTime = Date.now();
-                    let ready = false;
-
-                    while (Date.now() - startTime < timeoutMs) {
-                        await new Promise(resolve => setTimeout(resolve, pollInterval));
-                        const statusResp = await metaGet(`/${videoId}`, { fields: 'status' });
-                        if (statusResp.status && statusResp.status.video_status === 'ready') {
-                            ready = true;
-                            break;
+                videoUploadPromises.push(
+                    (async () => {
+                        let tmpPath = null;
+                        try {
+                            const file = await downloadDriveFile(driveUrl);
+                            tmpPath = file.tmpPath;
+                            const videoTitle = config.creative_name || config.adset_name || 'Ad Video';
+                            const data = await metaPostForm(`/${META_AD_ACCOUNT_ID}/advideos`, tmpPath, file.filename, file.contentType, { title: `${videoTitle} (${size})` });
+                            const videoId = data.id;
+                            if (!videoId) throw new Error('No video ID returned');
+                            assets[size] = { videoId };
+                            logStep(`upload_video_${size}`, true, { videoId });
+                            return { size, videoId };
+                        } catch (err) {
+                            logStep(`upload_video_${size}`, false, { error: err.message });
+                            throw err;
+                        } finally {
+                            if (tmpPath) cleanupTempFile(tmpPath);
                         }
-                        if (statusResp.status && statusResp.status.video_status === 'error') {
-                            throw new Error(`Video processing error: ${JSON.stringify(statusResp.status)}`);
-                        }
-                    }
-
-                    assets[size] = { videoId };
-                    logStep(`upload_video_${size}`, true, { videoId, ready });
-                } catch (err) {
-                    logStep(`upload_video_${size}`, false, { error: err.message });
-                    throw err;
-                } finally {
-                    if (tmpPath) cleanupTempFile(tmpPath);
-                }
+                    })()
+                );
             }
+            const uploadedVideos = await Promise.all(videoUploadPromises);
 
-            // Upload thumbnail images for videos if provided
+            // Poll all videos for ready status in parallel
+            const pollPromises = [];
+            for (const { size, videoId } of uploadedVideos) {
+                pollPromises.push(
+                    (async () => {
+                        const timeoutMs = 90000;
+                        const pollInterval = 5000;
+                        const startTime = Date.now();
+                        let ready = false;
+
+                        while (Date.now() - startTime < timeoutMs) {
+                            await new Promise(resolve => setTimeout(resolve, pollInterval));
+                            const statusResp = await metaGet(`/${videoId}`, { fields: 'status' });
+                            if (statusResp.status && statusResp.status.video_status === 'ready') {
+                                ready = true;
+                                break;
+                            }
+                            if (statusResp.status && statusResp.status.video_status === 'error') {
+                                throw new Error(`Video processing error: ${JSON.stringify(statusResp.status)}`);
+                            }
+                        }
+                        assets[size] = { videoId };
+                        logStep(`poll_video_${size}`, true, { videoId, ready });
+                    })()
+                );
+            }
+            await Promise.all(pollPromises);
+
+            // Upload thumbnail images for videos in parallel
+            const thumbPromises = [];
             for (const size of sizes) {
                 const thumbUrl = thumbUrls[size];
                 if (!thumbUrl) continue;
-                let tmpPath = null;
-                try {
-                    const file = await downloadDriveFile(thumbUrl);
-                    tmpPath = file.tmpPath;
-                    const data = await metaPostForm(`/${META_AD_ACCOUNT_ID}/adimages`, tmpPath, file.filename, file.contentType);
-                    let thumbHash = null;
-                    if (data.images) {
-                        const key = Object.keys(data.images)[0];
-                        if (key) thumbHash = data.images[key].hash;
-                    }
-                    if (assets[size]) assets[size].thumbnailHash = thumbHash;
-                    logStep(`upload_thumbnail_${size}`, true, { thumbHash });
-                } catch (err) {
-                    logStep(`upload_thumbnail_${size}`, false, { error: err.message });
-                } finally {
-                    if (tmpPath) cleanupTempFile(tmpPath);
-                }
+                thumbPromises.push(
+                    (async () => {
+                        let tmpPath = null;
+                        try {
+                            const file = await downloadDriveFile(thumbUrl);
+                            tmpPath = file.tmpPath;
+                            const data = await metaPostForm(`/${META_AD_ACCOUNT_ID}/adimages`, tmpPath, file.filename, file.contentType);
+                            let thumbHash = null;
+                            if (data.images) {
+                                const key = Object.keys(data.images)[0];
+                                if (key) thumbHash = data.images[key].hash;
+                            }
+                            if (assets[size]) assets[size].thumbnailHash = thumbHash;
+                            logStep(`upload_thumbnail_${size}`, true, { thumbHash });
+                        } catch (err) {
+                            logStep(`upload_thumbnail_${size}`, false, { error: err.message });
+                        } finally {
+                            if (tmpPath) cleanupTempFile(tmpPath);
+                        }
+                    })()
+                );
             }
+            await Promise.all(thumbPromises);
         }
 
         // ------------------------------------------------------------------
