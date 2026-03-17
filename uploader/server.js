@@ -9,21 +9,23 @@ const path = require('path');
 const os = require('os');
 const { pipeline } = require('stream/promises');
 
+// Load .env for local development
+try { require('dotenv').config(); } catch(e) { /* dotenv not installed, use env vars directly */ }
+
 // =============================================================================
 // CONFIGURATION
 // =============================================================================
 
-const META_ACCESS_TOKEN = 'EAAHDBv0GZCRYBQyK7aPCLInqIH1BCZAl5p3CLHZAngLOWT00ZAcXe84uW9CHogplylkwyovDH9473hg6CMEArA9ZAyR6wKJK3MIrLvb9YHqQDiLVSDw08MMSEBu5kucQr9TNZClZATU8FvB8XHVHuDyEKzZBhjFYA4saidojpVmZAQYpwd1ukGsGkuCvg56MDLwZDZD';
-const META_APP_SECRET = 'ab84f581ca7dfd75d6e64ff8771dc359';
-const META_APP_SECRET_PROOF = '90ac6dda5c28ea7294af38156e56aa6f48d3027b6cbf86763f02e364e55bd414';
-const META_AD_ACCOUNT_ID = 'act_725019929189148';
+const META_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || '';
+const META_APP_SECRET = process.env.META_APP_SECRET || '';
+const META_APP_SECRET_PROOF = process.env.META_APP_SECRET_PROOF || '';
+const META_AD_ACCOUNT_ID = process.env.META_AD_ACCOUNT_ID || 'act_725019929189148';
 const META_API_VERSION = 'v21.0';
 const META_API_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
 
-// Google Sheet config — fill these in as needed
-const GOOGLE_SHEET_ID = '';
-const GOOGLE_SHEET_TAB = '';
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyKYm0aNJHvjAuc6KxrcZAzuIpc2qs_RT8sbngiwC5-m-6-2gPVY7uV2z4gSFLtVHTysw/exec';
+const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID || '';
+const GOOGLE_SHEET_TAB = process.env.GOOGLE_SHEET_TAB || '';
+const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbyKYm0aNJHvjAuc6KxrcZAzuIpc2qs_RT8sbngiwC5-m-6-2gPVY7uV2z4gSFLtVHTysw/exec';
 
 // Helper: write results back to Google Sheet via Apps Script
 async function writeResultToSheet(rowIndex, data, tabName) {
@@ -1177,8 +1179,13 @@ app.post('/api/execute-full', async (req, res) => {
 // START SERVER
 // =============================================================================
 
-app.listen(PORT, () => {
-    console.log(`Meta Ad Upload Server running on http://localhost:${PORT}`);
-    console.log(`Ad Account: ${META_AD_ACCOUNT_ID}`);
-    console.log(`API Version: ${META_API_VERSION}`);
-});
+// Export for Vercel serverless, start server for local dev
+if (process.env.VERCEL) {
+    module.exports = app;
+} else {
+    app.listen(PORT, () => {
+        console.log(`Meta Ad Upload Server running on http://localhost:${PORT}`);
+        console.log(`Ad Account: ${META_AD_ACCOUNT_ID}`);
+        console.log(`API Version: ${META_API_VERSION}`);
+    });
+}

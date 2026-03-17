@@ -1,0 +1,10 @@
+{
+  "name": "performance-marketing-auto",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "express": "^4.21.2",
+    "form-data": "^4.0.2",
+    "dotenv": "^16.4.7"
+  }
+}
