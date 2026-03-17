@@ -2127,17 +2127,13 @@
 
             if (promotedObject) adsetParams.promoted_object = JSON.stringify(promotedObject);
 
-            // India finserv regulatory — only if campaign has FINANCIAL_PRODUCTS_SERVICES
-            const campOpt = $('campaignId').selectedOptions[0];
-            const campSpecialCats = campOpt ? JSON.parse(campOpt.dataset.specialAdCategories || '[]') : [];
-            if (campSpecialCats.includes('FINANCIAL_PRODUCTS_SERVICES')) {
-                adsetParams.regional_regulated_categories = JSON.stringify(['INDIA_FINSERV']);
-                const regulatoryId = DEFAULT_REGULATORY_ID;
-                adsetParams.regional_regulation_identities = JSON.stringify({
-                    india_finserv_beneficiary: regulatoryId,
-                    india_finserv_payer: regulatoryId,
-                });
-            }
+            // India finserv regulatory — always applied
+            adsetParams.regional_regulated_categories = JSON.stringify(['INDIA_FINSERV']);
+            const regulatoryId = DEFAULT_REGULATORY_ID;
+            adsetParams.regional_regulation_identities = JSON.stringify({
+                india_finserv_beneficiary: regulatoryId,
+                india_finserv_payer: regulatoryId,
+            });
 
             try {
                 const adsetData = await metaPost(`/${META_AD_ACCOUNT_ID}/adsets`, adsetParams);
