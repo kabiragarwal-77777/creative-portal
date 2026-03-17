@@ -583,6 +583,20 @@
 </head>
 <body>
 
+<!-- Auth Gate -->
+<div id="authGate" style="display:flex; align-items:center; justify-content:center; min-height:100vh; background:var(--bg-body);">
+    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:40px; width:360px; text-align:center;">
+        <h2 style="font-size:20px; margin-bottom:6px;">Meta <span style="color:var(--accent);">Ad Uploader</span></h2>
+        <p style="color:var(--text-dim); font-size:13px; margin-bottom:24px;">Enter password to continue</p>
+        <input type="password" id="authPassword" placeholder="Password" style="width:100%; margin-bottom:16px;" onkeydown="if(event.key==='Enter')checkAuth()">
+        <button class="btn btn-primary" onclick="checkAuth()" style="width:100%;">Unlock</button>
+        <p id="authError" style="color:var(--red); font-size:13px; margin-top:12px; display:none;">Incorrect password</p>
+    </div>
+</div>
+
+<!-- Main App (hidden until auth) -->
+<div id="mainApp" style="display:none;">
+
 <!-- Header -->
 <header class="page-header">
     <div>
@@ -2505,5 +2519,30 @@
 
 })();
 </script>
+
+<script>
+async function checkAuth() {
+    const pw = document.getElementById('authPassword').value;
+    const encoder = new TextEncoder();
+    const data = encoder.encode(pw);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const VALID_HASH = '4dd5ec164e66cb36df5a4fb2bbbd8a9ed1577728c81d0b542ae6550525745748';
+    if (hashHex === VALID_HASH) {
+        document.getElementById('authGate').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        sessionStorage.setItem('authed', '1');
+    } else {
+        document.getElementById('authError').style.display = 'block';
+    }
+}
+// Auto-unlock if already authed this session
+if (sessionStorage.getItem('authed') === '1') {
+    document.getElementById('authGate').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+}
+</script>
+
+</div><!-- /mainApp -->
 </body>
 </html>
