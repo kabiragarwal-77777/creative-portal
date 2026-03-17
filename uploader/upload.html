@@ -1128,11 +1128,9 @@
     // META API HELPERS (client-side)
     // =========================================================================
     function metaParams(extra = {}) {
-        return {
-            access_token: META_ACCESS_TOKEN,
-            appsecret_proof: META_APPSECRET_PROOF,
-            ...extra,
-        };
+        const params = { access_token: META_ACCESS_TOKEN, ...extra };
+        if (META_APPSECRET_PROOF) params.appsecret_proof = META_APPSECRET_PROOF;
+        return params;
     }
 
     async function metaGet(endpoint, params = {}) {
