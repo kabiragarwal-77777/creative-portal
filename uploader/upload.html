@@ -1064,9 +1064,9 @@
     let isManualEntry = false;
     let selectedSheetRowIndex = null;
 
-    // Credentials from localStorage
-    let META_ACCESS_TOKEN = localStorage.getItem('meta_access_token') || '';
-    let META_APPSECRET_PROOF = localStorage.getItem('meta_appsecret_proof') || '';
+    // Credentials — hardcoded defaults, overridable via settings panel
+    let META_ACCESS_TOKEN = localStorage.getItem('meta_access_token') || 'EAAHDBv0GZCRYBQyK7aPCLInqIH1BCZAl5p3CLHZAngLOWT00ZAcXe84uW9CHogplylkwyovDH9473hg6CMEArA9ZAyR6wKJK3MIrLvb9YHqQDiLVSDw08MMSEBu5kucQr9TNZClZATU8FvB8XHVHuDyEKzZBhjFYA4saidojpVmZAQYpwd1ukGsGkuCvg56MDLwZDZD';
+    let META_APPSECRET_PROOF = localStorage.getItem('meta_appsecret_proof') || '90ac6dda5c28ea7294af38156e56aa6f48d3027b6cbf86763f02e364e55bd414';
     let META_AD_ACCOUNT_ID = localStorage.getItem('meta_ad_account_id') || DEFAULT_AD_ACCOUNT_ID;
 
     // =========================================================================
@@ -1322,12 +1322,13 @@
             return;
         }
         try {
-            await metaGet(`/${META_AD_ACCOUNT_ID}`, { fields: 'id,name' });
+            const result = await metaGet(`/${META_AD_ACCOUNT_ID}`, { fields: 'id,name' });
             $('statusDot').className = 'status-dot connected';
-            $('statusText').textContent = 'Connected to Meta';
+            $('statusText').textContent = `Connected: ${result.name || result.id}`;
         } catch (e) {
+            console.error('Meta connection error:', e);
             $('statusDot').className = 'status-dot error';
-            $('statusText').textContent = 'Connection failed';
+            $('statusText').textContent = 'Connection failed: ' + e.message;
         }
     }
 
@@ -2298,6 +2299,11 @@
         now.setHours(now.getHours() + 1);
         now.setMinutes(0, 0, 0);
         $('startTime').value = now.toISOString().slice(0, 16);
+
+        // Prefill settings inputs
+        if (META_ACCESS_TOKEN) $('metaAccessToken').value = META_ACCESS_TOKEN;
+        if (META_APPSECRET_PROOF) $('metaAppSecretProof').value = META_APPSECRET_PROOF;
+        if (META_AD_ACCOUNT_ID) $('metaAdAccountId').value = META_AD_ACCOUNT_ID;
 
         // If credentials exist, collapse settings and check connection
         if (META_ACCESS_TOKEN && META_APPSECRET_PROOF) {
