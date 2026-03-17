@@ -2061,9 +2061,12 @@
             // ------------------------------------------------------------------
             const creativeLogId = addLogEntry('Creating ad creative...', 'pending');
 
-            const bodyText = config.primary_text || '';
-            const titleText = config.headline || '';
-            const descText = config.description || '';
+            const bodies = (config.primary_text || '').split('|').map(s => s.trim()).filter(Boolean).map(t => ({ text: t }));
+            const titles = (config.headline || '').split('|').map(s => s.trim()).filter(Boolean).map(t => ({ text: t }));
+            const descs = (config.description || '').split('|').map(s => s.trim()).filter(Boolean).map(t => ({ text: t }));
+            if (bodies.length === 0) bodies.push({ text: '' });
+            if (titles.length === 0) titles.push({ text: '' });
+            if (descs.length === 0) descs.push({ text: '' });
             const ctaType = config.cta || 'SUBSCRIBE';
             const feedLinkUrl = storeUrl || linkUrl;
             const pageId = config.page_id || DEFAULT_PAGE_ID;
@@ -2095,9 +2098,9 @@
                     const vidFeedSpec = {
                         videos,
                         ad_formats: ['AUTOMATIC_FORMAT'],
-                        bodies: [{ text: bodyText }],
-                        titles: [{ text: titleText }],
-                        descriptions: [{ text: descText }],
+                        bodies,
+                        titles,
+                        descriptions: descs,
                         call_to_action_types: [ctaType],
                         link_urls: [vidLinkUrl],
                         optimization_type: 'PLACEMENT',
@@ -2139,9 +2142,9 @@
                     const imgFeedSpec = {
                         images,
                         ad_formats: ['AUTOMATIC_FORMAT'],
-                        bodies: [{ text: bodyText }],
-                        titles: [{ text: titleText }],
-                        descriptions: [{ text: descText }],
+                        bodies,
+                        titles,
+                        descriptions: descs,
                         call_to_action_types: [ctaType],
                         link_urls: [imgLinkUrl],
                         optimization_type: 'PLACEMENT',
