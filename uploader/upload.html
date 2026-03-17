@@ -2064,12 +2064,16 @@
             // ------------------------------------------------------------------
             const creativeLogId = addLogEntry('Creating ad creative...', 'pending');
 
-            const bodies = (config.primary_text || '').split('|').map(s => s.trim()).filter(Boolean).map(t => ({ text: t }));
-            const titles = (config.headline || '').split('|').map(s => s.trim()).filter(Boolean).map(t => ({ text: t }));
-            const descs = (config.description || '').split('|').map(s => s.trim()).filter(Boolean).map(t => ({ text: t }));
-            if (bodies.length === 0) bodies.push({ text: '' });
-            if (titles.length === 0) titles.push({ text: '' });
-            if (descs.length === 0) descs.push({ text: '' });
+            // When using asset_customization_rules with multiple texts, each text needs
+            // an adlabel and each rule needs body_label/title_label/link_url_label
+            const sharedLabel = [{ name: 'all_placements' }];
+            const bodies = (config.primary_text || '').split('|').map(s => s.trim()).filter(Boolean).map(t => ({ text: t, adlabels: sharedLabel }));
+            const titles = (config.headline || '').split('|').map(s => s.trim()).filter(Boolean).map(t => ({ text: t, adlabels: sharedLabel }));
+            const descs = (config.description || '').split('|').map(s => s.trim()).filter(Boolean).map(t => ({ text: t, adlabels: sharedLabel }));
+            if (bodies.length === 0) bodies.push({ text: '', adlabels: sharedLabel });
+            if (titles.length === 0) titles.push({ text: '', adlabels: sharedLabel });
+            if (descs.length === 0) descs.push({ text: '', adlabels: sharedLabel });
+            const textLabel = { name: 'all_placements' };
             const ctaType = config.cta || 'SUBSCRIBE';
             const feedLinkUrl = storeUrl || linkUrl;
             const pageId = config.page_id || DEFAULT_PAGE_ID;
@@ -2095,7 +2099,7 @@
                         videos.push(entry);
                     }
 
-                    const vidLinkUrl = { website_url: feedLinkUrl, display_url: '' };
+                    const vidLinkUrl = { website_url: feedLinkUrl, display_url: '', adlabels: sharedLabel };
                     if (linkUrl && linkUrl !== feedLinkUrl) vidLinkUrl.deeplink_url = linkUrl;
 
                     const vidFeedSpec = {
@@ -2111,16 +2115,19 @@
                             {
                                 customization_spec: { publisher_platforms: ['facebook', 'instagram'], facebook_positions: ['story', 'facebook_reels'], instagram_positions: ['story', 'reels', 'profile_reels', 'ig_search'] },
                                 video_label: { name: 'vertical' },
+                                body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
                                 priority: 1,
                             },
                             {
                                 customization_spec: { publisher_platforms: ['facebook'], facebook_positions: ['search'] },
                                 video_label: { name: 'horizontal' },
+                                body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
                                 priority: 2,
                             },
                             {
                                 customization_spec: {},
                                 video_label: { name: 'square' },
+                                body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
                                 priority: 3,
                             },
                         ],
@@ -2139,7 +2146,7 @@
                         images.push({ hash: assets.square.imageHash, adlabels: [{ name: 'square' }] });
                     }
 
-                    const imgLinkUrl = { website_url: feedLinkUrl, display_url: '' };
+                    const imgLinkUrl = { website_url: feedLinkUrl, display_url: '', adlabels: sharedLabel };
                     if (linkUrl && linkUrl !== feedLinkUrl) imgLinkUrl.deeplink_url = linkUrl;
 
                     const imgFeedSpec = {
@@ -2155,16 +2162,19 @@
                             {
                                 customization_spec: { publisher_platforms: ['facebook', 'instagram'], facebook_positions: ['story', 'facebook_reels'], instagram_positions: ['story', 'reels', 'profile_reels', 'ig_search'] },
                                 image_label: { name: 'vertical' },
+                                body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
                                 priority: 1,
                             },
                             {
                                 customization_spec: { publisher_platforms: ['facebook'], facebook_positions: ['search'] },
                                 image_label: { name: 'horizontal' },
+                                body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
                                 priority: 2,
                             },
                             {
                                 customization_spec: {},
                                 image_label: { name: 'square' },
+                                body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
                                 priority: 3,
                             },
                         ],
