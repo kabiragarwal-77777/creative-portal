@@ -959,15 +959,18 @@
 
                 <div class="form-group">
                     <label>Horizontal Asset &mdash; 16:9 / Landscape <span class="required">*</span></label>
-                    <input type="text" id="assetHorizontal" placeholder="Google Drive URL">
+                    <input type="text" id="assetHorizontal" placeholder="Google Drive URL (images) or leave blank for file upload">
+                    <input type="file" id="fileHorizontal" accept="video/*" style="margin-top:6px; display:none;">
                 </div>
                 <div class="form-group">
                     <label>Vertical Asset &mdash; 9:16 / Portrait <span class="required">*</span></label>
-                    <input type="text" id="assetVertical" placeholder="Google Drive URL">
+                    <input type="text" id="assetVertical" placeholder="Google Drive URL (images) or leave blank for file upload">
+                    <input type="file" id="fileVertical" accept="video/*" style="margin-top:6px; display:none;">
                 </div>
                 <div class="form-group">
                     <label>Square Asset &mdash; 1:1 / Square <span class="required">*</span></label>
-                    <input type="text" id="assetSquare" placeholder="Google Drive URL">
+                    <input type="text" id="assetSquare" placeholder="Google Drive URL (images) or leave blank for file upload">
+                    <input type="file" id="fileSquare" accept="video/*" style="margin-top:6px; display:none;">
                 </div>
                 <div class="form-group"></div>
 
@@ -1220,6 +1223,56 @@
         }
 
         throw new Error('No video ID returned from Meta API');
+    }
+
+    // Upload video file directly from browser (chunked upload)
+    const CHUNK_SIZE = 20 * 1024 * 1024; // 20MB
+    async function uploadVideoFile(file, title) {
+        const fileSize = file.size;
+        console.log(`[CHUNKED] Starting ${file.name} (${(fileSize / 1024 / 1024).toFixed(1)}MB)`);
+
+        // Step 1: Start session
+        const startResp = await metaPost(`/${META_AD_ACCOUNT_ID}/advideos`, {
+            upload_phase: 'start',
+            file_size: fileSize.toString(),
+        });
+        const { upload_session_id, video_id } = startResp;
+        console.log(`[CHUNKED] Session: ${upload_session_id}, video_id: ${video_id}`);
+
+        // Step 2: Upload chunks
+        let offset = 0;
+        let chunkNum = 0;
+        while (offset < fileSize) {
+            const end = Math.min(offset + CHUNK_SIZE, fileSize);
+            const chunk = file.slice(offset, end);
+            chunkNum++;
+            console.log(`[CHUNKED] Chunk ${chunkNum}: ${offset}-${end}`);
+
+            const formData = new FormData();
+            formData.append('upload_phase', 'transfer');
+            formData.append('upload_session_id', upload_session_id);
+            formData.append('start_offset', offset.toString());
+            formData.append('video_file_chunk', chunk, file.name);
+            formData.append('access_token', META_ACCESS_TOKEN);
+            if (META_APPSECRET_PROOF) formData.append('appsecret_proof', META_APPSECRET_PROOF);
+
+            const resp = await fetch(`${META_API_BASE}/${META_AD_ACCOUNT_ID}/advideos`, {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await resp.json();
+            if (data.error) throw new Error(`Chunk ${chunkNum}: ${data.error.message}`);
+            offset = parseInt(data.start_offset, 10);
+        }
+
+        // Step 3: Finish
+        const finishResp = await metaPost(`/${META_AD_ACCOUNT_ID}/advideos`, {
+            upload_phase: 'finish',
+            upload_session_id,
+            title: title || file.name,
+        });
+        console.log(`[CHUNKED] Done! video_id=${video_id}`);
+        return video_id;
     }
 
     // Poll video status until ready
@@ -1611,6 +1664,10 @@
     window.toggleCreativeType = function () {
         const isVideo = qs('input[name="creativeType"]:checked').value === 'VIDEO';
         $('thumbnailFields').classList.toggle('hidden', !isVideo);
+        // Show file upload inputs for videos
+        ['fileHorizontal', 'fileVertical', 'fileSquare'].forEach(id => {
+            $(id).style.display = isVideo ? '' : 'none';
+        });
     };
 
     // =========================================================================
@@ -1980,15 +2037,24 @@
                     });
                     await Promise.all(imagePromises);
                 } else {
-                    // Upload videos + poll each immediately after upload (no waiting for all)
+                    // Upload videos: prefer local file, fallback to Drive URL
                     const videoTitle = config.creative_name || config.adset_name || 'Ad Video';
-                    const videoPromises = sizes.filter(s => driveUrls[s]).map(async (size) => {
-                        const logId = addLogEntry(`Uploading ${size} video via URL...`, 'pending');
+                    const fileInputMap = { horizontal: 'fileHorizontal', vertical: 'fileVertical', square: 'fileSquare' };
+                    const videoSizes = sizes.filter(s => driveUrls[s] || ($(fileInputMap[s]) && $(fileInputMap[s]).files.length > 0));
+
+                    const videoPromises = videoSizes.map(async (size) => {
+                        const fileInput = $(fileInputMap[size]);
+                        const hasFile = fileInput && fileInput.files.length > 0;
+                        const logId = addLogEntry(`Uploading ${size} video ${hasFile ? 'from file' : 'via URL'}...`, 'pending');
                         try {
-                            const videoId = await uploadVideoByUrl(driveUrls[size], `${videoTitle} (${size})`);
+                            let videoId;
+                            if (hasFile) {
+                                videoId = await uploadVideoFile(fileInput.files[0], `${videoTitle} (${size})`);
+                            } else {
+                                videoId = await uploadVideoByUrl(driveUrls[size], `${videoTitle} (${size})`);
+                            }
                             assets[size] = { videoId };
                             updateLogEntry(logId, `${size} video uploaded (${videoId}), polling...`, 'success');
-                            // Start polling immediately (don't wait for other uploads)
                             const pollLogId = addLogEntry(`Polling ${size} video status...`, 'pending');
                             const ready = await pollVideoStatus(videoId);
                             updateLogEntry(pollLogId, ready ? `${size} video ready` : `${size} video may still be processing`, ready ? 'success' : 'info');
