@@ -1,0 +1,9 @@
+{
+  "install": "npm install && cd uploader && npm install",
+  "start": "node uploader/server.js",
+  "watch": {
+    "restart": {
+      "include": ["uploader/server.js"]
+    }
+  }
+}
