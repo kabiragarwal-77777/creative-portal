@@ -1213,7 +1213,7 @@
     }
 
     // Poll video status until ready
-    async function pollVideoStatus(videoId, timeoutMs = 90000, pollInterval = 5000) {
+    async function pollVideoStatus(videoId, timeoutMs = 120000, pollInterval = 3000) {
         const startTime = Date.now();
         while (Date.now() - startTime < timeoutMs) {
             await new Promise(resolve => setTimeout(resolve, pollInterval));
@@ -1959,100 +1959,65 @@
             }
 
             // ------------------------------------------------------------------
-            // Step 1: Upload assets
+            // Step 1 + 2: Upload assets AND create adset IN PARALLEL
             // ------------------------------------------------------------------
             const assets = {};
             const sizes = ['horizontal', 'vertical', 'square'];
 
-            if (assetType === 'image') {
-                // Upload images in parallel
-                const imageLogIds = {};
-                for (const size of sizes) {
-                    if (driveUrls[size]) {
-                        imageLogIds[size] = addLogEntry(`Uploading ${size} image via URL...`, 'pending');
+            // --- Asset upload promise ---
+            const assetPromise = (async () => {
+                if (assetType === 'image') {
+                    const imageLogIds = {};
+                    for (const size of sizes) {
+                        if (driveUrls[size]) imageLogIds[size] = addLogEntry(`Uploading ${size} image via URL...`, 'pending');
                     }
-                }
-
-                const imagePromises = sizes.filter(s => driveUrls[s]).map(async (size) => {
-                    try {
-                        const imageHash = await uploadImageByUrl(driveUrls[size]);
-                        assets[size] = { imageHash };
-                        updateLogEntry(imageLogIds[size], `${size} image uploaded (${imageHash.slice(0, 12)}...)`, 'success');
-                    } catch (err) {
-                        updateLogEntry(imageLogIds[size], `${size} image upload failed: ${err.message}`, 'error');
-                        throw err;
-                    }
-                });
-                await Promise.all(imagePromises);
-            } else {
-                // Upload videos in parallel via URL
-                const videoLogIds = {};
-                for (const size of sizes) {
-                    if (driveUrls[size]) {
-                        videoLogIds[size] = addLogEntry(`Uploading ${size} video via URL...`, 'pending');
-                    }
-                }
-
-                const videoTitle = config.creative_name || config.adset_name || 'Ad Video';
-                const videoPromises = sizes.filter(s => driveUrls[s]).map(async (size) => {
-                    try {
-                        const videoId = await uploadVideoByUrl(driveUrls[size], `${videoTitle} (${size})`);
-                        assets[size] = { videoId };
-                        updateLogEntry(videoLogIds[size], `${size} video uploaded (ID: ${videoId})`, 'success');
-                        return { size, videoId };
-                    } catch (err) {
-                        updateLogEntry(videoLogIds[size], `${size} video upload failed: ${err.message}`, 'error');
-                        throw err;
-                    }
-                });
-                const uploadedVideos = await Promise.all(videoPromises);
-
-                // Poll all videos for ready status in parallel
-                const pollLogIds = {};
-                for (const { size, videoId } of uploadedVideos) {
-                    pollLogIds[size] = addLogEntry(`Polling ${size} video status (${videoId})...`, 'pending');
-                }
-
-                const pollPromises = uploadedVideos.map(async ({ size, videoId }) => {
-                    try {
-                        const ready = await pollVideoStatus(videoId);
-                        if (ready) {
-                            updateLogEntry(pollLogIds[size], `${size} video ready`, 'success');
-                        } else {
-                            updateLogEntry(pollLogIds[size], `${size} video poll timed out (may still be processing)`, 'info');
-                        }
-                    } catch (err) {
-                        updateLogEntry(pollLogIds[size], `${size} video processing error: ${err.message}`, 'error');
-                        throw err;
-                    }
-                });
-                await Promise.all(pollPromises);
-
-                // Upload thumbnail images for videos in parallel
-                const thumbSizes = sizes.filter(s => thumbUrls[s]);
-                if (thumbSizes.length > 0) {
-                    const thumbLogIds = {};
-                    for (const size of thumbSizes) {
-                        thumbLogIds[size] = addLogEntry(`Uploading ${size} thumbnail via URL...`, 'pending');
-                    }
-                    const thumbPromises = thumbSizes.map(async (size) => {
+                    const imagePromises = sizes.filter(s => driveUrls[s]).map(async (size) => {
                         try {
-                            const thumbHash = await uploadImageByUrl(thumbUrls[size]);
-                            if (assets[size]) assets[size].thumbnailHash = thumbHash;
-                            updateLogEntry(thumbLogIds[size], `${size} thumbnail uploaded (${thumbHash.slice(0, 12)}...)`, 'success');
+                            const imageHash = await uploadImageByUrl(driveUrls[size]);
+                            assets[size] = { imageHash };
+                            updateLogEntry(imageLogIds[size], `${size} image uploaded (${imageHash.slice(0, 12)}...)`, 'success');
                         } catch (err) {
-                            updateLogEntry(thumbLogIds[size], `${size} thumbnail upload failed: ${err.message}`, 'error');
-                            // Non-fatal: continue without thumbnail
+                            updateLogEntry(imageLogIds[size], `${size} image failed: ${err.message}`, 'error');
+                            throw err;
                         }
                     });
-                    await Promise.all(thumbPromises);
-                }
-            }
+                    await Promise.all(imagePromises);
+                } else {
+                    // Upload videos + poll each immediately after upload (no waiting for all)
+                    const videoTitle = config.creative_name || config.adset_name || 'Ad Video';
+                    const videoPromises = sizes.filter(s => driveUrls[s]).map(async (size) => {
+                        const logId = addLogEntry(`Uploading ${size} video via URL...`, 'pending');
+                        try {
+                            const videoId = await uploadVideoByUrl(driveUrls[size], `${videoTitle} (${size})`);
+                            assets[size] = { videoId };
+                            updateLogEntry(logId, `${size} video uploaded (${videoId}), polling...`, 'success');
+                            // Start polling immediately (don't wait for other uploads)
+                            const pollLogId = addLogEntry(`Polling ${size} video status...`, 'pending');
+                            const ready = await pollVideoStatus(videoId);
+                            updateLogEntry(pollLogId, ready ? `${size} video ready` : `${size} video may still be processing`, ready ? 'success' : 'info');
+                        } catch (err) {
+                            updateLogEntry(logId, `${size} video failed: ${err.message}`, 'error');
+                            throw err;
+                        }
+                    });
+                    await Promise.all(videoPromises);
 
-            // ------------------------------------------------------------------
-            // Step 2: Create adset
-            // ------------------------------------------------------------------
+                    // Upload thumbnails in parallel
+                    const thumbSizes = sizes.filter(s => thumbUrls[s]);
+                    if (thumbSizes.length > 0) {
+                        await Promise.all(thumbSizes.map(async (size) => {
+                            try {
+                                const thumbHash = await uploadImageByUrl(thumbUrls[size]);
+                                if (assets[size]) assets[size].thumbnailHash = thumbHash;
+                            } catch (err) { /* non-fatal */ }
+                        }));
+                    }
+                }
+            })();
+
+            // --- Adset creation promise (runs simultaneously) ---
             const adsetLogId = addLogEntry('Creating adset...', 'pending');
+            const adsetPromise = (async () => {
 
             const adsetParams = {
                 name: config.adset_name,
@@ -2088,10 +2053,16 @@
                 const adsetData = await metaPost(`/${META_AD_ACCOUNT_ID}/adsets`, adsetParams);
                 adsetId = adsetData.id;
                 updateLogEntry(adsetLogId, `Adset created (${adsetId})`, 'success');
+                return adsetId;
             } catch (err) {
                 updateLogEntry(adsetLogId, `Adset creation failed: ${err.message}`, 'error');
                 throw err;
             }
+            })();
+
+            // Wait for BOTH assets and adset to complete
+            const [_, adsetResult] = await Promise.all([assetPromise, adsetPromise]);
+            adsetId = adsetResult;
 
             // ------------------------------------------------------------------
             // Step 3: Create ad creative with asset customization
