@@ -357,9 +357,9 @@ function cleanupTempFile(tmpPath) {
 // ROUTES
 // =============================================================================
 
-// 1. Serve portal.html as root
+// 1. Serve index.html (portal) as root
 app.get('/', (req, res) => {
-    res.sendFile(path.join(parentDir, 'portal.html'));
+    res.sendFile(path.join(parentDir, 'index.html'));
 });
 
 // 2. Fetch all campaigns

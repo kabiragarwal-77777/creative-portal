@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creative Performance Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">&#9673;</span>
+                    <span class="logo-text">Creative<br>Portal</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-view="dashboard">
+                    <span class="nav-icon">&#9632;</span> Dashboard
+                </a>
+                <a href="#" class="nav-item" data-view="creatives">
+                    <span class="nav-icon">&#9654;</span> All Creatives
+                </a>
+                <a href="#" class="nav-item" data-view="new">
+                    <span class="nav-icon">&#10022;</span> New This Week
+                </a>
+                <a href="#" class="nav-item" data-view="top">
+                    <span class="nav-icon">&#9650;</span> Top Performers
+                </a>
+                <a href="#" class="nav-item" data-view="failures">
+                    <span class="nav-icon">&#9660;</span> Underperformers
+                </a>
+                <a href="#" class="nav-item" data-view="scorecard">
+                    <span class="nav-icon">&#9733;</span> Scorecard
+                </a>
+                <a href="#" class="nav-item" data-view="alerts">
+                    <span class="nav-icon">&#9888;</span> Alerts
+                </a>
+                <div class="nav-divider"></div>
+                <a href="#" class="nav-item" data-view="accounts">
+                    <span class="nav-icon">&#9881;</span> Accounts
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="refreshBtn" class="refresh-btn">&#8635; Refresh Data</button>
+                <p class="last-updated">Last updated: <span id="lastUpdated">--</span></p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <h1 id="pageTitle">Dashboard</h1>
+                    <p class="header-subtitle" id="pageSubtitle">Overview of all Meta ad creatives</p>
+                </div>
+                <div class="header-right">
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Search creatives...">
+                    </div>
+                    <div class="date-filter">
+                        <label>From</label>
+                        <input type="text" id="dateFrom" placeholder="Pick start date">
+                        <label>To</label>
+                        <input type="text" id="dateTo" placeholder="Pick end date">
+                        <button id="clearDates" class="clear-dates-btn" title="Clear dates">&#10005;</button>
+                    </div>
+                    <div class="filters">
+                        <select id="typeFilter">
+                            <option value="all">All Types</option>
+                            <option value="Video">Video</option>
+                            <option value="Static">Static</option>
+                        </select>
+                        <select id="statusFilter">
+                            <option value="all">All Status</option>
+                            <option value="Live">Live</option>
+                            <option value="Paused">Paused</option>
+                        </select>
+                        <select id="perfFilter">
+                            <option value="all">All Performance</option>
+                            <option value="Exceptional">Exceptional</option>
+                            <option value="Performed">Performed</option>
+                            <option value="Try">Try</option>
+                            <option value="Failed">Failed</option>
+                            <option value="Drop">Drop</option>
+                        </select>
+                        <select id="sourceFilter">
+                            <option value="all">All Sources</option>
+                            <option value="merged">Merged</option>
+                            <option value="sheets">Sheets Only</option>
+                            <option value="meta">Meta Only</option>
+                        </select>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard View -->
+            <div id="dashboardView" class="view active">
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-label">Total Creatives</div>
+                        <div class="kpi-value" id="kpiTotal">--</div>
+                        <div class="kpi-sub" id="kpiTotalSub"></div>
+                    </div>
+                    <div class="kpi-card accent-green">
+                        <div class="kpi-label">Live Creatives</div>
+                        <div class="kpi-value" id="kpiLive">--</div>
+                        <div class="kpi-sub" id="kpiLiveSub"></div>
+                    </div>
+                    <div class="kpi-card accent-blue">
+                        <div class="kpi-label">Total Spend</div>
+                        <div class="kpi-value" id="kpiSpend">--</div>
+                        <div class="kpi-sub" id="kpiSpendSub"></div>
+                    </div>
+                    <div class="kpi-card accent-purple">
+                        <div class="kpi-label">Total Installs</div>
+                        <div class="kpi-value" id="kpiInstalls">--</div>
+                        <div class="kpi-sub" id="kpiInstallsSub"></div>
+                    </div>
+                    <div class="kpi-card accent-orange">
+                        <div class="kpi-label">Avg CPI</div>
+                        <div class="kpi-value" id="kpiCPI">--</div>
+                        <div class="kpi-sub" id="kpiCPISub"></div>
+                    </div>
+                    <div class="kpi-card accent-teal">
+                        <div class="kpi-label">Avg CTR</div>
+                        <div class="kpi-value" id="kpiCTR">--</div>
+                        <div class="kpi-sub" id="kpiCTRSub"></div>
+                    </div>
+                    <div class="kpi-card accent-pink">
+                        <div class="kpi-label">Total Signups</div>
+                        <div class="kpi-value" id="kpiSignups">--</div>
+                        <div class="kpi-sub" id="kpiSignupsSub"></div>
+                    </div>
+                    <div class="kpi-card accent-gold">
+                        <div class="kpi-label">Avg D6 ROAS</div>
+                        <div class="kpi-value" id="kpiROAS">--</div>
+                        <div class="kpi-sub" id="kpiROASSub"></div>
+                    </div>
+                    <div class="kpi-card accent-emerald">
+                        <div class="kpi-label">Avg Overall ROAS</div>
+                        <div class="kpi-value" id="kpiOverallROAS">--</div>
+                        <div class="kpi-sub" id="kpiOverallROASSub"></div>
+                    </div>
+                    <div class="kpi-card accent-red">
+                        <div class="kpi-label">Avg Signup Cost</div>
+                        <div class="kpi-value" id="kpiSignupCost">--</div>
+                        <div class="kpi-sub" id="kpiSignupCostSub"></div>
+                    </div>
+                    <div class="kpi-card accent-indigo">
+                        <div class="kpi-label">Avg P0P1 Cost</div>
+                        <div class="kpi-value" id="kpiP0P1Cost">--</div>
+                        <div class="kpi-sub" id="kpiP0P1CostSub"></div>
+                    </div>
+                    <div class="kpi-card accent-cyan">
+                        <div class="kpi-label">Avg D0 CAC</div>
+                        <div class="kpi-value" id="kpiD0CAC">--</div>
+                        <div class="kpi-sub" id="kpiD0CACSub"></div>
+                    </div>
+                    <div class="kpi-card accent-amber">
+                        <div class="kpi-label">Avg D0 Trial Cost</div>
+                        <div class="kpi-value" id="kpiD0TrialCost">--</div>
+                        <div class="kpi-sub" id="kpiD0TrialCostSub"></div>
+                    </div>
+                    <div class="kpi-card accent-slate">
+                        <div class="kpi-label">Avg D6 CAC</div>
+                        <div class="kpi-value" id="kpiD6CAC">--</div>
+                        <div class="kpi-sub" id="kpiD6CACSub"></div>
+                    </div>
+                </div>
+
+                <!-- Alerts Section -->
+                <div class="alerts-section" id="alertsSection"></div>
+
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <h3>Performance Distribution</h3>
+                        <div id="perfDistribution" class="chart-area"></div>
+                    </div>
+                    <div class="card">
+                        <h3>Type Split</h3>
+                        <div id="typeSplit" class="chart-area"></div>
+                    </div>
+                    <div class="card full-width">
+                        <h3>Recent Creatives (Last 7 Days)</h3>
+                        <div id="recentTable"></div>
+                    </div>
+                    <div class="card">
+                        <h3>Top 5 by D6 ROAS</h3>
+                        <div id="topROAS" class="ranking-list"></div>
+                    </div>
+                    <div class="card">
+                        <h3>Top 5 by Lowest CPI</h3>
+                        <div id="topCPI" class="ranking-list"></div>
+                    </div>
+                </div>
+
+                <!-- Live Creatives Dashboard -->
+                <div class="live-section">
+                    <div class="section-divider">
+                        <span class="section-divider-dot"></span>
+                        <h2 class="section-title">Live Creatives Dashboard</h2>
+                        <span class="section-divider-line"></span>
+                    </div>
+
+                    <div class="kpi-grid">
+                        <div class="kpi-card accent-green">
+                            <div class="kpi-label">Live Count</div>
+                            <div class="kpi-value" id="liveKpiCount">--</div>
+                            <div class="kpi-sub" id="liveKpiCountSub"></div>
+                        </div>
+                        <div class="kpi-card accent-blue">
+                            <div class="kpi-label">Live Spend</div>
+                            <div class="kpi-value" id="liveKpiSpend">--</div>
+                            <div class="kpi-sub" id="liveKpiSpendSub"></div>
+                        </div>
+                        <div class="kpi-card accent-purple">
+                            <div class="kpi-label">Live Installs</div>
+                            <div class="kpi-value" id="liveKpiInstalls">--</div>
+                            <div class="kpi-sub" id="liveKpiInstallsSub"></div>
+                        </div>
+                        <div class="kpi-card accent-orange">
+                            <div class="kpi-label">Live Avg CPI</div>
+                            <div class="kpi-value" id="liveKpiCPI">--</div>
+                            <div class="kpi-sub" id="liveKpiCPISub"></div>
+                        </div>
+                        <div class="kpi-card accent-teal">
+                            <div class="kpi-label">Live Avg CTR</div>
+                            <div class="kpi-value" id="liveKpiCTR">--</div>
+                            <div class="kpi-sub" id="liveKpiCTRSub"></div>
+                        </div>
+                        <div class="kpi-card accent-pink">
+                            <div class="kpi-label">Live Signups</div>
+                            <div class="kpi-value" id="liveKpiSignups">--</div>
+                            <div class="kpi-sub" id="liveKpiSignupsSub"></div>
+                        </div>
+                        <div class="kpi-card accent-gold">
+                            <div class="kpi-label">Live Avg D6 ROAS</div>
+                            <div class="kpi-value" id="liveKpiROAS">--</div>
+                            <div class="kpi-sub" id="liveKpiROASSub"></div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Live Avg Hook%</div>
+                            <div class="kpi-value" id="liveKpiHook">--</div>
+                            <div class="kpi-sub" id="liveKpiHookSub"></div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="card full-width">
+                            <h3>All Live Creatives</h3>
+                            <div id="liveCreativesTable"></div>
+                        </div>
+                        <div class="card">
+                            <h3>Live - Best by D6 ROAS</h3>
+                            <div id="liveTopROAS" class="ranking-list"></div>
+                        </div>
+                        <div class="card">
+                            <h3>Live - Best by CPI</h3>
+                            <div id="liveTopCPI" class="ranking-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- All Creatives View -->
+            <div id="creativesView" class="view">
+                <div class="card full-width">
+                    <div class="table-controls">
+                        <span id="tableCount"></span>
+                        <button id="exportBtn" class="export-btn">Export CSV</button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="creativesTable">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New This Week View -->
+            <div id="newView" class="view">
+                <div class="creative-cards" id="newCreativeCards"></div>
+            </div>
+
+            <!-- Top Performers View -->
+            <div id="topView" class="view">
+                <div class="creative-cards" id="topCreativeCards"></div>
+            </div>
+
+            <!-- Underperformers View -->
+            <div id="failuresView" class="view">
+                <div class="creative-cards" id="failureCreativeCards"></div>
+            </div>
+
+            <!-- Scorecard View -->
+            <div id="scorecardView" class="view">
+                <div class="scorecard-controls">
+                    <select id="scorecardSelect">
+                        <option value="">Select a creative...</option>
+                    </select>
+                </div>
+                <div id="scorecardContent"></div>
+            </div>
+
+            <!-- Alerts View -->
+            <div id="alertsView" class="view">
+                <div class="alerts-page-grid" id="alertsPageContent"></div>
+            </div>
+
+            <!-- Accounts View -->
+            <div id="accountsView" class="view">
+                <div class="accounts-container">
+                    <div class="account-card">
+                        <div class="account-card-header">
+                            <div class="account-platform-icon meta-icon">f</div>
+                            <div>
+                                <h3>Meta Ads</h3>
+                                <p class="account-desc">Connect your Meta Business account to pull ad creative data directly from Facebook & Instagram Ads.</p>
+                            </div>
+                        </div>
+                        <div id="metaAccountStatus" class="account-status">
+                            <span class="status-dot disconnected"></span>
+                            <span class="status-text">Not connected</span>
+                        </div>
+                        <div id="metaAccountDetails" class="account-details" style="display:none;">
+                            <div class="account-info-row">
+                                <span class="account-info-label">User</span>
+                                <span class="account-info-value" id="metaUserName">--</span>
+                            </div>
+                            <div class="account-info-row">
+                                <span class="account-info-label">Campaigns</span>
+                                <span class="account-info-value" id="metaCampaignInfo">0 targeted</span>
+                            </div>
+                            <div class="account-info-row">
+                                <span class="account-info-label">Date Range</span>
+                                <select id="metaDateRange" class="account-select">
+                                    <option value="last_30d">Last 30 days</option>
+                                    <option value="last_14d">Last 14 days</option>
+                                    <option value="last_7d">Last 7 days</option>
+                                    <option value="last_90d">Last 90 days</option>
+                                </select>
+                            </div>
+                            <div class="account-info-row">
+                                <span class="account-info-label">Ads Fetched</span>
+                                <span class="account-info-value" id="metaCreativeCount">0</span>
+                            </div>
+                            <div class="account-info-row">
+                                <span class="account-info-label">Matched with Sheets</span>
+                                <span class="account-info-value" id="metaMatchedCount">0</span>
+                            </div>
+                        </div>
+                        <div class="account-actions">
+                            <button id="metaConnectBtn" class="btn-meta" onclick="metaConnect()">Reconnect Meta</button>
+                            <button id="metaDisconnectBtn" class="btn-disconnect" style="display:none;" onclick="metaDisconnect()">Disconnect</button>
+                            <button id="metaFetchBtn" class="btn-fetch" style="display:none;" onclick="metaFetchAds()">Fetch Ad Data</button>
+                        </div>
+                    </div>
+
+                    <div class="account-card" style="opacity:0.5;">
+                        <div class="account-card-header">
+                            <div class="account-platform-icon sheets-icon">S</div>
+                            <div>
+                                <h3>Google Sheets</h3>
+                                <p class="account-desc">Primary data source. Creative performance data is pulled from a shared Google Sheet.</p>
+                            </div>
+                        </div>
+                        <div class="account-status">
+                            <span class="status-dot connected"></span>
+                            <span class="status-text">Connected (Always on)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Overlay -->
+            <div id="loadingOverlay" class="loading-overlay">
+                <div class="spinner"></div>
+                <p id="loadingText">Fetching data from Google Sheets & Meta...</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="app.js?v=7"></script>
+</body>
+</html>
+
