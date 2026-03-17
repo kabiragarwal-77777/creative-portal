@@ -1930,14 +1930,14 @@
 
             // Positions
             const videoOnlyFbPositions = ['video_feeds', 'instream_video'];
-            let fbPositions = config.facebook_positions || ['feed', 'video_feeds', 'story', 'facebook_reels', 'facebook_reels_overlay', 'profile_feed', 'instream_video', 'marketplace', 'search'];
+            let fbPositions = config.facebook_positions || ['feed', 'video_feeds', 'story', 'facebook_reels', 'facebook_reels_overlay', 'profile_feed', 'instream_video', 'marketplace', 'search', 'right_hand_column'];
             fbPositions = fbPositions.map(p => p === 'reels' ? 'facebook_reels' : p);
             if (assetType === 'image') {
                 fbPositions = fbPositions.filter(p => !videoOnlyFbPositions.includes(p));
             }
             targeting.facebook_positions = fbPositions;
 
-            const igPositions = config.instagram_positions || ['stream', 'story', 'reels', 'ig_search', 'profile_reels', 'profile_feed'];
+            const igPositions = config.instagram_positions || ['stream', 'story', 'reels', 'ig_search', 'explore', 'explore_home', 'profile_feed', 'profile_reels'];
             targeting.instagram_positions = igPositions;
 
             // Custom audiences
