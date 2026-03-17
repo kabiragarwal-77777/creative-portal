@@ -2527,7 +2527,7 @@ async function checkAuth() {
     const data = encoder.encode(pw);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-    const VALID_HASH = '4dd5ec164e66cb36df5a4fb2bbbd8a9ed1577728c81d0b542ae6550525745748';
+    const VALID_HASH = '39ba33b84a7338e7599243abe1923642142706be7bd1a702d3b0fb0c01f91419';
     if (hashHex === VALID_HASH) {
         document.getElementById('authGate').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
