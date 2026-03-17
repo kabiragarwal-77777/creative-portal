@@ -66,8 +66,10 @@ app.use((req, res, next) => {
     next();
 });
 
-// Static files
-app.use(express.static(__dirname));
+// Static files — serve both uploader and parent creative-portal directory
+const parentDir = path.join(__dirname, '..');
+app.use('/uploader', express.static(__dirname));
+app.use(express.static(parentDir));
 
 // =============================================================================
 // META API HELPERS
@@ -135,15 +137,103 @@ async function metaPostForm(endpoint, filePath, filename, contentType, extraFiel
     const resp = await fetch(url, {
         method: 'POST',
         body: formData,
+        signal: AbortSignal.timeout(600000), // 10 min timeout for large videos
     });
-    const data = await resp.json();
-    console.log(`[META POST FORM] response:`, JSON.stringify(data));
+    const text = await resp.text();
+    console.log(`[META POST FORM] response status=${resp.status} body=${text.substring(0, 500)}`);
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch (e) {
+        throw new Error(`Meta API returned non-JSON (status ${resp.status}): ${text.substring(0, 200)}`);
+    }
     if (data.error) {
         const err = new Error(data.error.message || 'Meta API error');
         err.metaError = data.error;
         throw err;
     }
     return data;
+}
+
+// =============================================================================
+// CHUNKED VIDEO UPLOAD (for files > 50MB)
+// =============================================================================
+const CHUNK_SIZE = 20 * 1024 * 1024; // 20MB chunks
+
+async function metaChunkedVideoUpload(filePath, filename, extraFields = {}) {
+    const fileSize = fs.statSync(filePath).size;
+    console.log(`[CHUNKED UPLOAD] Starting for ${filename} (${(fileSize / 1024 / 1024).toFixed(1)}MB)`);
+
+    // Step 1: Start upload session
+    const startParams = new URLSearchParams({
+        upload_phase: 'start',
+        file_size: fileSize.toString(),
+        access_token: META_ACCESS_TOKEN,
+        appsecret_proof: META_APP_SECRET_PROOF,
+    });
+    for (const [k, v] of Object.entries(extraFields)) startParams.append(k, v);
+
+    const startResp = await fetch(`${META_API_BASE}/${META_AD_ACCOUNT_ID}/advideos`, {
+        method: 'POST',
+        body: startParams,
+        signal: AbortSignal.timeout(30000),
+    });
+    const startData = await startResp.json();
+    if (startData.error) throw new Error(startData.error.message);
+    const { upload_session_id, video_id } = startData;
+    console.log(`[CHUNKED UPLOAD] Session started: session=${upload_session_id} video_id=${video_id}`);
+
+    // Step 2: Upload chunks
+    const fd = fs.openSync(filePath, 'r');
+    let offset = 0;
+    let chunkNum = 0;
+    try {
+        while (offset < fileSize) {
+            const remaining = fileSize - offset;
+            const chunkLen = Math.min(CHUNK_SIZE, remaining);
+            const chunk = Buffer.alloc(chunkLen);
+            fs.readSync(fd, chunk, 0, chunkLen, offset);
+            chunkNum++;
+            console.log(`[CHUNKED UPLOAD] Chunk ${chunkNum}: offset=${offset} size=${(chunkLen / 1024 / 1024).toFixed(1)}MB`);
+
+            const formData = new FormData();
+            formData.append('upload_phase', 'transfer');
+            formData.append('upload_session_id', upload_session_id);
+            formData.append('start_offset', offset.toString());
+            formData.append('video_file_chunk', new Blob([chunk], { type: 'application/octet-stream' }), filename);
+            formData.append('access_token', META_ACCESS_TOKEN);
+            formData.append('appsecret_proof', META_APP_SECRET_PROOF);
+
+            const chunkResp = await fetch(`${META_API_BASE}/${META_AD_ACCOUNT_ID}/advideos`, {
+                method: 'POST',
+                body: formData,
+                signal: AbortSignal.timeout(300000), // 5 min per chunk
+            });
+            const chunkData = await chunkResp.json();
+            if (chunkData.error) throw new Error(`Chunk ${chunkNum} failed: ${chunkData.error.message}`);
+            offset = parseInt(chunkData.start_offset, 10);
+            console.log(`[CHUNKED UPLOAD] Chunk ${chunkNum} done, next offset=${offset}`);
+        }
+    } finally {
+        fs.closeSync(fd);
+    }
+
+    // Step 3: Finish upload
+    const finishParams = new URLSearchParams({
+        upload_phase: 'finish',
+        upload_session_id,
+        access_token: META_ACCESS_TOKEN,
+        appsecret_proof: META_APP_SECRET_PROOF,
+    });
+    const finishResp = await fetch(`${META_API_BASE}/${META_AD_ACCOUNT_ID}/advideos`, {
+        method: 'POST',
+        body: finishParams,
+        signal: AbortSignal.timeout(30000),
+    });
+    const finishData = await finishResp.json();
+    if (finishData.error) throw new Error(finishData.error.message);
+    console.log(`[CHUNKED UPLOAD] Finished! video_id=${video_id}`);
+    return { id: video_id, ...finishData };
 }
 
 // =============================================================================
@@ -267,9 +357,9 @@ function cleanupTempFile(tmpPath) {
 // ROUTES
 // =============================================================================
 
-// 1. Serve upload.html
+// 1. Serve portal.html as root
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'upload.html'));
+    res.sendFile(path.join(parentDir, 'portal.html'));
 });
 
 // 2. Fetch all campaigns
@@ -419,7 +509,10 @@ app.post('/api/upload-video', async (req, res) => {
         const extraFields = {};
         if (title) extraFields.title = title;
 
-        const data = await metaPostForm(`/${META_AD_ACCOUNT_ID}/advideos`, tmpPath, file.filename, file.contentType, extraFields);
+        const fileSize = fs.statSync(tmpPath).size;
+        const data = fileSize > 50 * 1024 * 1024
+            ? await metaChunkedVideoUpload(tmpPath, file.filename, extraFields)
+            : await metaPostForm(`/${META_AD_ACCOUNT_ID}/advideos`, tmpPath, file.filename, file.contentType, extraFields);
         const videoId = data.id;
         if (!videoId) throw new Error('No video ID returned from Meta API');
 
@@ -763,7 +856,11 @@ app.post('/api/execute-full', async (req, res) => {
                             const file = await downloadDriveFile(driveUrl);
                             tmpPath = file.tmpPath;
                             const videoTitle = config.creative_name || config.adset_name || 'Ad Video';
-                            const data = await metaPostForm(`/${META_AD_ACCOUNT_ID}/advideos`, tmpPath, file.filename, file.contentType, { title: `${videoTitle} (${size})` });
+                            const fileSize = fs.statSync(tmpPath).size;
+                            const extraFields = { title: `${videoTitle} (${size})` };
+                            const data = fileSize > 50 * 1024 * 1024
+                                ? await metaChunkedVideoUpload(tmpPath, file.filename, extraFields)
+                                : await metaPostForm(`/${META_AD_ACCOUNT_ID}/advideos`, tmpPath, file.filename, file.contentType, extraFields);
                             const videoId = data.id;
                             if (!videoId) throw new Error('No video ID returned');
                             assets[size] = { videoId };
