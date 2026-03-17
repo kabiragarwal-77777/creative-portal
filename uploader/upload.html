@@ -1197,11 +1197,45 @@
     // ASSET UPLOAD VIA URL (no server needed)
     // =========================================================================
 
-    // Upload image to Meta using URL param (Google Drive direct link)
+    // Upload image to Meta — try URL first, fallback to downloading and uploading as bytes
     async function uploadImageByUrl(driveUrl) {
         const directUrl = getDriveDirectUrl(driveUrl);
-        const data = await metaPost(`/${META_AD_ACCOUNT_ID}/adimages`, { url: directUrl });
-        // Response: { images: { filename: { hash: "..." } } }
+
+        // Try URL method first
+        try {
+            const data = await metaPost(`/${META_AD_ACCOUNT_ID}/adimages`, { url: directUrl });
+            let imageHash = null;
+            if (data.images) {
+                const key = Object.keys(data.images)[0];
+                if (key) imageHash = data.images[key].hash;
+            }
+            if (imageHash) return imageHash;
+        } catch (e) {
+            console.log('Image URL upload failed, trying bytes method:', e.message);
+        }
+
+        // Fallback: download image and upload as base64 bytes via multipart form
+        const userContentUrl = getDriveUserContentUrl(driveUrl);
+        let blob;
+        try {
+            const resp = await fetch(userContentUrl);
+            if (!resp.ok) throw new Error('Download failed: ' + resp.status);
+            blob = await resp.blob();
+        } catch (e) {
+            // Try direct URL if usercontent fails
+            const resp = await fetch(directUrl);
+            if (!resp.ok) throw new Error('Image download failed from both URLs');
+            blob = await resp.blob();
+        }
+
+        // Upload as multipart form with filename
+        const formData = new FormData();
+        formData.append('access_token', META_ACCESS_TOKEN);
+        if (META_APPSECRET_PROOF) formData.append('appsecret_proof', META_APPSECRET_PROOF);
+        formData.append('filename', blob, 'image.jpg');
+        const resp = await fetch(`${META_API_BASE}/${META_AD_ACCOUNT_ID}/adimages`, { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error.error_user_msg || data.error.message);
         let imageHash = null;
         if (data.images) {
             const key = Object.keys(data.images)[0];
