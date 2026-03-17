@@ -1880,8 +1880,8 @@
     // =========================================================================
     // CORE PIPELINE (reusable for single + bulk)
     // =========================================================================
-    async function executeSingleRow(config, sheetRowIndex, sheetTabName) {
-        let adsetId = null;
+    async function executeSingleRow(config, sheetRowIndex, sheetTabName, existingAdsetId) {
+        let adsetId = existingAdsetId || null;
         let creativeId = null;
         let adId = null;
 
@@ -2061,10 +2061,15 @@
                 }
             })();
 
-            // --- Adset creation promise (runs simultaneously) ---
-            const adsetLogId = addLogEntry('Creating adset...', 'pending');
+            // --- Adset creation promise (runs simultaneously, or skip if reusing) ---
             const adsetPromise = (async () => {
+            if (adsetId) {
+                // Reusing existing adset
+                addLogEntry(`Reusing adset (${adsetId})`, 'success');
+                return adsetId;
+            }
 
+            const adsetLogId = addLogEntry('Creating adset...', 'pending');
             const adsetParams = {
                 name: config.adset_name,
                 campaign_id: config.campaign_id,
@@ -2294,6 +2299,8 @@
                 'success'
             );
 
+            return { adsetId, creativeId, adId };
+
         } catch (err) {
             addLogResult('Pipeline failed: ' + esc(err.message), 'error');
 
@@ -2328,6 +2335,9 @@
             addLogEntry(`Starting bulk execution: ${rows.length} rows`, 'info');
             let successCount = 0, failCount = 0;
 
+            // Track adset name → ID for reuse (one adset, multiple ads)
+            const adsetCache = {};
+
             for (let i = 0; i < rows.length; i++) {
                 const rowIdx = rows[i];
                 const rowName = sheetRows[rowIdx]?.adset_name || sheetRows[rowIdx]?.['adset_name'] || 'Row ' + (rowIdx + 1);
@@ -2342,7 +2352,18 @@
                         if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
                     }
                     const sheetTabName = $('tabName').value.trim() || 'Sheet1';
-                    await executeSingleRow(config, rowIdx + 2, sheetTabName);
+                    const adsetName = config.adset_name || '';
+
+                    // Reuse adset if same name was already created
+                    const existingAdsetId = adsetCache[adsetName] || null;
+
+                    const result = await executeSingleRow(config, rowIdx + 2, sheetTabName, existingAdsetId);
+
+                    // Cache the adset ID for subsequent rows with same name
+                    if (adsetName && result && result.adsetId) {
+                        adsetCache[adsetName] = result.adsetId;
+                    }
+
                     successCount++;
                 } catch (err) {
                     addLogEntry(`Row ${i + 1} failed: ${err.message}`, 'error');
