@@ -1010,6 +1010,7 @@
             <div style="display: flex; gap: 12px; margin-bottom: 20px;">
                 <button class="btn btn-secondary" onclick="showPreview()">&#128065; Preview</button>
                 <button class="btn btn-primary btn-lg" id="createBtn" onclick="confirmExecute()">&#9889; Create Ad</button>
+                <button class="btn btn-primary btn-lg" id="bulkBtn" onclick="confirmBulkExecute()" style="display:none; background: #00d4aa;">&#9889; Run Selected Rows (<span id="bulkCount">0</span>)</button>
             </div>
 
             <div class="preview-card" id="previewCard">
@@ -1425,11 +1426,13 @@
         wrap.classList.remove('hidden');
         const head = $('sheetHead');
         const body = $('sheetBody');
-        head.innerHTML = '<th>#</th>' + sheetHeaders.map(h => `<th>${esc(h)}</th>`).join('') + '<th></th>';
+        head.innerHTML = '<th><input type="checkbox" id="selectAllRows" onclick="toggleAllRows(this)"></th><th>#</th>' + sheetHeaders.map(h => `<th>${esc(h)}</th>`).join('') + '<th></th>';
         body.innerHTML = sheetRows.map((row, i) => {
             const cells = sheetHeaders.map(h => `<td title="${esc(String(row[h] || ''))}">${esc(String(row[h] || ''))}</td>`).join('');
-            return `<tr><td>${i + 1}</td>${cells}<td><button class="btn btn-secondary" onclick="selectRow(${i})">Select</button></td></tr>`;
+            return `<tr><td><input type="checkbox" class="row-check" data-idx="${i}"></td><td>${i + 1}</td>${cells}<td><button class="btn btn-secondary" onclick="selectRow(${i})">Select</button></td></tr>`;
         }).join('');
+        // Show/hide bulk run button
+        updateBulkButton();
     }
 
     // =========================================================================
@@ -1822,33 +1825,14 @@
     }
 
     // =========================================================================
-    // EXECUTE FULL AD CREATION (client-side)
+    // CORE PIPELINE (reusable for single + bulk)
     // =========================================================================
-    window.executeCreate = async function () {
-        closeModal();
-        clearLog();
-
-        const config = collectFormData();
-        const createBtn = $('createBtn');
-        createBtn.disabled = true;
-
-        const sheetRowIndex = selectedSheetRowIndex != null ? selectedSheetRowIndex + 2 : null;
-        const sheetTabName = $('tabName').value.trim() || 'Sheet1';
-
-        addLogEntry('Starting ad creation pipeline (client-side)...', 'info');
-
-        // Results tracking
+    async function executeSingleRow(config, sheetRowIndex, sheetTabName) {
         let adsetId = null;
         let creativeId = null;
         let adId = null;
 
         try {
-            // ------------------------------------------------------------------
-            // Clean "null" strings
-            // ------------------------------------------------------------------
-            for (const key of Object.keys(config)) {
-                if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
-            }
 
             // ------------------------------------------------------------------
             // Parse Google Sheets Date() format
@@ -2257,10 +2241,111 @@
                     error_message: err.message,
                 }, sheetTabName);
             }
+            throw err;
+        }
+    }
+
+    // =========================================================================
+    // EXECUTE SINGLE (wrapper for UI)
+    // =========================================================================
+    window.executeCreate = async function () {
+        if (window._bulkRows && window._bulkRows.length > 0) {
+            // Handled by bulk logic below
+            closeModal();
+            clearLog();
+            const rows = window._bulkRows;
+            window._bulkRows = null;
+            const createBtn = $('createBtn');
+            const bulkBtn = $('bulkBtn');
+            createBtn.disabled = true;
+            bulkBtn.disabled = true;
+
+            addLogEntry(`Starting bulk execution: ${rows.length} rows`, 'info');
+            let successCount = 0, failCount = 0;
+
+            for (let i = 0; i < rows.length; i++) {
+                const rowIdx = rows[i];
+                const rowName = sheetRows[rowIdx]?.adset_name || sheetRows[rowIdx]?.['adset_name'] || 'Row ' + (rowIdx + 1);
+                addLogEntry(`\u2501\u2501\u2501 Row ${i + 1}/${rows.length}: ${rowName} \u2501\u2501\u2501`, 'info');
+
+                selectRow(rowIdx);
+                await new Promise(r => setTimeout(r, 300));
+
+                try {
+                    const config = collectFormData();
+                    for (const key of Object.keys(config)) {
+                        if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
+                    }
+                    const sheetTabName = $('tabName').value.trim() || 'Sheet1';
+                    await executeSingleRow(config, rowIdx + 2, sheetTabName);
+                    successCount++;
+                } catch (err) {
+                    addLogEntry(`Row ${i + 1} failed: ${err.message}`, 'error');
+                    failCount++;
+                }
+            }
+
+            addLogEntry(`Bulk complete: ${successCount} succeeded, ${failCount} failed`, successCount === rows.length ? 'success' : 'info');
+            createBtn.disabled = false;
+            bulkBtn.disabled = false;
+            return;
         }
 
+        // Single row execution
+        closeModal();
+        clearLog();
+        const config = collectFormData();
+        const createBtn = $('createBtn');
+        createBtn.disabled = true;
+        const sheetRowIndex = selectedSheetRowIndex != null ? selectedSheetRowIndex + 2 : null;
+        const sheetTabName = $('tabName').value.trim() || 'Sheet1';
+        addLogEntry('Starting ad creation pipeline...', 'info');
+
+        for (const key of Object.keys(config)) {
+            if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
+        }
+
+        try {
+            await executeSingleRow(config, sheetRowIndex, sheetTabName);
+        } catch (err) {
+            addLogEntry(`Pipeline failed: ${err.message}`, 'error');
+        }
         createBtn.disabled = false;
     };
+
+    // =========================================================================
+    // BULK EXECUTION
+    // =========================================================================
+    window.toggleAllRows = function (master) {
+        document.querySelectorAll('.row-check').forEach(cb => cb.checked = master.checked);
+        updateBulkButton();
+    };
+
+    function updateBulkButton() {
+        const checked = document.querySelectorAll('.row-check:checked').length;
+        const btn = $('bulkBtn');
+        const countEl = $('bulkCount');
+        if (checked > 0) {
+            btn.style.display = '';
+            countEl.textContent = checked;
+        } else {
+            btn.style.display = 'none';
+        }
+        // Update on any checkbox change
+        document.querySelectorAll('.row-check').forEach(cb => {
+            cb.onchange = updateBulkButton;
+        });
+    }
+
+    window.confirmBulkExecute = function () {
+        const checked = [...document.querySelectorAll('.row-check:checked')].map(cb => parseInt(cb.dataset.idx));
+        if (checked.length === 0) return alert('No rows selected.');
+        if (!META_ACCESS_TOKEN) return alert('Please configure Meta API credentials first.');
+        $('confirmStatus').textContent = `BULK: ${checked.length} rows (${$('adsetStatus').value})`;
+        $('confirmModal').classList.add('show');
+        window._bulkRows = checked;
+    };
+
 
     // =========================================================================
     // INITIALIZE
