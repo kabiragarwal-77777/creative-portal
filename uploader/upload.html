@@ -685,6 +685,7 @@
             <div class="campaign-info" id="campaignInfo" style="display:none;">
                 <span class="info-badge" id="campaignObjective"></span>
                 <span class="info-badge" id="campaignStatus"></span>
+                <span class="info-badge" id="campaignFinserv" style="display:none; background:rgba(255,107,107,0.15); color:var(--red);"></span>
             </div>
         </div>
     </div>
@@ -730,6 +731,7 @@
                     <select id="bidStrategy" onchange="toggleBidAmount()">
                         <option value="LOWEST_COST_WITHOUT_CAP">Lowest Cost (No Cap)</option>
                         <option value="LOWEST_COST_WITH_BID_CAP">Lowest Cost (Bid Cap)</option>
+                        <option value="LOWEST_COST_WITH_MIN_ROAS">Min ROAS</option>
                         <option value="COST_CAP">Cost Cap</option>
                     </select>
                 </div>
@@ -752,6 +754,7 @@
                         <option value="APP_INSTALLS" selected>APP_INSTALLS</option>
                         <option value="OFFSITE_CONVERSIONS">OFFSITE_CONVERSIONS</option>
                         <option value="LINK_CLICKS">LINK_CLICKS</option>
+                        <option value="LEAD_GENERATION">LEAD_GENERATION</option>
                         <option value="REACH">REACH</option>
                         <option value="IMPRESSIONS">IMPRESSIONS</option>
                     </select>
@@ -1399,7 +1402,7 @@
             return;
         }
         try {
-            const data = await metaGet(`/${META_AD_ACCOUNT_ID}/campaigns`, { fields: 'id,name,status,objective', limit: 500 });
+            const data = await metaGet(`/${META_AD_ACCOUNT_ID}/campaigns`, { fields: 'id,name,status,objective,special_ad_categories,bid_strategy,daily_budget,lifetime_budget', limit: 500 });
             campaigns = data.data || [];
             const sel = $('campaignId');
             sel.innerHTML = '<option value="">-- Select Campaign --</option>';
@@ -1409,6 +1412,8 @@
                 opt.textContent = `${c.name} (${c.id})`;
                 opt.dataset.objective = c.objective || '';
                 opt.dataset.status = c.status || '';
+                opt.dataset.specialAdCategories = JSON.stringify(c.special_ad_categories || []);
+                opt.dataset.bidStrategy = c.bid_strategy || '';
                 sel.appendChild(opt);
             });
         } catch (e) {
@@ -1420,8 +1425,40 @@
         const opt = this.selectedOptions[0];
         if (opt && opt.value) {
             $('campaignInfo').style.display = 'flex';
-            $('campaignObjective').textContent = 'Objective: ' + (opt.dataset.objective || 'N/A');
+            const objective = opt.dataset.objective || '';
+            const specialCats = JSON.parse(opt.dataset.specialAdCategories || '[]');
+            const hasFinserv = specialCats.includes('FINANCIAL_PRODUCTS_SERVICES');
+
+            $('campaignObjective').textContent = 'Objective: ' + (objective || 'N/A');
             $('campaignStatus').textContent = 'Status: ' + (opt.dataset.status || 'N/A');
+
+            // Auto-set optimization_goal and billing_event based on objective
+            const goalMap = {
+                'OUTCOME_APP_PROMOTION': { goal: 'APP_INSTALLS', billing: 'IMPRESSIONS' },
+                'OUTCOME_SALES': { goal: 'OFFSITE_CONVERSIONS', billing: 'IMPRESSIONS' },
+                'OUTCOME_TRAFFIC': { goal: 'LINK_CLICKS', billing: 'IMPRESSIONS' },
+                'OUTCOME_LEADS': { goal: 'LEAD_GENERATION', billing: 'IMPRESSIONS' },
+                'OUTCOME_AWARENESS': { goal: 'REACH', billing: 'IMPRESSIONS' },
+            };
+            const mapping = goalMap[objective] || {};
+            if (mapping.goal) $('optimizationGoal').value = mapping.goal;
+            if (mapping.billing) $('billingEvent').value = mapping.billing;
+
+            // Auto-set bid strategy from campaign
+            if (opt.dataset.bidStrategy) {
+                const bs = $('bidStrategy');
+                for (const o of bs.options) {
+                    if (o.value === opt.dataset.bidStrategy) { bs.value = opt.dataset.bidStrategy; break; }
+                }
+                toggleBidAmount();
+            }
+
+            // Show FINSERV badge
+            const finservBadge = document.getElementById('campaignFinserv');
+            if (finservBadge) {
+                finservBadge.style.display = hasFinserv ? 'inline-block' : 'none';
+                finservBadge.textContent = hasFinserv ? 'FINSERV' : '';
+            }
         } else {
             $('campaignInfo').style.display = 'none';
         }
@@ -2090,13 +2127,17 @@
 
             if (promotedObject) adsetParams.promoted_object = JSON.stringify(promotedObject);
 
-            // India finserv regulatory
-            adsetParams.regional_regulated_categories = JSON.stringify(['INDIA_FINSERV']);
-            const regulatoryId = DEFAULT_REGULATORY_ID;
-            adsetParams.regional_regulation_identities = JSON.stringify({
-                india_finserv_beneficiary: regulatoryId,
-                india_finserv_payer: regulatoryId,
-            });
+            // India finserv regulatory — only if campaign has FINANCIAL_PRODUCTS_SERVICES
+            const campOpt = $('campaignId').selectedOptions[0];
+            const campSpecialCats = campOpt ? JSON.parse(campOpt.dataset.specialAdCategories || '[]') : [];
+            if (campSpecialCats.includes('FINANCIAL_PRODUCTS_SERVICES')) {
+                adsetParams.regional_regulated_categories = JSON.stringify(['INDIA_FINSERV']);
+                const regulatoryId = DEFAULT_REGULATORY_ID;
+                adsetParams.regional_regulation_identities = JSON.stringify({
+                    india_finserv_beneficiary: regulatoryId,
+                    india_finserv_payer: regulatoryId,
+                });
+            }
 
             try {
                 const adsetData = await metaPost(`/${META_AD_ACCOUNT_ID}/adsets`, adsetParams);
