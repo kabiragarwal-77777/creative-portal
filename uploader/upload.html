@@ -1197,38 +1197,23 @@
     // ASSET UPLOAD VIA URL (no server needed)
     // =========================================================================
 
-    // Upload image to Meta — try URL first, fallback to downloading and uploading as bytes
+    // Get a CORS-friendly direct image URL from Google Drive
+    function getDriveLh3Url(driveUrl) {
+        const fileId = extractDriveFileId(driveUrl);
+        if (!fileId) throw new Error(`Could not extract Google Drive file ID from: ${driveUrl}`);
+        return `https://lh3.googleusercontent.com/d/${fileId}=s2000`;
+    }
+
+    // Upload image to Meta — download from Drive then upload as bytes
     async function uploadImageByUrl(driveUrl) {
-        const directUrl = getDriveDirectUrl(driveUrl);
+        // Download image via lh3 (CORS-friendly, works from browser)
+        const lh3Url = getDriveLh3Url(driveUrl);
+        const imgResp = await fetch(lh3Url);
+        if (!imgResp.ok) throw new Error('Failed to download image from Drive (status ' + imgResp.status + ')');
+        const blob = await imgResp.blob();
+        if (blob.size < 1000) throw new Error('Downloaded image too small (' + blob.size + ' bytes), check Drive sharing');
 
-        // Try URL method first
-        try {
-            const data = await metaPost(`/${META_AD_ACCOUNT_ID}/adimages`, { url: directUrl });
-            let imageHash = null;
-            if (data.images) {
-                const key = Object.keys(data.images)[0];
-                if (key) imageHash = data.images[key].hash;
-            }
-            if (imageHash) return imageHash;
-        } catch (e) {
-            console.log('Image URL upload failed, trying bytes method:', e.message);
-        }
-
-        // Fallback: download image and upload as base64 bytes via multipart form
-        const userContentUrl = getDriveUserContentUrl(driveUrl);
-        let blob;
-        try {
-            const resp = await fetch(userContentUrl);
-            if (!resp.ok) throw new Error('Download failed: ' + resp.status);
-            blob = await resp.blob();
-        } catch (e) {
-            // Try direct URL if usercontent fails
-            const resp = await fetch(directUrl);
-            if (!resp.ok) throw new Error('Image download failed from both URLs');
-            blob = await resp.blob();
-        }
-
-        // Upload as multipart form with filename
+        // Upload as multipart form
         const formData = new FormData();
         formData.append('access_token', META_ACCESS_TOKEN);
         if (META_APPSECRET_PROOF) formData.append('appsecret_proof', META_APPSECRET_PROOF);
