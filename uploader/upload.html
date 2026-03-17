@@ -1964,6 +1964,10 @@
                 };
             }
 
+            // Shared vars used by both parallel blocks and later steps
+            const linkUrl = config.link_url || '';
+            const storeUrl = config.object_store_url || '';
+
             // ------------------------------------------------------------------
             // Step 1 + 2: Upload assets AND create adset IN PARALLEL
             // ------------------------------------------------------------------
@@ -2043,8 +2047,6 @@
             if (config.end_time) adsetParams.end_time = config.end_time;
             adsetParams.targeting = JSON.stringify(targeting);
 
-            const linkUrl = config.link_url || '';
-            const storeUrl = config.object_store_url || '';
             if (promotedObject) adsetParams.promoted_object = JSON.stringify(promotedObject);
 
             // India finserv regulatory
