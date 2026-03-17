@@ -959,18 +959,15 @@
 
                 <div class="form-group">
                     <label>Horizontal Asset &mdash; 16:9 / Landscape <span class="required">*</span></label>
-                    <input type="text" id="assetHorizontal" placeholder="Google Drive URL (images) or leave blank for file upload">
-                    <input type="file" id="fileHorizontal" accept="video/*" style="margin-top:6px; display:none;">
+                    <input type="text" id="assetHorizontal" placeholder="Google Drive URL">
                 </div>
                 <div class="form-group">
                     <label>Vertical Asset &mdash; 9:16 / Portrait <span class="required">*</span></label>
-                    <input type="text" id="assetVertical" placeholder="Google Drive URL (images) or leave blank for file upload">
-                    <input type="file" id="fileVertical" accept="video/*" style="margin-top:6px; display:none;">
+                    <input type="text" id="assetVertical" placeholder="Google Drive URL">
                 </div>
                 <div class="form-group">
                     <label>Square Asset &mdash; 1:1 / Square <span class="required">*</span></label>
-                    <input type="text" id="assetSquare" placeholder="Google Drive URL (images) or leave blank for file upload">
-                    <input type="file" id="fileSquare" accept="video/*" style="margin-top:6px; display:none;">
+                    <input type="text" id="assetSquare" placeholder="Google Drive URL">
                 </div>
                 <div class="form-group"></div>
 
@@ -1664,10 +1661,6 @@
     window.toggleCreativeType = function () {
         const isVideo = qs('input[name="creativeType"]:checked').value === 'VIDEO';
         $('thumbnailFields').classList.toggle('hidden', !isVideo);
-        // Show file upload inputs for videos
-        ['fileHorizontal', 'fileVertical', 'fileSquare'].forEach(id => {
-            $(id).style.display = isVideo ? '' : 'none';
-        });
     };
 
     // =========================================================================
@@ -2037,22 +2030,12 @@
                     });
                     await Promise.all(imagePromises);
                 } else {
-                    // Upload videos: prefer local file, fallback to Drive URL
+                    // Upload videos + poll each immediately after upload
                     const videoTitle = config.creative_name || config.adset_name || 'Ad Video';
-                    const fileInputMap = { horizontal: 'fileHorizontal', vertical: 'fileVertical', square: 'fileSquare' };
-                    const videoSizes = sizes.filter(s => driveUrls[s] || ($(fileInputMap[s]) && $(fileInputMap[s]).files.length > 0));
-
-                    const videoPromises = videoSizes.map(async (size) => {
-                        const fileInput = $(fileInputMap[size]);
-                        const hasFile = fileInput && fileInput.files.length > 0;
-                        const logId = addLogEntry(`Uploading ${size} video ${hasFile ? 'from file' : 'via URL'}...`, 'pending');
+                    const videoPromises = sizes.filter(s => driveUrls[s]).map(async (size) => {
+                        const logId = addLogEntry(`Uploading ${size} video via URL...`, 'pending');
                         try {
-                            let videoId;
-                            if (hasFile) {
-                                videoId = await uploadVideoFile(fileInput.files[0], `${videoTitle} (${size})`);
-                            } else {
-                                videoId = await uploadVideoByUrl(driveUrls[size], `${videoTitle} (${size})`);
-                            }
+                            const videoId = await uploadVideoByUrl(driveUrls[size], `${videoTitle} (${size})`);
                             assets[size] = { videoId };
                             updateLogEntry(logId, `${size} video uploaded (${videoId}), polling...`, 'success');
                             const pollLogId = addLogEntry(`Polling ${size} video status...`, 'pending');
