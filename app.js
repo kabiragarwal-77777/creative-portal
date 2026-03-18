@@ -152,6 +152,7 @@ function normalizeData() {
             date: get(['Date - Go', 'Go Live']),
             startDate: get(['Start date', 'Test Metrics']),
             endDate: get(['End Date']),
+            maturedDate: get(['Matured Date']),
             live: isLive ? 'Live' : 'Paused',
             testPerf: get(['Test Perf']),
             nextSteps: get(['Next']),
@@ -165,6 +166,28 @@ function normalizeData() {
         if (hasRawData) {
             const agg = aggregateMetrics(creativeName, dateFrom, dateTo);
             Object.assign(record, agg);
+            // Matured metrics: aggregate from start date to matured date
+            if (record.maturedDate && record.startDate) {
+                const toISO = (str) => {
+                    const parts = str.split('/');
+                    if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+                    return str;
+                };
+                const maturedFrom = parseDate(record.startDate) ? toISO(record.startDate) : '';
+                const maturedTo = parseDate(record.maturedDate) ? toISO(record.maturedDate) : '';
+                if (maturedFrom && maturedTo) {
+                    const matAgg = aggregateMetrics(creativeName, maturedFrom, maturedTo);
+                    record.maturedSpend = matAgg.spent;
+                    record.signupsMatured = matAgg.signups;
+                    record.signupCostMatured = matAgg.signups > 0 ? (matAgg.spent / matAgg.signups) : 0;
+                    record.d6Matured = matAgg.d6;
+                    record.d6CACMatured = matAgg.d6 > 0 ? (matAgg.spent / matAgg.d6) : 0;
+                    record.d6RevenueMatured = matAgg.d6OverallRevenue;
+                    record.d6ROASMatured = matAgg.spent > 0 ? (matAgg.d6OverallRevenue / matAgg.spent * 100) : 0;
+                    record.overallRevenueMatured = matAgg.overallRevenue;
+                    record.overallROASMatured = matAgg.spent > 0 ? (matAgg.overallRevenue / matAgg.spent * 100) : 0;
+                }
+            }
         } else {
             // Fallback: use pre-aggregated values from main sheet
             record.spent = parseNum(get(['Spent']));
@@ -194,6 +217,11 @@ function normalizeData() {
             record.fullPlay = parsePercent(get(['Full']));
             record.thruPlays = parseNum(get(['ThruPlay']));
             record.threeSecViews = parseNum(get(['3-Sec', '3 Sec']));
+            record.maturedSpend = parseNum(get(['Matured spends']));
+            record.d6RevenueMatured = parseNum(get(['D6 revenue overall (matured)']));
+            record.d6ROASMatured = parsePercent(get(['D6 ROAS overall (matured)']));
+            record.overallRevenueMatured = parseNum(get(['Overall revenue matured']));
+            record.overallROASMatured = parsePercent(get(['Overall ROAS matured']));
         }
         return record;
     }).filter(d => d.name && d.name !== 'Row 0' && d.name.includes('FB_'));
@@ -981,7 +1009,7 @@ function renderTable() {
     document.getElementById('tableCount').textContent = `${data.length} creatives`;
     const thead = document.querySelector('#creativesTable thead');
     const tbody = document.querySelector('#creativesTable tbody');
-    const cols = ['#', 'Name', 'Type', 'Date', 'Spend', 'Impr.', 'CPM', 'CTR', 'Installs', 'CPI', 'Signups', 'Signup%', 'Hook%', 'Hold%', 'D6 ROAS', 'Overall ROAS', 'Signup Cost', 'P0P1 Cost', 'D0 Trial Cost', 'D0 CAC', 'D6 CAC', 'Status', 'Perf.', 'Source'];
+    const cols = ['#', 'Name', 'Type', 'Date', 'Spend', 'Impr.', 'CPM', 'CTR', 'Installs', 'CPI', 'Signups', 'Signup%', 'Hook%', 'Hold%', 'D6 ROAS', 'Overall ROAS', 'Signup Cost', 'P0P1 Cost', 'D0 Trial Cost', 'D0 CAC', 'D6 CAC', 'Mat. Spend', 'D6 Rev (Mat)', 'D6 ROAS (Mat)', 'Rev (Mat)', 'ROAS (Mat)', 'Status', 'Perf.', 'Source'];
     thead.innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
     tbody.innerHTML = data.map((d, i) => `<tr>
         <td>${i + 1}</td>
@@ -1005,6 +1033,11 @@ function renderTable() {
         <td>${d.d0TrialCost ? '₹' + Math.round(d.d0TrialCost) : '-'}</td>
         <td>${d.d0CAC ? '₹' + Math.round(d.d0CAC) : '-'}</td>
         <td>${d.d6CAC ? '₹' + Math.round(d.d6CAC) : '-'}</td>
+        <td>${d.maturedSpend ? formatINR(d.maturedSpend) : '-'}</td>
+        <td>${d.d6RevenueMatured ? formatINR(d.d6RevenueMatured) : '-'}</td>
+        <td style="color:${roasColor(d.d6ROASMatured)}">${d.d6ROASMatured ? d.d6ROASMatured.toFixed(1) + '%' : '-'}</td>
+        <td>${d.overallRevenueMatured ? formatINR(d.overallRevenueMatured) : '-'}</td>
+        <td style="color:${roasColor(d.overallROASMatured)}">${d.overallROASMatured ? d.overallROASMatured.toFixed(1) + '%' : '-'}</td>
         <td><span class="cc-badge ${d.live === 'Live' ? 'badge-live' : 'badge-paused'}">${d.live}</span></td>
         <td>${perfBadge(d.testPerf)}</td>
         <td>${sourceBadge(d._source)}</td>
