@@ -5,12 +5,25 @@ let allData = [];
 let filteredData = [];
 let sheetsData = []; // Preserved copy of sheets-only data for merging
 
+const META_ADS_DUMP_SHEET = 'Meta Ads Dump';
+const METABASE_IMPORT_SHEET = 'Metabase Meta Ad Level Import';
+
+let metaAdsDumpRaw = []; // Raw rows from 'Meta Ads Dump' tab
+let metabaseImportRaw = []; // Raw rows from 'Metabase Meta Ad Level Import' tab
+
 // ---- Data Fetch using Google Visualization JSONP (bypasses CORS) ----
 async function fetchData() {
     showLoading(true);
     try {
-        const data = await fetchViaJSONP();
-        allData = data;
+        const [mainData, adsDump, metabaseImport] = await Promise.all([
+            fetchViaJSONP(),
+            fetchSheetTab(META_ADS_DUMP_SHEET).catch(e => { console.warn('Meta Ads Dump fetch failed:', e); return []; }),
+            fetchSheetTab(METABASE_IMPORT_SHEET).catch(e => { console.warn('Metabase Import fetch failed:', e); return []; })
+        ]);
+        allData = mainData;
+        metaAdsDumpRaw = adsDump;
+        metabaseImportRaw = metabaseImport;
+        console.log(`Loaded: ${mainData.length} creatives, ${adsDump.length} ads dump rows, ${metabaseImport.length} metabase rows`);
         normalizeData();
         document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
         applyFilters();
@@ -59,6 +72,23 @@ function fetchViaJSONP() {
     });
 }
 
+function fetchSheetTab(sheetName) {
+    return new Promise((resolve, reject) => {
+        const callbackName = 'sheetCb_' + sheetName.replace(/\W/g, '') + '_' + Date.now();
+        const script = document.createElement('script');
+        const timeout = setTimeout(() => { cleanup(); reject(new Error('Timeout fetching ' + sheetName)); }, 30000);
+        function cleanup() { clearTimeout(timeout); delete window[callbackName]; if (script.parentNode) script.parentNode.removeChild(script); }
+        window[callbackName] = function(response) {
+            cleanup();
+            try { resolve(parseGvizResponse(response)); } catch(e) { reject(e); }
+        };
+        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${callbackName}&sheet=${encodeURIComponent(sheetName)}`;
+        script.src = url;
+        script.onerror = () => { cleanup(); reject(new Error('Failed to load ' + sheetName)); };
+        document.body.appendChild(script);
+    });
+}
+
 function parseGvizResponse(response) {
     const table = response.table;
     // Build header list: use label, fallback to column id (A, B, C...)
@@ -91,13 +121,16 @@ function parseGvizResponse(response) {
 // ---- Data Normalization ----
 function normalizeData() {
     if (!allData.length) return;
-    // Log keys for debugging
     console.log('Available keys:', Object.keys(allData[0]));
-    console.log('Live? column value for row 0:', allData[0]['Live?']);
-    console.log('Sample row values:', JSON.stringify(allData[0]));
+
+    // Get date filter values for aggregation
+    const dateFromEl = document.getElementById('dateFrom');
+    const dateToEl = document.getElementById('dateTo');
+    const dateFrom = dateFromEl ? dateFromEl.value : '';
+    const dateTo = dateToEl ? dateToEl.value : '';
+    const hasRawData = metaAdsDumpRaw.length > 0 || metabaseImportRaw.length > 0;
 
     allData = allData.map((d, idx) => {
-        // Flexible getter: finds first key containing any of the search terms
         const get = (keys) => {
             for (const k of keys) {
                 for (const h of Object.keys(d)) {
@@ -107,52 +140,64 @@ function normalizeData() {
             return '';
         };
 
-        // Get raw live value - match "Live?" column specifically, not "Go Live"
         const liveRaw = d['Live?'] || '';
         const isLive = liveRaw.toLowerCase() === 'live';
+        const creativeName = get(['Creative']) || `Row ${idx + 1}`;
 
-        return {
+        // Base record from main sheet (metadata only)
+        const record = {
             sno: idx + 1,
-            type: d['_Type'] || get(['Type']) || detectType(get(['Creative'])),
-            name: get(['Creative']) || `Row ${idx + 1}`,
+            type: d['_Type'] || get(['Type']) || detectType(creativeName),
+            name: creativeName,
             date: get(['Date - Go', 'Go Live']),
-            spent: parseNum(get(['Spent'])),
-            impressions: parseNum(get(['Impr'])),
-            cpm: parseNum(get(['CPM'])),
-            clicks: parseNum(get(['Click'])),
-            ctr: parsePercent(get(['CTR'])),
-            installs: parseNum(get(['Install'])),
-            cpi: parseNum(get(['CPI'])),
-            signups: parseNum(get(['Signup'])),
-            signupCost: parseNum(get(['Signup Cost'])),
-            signupPct: parsePercent(get(['Signup%'])),
-            d6: parseNum(get(['D6 '])),
-            d6CAC: parseNum(get(['D6 CAC'])),
-            d6ROAS: parsePercent(get(['D6 ROAS'])),
-            overallROAS: parsePercent(get(['Overall ROAS'])),
-            overallRevenue: parseNum(get(['Overall revenue'])),
-            p0p1: parseNum(get(['P0P1'])),
-            p0p1Pct: parsePercent(get(['P0P1%'])),
-            p0p1Cost: parseNum(get(['P0P1 Cost'])),
-            d0Trials: parseNum(get(['D0_Trial', 'D0 Trial'])),
-            d0TrialCost: parseNum(get(['D0 Trial Cost'])),
-            d0: parseNum(get(['D0'])),
-            d0CAC: parseNum(get(['D0 CAC'])),
-            hook: parsePercent(get(['Hook'])),
-            hold: parsePercent(get(['Hold'])),
-            fullPlay: parsePercent(get(['Full'])),
-            thruPlays: parseNum(get(['ThruPlay'])),
-            threeSecViews: parseNum(get(['3-Sec', '3 Sec'])),
-            nextSteps: get(['Next']),
+            startDate: get(['Start date', 'Test Metrics']),
+            endDate: get(['End Date']),
             live: isLive ? 'Live' : 'Paused',
             testPerf: get(['Test Perf']),
+            nextSteps: get(['Next']),
             week: get(['Week']),
             year: get(['Year']),
             _raw: d,
             _source: 'sheets'
         };
+
+        // If raw tab data is available, aggregate metrics dynamically
+        if (hasRawData) {
+            const agg = aggregateMetrics(creativeName, dateFrom, dateTo);
+            Object.assign(record, agg);
+        } else {
+            // Fallback: use pre-aggregated values from main sheet
+            record.spent = parseNum(get(['Spent']));
+            record.impressions = parseNum(get(['Impr']));
+            record.cpm = parseNum(get(['CPM']));
+            record.clicks = parseNum(get(['Click']));
+            record.ctr = parsePercent(get(['CTR']));
+            record.installs = parseNum(get(['Install']));
+            record.cpi = parseNum(get(['CPI']));
+            record.signups = parseNum(get(['Signup']));
+            record.signupCost = parseNum(get(['Signup Cost']));
+            record.signupPct = parsePercent(get(['Signup%']));
+            record.d6 = parseNum(get(['D6 ']));
+            record.d6CAC = parseNum(get(['D6 CAC']));
+            record.d6ROAS = parsePercent(get(['D6 ROAS']));
+            record.overallROAS = parsePercent(get(['Overall ROAS']));
+            record.overallRevenue = parseNum(get(['Overall revenue']));
+            record.p0p1 = parseNum(get(['P0P1']));
+            record.p0p1Pct = parsePercent(get(['P0P1%']));
+            record.p0p1Cost = parseNum(get(['P0P1 Cost']));
+            record.d0Trials = parseNum(get(['D0_Trial', 'D0 Trial']));
+            record.d0TrialCost = parseNum(get(['D0 Trial Cost']));
+            record.d0 = parseNum(get(['D0']));
+            record.d0CAC = parseNum(get(['D0 CAC']));
+            record.hook = parsePercent(get(['Hook']));
+            record.hold = parsePercent(get(['Hold']));
+            record.fullPlay = parsePercent(get(['Full']));
+            record.thruPlays = parseNum(get(['ThruPlay']));
+            record.threeSecViews = parseNum(get(['3-Sec', '3 Sec']));
+        }
+        return record;
     }).filter(d => d.name && d.name !== 'Row 0' && d.name.includes('FB_'));
-    // Preserve sheets data for merge with Meta
+
     sheetsData = allData.map(d => ({ ...d }));
 }
 
@@ -306,6 +351,123 @@ function mergeDataSources() {
     console.log(`Merge: ${matchedCount} matched, ${metaOnly} meta-only, ${sheetsOnly} sheets-only (total: ${merged.length})`);
 
     allData = merged;
+}
+
+function aggregateMetrics(creativeName, dateFrom, dateTo) {
+    // Normalize the creative name for matching
+    const nameNorm = creativeName.trim().toLowerCase();
+
+    // Parse date filter bounds
+    const from = dateFrom ? new Date(dateFrom) : new Date('2000-01-01');
+    const to = dateTo ? new Date(dateTo + 'T23:59:59') : new Date('2099-12-31');
+
+    // --- Aggregate from Meta Ads Dump (spend, impressions, clicks, installs, thruplay, video views) ---
+    let spend = 0, impressions = 0, clicks = 0, installs = 0, thruPlays = 0, threeSecViews = 0;
+
+    metaAdsDumpRaw.forEach(row => {
+        // Match by 'Refined ad name' (col A) or 'Ad Name' (col J) against creative name
+        const rowName = (row['Refined ad name'] || row['Ad Name'] || '').trim().toLowerCase();
+        if (rowName !== nameNorm && !rowName.startsWith(nameNorm)) return;
+
+        // Date filter on 'Day' column (col G)
+        const dayStr = row['Day'] || '';
+        if (!dayStr) return;
+        const dayDate = new Date(dayStr);
+        if (isNaN(dayDate.getTime())) return;
+        if (dayDate < from || dayDate > to) return;
+
+        spend += parseFloat(String(row['Amount Spent'] || '0').replace(/[₹,\s]/g, '')) || 0;
+        impressions += parseFloat(String(row['Impressions'] || '0').replace(/[,\s]/g, '')) || 0;
+        clicks += parseFloat(String(row['Link Clicks'] || '0').replace(/[,\s]/g, '')) || 0;
+        installs += parseFloat(String(row['App Installs'] || '0').replace(/[,\s]/g, '')) || 0;
+        thruPlays += parseFloat(String(row['ThruPlays'] || '0').replace(/[,\s]/g, '')) || 0;
+        threeSecViews += parseFloat(String(row['3-Second Video Views'] || '0').replace(/[,\s]/g, '')) || 0;
+    });
+
+    // Apply 1.18x tax to spend
+    spend = spend * 1.18;
+    // ThruPlays and 3-sec views also have 1.18x in the sheet formulas
+    thruPlays = thruPlays * 1.18;
+    threeSecViews = threeSecViews * 1.18;
+
+    // --- Aggregate from Metabase Import (signups, P0P1, trials, D0, D6, revenue) ---
+    let signups = 0, p0 = 0, p1 = 0, d0Trials = 0, d0 = 0, d0Revenue = 0;
+    let d6 = 0, d6Revenue = 0, newConversions = 0, newUserRev = 0, overallRevenue = 0;
+    let d6OverallCon = 0, d6OverallRevenue = 0;
+
+    metabaseImportRaw.forEach(row => {
+        // Match by tracker_name (col E)
+        const trackerName = (row['tracker_name'] || '').trim().toLowerCase();
+        if (trackerName !== nameNorm) return;
+
+        // Campaign filter: must contain "Test"
+        const campaign = row['campaign_name'] || '';
+        if (!campaign.includes('Test')) return;
+
+        // Date filter on 'date' column (col B)
+        const dateStr = row['date'] || '';
+        if (!dateStr) return;
+        const rowDate = new Date(dateStr);
+        if (isNaN(rowDate.getTime())) return;
+        if (rowDate < from || rowDate > to) return;
+
+        const pn = (v) => parseFloat(String(v || '0').replace(/[₹,\s%]/g, '')) || 0;
+
+        signups += pn(row['signups']);
+        p0 += pn(row['p0_signup']);
+        p1 += pn(row['p1_signup']);
+        d0Trials += pn(row['d0_trial']);
+        d0 += pn(row['d0']);
+        d0Revenue += pn(row['d0_revenue']);
+        d6 += pn(row['d0_2d_d6'] || row['d0-d6']);
+        d6Revenue += pn(row['d0_2d_d6_revenue'] || row['d0-d6_revenue'] || row['d0_d6_revenue_overall'] || row['d0_2d_d6_revenue_overall']);
+        newConversions += pn(row['new_converted_user']);
+        newUserRev += pn(row['new_user_rev']);
+        overallRevenue += pn(row['overall_revenue']);
+        d6OverallCon += pn(row['d0_d6_overall']);
+        d6OverallRevenue += pn(row['d0_d6_revenue_overall']);
+    });
+
+    const p0p1 = p0 + p1;
+
+    // Calculate derived metrics
+    return {
+        // Raw from Meta Ads Dump
+        spent: spend,
+        impressions: impressions,
+        clicks: clicks,
+        installs: installs,
+        thruPlays: thruPlays,
+        threeSecViews: threeSecViews,
+        // Calculated from Meta Ads Dump
+        cpm: impressions > 0 ? (spend / impressions * 1000) : 0,
+        ctr: impressions > 0 ? (clicks / impressions) : 0,
+        cpi: installs > 0 ? (spend / installs) : 0,
+        hook: impressions > 0 ? (threeSecViews / impressions) : 0,
+        hold: threeSecViews > 0 ? (thruPlays / threeSecViews) : 0,
+        fullPlay: impressions > 0 ? (thruPlays / impressions) : 0,
+        // Raw from Metabase Import
+        signups: signups,
+        p0p1: p0p1,
+        d0Trials: d0Trials,
+        d0: d0,
+        d6: d6,
+        newConversions: newConversions,
+        overallRevenue: overallRevenue,
+        d6Revenue: d6Revenue,
+        d6OverallRevenue: d6OverallRevenue,
+        // Calculated costs
+        signupCost: signups > 0 ? (spend / signups) : 0,
+        signupPct: installs > 0 ? (signups / installs) : 0,
+        p0p1Pct: signups > 0 ? (p0p1 / signups) : 0,
+        p0p1Cost: p0p1 > 0 ? (spend / p0p1) : 0,
+        d0TrialCost: d0Trials > 0 ? (spend / d0Trials) : 0,
+        d0CAC: d0 > 0 ? (spend / d0) : 0,
+        d6CAC: d6 > 0 ? (spend / d6) : 0,
+        d6ROAS: spend > 0 ? (d6OverallRevenue / spend * 100) : 0,
+        newUserCAC: newConversions > 0 ? (spend / newConversions) : 0,
+        overallROAS: spend > 0 ? (overallRevenue / spend * 100) : 0
+    };
 }
 
 // ---- Filters ----
@@ -1074,8 +1236,8 @@ document.getElementById('sourceFilter').addEventListener('change', () => renderC
 function initDatePickers() {
     if (typeof flatpickr === 'undefined') {
         // Fallback: use change events if flatpickr not loaded
-        document.getElementById('dateFrom').addEventListener('change', () => renderCurrentView());
-        document.getElementById('dateTo').addEventListener('change', () => renderCurrentView());
+        document.getElementById('dateFrom').addEventListener('change', () => { normalizeData(); renderCurrentView(); });
+        document.getElementById('dateTo').addEventListener('change', () => { normalizeData(); renderCurrentView(); });
         return;
     }
     const fpConfig = {
@@ -1084,7 +1246,7 @@ function initDatePickers() {
         altFormat: 'd M Y',
         theme: 'dark',
         allowInput: false,
-        onChange: () => renderCurrentView()
+        onChange: () => { normalizeData(); renderCurrentView(); }
     };
     flatpickr('#dateFrom', fpConfig);
     flatpickr('#dateTo', fpConfig);
@@ -1095,6 +1257,7 @@ document.getElementById('clearDates').addEventListener('click', () => {
     const toEl = document.getElementById('dateTo');
     if (fromEl._flatpickr) { fromEl._flatpickr.clear(); } else { fromEl.value = ''; }
     if (toEl._flatpickr) { toEl._flatpickr.clear(); } else { toEl.value = ''; }
+    normalizeData();
     renderCurrentView();
 });
 document.getElementById('refreshBtn').addEventListener('click', fetchData);
