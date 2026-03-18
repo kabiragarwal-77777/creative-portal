@@ -15,19 +15,29 @@ let metabaseImportRaw = []; // Raw rows from 'Metabase Meta Ad Level Import' tab
 async function fetchData() {
     showLoading(true);
     try {
-        const [mainData, adsDump, metabaseImport] = await Promise.all([
-            fetchViaJSONP(),
-            fetchSheetTab(META_ADS_DUMP_SHEET).catch(e => { console.warn('Meta Ads Dump fetch failed:', e); return []; }),
-            fetchSheetTab(METABASE_IMPORT_SHEET).catch(e => { console.warn('Metabase Import fetch failed:', e); return []; })
-        ]);
+        // Load main sheet first (fast, small)
+        const mainData = await fetchViaJSONP();
         allData = mainData;
-        metaAdsDumpRaw = adsDump;
-        metabaseImportRaw = metabaseImport;
-        console.log(`Loaded: ${mainData.length} creatives, ${adsDump.length} ads dump rows, ${metabaseImport.length} metabase rows`);
         normalizeData();
         document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
         applyFilters();
         renderCurrentView();
+        showLoading(false);
+
+        // Then load raw data tabs in background (large, slower)
+        console.log('Loading raw data tabs in background...');
+        Promise.all([
+            fetchSheetTab(META_ADS_DUMP_SHEET).catch(e => { console.warn('Meta Ads Dump fetch failed:', e); return []; }),
+            fetchSheetTab(METABASE_IMPORT_SHEET).catch(e => { console.warn('Metabase Import fetch failed:', e); return []; })
+        ]).then(([adsDump, metabaseImport]) => {
+            metaAdsDumpRaw = adsDump;
+            metabaseImportRaw = metabaseImport;
+            console.log(`Raw tabs loaded: ${adsDump.length} ads dump rows, ${metabaseImport.length} metabase rows`);
+            // Re-aggregate with raw data now available
+            normalizeData();
+            applyFilters();
+            renderCurrentView();
+        });
     } catch (err) {
         console.error('Fetch error:', err);
         document.getElementById('loadingOverlay').innerHTML = `
@@ -37,7 +47,6 @@ async function fetchData() {
         `;
         return;
     }
-    showLoading(false);
 }
 
 function fetchViaJSONP() {
@@ -47,7 +56,7 @@ function fetchViaJSONP() {
         const timeout = setTimeout(() => {
             cleanup();
             reject(new Error('Request timed out'));
-        }, 15000);
+        }, 60000);
 
         function cleanup() {
             clearTimeout(timeout);
@@ -76,7 +85,7 @@ function fetchSheetTab(sheetName) {
     return new Promise((resolve, reject) => {
         const callbackName = 'sheetCb_' + sheetName.replace(/\W/g, '') + '_' + Date.now();
         const script = document.createElement('script');
-        const timeout = setTimeout(() => { cleanup(); reject(new Error('Timeout fetching ' + sheetName)); }, 30000);
+        const timeout = setTimeout(() => { cleanup(); reject(new Error('Timeout fetching ' + sheetName)); }, 90000);
         function cleanup() { clearTimeout(timeout); delete window[callbackName]; if (script.parentNode) script.parentNode.removeChild(script); }
         window[callbackName] = function(response) {
             cleanup();
