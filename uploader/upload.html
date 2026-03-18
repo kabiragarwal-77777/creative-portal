@@ -663,7 +663,7 @@
                 </div>
                 <div class="form-group">
                     <label>Sheet Tab</label>
-                    <select id="tabName">
+                    <select id="tabName" onchange="onTabChange(this.value)">
                         <option value="sheet1">Ad / Adset Creation</option>
                         <option value="Campaign Creation">Campaign Creation</option>
                     </select>
@@ -1549,8 +1549,14 @@
     };
 
     // Tab dropdown is hardcoded to the two known sheets
-    // Mode switch auto-selects the correct tab
+    // Mode switch auto-selects the correct tab, and vice versa
     window.fetchSheetTabs = function () {}; // no-op, kept for oninput compatibility
+
+    window.onTabChange = function (tabValue) {
+        const newMode = tabValue === 'Campaign Creation' ? 'campaign' : 'ad';
+        document.querySelector(`input[name="uploadMode"][value="${newMode}"]`).checked = true;
+        switchUploadMode(newMode);
+    };
 
     // =========================================================================
     // CAMPAIGN CREATION PIPELINE
