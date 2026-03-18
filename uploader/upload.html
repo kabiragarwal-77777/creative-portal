@@ -664,7 +664,8 @@
                 <div class="form-group">
                     <label>Sheet Tab</label>
                     <select id="tabName">
-                        <option value="sheet1">sheet1</option>
+                        <option value="sheet1">Ad / Adset Creation</option>
+                        <option value="Campaign Creation">Campaign Creation</option>
                     </select>
                 </div>
             </div>
@@ -1532,6 +1533,9 @@
                 sec.style.display = '';
             }
         });
+        // Auto-switch sheet tab
+        $('tabName').value = mode === 'campaign' ? 'Campaign Creation' : 'sheet1';
+
         // Update execute button text
         const createBtn = $('createBtn');
         if (createBtn) createBtn.innerHTML = mode === 'campaign' ? '&#9889; Create Campaign' : '&#9889; Create Ad';
@@ -1544,49 +1548,9 @@
         }
     };
 
-    // =========================================================================
-    // FETCH SHEET TABS (dropdown)
-    // =========================================================================
-    let _tabFetchTimeout = null;
-    window.fetchSheetTabs = function () {
-        clearTimeout(_tabFetchTimeout);
-        _tabFetchTimeout = setTimeout(async () => {
-            const sheetId = $('sheetId').value.trim();
-            if (!sheetId) return;
-            const tabSelect = $('tabName');
-            const currentVal = tabSelect.value;
-
-            // Probe candidate tab names via gviz API
-            // Google Sheets gviz returns valid response only for existing tabs
-            const candidates = [
-                'sheet1', 'Sheet1', 'Sheet2', 'sheet2', 'Sheet3', 'sheet3',
-                'Ad Creation', 'ad creation', 'Campaign Creation', 'campaign creation',
-                'Ads', 'Campaigns', 'Data', 'Config', 'Template',
-            ];
-            const foundTabs = [];
-            await Promise.allSettled(candidates.map(async (tab) => {
-                try {
-                    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tab)}&tq=${encodeURIComponent('select * limit 0')}`;
-                    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
-                    const t = await r.text();
-                    if (t.includes('google.visualization.Query.setResponse') && !t.includes('"status":"error"')) {
-                        foundTabs.push(tab);
-                    }
-                } catch (_) {}
-            }));
-
-            if (foundTabs.length > 0) {
-                // Preserve order: sort by candidate list order
-                foundTabs.sort((a, b) => candidates.indexOf(a) - candidates.indexOf(b));
-                tabSelect.innerHTML = foundTabs.map(n =>
-                    `<option value="${n}" ${n === currentVal ? 'selected' : ''}>${n}</option>`
-                ).join('');
-            }
-        }, 500);
-    };
-
-    // Fetch tabs on load
-    setTimeout(fetchSheetTabs, 1000);
+    // Tab dropdown is hardcoded to the two known sheets
+    // Mode switch auto-selects the correct tab
+    window.fetchSheetTabs = function () {}; // no-op, kept for oninput compatibility
 
     // =========================================================================
     // CAMPAIGN CREATION PIPELINE
