@@ -647,14 +647,25 @@
             <span class="section-toggle">&#9662;</span>
         </div>
         <div class="section-body">
+            <!-- Mode Selector -->
+            <div style="margin-bottom: 18px;">
+                <label style="font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block;">Mode</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="uploadMode" value="ad" checked onchange="switchUploadMode(this.value)"><span>Ad / Adset Creation</span></label>
+                    <label><input type="radio" name="uploadMode" value="campaign" onchange="switchUploadMode(this.value)"><span>Campaign Creation</span></label>
+                </div>
+            </div>
+
             <div class="form-grid">
                 <div class="form-group">
                     <label>Google Sheet ID</label>
-                    <input type="text" id="sheetId" placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" value="1BZLKA1MjctDvNtko9hDpaoShFwZzUttAp8QTZmh93RE">
+                    <input type="text" id="sheetId" placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" value="1BZLKA1MjctDvNtko9hDpaoShFwZzUttAp8QTZmh93RE" oninput="fetchSheetTabs()">
                 </div>
                 <div class="form-group">
-                    <label>Tab Name</label>
-                    <input type="text" id="tabName" placeholder="e.g. Sheet1" value="sheet1">
+                    <label>Sheet Tab</label>
+                    <select id="tabName">
+                        <option value="sheet1">sheet1</option>
+                    </select>
                 </div>
             </div>
             <div style="margin-top: 16px;">
@@ -1498,6 +1509,167 @@
     });
 
     // =========================================================================
+    // UPLOAD MODE (Ad/Adset vs Campaign)
+    // =========================================================================
+    let currentMode = 'ad'; // 'ad' or 'campaign'
+
+    window.switchUploadMode = function (mode) {
+        currentMode = mode;
+        // Hide/show form sections 2-4 (adset, targeting, creative, ad) based on mode
+        const adSections = document.querySelectorAll('.section-card');
+        // Sections: 0=Source, 1=Settings, 2=Campaign, 3=Adset, 4=Creative, 5=Preview, 6=Log
+        // In campaign mode, hide sections 2-4 (campaign select, adset config, creative/ad)
+        adSections.forEach((sec, i) => {
+            const header = sec.querySelector('.section-header h2');
+            if (!header) return;
+            const text = header.textContent.trim();
+            if (mode === 'campaign') {
+                // Hide Campaign Select, Adset, Targeting, Creative sections
+                if (text.includes('Campaign') || text.includes('Adset') || text.includes('Targeting') || text.includes('Creative') || text.includes('Ad Config')) {
+                    sec.style.display = 'none';
+                }
+            } else {
+                sec.style.display = '';
+            }
+        });
+        // Update execute button text
+        const createBtn = $('createBtn');
+        if (createBtn) createBtn.innerHTML = mode === 'campaign' ? '&#9889; Create Campaign' : '&#9889; Create Ad';
+        const bulkBtn = $('bulkBtn');
+        if (bulkBtn) {
+            const count = $('bulkCount')?.textContent || '0';
+            bulkBtn.innerHTML = mode === 'campaign'
+                ? `&#9889; Create Selected Campaigns (<span id="bulkCount">${count}</span>)`
+                : `&#9889; Run Selected Rows (<span id="bulkCount">${count}</span>)`;
+        }
+    };
+
+    // =========================================================================
+    // FETCH SHEET TABS (dropdown)
+    // =========================================================================
+    let _tabFetchTimeout = null;
+    window.fetchSheetTabs = function () {
+        clearTimeout(_tabFetchTimeout);
+        _tabFetchTimeout = setTimeout(async () => {
+            const sheetId = $('sheetId').value.trim();
+            if (!sheetId) return;
+            try {
+                // Google Sheets API returns sheet names in the HTML page
+                const resp = await fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/edit`, { mode: 'cors' });
+                const text = await resp.text();
+                // Try parsing sheet names from response - fallback to common names
+                const tabSelect = $('tabName');
+                const currentVal = tabSelect.value;
+
+                // Try fetching via gviz with a dummy request to find available sheets
+                const sheetNames = [];
+                // Method: try loading each potential tab to see if it exists
+                // Better method: parse the HTML for sheet tab names
+                const sheetMatch = text.match(/\"sheets\":\[(.*?)\]/s);
+                if (sheetMatch) {
+                    const names = [...sheetMatch[1].matchAll(/\"name\":\"([^\"]+)\"/g)].map(m => m[1]);
+                    sheetNames.push(...names);
+                }
+
+                if (sheetNames.length > 0) {
+                    tabSelect.innerHTML = sheetNames.map(n =>
+                        `<option value="${n}" ${n === currentVal ? 'selected' : ''}>${n}</option>`
+                    ).join('');
+                }
+            } catch (e) {
+                // CORS will block this - use alternative method
+                // Try loading with gviz and different sheet names
+                try {
+                    const tabSelect = $('tabName');
+                    const sheetId = $('sheetId').value.trim();
+                    const commonTabs = ['Sheet1', 'sheet1', 'Ad Creation', 'Campaign Creation'];
+                    const foundTabs = [];
+                    await Promise.all(commonTabs.map(async (tab) => {
+                        try {
+                            const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tab)}&tq=${encodeURIComponent('select * limit 0')}`;
+                            const r = await fetch(url);
+                            const t = await r.text();
+                            if (t.includes('google.visualization.Query.setResponse')) {
+                                foundTabs.push(tab);
+                            }
+                        } catch (_) {}
+                    }));
+                    if (foundTabs.length > 0) {
+                        const currentVal = tabSelect.value;
+                        tabSelect.innerHTML = foundTabs.map(n =>
+                            `<option value="${n}" ${n === currentVal ? 'selected' : ''}>${n}</option>`
+                        ).join('');
+                    }
+                } catch (_) {}
+            }
+        }, 500);
+    };
+
+    // Fetch tabs on load
+    setTimeout(fetchSheetTabs, 1000);
+
+    // =========================================================================
+    // CAMPAIGN CREATION PIPELINE
+    // =========================================================================
+    async function executeCampaignRow(config, sheetRowIndex, sheetTabName) {
+        const logId = addLogEntry('Creating campaign...', 'pending');
+        try {
+            const params = {
+                name: config.campaign_name,
+                objective: config.objective || 'OUTCOME_APP_PROMOTION',
+                status: config.status || 'PAUSED',
+                special_ad_categories: JSON.stringify([config.special_ad_categories || 'FINANCIAL_PRODUCTS_SERVICES']),
+                buying_type: config.buying_type || 'AUCTION',
+            };
+
+            if (config.bid_strategy) params.bid_strategy = config.bid_strategy;
+
+            // Budget optimization (CBO)
+            const cbo = (config.budget_optimization || '').toUpperCase();
+            if (cbo === 'ON') {
+                params.campaign_budget_optimization = true;
+                if (config.daily_budget) params.daily_budget = Math.round(Number(config.daily_budget) * 100);
+                if (config.lifetime_budget) params.lifetime_budget = Math.round(Number(config.lifetime_budget) * 100);
+            }
+
+            if (config.spend_cap) params.spend_cap = Math.round(Number(config.spend_cap) * 100);
+
+            const data = await metaPost(`/${META_AD_ACCOUNT_ID}/campaigns`, params);
+            const campaignId = data.id;
+            updateLogEntry(logId, `Campaign created (${campaignId})`, 'success');
+
+            // Write result to sheet
+            if (sheetRowIndex) {
+                await writeResultToSheet(sheetRowIndex, {
+                    campaign_id: campaignId,
+                    upload_status: 'SUCCESS',
+                    error_message: '',
+                }, sheetTabName);
+            }
+
+            const acctNum = META_AD_ACCOUNT_ID.replace('act_', '');
+            addLogResult(
+                `Campaign created!<br>Campaign ID: <strong>${esc(campaignId)}</strong><br>Name: <strong>${esc(config.campaign_name)}</strong><br><a href="https://www.facebook.com/adsmanager/manage/campaigns?act=${acctNum}&selected_campaign_ids=${campaignId}" target="_blank">View in Ads Manager &#8594;</a>`,
+                'success'
+            );
+
+            return { campaignId };
+        } catch (err) {
+            updateLogEntry(logId, `Campaign creation failed: ${err.message}`, 'error');
+            addLogResult('Campaign failed: ' + esc(err.message), 'error');
+
+            if (sheetRowIndex) {
+                await writeResultToSheet(sheetRowIndex, {
+                    campaign_id: '',
+                    upload_status: 'FAILED',
+                    error_message: err.message,
+                }, sheetTabName);
+            }
+            throw err;
+        }
+    }
+
+    // =========================================================================
     // GOOGLE SHEET DATA (client-side JSONP via Google Visualization API)
     // =========================================================================
     window.loadSheetData = async function () {
@@ -1891,6 +2063,14 @@
     // CONFIRM MODAL
     // =========================================================================
     window.confirmExecute = function () {
+        if (currentMode === 'campaign') {
+            // Campaign mode - just need a row selected
+            if (!META_ACCESS_TOKEN) return alert('Please configure Meta API credentials first.');
+            if (selectedSheetRowIndex == null) return alert('Please select a row from the sheet.');
+            $('confirmStatus').textContent = 'Campaign Creation';
+            $('confirmModal').classList.add('show');
+            return;
+        }
         if (!validate()) return;
         $('confirmStatus').textContent = $('adsetStatus').value;
         $('confirmModal').classList.add('show');
@@ -2402,7 +2582,8 @@
             createBtn.disabled = true;
             bulkBtn.disabled = true;
 
-            addLogEntry(`Starting bulk execution: ${rows.length} rows`, 'info');
+            const isCampaignMode = currentMode === 'campaign';
+            addLogEntry(`Starting bulk ${isCampaignMode ? 'campaign' : 'ad'} creation: ${rows.length} rows`, 'info');
             let successCount = 0, failCount = 0;
 
             // Track adset name → ID for reuse (one adset, multiple ads)
@@ -2410,31 +2591,41 @@
 
             for (let i = 0; i < rows.length; i++) {
                 const rowIdx = rows[i];
-                const rowName = sheetRows[rowIdx]?.adset_name || sheetRows[rowIdx]?.['adset_name'] || 'Row ' + (rowIdx + 1);
+                const row = sheetRows[rowIdx];
+                const rowName = isCampaignMode
+                    ? (row?.campaign_name || row?.['campaign_name'] || 'Row ' + (rowIdx + 1))
+                    : (row?.adset_name || row?.['adset_name'] || 'Row ' + (rowIdx + 1));
                 addLogEntry(`\u2501\u2501\u2501 Row ${i + 1}/${rows.length}: ${rowName} \u2501\u2501\u2501`, 'info');
 
-                selectRow(rowIdx);
-                await new Promise(r => setTimeout(r, 300));
+                const sheetTabName = $('tabName').value.trim() || 'Sheet1';
 
                 try {
-                    const config = collectFormData();
-                    for (const key of Object.keys(config)) {
-                        if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
+                    if (isCampaignMode) {
+                        // Campaign creation mode — use sheet row directly
+                        const config = {};
+                        for (const h of sheetHeaders) {
+                            config[h.toLowerCase().replace(/[\s-]/g, '_')] = row[h] != null ? String(row[h]) : null;
+                        }
+                        for (const key of Object.keys(config)) {
+                            if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
+                        }
+                        await executeCampaignRow(config, rowIdx + 2, sheetTabName);
+                        successCount++;
+                    } else {
+                        selectRow(rowIdx);
+                        await new Promise(r => setTimeout(r, 300));
+                        const config = collectFormData();
+                        for (const key of Object.keys(config)) {
+                            if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
+                        }
+                        const adsetName = config.adset_name || '';
+                        const existingAdsetId = adsetCache[adsetName] || null;
+                        const result = await executeSingleRow(config, rowIdx + 2, sheetTabName, existingAdsetId);
+                        if (adsetName && result && result.adsetId) {
+                            adsetCache[adsetName] = result.adsetId;
+                        }
+                        successCount++;
                     }
-                    const sheetTabName = $('tabName').value.trim() || 'Sheet1';
-                    const adsetName = config.adset_name || '';
-
-                    // Reuse adset if same name was already created
-                    const existingAdsetId = adsetCache[adsetName] || null;
-
-                    const result = await executeSingleRow(config, rowIdx + 2, sheetTabName, existingAdsetId);
-
-                    // Cache the adset ID for subsequent rows with same name
-                    if (adsetName && result && result.adsetId) {
-                        adsetCache[adsetName] = result.adsetId;
-                    }
-
-                    successCount++;
                 } catch (err) {
                     addLogEntry(`Row ${i + 1} failed: ${err.message}`, 'error');
                     failCount++;
@@ -2450,21 +2641,40 @@
         // Single row execution
         closeModal();
         clearLog();
-        const config = collectFormData();
         const createBtn = $('createBtn');
         createBtn.disabled = true;
-        const sheetRowIndex = selectedSheetRowIndex != null ? selectedSheetRowIndex + 2 : null;
         const sheetTabName = $('tabName').value.trim() || 'Sheet1';
-        addLogEntry('Starting ad creation pipeline...', 'info');
 
-        for (const key of Object.keys(config)) {
-            if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
-        }
-
-        try {
-            await executeSingleRow(config, sheetRowIndex, sheetTabName);
-        } catch (err) {
-            addLogEntry(`Pipeline failed: ${err.message}`, 'error');
+        if (currentMode === 'campaign') {
+            // Campaign mode — single row
+            const row = sheetRows[selectedSheetRowIndex];
+            if (!row) { addLogEntry('No row selected.', 'error'); createBtn.disabled = false; return; }
+            const config = {};
+            for (const h of sheetHeaders) {
+                config[h.toLowerCase().replace(/[\s-]/g, '_')] = row[h] != null ? String(row[h]) : null;
+            }
+            for (const key of Object.keys(config)) {
+                if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
+            }
+            addLogEntry('Starting campaign creation...', 'info');
+            try {
+                await executeCampaignRow(config, selectedSheetRowIndex + 2, sheetTabName);
+            } catch (err) {
+                addLogEntry(`Campaign creation failed: ${err.message}`, 'error');
+            }
+        } else {
+            // Ad mode — single row
+            const config = collectFormData();
+            const sheetRowIndex = selectedSheetRowIndex != null ? selectedSheetRowIndex + 2 : null;
+            addLogEntry('Starting ad creation pipeline...', 'info');
+            for (const key of Object.keys(config)) {
+                if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
+            }
+            try {
+                await executeSingleRow(config, sheetRowIndex, sheetTabName);
+            } catch (err) {
+                addLogEntry(`Pipeline failed: ${err.message}`, 'error');
+            }
         }
         createBtn.disabled = false;
     };
