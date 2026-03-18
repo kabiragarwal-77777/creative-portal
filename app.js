@@ -1079,21 +1079,13 @@ function renderTable() {
 
 // ---- New This Week ----
 function renderNew() {
-    // Find latest week+year combo (not just max of each independently)
-    console.log('Week/Year sample:', allData.slice(0,3).map(d => ({name: d.name, week: d.week, year: d.year})));
-    const withWeek = allData.filter(d => parseInt(d.week) > 0 && parseInt(d.year) > 0);
-    if (!withWeek.length) {
-        document.getElementById('newCreativeCards').innerHTML = '<p style="color:var(--text-dim);">No week data available.</p>';
-        return;
-    }
-    withWeek.sort((a, b) => {
-        const ya = parseInt(a.year), yb = parseInt(b.year);
-        if (ya !== yb) return yb - ya;
-        return parseInt(b.week) - parseInt(a.week);
+    // Show creatives that went live in the last 7 days (including today)
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).getTime();
+    const newOnes = filteredData.filter(d => {
+        const ts = parseDate(d.date);
+        return ts && ts >= sevenDaysAgo;
     });
-    const maxYear = parseInt(withWeek[0].year);
-    const maxWeek = parseInt(withWeek[0].week);
-    const newOnes = filteredData.filter(d => (parseInt(d.week) === maxWeek && parseInt(d.year) === maxYear));
     const container = document.getElementById('newCreativeCards');
     if (!newOnes.length) {
         container.innerHTML = '<p style="color:var(--text-dim);">No new creatives found for the latest week.</p>';
