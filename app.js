@@ -89,7 +89,7 @@ function fetchSheetTab(sheetName) {
         function cleanup() { clearTimeout(timeout); delete window[callbackName]; if (script.parentNode) script.parentNode.removeChild(script); }
         window[callbackName] = function(response) {
             cleanup();
-            try { resolve(parseGvizResponse(response)); } catch(e) { reject(e); }
+            try { resolve(parseGvizResponse(response, true)); } catch(e) { reject(e); }
         };
         const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${callbackName}&sheet=${encodeURIComponent(sheetName)}`;
         script.src = url;
@@ -98,7 +98,7 @@ function fetchSheetTab(sheetName) {
     });
 }
 
-function parseGvizResponse(response) {
+function parseGvizResponse(response, useRawValues) {
     const table = response.table;
     // Build header list: use label, fallback to column id (A, B, C...)
     const headers = table.cols.map((c, i) => {
@@ -115,8 +115,19 @@ function parseGvizResponse(response) {
             if (idx >= headers.length) return;
             const key = headers[idx];
             if (cell) {
-                // Prefer formatted value (f) for display, raw value (v) as fallback
-                obj[key] = cell.f != null ? String(cell.f) : (cell.v != null ? String(cell.v) : '');
+                if (useRawValues) {
+                    // For raw data tabs: use raw value (v) for numbers/dates
+                    // Convert gviz Date(y,m,d) strings to ISO format
+                    let val = cell.v;
+                    if (typeof val === 'string' && val.startsWith('Date(')) {
+                        const parts = val.match(/Date\((\d+),(\d+),(\d+)/);
+                        if (parts) val = `${parts[1]}-${String(+parts[2]+1).padStart(2,'0')}-${parts[3].padStart(2,'0')}`;
+                    }
+                    obj[key] = val != null ? val : '';
+                } else {
+                    // For main sheet: prefer formatted value (f) for display
+                    obj[key] = cell.f != null ? String(cell.f) : (cell.v != null ? String(cell.v) : '');
+                }
             } else {
                 obj[key] = '';
             }
@@ -402,9 +413,11 @@ function aggregateMetrics(creativeName, dateFrom, dateTo) {
     let spend = 0, impressions = 0, clicks = 0, installs = 0, thruPlays = 0, threeSecViews = 0;
 
     metaAdsDumpRaw.forEach(row => {
-        // Match by 'Refined ad name' (col A) or 'Ad Name' (col J) against creative name
-        const rowName = (row['Refined ad name'] || row['Ad Name'] || '').trim().toLowerCase();
-        if (rowName !== nameNorm && !rowName.startsWith(nameNorm)) return;
+        // Match by 'Ad Name' (col J) — same as sheet formula uses $J:$J,$C
+        // Ad Name has date suffix matching the creative name exactly
+        const adName = (row['Ad Name'] || '').trim().toLowerCase();
+        const refinedName = (row['Refined ad name'] || '').trim().toLowerCase();
+        if (adName !== nameNorm && refinedName !== nameNorm && !nameNorm.startsWith(refinedName)) return;
 
         // Date filter on 'Day' column (col G)
         const dayStr = row['Day'] || '';
@@ -413,12 +426,12 @@ function aggregateMetrics(creativeName, dateFrom, dateTo) {
         if (isNaN(dayDate.getTime())) return;
         if (dayDate < from || dayDate > to) return;
 
-        spend += parseFloat(String(row['Amount Spent'] || '0').replace(/[₹,\s]/g, '')) || 0;
-        impressions += parseFloat(String(row['Impressions'] || '0').replace(/[,\s]/g, '')) || 0;
-        clicks += parseFloat(String(row['Link Clicks'] || '0').replace(/[,\s]/g, '')) || 0;
-        installs += parseFloat(String(row['App Installs'] || '0').replace(/[,\s]/g, '')) || 0;
-        thruPlays += parseFloat(String(row['ThruPlays'] || '0').replace(/[,\s]/g, '')) || 0;
-        threeSecViews += parseFloat(String(row['3-Second Video Views'] || '0').replace(/[,\s]/g, '')) || 0;
+        spend += parseFloat(row['Amount Spent']) || 0;
+        impressions += parseFloat(row['Impressions']) || 0;
+        clicks += parseFloat(row['Link Clicks']) || 0;
+        installs += parseFloat(row['App Installs']) || 0;
+        thruPlays += parseFloat(row['ThruPlays']) || 0;
+        threeSecViews += parseFloat(row['3-Second Video Views']) || 0;
     });
 
     // Apply 1.18x tax to spend
@@ -448,7 +461,7 @@ function aggregateMetrics(creativeName, dateFrom, dateTo) {
         if (isNaN(rowDate.getTime())) return;
         if (rowDate < from || rowDate > to) return;
 
-        const pn = (v) => parseFloat(String(v || '0').replace(/[₹,\s%]/g, '')) || 0;
+        const pn = (v) => parseFloat(v) || 0;
 
         signups += pn(row['signups']);
         p0 += pn(row['p0_signup']);
@@ -457,7 +470,7 @@ function aggregateMetrics(creativeName, dateFrom, dateTo) {
         d0 += pn(row['d0']);
         d0Revenue += pn(row['d0_revenue']);
         d6 += pn(row['d0_2d_d6'] || row['d0-d6']);
-        d6Revenue += pn(row['d0_2d_d6_revenue'] || row['d0-d6_revenue'] || row['d0_d6_revenue_overall'] || row['d0_2d_d6_revenue_overall']);
+        d6Revenue += pn(row['d0_2d_d6_revenue'] || row['d0-d6_revenue']);
         newConversions += pn(row['new_converted_user']);
         newUserRev += pn(row['new_user_rev']);
         overallRevenue += pn(row['overall_revenue']);
