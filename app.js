@@ -174,8 +174,8 @@ function normalizeData() {
             live: isLive ? 'Live' : 'Paused',
             testPerf: get(['Test Perf']),
             nextSteps: get(['Next']),
-            week: get(['Week']),
-            year: get(['Year']),
+            week: d['Week'] || get(['Week']),
+            year: d['Year'] || get(['Year']),
             _raw: d,
             _source: 'sheets'
         };
@@ -1080,6 +1080,7 @@ function renderTable() {
 // ---- New This Week ----
 function renderNew() {
     // Find latest week+year combo (not just max of each independently)
+    console.log('Week/Year sample:', allData.slice(0,3).map(d => ({name: d.name, week: d.week, year: d.year})));
     const withWeek = allData.filter(d => parseInt(d.week) > 0 && parseInt(d.year) > 0);
     if (!withWeek.length) {
         document.getElementById('newCreativeCards').innerHTML = '<p style="color:var(--text-dim);">No week data available.</p>';
