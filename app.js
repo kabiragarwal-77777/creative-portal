@@ -477,21 +477,12 @@ function applyFilters() {
     const status = document.getElementById('statusFilter').value;
     const perf = document.getElementById('perfFilter').value;
     const source = document.getElementById('sourceFilter').value;
-    const dateFrom = document.getElementById('dateFrom').value;
-    const dateTo = document.getElementById('dateTo').value;
-    const dateFromTs = dateFrom ? new Date(dateFrom).getTime() : 0;
-    const dateToTs = dateTo ? new Date(dateTo + 'T23:59:59').getTime() : Infinity;
-
     filteredData = allData.filter(d => {
         if (search && !d.name.toLowerCase().includes(search)) return false;
         if (type !== 'all' && d.type !== type) return false;
         if (status !== 'all' && d.live !== status) return false;
         if (perf !== 'all' && d.testPerf !== perf) return false;
-        if (dateFrom || dateTo) {
-            const dTs = parseDate(d.date);
-            if (dTs && (dTs < dateFromTs || dTs > dateToTs)) return false;
-            if (!dTs && (dateFrom || dateTo)) return false;
-        }
+        // Date filter controls aggregation period (in normalizeData), not creative filtering
         if (source !== 'all') {
             const s = d._source || 'sheets';
             if (source === 'meta' && s !== 'meta') return false;
