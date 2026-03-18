@@ -33,7 +33,8 @@ async function fetchData() {
             metaAdsDumpRaw = adsDump;
             metabaseImportRaw = metabaseImport;
             console.log(`Raw tabs loaded: ${adsDump.length} ads dump rows, ${metabaseImport.length} metabase rows`);
-            // Re-aggregate with raw data now available
+            // Build fast lookup indexes, then re-aggregate
+            buildRawIndexes();
             normalizeData();
             applyFilters();
             renderCurrentView();
@@ -401,110 +402,125 @@ function mergeDataSources() {
     allData = merged;
 }
 
-function aggregateMetrics(creativeName, dateFrom, dateTo) {
-    // Normalize the creative name for matching
-    const nameNorm = creativeName.trim().toLowerCase();
+// Pre-built lookup maps for fast aggregation (built once when raw data loads)
+let adsDumpIndex = new Map();   // adName -> [{day, spend, impr, clicks, installs, thru, threeSec}]
+let metabaseIndex = new Map();  // trackerName -> [{day, signups, p0, p1, d0Trial, d0, d6, ...}]
 
-    // Parse date filter bounds
-    const from = dateFrom ? new Date(dateFrom) : new Date('2000-01-01');
-    const to = dateTo ? new Date(dateTo + 'T23:59:59') : new Date('2099-12-31');
-
-    // --- Aggregate from Meta Ads Dump (spend, impressions, clicks, installs, thruplay, video views) ---
-    let spend = 0, impressions = 0, clicks = 0, installs = 0, thruPlays = 0, threeSecViews = 0;
-
+function buildRawIndexes() {
+    console.time('buildRawIndexes');
+    // Index Meta Ads Dump by Ad Name
+    adsDumpIndex = new Map();
     metaAdsDumpRaw.forEach(row => {
-        // Match by 'Ad Name' (col J) exactly — same as sheet formula $J:$J = $C
         const adName = (row['Ad Name'] || '').trim().toLowerCase();
-        if (adName !== nameNorm) return;
-
-        // Date filter on 'Day' column (col G)
+        if (!adName) return;
         const dayStr = row['Day'] || '';
         if (!dayStr) return;
-        const dayDate = new Date(dayStr);
-        if (isNaN(dayDate.getTime())) return;
-        if (dayDate < from || dayDate > to) return;
-
-        spend += parseFloat(row['Amount Spent']) || 0;
-        impressions += parseFloat(row['Impressions']) || 0;
-        clicks += parseFloat(row['Link Clicks']) || 0;
-        installs += parseFloat(row['App Installs']) || 0;
-        thruPlays += parseFloat(row['ThruPlays']) || 0;
-        threeSecViews += parseFloat(row['3-Second Video Views']) || 0;
+        const dayTs = new Date(dayStr).getTime();
+        if (isNaN(dayTs)) return;
+        if (!adsDumpIndex.has(adName)) adsDumpIndex.set(adName, []);
+        adsDumpIndex.get(adName).push({
+            dayTs,
+            spend: parseFloat(row['Amount Spent']) || 0,
+            impr: parseFloat(row['Impressions']) || 0,
+            clicks: parseFloat(row['Link Clicks']) || 0,
+            installs: parseFloat(row['App Installs']) || 0,
+            thru: parseFloat(row['ThruPlays']) || 0,
+            threeSec: parseFloat(row['3-Second Video Views']) || 0
+        });
     });
 
-    // Apply 1.18x tax to spend
-    spend = spend * 1.18;
-    // ThruPlays and 3-sec views also have 1.18x in the sheet formulas
-    thruPlays = thruPlays * 1.18;
-    threeSecViews = threeSecViews * 1.18;
+    // Index Metabase Import by tracker_name (only "Test" campaigns)
+    metabaseIndex = new Map();
+    metabaseImportRaw.forEach(row => {
+        const campaign = row['campaign_name'] || '';
+        if (!campaign.includes('Test')) return;
+        const trackerName = (row['tracker_name'] || '').trim().toLowerCase();
+        if (!trackerName) return;
+        const dateStr = row['date'] || '';
+        if (!dateStr) return;
+        const dayTs = new Date(dateStr).getTime();
+        if (isNaN(dayTs)) return;
+        const pn = (v) => parseFloat(v) || 0;
+        if (!metabaseIndex.has(trackerName)) metabaseIndex.set(trackerName, []);
+        metabaseIndex.get(trackerName).push({
+            dayTs,
+            signups: pn(row['signups']),
+            p0: pn(row['p0_signup']),
+            p1: pn(row['p1_signup']),
+            d0Trial: pn(row['d0_trial']),
+            d0: pn(row['d0']),
+            d0Revenue: pn(row['d0_revenue']),
+            d6: pn(row['d0_2d_d6'] || row['d0-d6']),
+            d6Revenue: pn(row['d0_2d_d6_revenue'] || row['d0-d6_revenue']),
+            newConv: pn(row['new_converted_user']),
+            newUserRev: pn(row['new_user_rev']),
+            overallRev: pn(row['overall_revenue']),
+            d6OverallCon: pn(row['d0_d6_overall']),
+            d6OverallRev: pn(row['d0_d6_revenue_overall'])
+        });
+    });
+    console.timeEnd('buildRawIndexes');
+    console.log(`Indexed: ${adsDumpIndex.size} ad names, ${metabaseIndex.size} tracker names`);
+}
 
-    // --- Aggregate from Metabase Import (signups, P0P1, trials, D0, D6, revenue) ---
+function aggregateMetrics(creativeName, dateFrom, dateTo) {
+    const nameNorm = creativeName.trim().toLowerCase();
+    const fromTs = dateFrom ? new Date(dateFrom).getTime() : 0;
+    const toTs = dateTo ? new Date(dateTo + 'T23:59:59').getTime() : Infinity;
+
+    // --- Meta Ads Dump (fast lookup) ---
+    let spend = 0, impressions = 0, clicks = 0, installs = 0, thruPlays = 0, threeSecViews = 0;
+    const adsRows = adsDumpIndex.get(nameNorm);
+    if (adsRows) {
+        for (const r of adsRows) {
+            if (r.dayTs < fromTs || r.dayTs > toTs) continue;
+            spend += r.spend;
+            impressions += r.impr;
+            clicks += r.clicks;
+            installs += r.installs;
+            thruPlays += r.thru;
+            threeSecViews += r.threeSec;
+        }
+    }
+    spend *= 1.18;
+    thruPlays *= 1.18;
+    threeSecViews *= 1.18;
+
+    // --- Metabase Import (fast lookup) ---
     let signups = 0, p0 = 0, p1 = 0, d0Trials = 0, d0 = 0, d0Revenue = 0;
     let d6 = 0, d6Revenue = 0, newConversions = 0, newUserRev = 0, overallRevenue = 0;
     let d6OverallCon = 0, d6OverallRevenue = 0;
-
-    metabaseImportRaw.forEach(row => {
-        // Match by tracker_name (col E)
-        const trackerName = (row['tracker_name'] || '').trim().toLowerCase();
-        if (trackerName !== nameNorm) return;
-
-        // Campaign filter: must contain "Test"
-        const campaign = row['campaign_name'] || '';
-        if (!campaign.includes('Test')) return;
-
-        // Date filter on 'date' column (col B)
-        const dateStr = row['date'] || '';
-        if (!dateStr) return;
-        const rowDate = new Date(dateStr);
-        if (isNaN(rowDate.getTime())) return;
-        if (rowDate < from || rowDate > to) return;
-
-        const pn = (v) => parseFloat(v) || 0;
-
-        signups += pn(row['signups']);
-        p0 += pn(row['p0_signup']);
-        p1 += pn(row['p1_signup']);
-        d0Trials += pn(row['d0_trial']);
-        d0 += pn(row['d0']);
-        d0Revenue += pn(row['d0_revenue']);
-        d6 += pn(row['d0_2d_d6'] || row['d0-d6']);
-        d6Revenue += pn(row['d0_2d_d6_revenue'] || row['d0-d6_revenue']);
-        newConversions += pn(row['new_converted_user']);
-        newUserRev += pn(row['new_user_rev']);
-        overallRevenue += pn(row['overall_revenue']);
-        d6OverallCon += pn(row['d0_d6_overall']);
-        d6OverallRevenue += pn(row['d0_d6_revenue_overall']);
-    });
-
+    const mbRows = metabaseIndex.get(nameNorm);
+    if (mbRows) {
+        for (const r of mbRows) {
+            if (r.dayTs < fromTs || r.dayTs > toTs) continue;
+            signups += r.signups;
+            p0 += r.p0;
+            p1 += r.p1;
+            d0Trials += r.d0Trial;
+            d0 += r.d0;
+            d0Revenue += r.d0Revenue;
+            d6 += r.d6;
+            d6Revenue += r.d6Revenue;
+            newConversions += r.newConv;
+            newUserRev += r.newUserRev;
+            overallRevenue += r.overallRev;
+            d6OverallCon += r.d6OverallCon;
+            d6OverallRevenue += r.d6OverallRev;
+        }
+    }
     const p0p1 = p0 + p1;
 
-    // Calculate derived metrics
     return {
-        // Raw from Meta Ads Dump
-        spent: spend,
-        impressions: impressions,
-        clicks: clicks,
-        installs: installs,
-        thruPlays: thruPlays,
-        threeSecViews: threeSecViews,
-        // Calculated from Meta Ads Dump
+        spent: spend, impressions, clicks, installs, thruPlays, threeSecViews,
         cpm: impressions > 0 ? (spend / impressions * 1000) : 0,
         ctr: impressions > 0 ? (clicks / impressions) : 0,
         cpi: installs > 0 ? (spend / installs) : 0,
         hook: impressions > 0 ? (threeSecViews / impressions) : 0,
         hold: threeSecViews > 0 ? (thruPlays / threeSecViews) : 0,
         fullPlay: impressions > 0 ? (thruPlays / impressions) : 0,
-        // Raw from Metabase Import
-        signups: signups,
-        p0p1: p0p1,
-        d0Trials: d0Trials,
-        d0: d0,
-        d6: d6,
-        newConversions: newConversions,
-        overallRevenue: overallRevenue,
-        d6Revenue: d6Revenue,
-        d6OverallRevenue: d6OverallRevenue,
-        // Calculated costs
+        signups, p0p1, d0Trials, d0, d6, newConversions,
+        overallRevenue, d6Revenue, d6OverallRevenue,
         signupCost: signups > 0 ? (spend / signups) : 0,
         signupPct: installs > 0 ? (signups / installs) : 0,
         p0p1Pct: signups > 0 ? (p0p1 / signups) : 0,
