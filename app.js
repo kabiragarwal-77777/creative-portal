@@ -33,11 +33,8 @@ async function fetchData() {
             metaAdsDumpRaw = adsDump;
             metabaseImportRaw = metabaseImport;
             console.log(`Raw tabs loaded: ${adsDump.length} ads dump rows, ${metabaseImport.length} metabase rows`);
-            // Build fast lookup indexes, then re-aggregate
+            // Build fast lookup indexes (used when date filter is applied)
             buildRawIndexes();
-            normalizeData();
-            applyFilters();
-            renderCurrentView();
         });
     } catch (err) {
         console.error('Fetch error:', err);
