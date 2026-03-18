@@ -1553,54 +1553,34 @@
         _tabFetchTimeout = setTimeout(async () => {
             const sheetId = $('sheetId').value.trim();
             if (!sheetId) return;
-            try {
-                // Google Sheets API returns sheet names in the HTML page
-                const resp = await fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/edit`, { mode: 'cors' });
-                const text = await resp.text();
-                // Try parsing sheet names from response - fallback to common names
-                const tabSelect = $('tabName');
-                const currentVal = tabSelect.value;
+            const tabSelect = $('tabName');
+            const currentVal = tabSelect.value;
 
-                // Try fetching via gviz with a dummy request to find available sheets
-                const sheetNames = [];
-                // Method: try loading each potential tab to see if it exists
-                // Better method: parse the HTML for sheet tab names
-                const sheetMatch = text.match(/\"sheets\":\[(.*?)\]/s);
-                if (sheetMatch) {
-                    const names = [...sheetMatch[1].matchAll(/\"name\":\"([^\"]+)\"/g)].map(m => m[1]);
-                    sheetNames.push(...names);
-                }
-
-                if (sheetNames.length > 0) {
-                    tabSelect.innerHTML = sheetNames.map(n =>
-                        `<option value="${n}" ${n === currentVal ? 'selected' : ''}>${n}</option>`
-                    ).join('');
-                }
-            } catch (e) {
-                // CORS will block this - use alternative method
-                // Try loading with gviz and different sheet names
+            // Probe candidate tab names via gviz API
+            // Google Sheets gviz returns valid response only for existing tabs
+            const candidates = [
+                'sheet1', 'Sheet1', 'Sheet2', 'sheet2', 'Sheet3', 'sheet3',
+                'Ad Creation', 'ad creation', 'Campaign Creation', 'campaign creation',
+                'Ads', 'Campaigns', 'Data', 'Config', 'Template',
+            ];
+            const foundTabs = [];
+            await Promise.allSettled(candidates.map(async (tab) => {
                 try {
-                    const tabSelect = $('tabName');
-                    const sheetId = $('sheetId').value.trim();
-                    const commonTabs = ['Sheet1', 'sheet1', 'Ad Creation', 'Campaign Creation'];
-                    const foundTabs = [];
-                    await Promise.all(commonTabs.map(async (tab) => {
-                        try {
-                            const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tab)}&tq=${encodeURIComponent('select * limit 0')}`;
-                            const r = await fetch(url);
-                            const t = await r.text();
-                            if (t.includes('google.visualization.Query.setResponse')) {
-                                foundTabs.push(tab);
-                            }
-                        } catch (_) {}
-                    }));
-                    if (foundTabs.length > 0) {
-                        const currentVal = tabSelect.value;
-                        tabSelect.innerHTML = foundTabs.map(n =>
-                            `<option value="${n}" ${n === currentVal ? 'selected' : ''}>${n}</option>`
-                        ).join('');
+                    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tab)}&tq=${encodeURIComponent('select * limit 0')}`;
+                    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+                    const t = await r.text();
+                    if (t.includes('google.visualization.Query.setResponse') && !t.includes('"status":"error"')) {
+                        foundTabs.push(tab);
                     }
                 } catch (_) {}
+            }));
+
+            if (foundTabs.length > 0) {
+                // Preserve order: sort by candidate list order
+                foundTabs.sort((a, b) => candidates.indexOf(a) - candidates.indexOf(b));
+                tabSelect.innerHTML = foundTabs.map(n =>
+                    `<option value="${n}" ${n === currentVal ? 'selected' : ''}>${n}</option>`
+                ).join('');
             }
         }, 500);
     };
