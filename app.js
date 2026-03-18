@@ -1561,6 +1561,8 @@ function renderAccountsView() {
 // ---- Init ----
 async function init() {
     await fetchData();
-    fetchMetaData();
+    // Meta API fetch disabled — all data now comes from sheet tabs
+    // (Meta Ads Dump + Metabase Meta Ad Level Import)
+    // fetchMetaData();
 }
 init();
