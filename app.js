@@ -1079,8 +1079,19 @@ function renderTable() {
 
 // ---- New This Week ----
 function renderNew() {
-    const maxWeek = Math.max(...allData.map(d => parseInt(d.week) || 0));
-    const maxYear = Math.max(...allData.map(d => parseInt(d.year) || 0));
+    // Find latest week+year combo (not just max of each independently)
+    const withWeek = allData.filter(d => parseInt(d.week) > 0 && parseInt(d.year) > 0);
+    if (!withWeek.length) {
+        document.getElementById('newCreativeCards').innerHTML = '<p style="color:var(--text-dim);">No week data available.</p>';
+        return;
+    }
+    withWeek.sort((a, b) => {
+        const ya = parseInt(a.year), yb = parseInt(b.year);
+        if (ya !== yb) return yb - ya;
+        return parseInt(b.week) - parseInt(a.week);
+    });
+    const maxYear = parseInt(withWeek[0].year);
+    const maxWeek = parseInt(withWeek[0].week);
     const newOnes = filteredData.filter(d => (parseInt(d.week) === maxWeek && parseInt(d.year) === maxYear));
     const container = document.getElementById('newCreativeCards');
     if (!newOnes.length) {
