@@ -1557,7 +1557,9 @@
     // =========================================================================
     async function executeCampaignRow(config, sheetRowIndex, sheetTabName) {
         const logId = addLogEntry('Creating campaign...', 'pending');
+        console.log('[CAMPAIGN] config:', JSON.stringify(config));
         try {
+            if (!config.campaign_name) throw new Error('campaign_name is empty. Check your sheet column header matches exactly.');
             const params = {
                 name: config.campaign_name,
                 objective: config.objective || 'OUTCOME_APP_PROMOTION',
