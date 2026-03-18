@@ -413,11 +413,9 @@ function aggregateMetrics(creativeName, dateFrom, dateTo) {
     let spend = 0, impressions = 0, clicks = 0, installs = 0, thruPlays = 0, threeSecViews = 0;
 
     metaAdsDumpRaw.forEach(row => {
-        // Match by 'Ad Name' (col J) — same as sheet formula uses $J:$J,$C
-        // Ad Name has date suffix matching the creative name exactly
+        // Match by 'Ad Name' (col J) exactly — same as sheet formula $J:$J = $C
         const adName = (row['Ad Name'] || '').trim().toLowerCase();
-        const refinedName = (row['Refined ad name'] || '').trim().toLowerCase();
-        if (adName !== nameNorm && refinedName !== nameNorm && !nameNorm.startsWith(refinedName)) return;
+        if (adName !== nameNorm) return;
 
         // Date filter on 'Day' column (col G)
         const dayStr = row['Day'] || '';
