@@ -1665,6 +1665,19 @@ window.fetchCampaignTree = async function () {
             const key = buildMetabaseKey(row.date, row.campaign_name, row.ad_set_name, row.tracker_name);
             mbByKey[key] = row;
         }
+        // Debug: log sample keys from both sides
+        const mbKeys = Object.keys(mbByKey);
+        console.log('[DEBUG] Metabase keys count:', mbKeys.length);
+        console.log('[DEBUG] Sample Metabase keys:', mbKeys.slice(0, 3));
+        if (metaRes.data.length > 0) {
+            const sampleMeta = metaRes.data[0];
+            console.log('[DEBUG] Sample Meta key:', buildMetaKey(sampleMeta.date_start, sampleMeta.campaign_name, sampleMeta.adset_name, sampleMeta.ad_name));
+            console.log('[DEBUG] Sample Meta row:', sampleMeta.date_start, '|', sampleMeta.campaign_name, '|', sampleMeta.adset_name, '|', sampleMeta.ad_name);
+        }
+        if (funnelRes.data.length > 0) {
+            const sampleMb = funnelRes.data[0];
+            console.log('[DEBUG] Sample MB row:', sampleMb.date, '|', sampleMb.campaign_name, '|', sampleMb.ad_set_name, '|', sampleMb.tracker_name);
+        }
 
         // Match Meta rows to Metabase and aggregate at ad level
         // adUID = campaign_name + '|||' + adset_name + '|||' + ad_name

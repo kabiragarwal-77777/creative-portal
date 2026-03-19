@@ -1910,9 +1910,7 @@ app.post('/api/meta/ad-insights-daily', async (req, res) => {
             level: 'ad',
             time_increment: 1,
             time_range: JSON.stringify({ since: dateFrom, until: dateTo }),
-            filtering: JSON.stringify([
-                { field: 'ad.effective_status', operator: 'IN', value: ['ACTIVE'] }
-            ]),
+            // No status filter — include all ads that had delivery in the date range
             limit: 500,
         });
 
@@ -1927,13 +1925,17 @@ app.post('/api/meta/ad-insights-daily', async (req, res) => {
 
         if (data.data) allRows.push(...data.data);
 
-        // Paginate
+        // Paginate through all results
+        let pageCount = 1;
         while (data.paging && data.paging.next) {
+            pageCount++;
+            console.log(`[ad-insights] Fetching page ${pageCount}... (${allRows.length} rows so far)`);
             response = await fetch(data.paging.next);
             data = await response.json();
-            if (data.error) break;
+            if (data.error) { console.error('[ad-insights] Pagination error:', data.error); break; }
             if (data.data) allRows.push(...data.data);
         }
+        console.log(`[ad-insights] Done. ${pageCount} pages, ${allRows.length} total rows.`);
 
         // Flatten actions to extract installs
         const rows = allRows.map(row => {
