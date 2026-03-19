@@ -1,3 +1,8 @@
 uploader/node_modules/
+inventory-scanner/node_modules/
+inventory-scanner/database/scanner.db
 .env
 uploader/.env
+inventory-scanner/.env
+.claude/
+mb_*.json

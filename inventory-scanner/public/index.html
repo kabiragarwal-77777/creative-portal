@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1024" />
+  <title>Inventory Scanner & Competitor Analysis — Univest</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<div id="app" style="min-height:100vh;">
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">◈</div>
+      <h1>INVENTORY<br>SCANNER</h1>
+      <span class="logo-subtitle">by Univest</span>
+    </div>
+    <nav id="nav">
+      <a href="#" class="nav-link active" data-view="dashboard">
+        <span class="nav-icon">◉</span> Dashboard
+      </a>
+      <a href="#" class="nav-link" data-view="explorer">
+        <span class="nav-icon">⊞</span> Inventory Explorer
+      </a>
+      <a href="#" class="nav-link" data-view="competitors">
+        <span class="nav-icon">⚔</span> Competitor Map
+      </a>
+      <a href="#" class="nav-link" data-view="discovery">
+        <span class="nav-icon">◎</span> Discovery Log
+      </a>
+      <a href="#" class="nav-link" data-view="budget">
+        <span class="nav-icon">₹</span> Budget Planner
+      </a>
+      <a href="#" class="nav-link" data-view="admonitor">
+        <span class="nav-icon">◈</span> Live Ad Monitor
+        <span class="nav-badge" id="admonitor-badge" style="display:none">0</span>
+      </a>
+      <a href="#" class="nav-link" data-view="keywords">
+        <span class="nav-icon">⌕</span> Keyword Intel
+      </a>
+      <a href="#" class="nav-link" data-view="timeline">
+        <span class="nav-icon">▬</span> Competitive Timeline
+      </a>
+      <a href="#" class="nav-link" data-view="settings">
+        <span class="nav-icon">⚙</span> Settings
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="clock" id="clock"></div>
+      <div class="scheduler-status">
+        <span class="status-dot green"></span> Scheduler Running
+      </div>
+      <div class="insight-count">
+        <span id="unread-count">0</span> unread insights
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main id="main">
+    <!-- Top Bar -->
+    <header id="topbar">
+      <div class="search-container">
+        <input type="text" id="global-search" placeholder="Search inventories... (Ctrl+K)" />
+      </div>
+      <div class="topbar-actions">
+        <select id="vertical-filter">
+          <option value="">All Verticals</option>
+          <option value="ra">Research Advisory</option>
+          <option value="broking">Broking/Demat</option>
+          <option value="both">Both</option>
+        </select>
+        <button id="btn-run-discovery" class="btn btn-gold">
+          ◎ Run Discovery
+        </button>
+        <button id="btn-notifications" class="btn btn-icon">
+          🔔 <span class="notification-badge" id="notif-badge" style="display:none">0</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content Area -->
+    <div id="content">
+      <!-- VIEW 1: Dashboard -->
+      <section id="view-dashboard" class="view active">
+        <div class="kpi-strip" id="kpi-strip"></div>
+
+        <div class="dashboard-grid">
+          <div class="dashboard-main">
+            <div class="panel">
+              <h2 class="panel-title">Univest Current Footprint</h2>
+              <div id="existing-inventories" class="card-grid"></div>
+            </div>
+
+            <div class="panel">
+              <h2 class="panel-title">Top Opportunities</h2>
+              <div id="opportunities" class="opportunity-list"></div>
+            </div>
+
+            <div class="panel">
+              <h2 class="panel-title">Competitor Activity Today</h2>
+              <div id="competitor-activity" class="activity-feed"></div>
+            </div>
+          </div>
+
+          <div class="dashboard-sidebar">
+            <div class="panel">
+              <h2 class="panel-title">AI Insights <span class="badge gold" id="insight-badge">0</span></h2>
+              <div id="insights-feed" class="insights-feed"></div>
+            </div>
+
+            <div class="panel">
+              <h2 class="panel-title">Trending Hooks</h2>
+              <div id="trending-hooks"></div>
+            </div>
+
+            <div class="panel">
+              <h2 class="panel-title">Silent Competitors</h2>
+              <div id="silent-competitors"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="last-updated" id="last-updated"></div>
+      </section>
+
+      <!-- VIEW 2: Inventory Explorer -->
+      <section id="view-explorer" class="view">
+        <div class="explorer-toolbar">
+          <div class="filter-row">
+            <select id="filter-category" class="filter-select">
+              <option value="">All Categories</option>
+              <option value="search">Search</option>
+              <option value="social">Social</option>
+              <option value="video">Video &amp; OTT</option>
+              <option value="audio">Audio</option>
+              <option value="gaming">Gaming</option>
+              <option value="programmatic">Programmatic</option>
+              <option value="vernacular">Vernacular</option>
+              <option value="hyperlocal">Hyperlocal</option>
+              <option value="email">Email</option>
+              <option value="push">Push</option>
+              <option value="sms">SMS</option>
+              <option value="influencer">Influencer</option>
+              <option value="ooh">OOH/DOOH</option>
+              <option value="affiliate">Affiliate</option>
+              <option value="podcast">Podcast</option>
+              <option value="ctv">CTV</option>
+              <option value="regional_ott">Regional OTT</option>
+            </select>
+            <select id="filter-pricing" class="filter-select">
+              <option value="">All Pricing</option>
+              <option value="cpm">CPM</option>
+              <option value="cpc">CPC</option>
+              <option value="cpa">CPA</option>
+              <option value="cpv">CPV</option>
+              <option value="flat">Flat Rate</option>
+            </select>
+            <select id="filter-fintech" class="filter-select">
+              <option value="">All</option>
+              <option value="1">Fintech Friendly</option>
+              <option value="0">Not Fintech Friendly</option>
+            </select>
+            <input type="number" id="filter-min-cpm" placeholder="Min CPM" class="filter-input" />
+            <input type="number" id="filter-max-cpm" placeholder="Max CPM" class="filter-input" />
+            <input type="number" id="filter-min-fit" placeholder="Min Fit (1-10)" class="filter-input" min="1" max="10" />
+          </div>
+          <div class="explorer-actions">
+            <select id="sort-by" class="filter-select">
+              <option value="target_audience_fit">Audience Fit</option>
+              <option value="min_cpm">CPM (Low→High)</option>
+              <option value="max_cpm">CPM (High→Low)</option>
+              <option value="estimated_monthly_reach">Reach</option>
+              <option value="competitor_count">Competitor Density</option>
+              <option value="created_at">Date Added</option>
+            </select>
+            <button class="btn btn-outline" id="btn-table-view">☰ Table</button>
+            <button class="btn btn-outline active" id="btn-grid-view">⊞ Grid</button>
+            <button class="btn btn-teal" id="btn-compare" disabled>Compare (0)</button>
+          </div>
+        </div>
+        <div id="inventory-list" class="card-grid"></div>
+        <div id="inventory-table" class="inventory-table" style="display:none"></div>
+      </section>
+
+      <!-- Inventory Detail Modal -->
+      <div id="inventory-detail-modal" class="modal" style="display:none">
+        <div class="modal-content detail-modal">
+          <button class="modal-close" id="close-detail">✕</button>
+          <div class="detail-header" id="detail-header"></div>
+          <div class="detail-tabs">
+            <button class="tab-btn active" data-tab="overview">Overview</button>
+            <button class="tab-btn" data-tab="pricing">Pricing</button>
+            <button class="tab-btn" data-tab="competitors">Competitors</button>
+            <button class="tab-btn" data-tab="formats">Ad Formats</button>
+            <button class="tab-btn" data-tab="budget">Budget</button>
+            <button class="tab-btn" data-tab="onboarding">Onboarding</button>
+            <button class="tab-btn" data-tab="detail-insights">AI Insights</button>
+          </div>
+          <div class="detail-body" id="detail-body"></div>
+        </div>
+      </div>
+
+      <!-- Compare Modal -->
+      <div id="compare-modal" class="modal" style="display:none">
+        <div class="modal-content compare-modal">
+          <button class="modal-close" id="close-compare">✕</button>
+          <h2>Inventory Comparison</h2>
+          <div id="compare-content"></div>
+        </div>
+      </div>
+
+      <!-- VIEW 4: Competitor Map -->
+      <section id="view-competitors" class="view">
+        <div class="competitor-toolbar">
+          <h2>Competitor × Inventory Map</h2>
+          <label class="toggle-label">
+            <input type="checkbox" id="whitespace-toggle" /> Show Whitespace Only
+          </label>
+        </div>
+        <div id="competitor-grid" class="competitor-grid-container"></div>
+        <div id="competitor-sidebar" class="detail-sidebar" style="display:none">
+          <button class="sidebar-close" id="close-competitor-sidebar">✕</button>
+          <div id="competitor-sidebar-content"></div>
+        </div>
+      </section>
+
+      <!-- VIEW 5: Discovery Log -->
+      <section id="view-discovery" class="view">
+        <div class="panel">
+          <h2 class="panel-title">New Inventories (Last 7 Days)</h2>
+          <div id="new-inventories" class="card-grid"></div>
+        </div>
+        <div class="panel">
+          <h2 class="panel-title">Discovery Run History</h2>
+          <div id="discovery-timeline" class="timeline"></div>
+        </div>
+        <div class="panel">
+          <canvas id="discovery-chart" height="200"></canvas>
+        </div>
+      </section>
+
+      <!-- VIEW 6: Budget Planner -->
+      <section id="view-budget" class="view">
+        <div class="budget-planner">
+          <div class="panel">
+            <h2 class="panel-title">Multi-Inventory Budget Allocator</h2>
+            <div class="budget-controls">
+              <label>Total Monthly Budget (₹)</label>
+              <input type="number" id="total-budget" value="1000000" class="budget-input" />
+              <button class="btn btn-gold" id="btn-allocate">AI Allocate Budget</button>
+            </div>
+            <div id="budget-inventory-selector" class="budget-selector"></div>
+          </div>
+          <div class="panel">
+            <h2 class="panel-title">Allocation Results</h2>
+            <div id="budget-results"></div>
+            <canvas id="budget-chart" height="250"></canvas>
+          </div>
+          <div class="panel">
+            <h2 class="panel-title">Projected Performance</h2>
+            <div id="budget-projections"></div>
+            <button class="btn btn-outline" id="btn-export-budget">Export as CSV</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 7: Settings -->
+      <section id="view-settings" class="view">
+        <div class="settings-grid">
+          <div class="panel">
+            <h2 class="panel-title">Competitors</h2>
+            <div id="settings-competitors"></div>
+            <div class="settings-add">
+              <input type="text" id="new-competitor-name" placeholder="Competitor name" />
+              <select id="new-competitor-vertical">
+                <option value="both">Both</option>
+                <option value="ra">RA</option>
+                <option value="broking">Broking</option>
+              </select>
+              <button class="btn btn-teal" id="btn-add-competitor">Add</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h2 class="panel-title">Univest CPA Targets</h2>
+            <div class="settings-form">
+              <label>App Install CPA (₹)</label>
+              <input type="number" id="cpa-install" value="800" />
+              <label>Lead CPA (₹)</label>
+              <input type="number" id="cpa-lead" value="300" />
+              <button class="btn btn-gold" id="btn-save-targets">Save Targets</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h2 class="panel-title">Scheduler</h2>
+            <div id="scheduler-status"></div>
+          </div>
+          <div class="panel">
+            <h2 class="panel-title">Data Export</h2>
+            <button class="btn btn-outline" id="btn-export-json">Export Full DB as JSON</button>
+            <button class="btn btn-outline" id="btn-export-csv">Export Inventories CSV</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 8: Live Ad Monitor -->
+      <section id="view-admonitor" class="view">
+        <div class="admonitor-toolbar">
+          <h2>Live Ad Monitor</h2>
+          <div class="filter-row">
+            <select id="admon-platform" class="filter-select">
+              <option value="">All Platforms</option>
+              <option value="meta">Meta</option>
+              <option value="google">Google</option>
+              <option value="youtube">YouTube</option>
+            </select>
+            <select id="admon-competitor" class="filter-select">
+              <option value="">All Competitors</option>
+            </select>
+            <select id="admon-theme" class="filter-select">
+              <option value="">All Themes</option>
+              <option value="Offer/Discount">Offer/Discount</option>
+              <option value="Social Proof">Social Proof</option>
+              <option value="Fear/FOMO">Fear/FOMO</option>
+              <option value="Education">Education</option>
+              <option value="Feature Highlight">Feature Highlight</option>
+              <option value="App Install">App Install</option>
+              <option value="Trust/SEBI">Trust/SEBI</option>
+            </select>
+            <select id="admon-sort" class="filter-select">
+              <option value="newest">Newest First</option>
+              <option value="longest">Longest Running</option>
+              <option value="spend">Highest Spend</option>
+            </select>
+          </div>
+        </div>
+        <div id="ad-feed" class="ad-feed"></div>
+        <div id="ad-intel-sidebar" class="detail-sidebar" style="display:none">
+          <button class="sidebar-close" id="close-ad-intel">✕</button>
+          <div id="ad-intel-content"></div>
+        </div>
+      </section>
+
+      <!-- VIEW 9: Keyword Intelligence -->
+      <section id="view-keywords" class="view">
+        <div class="panel">
+          <h2 class="panel-title">Search Keyword Landscape</h2>
+          <div id="keyword-table-container"></div>
+          <button class="btn btn-outline" id="btn-export-keywords">Export Keywords CSV</button>
+        </div>
+        <div class="panel">
+          <h2 class="panel-title">Keyword Gaps — Act Now</h2>
+          <div id="keyword-gaps" class="keyword-gaps"></div>
+        </div>
+      </section>
+
+      <!-- VIEW 10: Competitive Timeline -->
+      <section id="view-timeline" class="view">
+        <div class="panel">
+          <h2 class="panel-title">Competitive Ad Timeline (Last 90 Days)</h2>
+          <div id="timeline-container" class="timeline-chart-container">
+            <canvas id="timeline-chart" height="400"></canvas>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container" class="toast-container"></div>
+
+<script src="js/chart.min.js"></script>
+<script src="js/filters.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/inventoryCard.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

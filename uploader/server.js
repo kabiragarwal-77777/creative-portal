@@ -10,7 +10,7 @@ const os = require('os');
 const { pipeline } = require('stream/promises');
 
 // Load .env for local development
-try { require('dotenv').config(); } catch(e) { /* dotenv not installed, use env vars directly */ }
+try { require('dotenv').config({ path: path.join(__dirname, '.env') }); } catch(e) { /* dotenv not installed, use env vars directly */ }
 
 // =============================================================================
 // CONFIGURATION
@@ -23,9 +23,16 @@ const META_AD_ACCOUNT_ID = process.env.META_AD_ACCOUNT_ID || 'act_72501992918914
 const META_API_VERSION = 'v21.0';
 const META_API_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
 
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+let OpenAI;
+try { OpenAI = require('openai'); } catch(e) { console.warn('OpenAI SDK not installed — analyser will not work. Run: npm install openai'); }
+
 const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID || '';
 const GOOGLE_SHEET_TAB = process.env.GOOGLE_SHEET_TAB || '';
 const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbyKYm0aNJHvjAuc6KxrcZAzuIpc2qs_RT8sbngiwC5-m-6-2gPVY7uV2z4gSFLtVHTysw/exec';
+
+const METABASE_SESSION_TOKEN = process.env.METABASE_SESSION_TOKEN || '';
+const METABASE_URL = 'https://analytics.univest.in';
 
 // Helper: write results back to Google Sheet via Apps Script
 async function writeResultToSheet(rowIndex, data, tabName) {
@@ -71,6 +78,7 @@ app.use((req, res, next) => {
 // Static files — serve both uploader and parent creative-portal directory
 const parentDir = path.join(__dirname, '..');
 app.use('/uploader', express.static(__dirname));
+app.use('/analyser', express.static(path.join(parentDir, 'analyser')));
 app.use(express.static(parentDir));
 
 // =============================================================================
@@ -1172,6 +1180,465 @@ app.post('/api/execute-full', async (req, res) => {
         }
 
         res.status(500).json(results);
+    }
+});
+
+// =============================================================================
+// DATA ANALYSER API
+// =============================================================================
+
+// Extract Google Sheet ID from various URL formats
+function extractSheetId(url) {
+    const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    return match ? match[1] : null;
+}
+
+// Fetch Google Sheet as CSV
+async function fetchSheetCSV(sheetUrl, tabName) {
+    const sheetId = extractSheetId(sheetUrl);
+    if (!sheetId) throw new Error('Invalid Google Sheets URL');
+
+    let csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+    if (tabName) csvUrl += `&sheet=${encodeURIComponent(tabName)}`;
+
+    const res = await fetch(csvUrl, { redirect: 'follow' });
+    if (!res.ok) {
+        // Try alternative endpoint
+        const altUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
+        const altRes = await fetch(altUrl, { redirect: 'follow' });
+        if (!altRes.ok) throw new Error('Could not fetch spreadsheet. Make sure it is publicly accessible (Anyone with link can view).');
+        return await altRes.text();
+    }
+    return await res.text();
+}
+
+// Fetch Meta Ads performance data for analyser
+async function fetchMetaAdsData(datePreset) {
+    const preset = datePreset || 'maximum';
+    const results = {};
+
+    // 1. Account-level insights
+    try {
+        const accountInsights = await metaGet(`/${META_AD_ACCOUNT_ID}/insights`, {
+            fields: 'spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions,cost_per_action_type,purchase_roas',
+            date_preset: preset,
+            level: 'account',
+        });
+        results.accountInsights = accountInsights.data || [];
+    } catch (e) {
+        console.warn('[Analyser] Could not fetch account insights:', e.message);
+        results.accountInsights = [];
+    }
+
+    // 2. Campaign-level insights
+    try {
+        const campaignInsights = await metaGet(`/${META_AD_ACCOUNT_ID}/insights`, {
+            fields: 'campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions,cost_per_action_type,purchase_roas,objective',
+            date_preset: preset,
+            level: 'campaign',
+            limit: 100,
+        });
+        results.campaignInsights = campaignInsights.data || [];
+    } catch (e) {
+        console.warn('[Analyser] Could not fetch campaign insights:', e.message);
+        results.campaignInsights = [];
+    }
+
+    // 3. Adset-level insights (top 50 by spend)
+    try {
+        const adsetInsights = await metaGet(`/${META_AD_ACCOUNT_ID}/insights`, {
+            fields: 'adset_id,adset_name,campaign_name,spend,impressions,clicks,ctr,cpc,cpm,reach,actions,cost_per_action_type,purchase_roas',
+            date_preset: preset,
+            level: 'adset',
+            sort: 'spend_descending',
+            limit: 50,
+        });
+        results.adsetInsights = adsetInsights.data || [];
+    } catch (e) {
+        console.warn('[Analyser] Could not fetch adset insights:', e.message);
+        results.adsetInsights = [];
+    }
+
+    // 4. Ad-level insights (top 50 by spend)
+    try {
+        const adInsights = await metaGet(`/${META_AD_ACCOUNT_ID}/insights`, {
+            fields: 'ad_id,ad_name,adset_name,campaign_name,spend,impressions,clicks,ctr,cpc,cpm,actions,cost_per_action_type,purchase_roas',
+            date_preset: preset,
+            level: 'ad',
+            sort: 'spend_descending',
+            limit: 50,
+        });
+        results.adInsights = adInsights.data || [];
+    } catch (e) {
+        console.warn('[Analyser] Could not fetch ad insights:', e.message);
+        results.adInsights = [];
+    }
+
+    // 5. Daily breakdown (for trend analysis)
+    try {
+        const dailyInsights = await metaGet(`/${META_AD_ACCOUNT_ID}/insights`, {
+            fields: 'spend,impressions,clicks,ctr,cpc,actions,purchase_roas',
+            date_preset: preset,
+            time_increment: 1,
+            level: 'account',
+            limit: 90,
+        });
+        results.dailyInsights = dailyInsights.data || [];
+    } catch (e) {
+        console.warn('[Analyser] Could not fetch daily insights:', e.message);
+        results.dailyInsights = [];
+    }
+
+    return results;
+}
+
+// Flatten Meta actions/cost_per_action arrays into plain key-value
+function flattenMetaRow(row) {
+    const flat = {};
+    for (const [k, v] of Object.entries(row)) {
+        if (k === 'actions' && Array.isArray(v)) {
+            v.forEach(a => { flat['actions_' + a.action_type] = a.value; });
+        } else if (k === 'cost_per_action_type' && Array.isArray(v)) {
+            v.forEach(a => { flat['cost_per_' + a.action_type] = a.value; });
+        } else if (k === 'purchase_roas' && Array.isArray(v)) {
+            v.forEach(a => { flat['roas_' + a.action_type] = a.value; });
+        } else if (typeof v !== 'object') {
+            flat[k] = v;
+        }
+    }
+    return flat;
+}
+
+// Convert array of objects to CSV string
+function toCSV(rows) {
+    if (!rows.length) return '';
+    const flatRows = rows.map(flattenMetaRow);
+    const allKeys = [...new Set(flatRows.flatMap(r => Object.keys(r)))];
+    // Put important cols first
+    const priority = ['date_start','date_stop','campaign_name','campaign_id','adset_name','adset_id','ad_name','ad_id','spend','impressions','clicks','ctr','cpc','cpm','reach','frequency'];
+    const keys = [
+        ...priority.filter(k => allKeys.includes(k)),
+        ...allKeys.filter(k => !priority.includes(k))
+    ];
+    let csv = keys.join(',') + '\n';
+    flatRows.forEach(r => {
+        csv += keys.map(k => {
+            const val = r[k] !== undefined ? String(r[k]) : '';
+            return val.includes(',') ? `"${val}"` : val;
+        }).join(',') + '\n';
+    });
+    return csv;
+}
+
+// Format Meta data into clean CSV tables for the AI
+function formatMetaDataForAI(metaData) {
+    let text = '';
+
+    if (metaData.accountInsights.length) {
+        text += '--- ACCOUNT OVERVIEW ---\n';
+        text += toCSV(metaData.accountInsights) + '\n';
+    }
+
+    if (metaData.campaignInsights.length) {
+        text += '--- CAMPAIGN PERFORMANCE (all campaigns) ---\n';
+        text += toCSV(metaData.campaignInsights) + '\n';
+    }
+
+    if (metaData.adsetInsights.length) {
+        text += '--- TOP ADSETS BY SPEND ---\n';
+        text += toCSV(metaData.adsetInsights) + '\n';
+    }
+
+    if (metaData.adInsights.length) {
+        text += '--- TOP ADS BY SPEND ---\n';
+        text += toCSV(metaData.adInsights) + '\n';
+    }
+
+    if (metaData.dailyInsights.length) {
+        text += '--- DAILY TRENDS ---\n';
+        text += toCSV(metaData.dailyInsights) + '\n';
+    }
+
+    return text;
+}
+
+const ANALYSER_SYSTEM_PROMPT = `You are an expert data analyst and performance marketing specialist.
+
+CRITICAL ACCURACY RULES:
+- ONLY cite numbers that EXACTLY appear in the provided data. NEVER estimate, round differently, or invent numbers.
+- If a value is "1234.56" in the data, say "1234.56" — do not say "~1235" or "approximately 1.2K".
+- If you cannot find a specific data point, say "not available in the data" — NEVER guess.
+- When the data contains CSV columns, read them carefully by matching column headers to values in each row.
+- Meta Ads "spend" is in the ad account's currency. "ctr" is already a percentage. "cpc"/"cpm" are in the account currency.
+- The "actions_" prefixed columns are conversion events: actions_purchase = purchases, actions_link_click = link clicks, actions_app_install = installs, etc.
+- "roas_" prefixed columns are return on ad spend for that action type.
+- "cost_per_" prefixed columns are cost per that conversion type.
+
+RESPONSE FORMAT:
+- Output clean HTML only (no markdown, no code fences, no \`\`\`)
+- Use these CSS classes: class="report-table" for tables, class="metric-highlight" for key numbers, class="insight-card" for insights, class="recommendation" for recommendations, class="warning-card" for warnings, class="section-header" for h2 headers
+- Use HTML tables with actual data from the dataset — every number in a table MUST come directly from the source data
+- For first analysis: Executive Summary, Data Overview, Key Findings (with tables), Actionable Recommendations, Risk Factors
+- For follow-ups: respond conversationally but still use the HTML classes above
+- Be specific and actionable. "Pause campaign X because its CPC of $Y is 3x higher than account average of $Z" — not "consider optimising underperforming campaigns"`;
+
+// In-memory store for data context per session (keyed by sessionId)
+const analyserSessions = {};
+
+app.post('/api/analyse', async (req, res) => {
+    try {
+        const { sheetUrl, tabName, prompt, csvData: uploadedCsv, includeMeta, metaDatePreset, messages, sessionId } = req.body;
+
+        if (!prompt) return res.status(400).json({ error: 'Analysis prompt is required' });
+
+        if (!OpenAI) return res.status(500).json({ error: 'OpenAI SDK not installed. Run: npm install openai' });
+        if (!OPENAI_API_KEY) return res.status(500).json({ error: 'OPENAI_API_KEY not set in .env file' });
+
+        const isFollowUp = messages && messages.length > 0;
+        const sid = sessionId || 'default';
+
+        // On first message, fetch and store the data
+        let dataContext = '';
+        if (!isFollowUp) {
+            if (!sheetUrl && !uploadedCsv && !includeMeta) {
+                return res.status(400).json({ error: 'Provide a data source: Google Sheet URL, file upload, or enable Meta Ads data' });
+            }
+
+            let allData = '';
+
+            if (sheetUrl) {
+                console.log(`[Analyser] Fetching sheet: ${sheetUrl}`);
+                const sheetCsv = await fetchSheetCSV(sheetUrl, tabName);
+                allData += '=== DATA FROM GOOGLE SHEET ===\n' + sheetCsv + '\n\n';
+            }
+
+            if (uploadedCsv) {
+                allData += '=== DATA FROM UPLOADED FILE ===\n' + uploadedCsv + '\n\n';
+            }
+
+            if (includeMeta && META_ACCESS_TOKEN) {
+                console.log(`[Analyser] Fetching Meta Ads data (${metaDatePreset || 'maximum'})...`);
+                try {
+                    const metaData = await fetchMetaAdsData(metaDatePreset);
+                    const metaDataSection = formatMetaDataForAI(metaData);
+                    if (metaDataSection) {
+                        allData += '=== LIVE META ADS PERFORMANCE DATA ===\n' + metaDataSection + '\n\n';
+                    }
+                } catch (metaErr) {
+                    console.warn('[Analyser] Meta data fetch failed:', metaErr.message);
+                    allData += '=== META ADS DATA: Could not fetch — ' + metaErr.message + ' ===\n\n';
+                }
+            }
+
+            if (allData.length > 200000) {
+                allData = allData.slice(0, 200000) + '\n\n[DATA TRUNCATED — showing first 200KB]';
+            }
+
+            // Store data for follow-ups
+            analyserSessions[sid] = allData;
+            dataContext = allData;
+            console.log(`[Analyser] Data loaded: ${(allData.length / 1024).toFixed(1)}KB, session=${sid}`);
+        } else {
+            // Retrieve stored data for follow-ups
+            dataContext = analyserSessions[sid] || '';
+        }
+
+        // Build OpenAI messages — ALWAYS include data as system context
+        const systemMsg = ANALYSER_SYSTEM_PROMPT + (dataContext
+            ? `\n\nHere is the user's dataset. ONLY use numbers from this data. Do NOT make up values.\n\n${dataContext}`
+            : '');
+
+        let openaiMessages = [{ role: 'system', content: systemMsg }];
+
+        if (isFollowUp) {
+            // Add prior conversation turns
+            messages.forEach(m => {
+                openaiMessages.push({ role: m.role, content: m.content });
+            });
+        }
+
+        // Add current user message
+        openaiMessages.push({ role: 'user', content: prompt });
+
+        console.log(`[Analyser] Sending ${openaiMessages.length} messages to GPT-4o (system: ${(systemMsg.length / 1024).toFixed(1)}KB)...`);
+
+        const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4o',
+            max_tokens: 8000,
+            messages: openaiMessages,
+        });
+
+        const report = completion.choices[0].message.content;
+        console.log(`[Analyser] Response generated (${report.length} chars)`);
+
+        // Build conversation history (without data, just user/assistant turns)
+        const updatedHistory = isFollowUp
+            ? [...messages, { role: 'user', content: prompt }, { role: 'assistant', content: report }]
+            : [{ role: 'user', content: prompt }, { role: 'assistant', content: report }];
+
+        res.json({ report, history: updatedHistory, sessionId: sid, summary: 'Analysis complete' });
+    } catch (err) {
+        console.error('[Analyser] Error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// =============================================================================
+// METABASE PROXY — Creative Metrics
+// =============================================================================
+
+app.post('/api/metabase/creative-metrics', async (req, res) => {
+    try {
+        const { dateFrom, dateTo, campaignNames } = req.body;
+
+        if (!dateFrom || !dateTo) {
+            return res.status(400).json({ success: false, error: 'dateFrom and dateTo are required' });
+        }
+        if (!Array.isArray(campaignNames) || campaignNames.length === 0) {
+            return res.status(400).json({ success: false, error: 'campaignNames must be a non-empty array' });
+        }
+
+        // Sanitize date strings (YYYY-MM-DD only)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(dateFrom) || !dateRegex.test(dateTo)) {
+            return res.status(400).json({ success: false, error: 'dateFrom and dateTo must be in YYYY-MM-DD format' });
+        }
+
+        // Sanitize campaign names — only allow alphanumeric, hyphens, underscores, spaces
+        const safeNameRegex = /^[a-zA-Z0-9\-_ ]+$/;
+        for (const name of campaignNames) {
+            if (typeof name !== 'string' || !safeNameRegex.test(name)) {
+                return res.status(400).json({ success: false, error: `Invalid campaign name: "${name}". Only alphanumeric, hyphens, underscores, and spaces are allowed.` });
+            }
+        }
+
+        const campaignNamesSQL = campaignNames.map(n => `'${n}'`).join(',');
+
+        const sql = `
+WITH user_data AS (
+  SELECT
+    uad.user_id,
+    LOWER(TRIM(uad.tracker_sub_campaign_name)) AS tracker_sub_campaign_name,
+    uad.tracker_campaign_name,
+    uad.creative AS tracker_name,
+    priority,
+    CASE WHEN uad.network ILIKE '%Google%' THEN 'Google' ELSE uad.network END AS network,
+    date(created_at) AS event_date
+  FROM user_additional_details uad
+  LEFT JOIN users u ON u.id = uad.user_id
+  LEFT JOIN (SELECT DISTINCT "Adset ID"::bigint AS "Adset ID" FROM "Demat_Campaigns" WHERE "Adset ID" IS NOT NULL AND TRIM("Adset ID") <> '') ch ON ch."Adset ID" = uad.tracker_sub_campaign_id
+  WHERE "Adset ID" IS NULL
+    AND uad.user_id IN (SELECT id FROM users WHERE referred_by IS NULL AND user_interest IS NULL)
+    AND uad.user_id IN (SELECT u.id FROM user_devices ud WHERE ud.user_id = u.id AND ud.os IN ('android','Android Web'))
+    AND date(u.created_at) >= '${dateFrom}'
+    AND date(u.created_at) <= '${dateTo}'
+    AND (network LIKE '%Facebook%' OR network LIKE '%Instagram%')
+    AND uad.tracker_campaign_name IN (${campaignNamesSQL})
+),
+first_payments AS (
+  SELECT
+    user_id, min(payment_date) as payment_date,
+    sum(case when rt = 1 then amount else null end) as amount,
+    sum(case when rt > 1 then amount else null end) as repeat_amount,
+    count(case when rt > 1 then amount else null end) as repeat_con,
+    sum(case when date(payment_date) - date(created_at) <= 6 then amount else null end) as d6_repeat_amount,
+    count(case when date(payment_date) - date(created_at) <= 6 then amount else null end) as d6_repeat_con,
+    sum(amount) as overall_amt,
+    count(user_id) as overall_con
+  FROM (
+    SELECT user_id, payment_date, amount, created_at,
+      ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY payment_date) AS rt
+    FROM user_transaction_history uth
+    LEFT JOIN users u ON u.id = uth.user_id
+    WHERE status = 'CHARGED' AND amount > 50
+  ) sub
+  GROUP BY 1
+),
+trial AS (
+  SELECT user_id, trial_date FROM (
+    SELECT user_id, payment_date AS trial_date, plan_id,
+      ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY payment_date DESC) AS rk
+    FROM user_transaction_history
+    WHERE (plan_id IN ('plan_000','plan_000_plus','plan_000_super') OR plan_id ILIKE '%trial%')
+      AND status = 'CHARGED'
+  ) sub WHERE rk = 1
+),
+signup_metrics AS (
+  SELECT
+    ud.event_date,
+    ud.tracker_campaign_name,
+    regexp_replace(ud.tracker_name, ':.*$', '', 'g') AS tracker_name,
+    COUNT(DISTINCT ud.user_id) AS total_signup,
+    COUNT(DISTINCT CASE WHEN ud.priority = 'PAYMENT-P0' THEN ud.user_id END) AS p0_signup,
+    COUNT(DISTINCT CASE WHEN ud.priority = 'PAYMENT-P1' THEN ud.user_id END) AS p1_signup,
+    COUNT(DISTINCT t.user_id) AS total_trial,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) = ud.event_date THEN fp.user_id END) AS d0,
+    SUM(CASE WHEN DATE(fp.payment_date) = ud.event_date THEN fp.amount ELSE 0 END) AS d0_revenue,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' THEN fp.user_id END) AS d6,
+    SUM(CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' THEN fp.amount ELSE 0 END) AS d6_revenue,
+    COUNT(DISTINCT fp.user_id) AS new_converted_user,
+    SUM(fp.amount) AS new_user_rev,
+    SUM(fp.overall_amt) AS overall_revenue,
+    COUNT(DISTINCT CASE WHEN DATE(trial_date) = DATE(ud.event_date) THEN t.user_id END) AS d0_trial,
+    SUM(d6_repeat_con) AS d6_overall_con,
+    SUM(d6_repeat_amount) AS d6_overall_revenue
+  FROM user_data ud
+  LEFT JOIN first_payments fp ON ud.user_id = fp.user_id
+  LEFT JOIN trial t ON ud.user_id = t.user_id
+  GROUP BY 1,2,3
+)
+SELECT
+  sm.tracker_name,
+  sm.tracker_campaign_name AS campaign_name,
+  SUM(sm.total_signup) AS signups,
+  SUM(sm.p0_signup) AS p0_signup,
+  SUM(sm.p1_signup) AS p1_signup,
+  SUM(sm.total_trial) AS total_trial,
+  SUM(sm.d0_trial) AS d0_trial,
+  SUM(sm.d0) AS d0,
+  SUM(sm.d0_revenue) AS d0_revenue,
+  SUM(sm.d6) AS d6,
+  SUM(sm.d6_revenue) AS d6_revenue,
+  SUM(sm.new_converted_user) AS new_converted_user,
+  SUM(sm.new_user_rev) AS new_user_rev,
+  SUM(sm.overall_revenue) AS overall_revenue,
+  SUM(sm.d6_overall_con) AS d6_overall_con,
+  SUM(sm.d6_overall_revenue) AS d6_overall_revenue
+FROM signup_metrics sm
+GROUP BY 1,2
+ORDER BY SUM(sm.total_signup) DESC`;
+
+        const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
+            method: 'POST',
+            headers: {
+                'X-Metabase-Session': METABASE_SESSION_TOKEN,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                database: 2,
+                type: 'native',
+                native: { query: sql },
+            }),
+        });
+
+        if (!metabaseRes.ok) {
+            const errText = await metabaseRes.text();
+            return res.status(metabaseRes.status).json({ success: false, error: `Metabase API error: ${errText}` });
+        }
+
+        const result = await metabaseRes.json();
+        const columns = result.data.cols.map(c => c.name);
+        const rows = result.data.rows.map(row => {
+            const obj = {};
+            columns.forEach((col, i) => { obj[col] = row[i]; });
+            return obj;
+        });
+
+        res.json({ success: true, data: rows });
+    } catch (err) {
+        console.error('Metabase creative-metrics error:', err);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 

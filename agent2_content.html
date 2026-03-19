@@ -1,0 +1,100 @@
+<style>
+#kpi-strip { padding: 20px 24px; border-bottom: 1px solid var(--border); background: var(--surface); }
+#kpi-strip-inner { display: grid; grid-template-columns: repeat(6,1fr); gap: 16px; }
+.kpi-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: var(--transition); }
+.kpi-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+.kpi-card[data-kpi="total-active"] { border-left: 3px solid var(--blue); }
+.kpi-card[data-kpi="most-used-format"] { border-left: 3px solid var(--teal); }
+.kpi-card[data-kpi="most-active-competitor"] { border-left: 3px solid var(--gold); }
+.kpi-card[data-kpi="dominant-theme"] { border-left: 3px solid var(--coral); }
+.kpi-card[data-kpi="avg-run-duration"] { border-left: 3px solid var(--blue); }
+.kpi-card[data-kpi="longest-running-ad"] { border-left: 3px solid var(--gold); }
+.kpi-icon { font-size: 28px; line-height: 1; flex-shrink: 0; }
+.kpi-body { min-width: 0; flex: 1; }
+.kpi-value { font-family: var(--font-mono); font-size: 22px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width:1200px) { #kpi-strip-inner { grid-template-columns: repeat(3,1fr); } }
+@media (max-width:640px) { #kpi-strip-inner { grid-template-columns: repeat(2,1fr); } }
+</style>
+<div id="kpi-strip-inner">
+  <div class="kpi-card" data-target="module-a" data-kpi="total-active"><div class="kpi-icon">📢</div><div class="kpi-body"><div class="kpi-value" id="kpi-total-active">0</div><div class="kpi-label">Total Active Ads</div></div></div>
+  <div class="kpi-card" data-target="module-a" data-kpi="most-used-format"><div class="kpi-icon">🎬</div><div class="kpi-body"><div class="kpi-value" id="kpi-most-used-format">—</div><div class="kpi-label">Most Used Format</div></div></div>
+  <div class="kpi-card" data-target="module-a" data-kpi="most-active-competitor"><div class="kpi-icon">🏆</div><div class="kpi-body"><div class="kpi-value" id="kpi-most-active-competitor">—</div><div class="kpi-label">Most Active</div></div></div>
+  <div class="kpi-card" data-target="module-a" data-kpi="dominant-theme"><div class="kpi-icon">🏷️</div><div class="kpi-body"><div class="kpi-value" id="kpi-dominant-theme">—</div><div class="kpi-label">Dominant Theme</div></div></div>
+  <div class="kpi-card" data-target="module-b" data-kpi="avg-run-duration"><div class="kpi-icon">⏱️</div><div class="kpi-body"><div class="kpi-value" id="kpi-avg-run-duration">0d</div><div class="kpi-label">Avg Run Duration</div></div></div>
+  <div class="kpi-card" data-target="module-b" data-kpi="longest-running-ad"><div class="kpi-icon">🔥</div><div class="kpi-body"><div class="kpi-value" id="kpi-longest-running-ad">—</div><div class="kpi-label">Longest Running</div></div></div>
+</div>
+<script>
+(function(){
+  function getFilteredAds(){
+    if(!window.UNIVEST_DATA||!window.UNIVEST_DATA.ads) return [];
+    let ads=window.UNIVEST_DATA.ads;
+    const f=window.ACTIVE_FILTERS||{};
+    if(f.vertical&&f.vertical!=='both'){
+      const validIds=(window.UNIVEST_DATA.competitors||[]).filter(c=>c.vertical===f.vertical||c.vertical==='both').map(c=>c.id);
+      ads=ads.filter(a=>validIds.includes(a.competitorId));
+    }
+    if(f.competitors&&f.competitors.length>0) ads=ads.filter(a=>f.competitors.includes(a.competitorId));
+    if(f.dateFrom){ const from=new Date(f.dateFrom); ads=ads.filter(a=>new Date(a.firstSeen)>=from); }
+    return ads;
+  }
+  function adDuration(ad){
+    const first=new Date(ad.firstSeen), last=ad.lastSeen?new Date(ad.lastSeen):new Date();
+    return Math.max(0,Math.round((last-first)/(1000*60*60*24)));
+  }
+  function mostFrequent(arr){
+    if(!arr||!arr.length) return null;
+    const freq={};let best=null,bestCount=0;
+    for(const v of arr){ if(v==null) continue; freq[v]=(freq[v]||0)+1; if(freq[v]>bestCount){best=v;bestCount=freq[v];} }
+    return best;
+  }
+  function countUp(el,target,duration){
+    duration=duration||800;
+    if(!el) return;
+    if(typeof target==='string'){ setTimeout(()=>{el.textContent=target;},Math.min(duration*0.4,300)); return; }
+    const start=performance.now();
+    const isFloat=target%1!==0;
+    function step(now){
+      const elapsed=now-start, progress=Math.min(elapsed/duration,1);
+      const ease=1-Math.pow(1-progress,3);
+      const current=target*ease;
+      el.textContent=isFloat?current.toFixed(1)+'d':Math.round(current).toString();
+      if(progress<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  function renderKPIs(){
+    const ads=getFilteredAds();
+    countUp(document.getElementById('kpi-total-active'), ads.filter(a=>a.isActive).length);
+    countUp(document.getElementById('kpi-most-used-format'), mostFrequent(ads.map(a=>a.format))||'—');
+    const compAdCount={};
+    ads.filter(a=>a.isActive).forEach(a=>{ compAdCount[a.competitorId]=(compAdCount[a.competitorId]||0)+1; });
+    let topCompName='—';
+    if(Object.keys(compAdCount).length>0){
+      const topId=Object.keys(compAdCount).reduce((a,b)=>compAdCount[a]>=compAdCount[b]?a:b);
+      const comp=(window.UNIVEST_DATA.competitors||[]).find(c=>c.id===topId);
+      topCompName=comp?comp.name:topId;
+    }
+    countUp(document.getElementById('kpi-most-active-competitor'), topCompName);
+    countUp(document.getElementById('kpi-dominant-theme'), mostFrequent(ads.map(a=>a.theme))||'—');
+    let avgDur=0;
+    if(ads.length>0) avgDur=ads.reduce((s,a)=>s+adDuration(a),0)/ads.length;
+    const avgEl=document.getElementById('kpi-avg-run-duration');
+    if(avgDur===0&&avgEl){avgEl.textContent='0d';}else{countUp(avgEl,avgDur);}
+    let longestHeadline='—';
+    if(ads.length>0){
+      const longest=ads.reduce((best,a)=>adDuration(a)>adDuration(best)?a:best,ads[0]);
+      const raw=longest.headline||'—';
+      longestHeadline=raw.length>16?raw.slice(0,14)+'…':raw;
+    }
+    countUp(document.getElementById('kpi-longest-running-ad'), longestHeadline);
+  }
+  document.addEventListener('click',e=>{
+    const card=e.target.closest('.kpi-card[data-target]');
+    if(card){ const t=document.querySelector('#'+card.dataset.target); if(t) t.scrollIntoView({behavior:'smooth'}); }
+  });
+  document.addEventListener('DOMContentLoaded', renderKPIs);
+  document.addEventListener('filtersUpdated', renderKPIs);
+  if(document.readyState==='interactive'||document.readyState==='complete') renderKPIs();
+})();
+</script>

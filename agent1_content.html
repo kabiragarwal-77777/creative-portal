@@ -1,0 +1,510 @@
+<style>
+/* ===== FILTER BAR STYLES ===== */
+
+#filter-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+#filter-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  background: rgba(19, 20, 26, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.filter-brand {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--gold);
+  font-size: 14px;
+  margin-right: 8px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+.filter-group-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+.filter-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  transition: var(--transition);
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.filter-btn:hover {
+  border-color: var(--muted);
+  color: var(--text);
+}
+
+.filter-btn.active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(240, 180, 41, 0.1);
+}
+
+#reset-filters-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  transition: var(--transition);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+#reset-filters-btn:hover {
+  border-color: var(--coral);
+  color: var(--coral);
+  background: rgba(255, 107, 107, 0.08);
+}
+
+#competitor-filter {
+  position: relative;
+}
+
+#competitor-dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#competitor-dropdown-btn .chevron {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid currentColor;
+  transition: transform var(--transition);
+  flex-shrink: 0;
+}
+
+#competitor-dropdown-btn.open .chevron {
+  transform: rotate(180deg);
+}
+
+#competitor-dropdown-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  min-width: 280px;
+  z-index: 150;
+  max-height: 320px;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+#competitor-dropdown-panel.open {
+  display: block;
+}
+
+#competitor-dropdown-panel::-webkit-scrollbar { width: 4px; }
+#competitor-dropdown-panel::-webkit-scrollbar-track { background: transparent; }
+#competitor-dropdown-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.comp-group { margin-bottom: 12px; }
+.comp-group:last-child { margin-bottom: 0; }
+
+.comp-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.comp-group-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.comp-group-actions { display: flex; gap: 8px; }
+
+.comp-group-action {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--teal);
+  cursor: pointer;
+  text-decoration: none;
+  border: none;
+  background: none;
+  padding: 0;
+  transition: var(--transition);
+}
+
+.comp-group-action:hover { color: var(--blue); }
+
+.comp-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  color: var(--text);
+  transition: background var(--transition);
+  user-select: none;
+}
+
+.comp-item:hover { background: var(--border); }
+
+.comp-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.comp-name { flex: 1; font-size: 13px; }
+
+.comp-checkbox {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.comp-item.selected .comp-checkbox {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.comp-item.selected .comp-checkbox::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 7px;
+  border: 2px solid #000;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg) translateY(-1px);
+}
+
+#custom-date-group {
+  display: none;
+  align-items: center;
+  gap: 6px;
+}
+
+#custom-date-group.visible { display: flex; }
+
+.date-input-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.date-input {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: var(--transition);
+  outline: none;
+}
+
+.date-input:hover, .date-input:focus { border-color: var(--gold); }
+.date-input::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
+
+.filter-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+</style>
+
+<div id="filter-bar-inner">
+  <div class="filter-brand">⚡ Univest CI</div>
+  <div class="filter-separator"></div>
+  <div class="filter-group" id="vertical-toggle">
+    <span class="filter-group-label">Vertical</span>
+    <button class="filter-btn" data-vertical="ra">RA</button>
+    <button class="filter-btn" data-vertical="broking">Broking</button>
+    <button class="filter-btn active" data-vertical="both">Both</button>
+  </div>
+  <div class="filter-separator"></div>
+  <div class="filter-group" id="competitor-filter">
+    <span class="filter-group-label">Competitors</span>
+    <button class="filter-btn" id="competitor-dropdown-btn">
+      <span id="competitor-btn-label">All Competitors</span>
+      <span class="chevron"></span>
+    </button>
+    <div id="competitor-dropdown-panel"></div>
+  </div>
+  <div class="filter-separator"></div>
+  <div class="filter-group" id="date-filter">
+    <span class="filter-group-label">Period</span>
+    <button class="filter-btn" data-range="7d">7d</button>
+    <button class="filter-btn active" data-range="30d">30d</button>
+    <button class="filter-btn" data-range="90d">90d</button>
+    <button class="filter-btn" data-range="6m">6m</button>
+    <button class="filter-btn" data-range="custom">Custom</button>
+  </div>
+  <div class="filter-group" id="custom-date-group">
+    <span class="date-input-label">From</span>
+    <input type="date" class="date-input" id="date-from-input" />
+    <span class="date-input-label">To</span>
+    <input type="date" class="date-input" id="date-to-input" />
+  </div>
+  <div class="filter-separator"></div>
+  <div class="filter-group" id="mode-toggle">
+    <span class="filter-group-label">Mode</span>
+    <button class="filter-btn active" data-mode="overview">Overview</button>
+    <button class="filter-btn" data-mode="deep-dive">Deep Dive</button>
+  </div>
+  <button id="reset-filters-btn">↺ Reset</button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const DEFAULTS = { vertical: 'both', competitors: [], dateRange: '30d', dateFrom: null, dateTo: null, mode: 'overview' };
+  if (!window.ACTIVE_FILTERS) window.ACTIVE_FILTERS = Object.assign({}, DEFAULTS);
+
+  const verticalToggle = document.getElementById('vertical-toggle');
+  const competitorFilter = document.getElementById('competitor-filter');
+  const dropdownBtn = document.getElementById('competitor-dropdown-btn');
+  const dropdownPanel = document.getElementById('competitor-dropdown-panel');
+  const competitorBtnLabel = document.getElementById('competitor-btn-label');
+  const dateFilter = document.getElementById('date-filter');
+  const customDateGroup = document.getElementById('custom-date-group');
+  const dateFromInput = document.getElementById('date-from-input');
+  const dateToInput = document.getElementById('date-to-input');
+  const modeToggle = document.getElementById('mode-toggle');
+  const resetBtn = document.getElementById('reset-filters-btn');
+
+  function computeDateRange(range) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const daysAgo = n => { const d=new Date(today); d.setDate(d.getDate()-n); return d.toISOString().split('T')[0]; };
+    const dateTo = today.toISOString().split('T')[0];
+    let dateFrom = null;
+    switch(range) {
+      case '7d': dateFrom=daysAgo(7); break;
+      case '30d': dateFrom=daysAgo(30); break;
+      case '90d': dateFrom=daysAgo(90); break;
+      case '6m': dateFrom=daysAgo(182); break;
+      case 'custom': dateFrom=dateFromInput.value||null; break;
+      default: dateFrom=daysAgo(30);
+    }
+    return { dateFrom, dateTo };
+  }
+
+  function dispatchFiltersUpdated() {
+    document.dispatchEvent(new CustomEvent('filtersUpdated', { detail: Object.assign({}, window.ACTIVE_FILTERS) }));
+  }
+
+  verticalToggle.querySelectorAll('[data-vertical]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      verticalToggle.querySelectorAll('[data-vertical]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      window.ACTIVE_FILTERS.vertical = btn.dataset.vertical;
+      renderCompetitorDropdown();
+      dispatchFiltersUpdated();
+    });
+  });
+
+  function getCompetitors() {
+    return (window.UNIVEST_DATA && Array.isArray(window.UNIVEST_DATA.competitors)) ? window.UNIVEST_DATA.competitors : [];
+  }
+
+  function groupCompetitors() {
+    const all = getCompetitors();
+    return {
+      ra: all.filter(c => c.vertical==='ra'||c.vertical==='both'),
+      broking: all.filter(c => c.vertical==='broking'||c.vertical==='both')
+    };
+  }
+
+  function renderCompetitorDropdown() {
+    const groups = groupCompetitors();
+    const selected = window.ACTIVE_FILTERS.competitors;
+    const v = window.ACTIVE_FILTERS.vertical;
+    const showRA = v==='ra'||v==='both';
+    const showBroking = v==='broking'||v==='both';
+    let html = '';
+    if (showRA && groups.ra.length > 0) html += buildGroupHTML('ra','RA',groups.ra,selected);
+    if (showBroking && groups.broking.length > 0) html += buildGroupHTML('broking','Broking',groups.broking,selected);
+    if (!html) html = '<div style="font-family:var(--font-mono);font-size:12px;color:var(--muted);padding:8px 0;">No competitors available</div>';
+    dropdownPanel.innerHTML = html;
+    attachCompetitorEvents();
+    updateCompetitorBtnLabel();
+  }
+
+  function buildGroupHTML(key, title, competitors, selected) {
+    let html = `<div class="comp-group" data-group="${key}"><div class="comp-group-header"><span class="comp-group-title">${title}</span><div class="comp-group-actions"><button class="comp-group-action" data-group-action="select-all" data-group="${key}">Select All</button><button class="comp-group-action" data-group-action="clear-all" data-group="${key}">Clear</button></div></div>`;
+    competitors.forEach(c => {
+      const isSel = selected.indexOf(c.id)!==-1;
+      html += `<div class="comp-item${isSel?' selected':''}" data-comp-id="${c.id}"><span class="comp-dot" style="background:${c.color||'#7c7d8a'}"></span><span class="comp-name">${c.name}</span><span class="comp-checkbox"></span></div>`;
+    });
+    return html + '</div>';
+  }
+
+  function attachCompetitorEvents() {
+    dropdownPanel.querySelectorAll('.comp-item').forEach(item => {
+      item.addEventListener('click', e => {
+        e.stopPropagation();
+        const id = item.dataset.compId;
+        const idx = window.ACTIVE_FILTERS.competitors.indexOf(id);
+        if (idx===-1) window.ACTIVE_FILTERS.competitors.push(id);
+        else window.ACTIVE_FILTERS.competitors.splice(idx,1);
+        item.classList.toggle('selected', window.ACTIVE_FILTERS.competitors.indexOf(id)!==-1);
+        updateCompetitorBtnLabel();
+        dispatchFiltersUpdated();
+      });
+    });
+    dropdownPanel.querySelectorAll('[data-group-action]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const action = btn.dataset.groupAction, groupKey = btn.dataset.group;
+        const groupComps = groupCompetitors()[groupKey]||[];
+        if (action==='select-all') {
+          groupComps.forEach(c => { if(window.ACTIVE_FILTERS.competitors.indexOf(c.id)===-1) window.ACTIVE_FILTERS.competitors.push(c.id); });
+        } else {
+          const groupIds = groupComps.map(c=>c.id);
+          window.ACTIVE_FILTERS.competitors = window.ACTIVE_FILTERS.competitors.filter(id=>!groupIds.includes(id));
+        }
+        dropdownPanel.querySelectorAll('.comp-item').forEach(item => {
+          item.classList.toggle('selected', window.ACTIVE_FILTERS.competitors.indexOf(item.dataset.compId)!==-1);
+        });
+        updateCompetitorBtnLabel();
+        dispatchFiltersUpdated();
+      });
+    });
+  }
+
+  function updateCompetitorBtnLabel() {
+    const count = window.ACTIVE_FILTERS.competitors.length;
+    competitorBtnLabel.textContent = count===0 ? 'All Competitors' : count+' Selected';
+    dropdownBtn.classList.toggle('active', count>0);
+  }
+
+  dropdownBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const isOpen = dropdownPanel.classList.toggle('open');
+    dropdownBtn.classList.toggle('open', isOpen);
+    if (isOpen) renderCompetitorDropdown();
+  });
+
+  dateFilter.querySelectorAll('[data-range]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      dateFilter.querySelectorAll('[data-range]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const range = btn.dataset.range;
+      window.ACTIVE_FILTERS.dateRange = range;
+      if (range==='custom') {
+        customDateGroup.classList.add('visible');
+      } else {
+        customDateGroup.classList.remove('visible');
+        const dates = computeDateRange(range);
+        window.ACTIVE_FILTERS.dateFrom = dates.dateFrom;
+        window.ACTIVE_FILTERS.dateTo = dates.dateTo;
+        dispatchFiltersUpdated();
+      }
+    });
+  });
+
+  function handleCustomDateChange() {
+    if (window.ACTIVE_FILTERS.dateRange==='custom') {
+      window.ACTIVE_FILTERS.dateFrom = dateFromInput.value||null;
+      window.ACTIVE_FILTERS.dateTo = dateToInput.value||null;
+      if (window.ACTIVE_FILTERS.dateFrom && window.ACTIVE_FILTERS.dateTo) dispatchFiltersUpdated();
+    }
+  }
+  dateFromInput.addEventListener('change', handleCustomDateChange);
+  dateToInput.addEventListener('change', handleCustomDateChange);
+
+  modeToggle.querySelectorAll('[data-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      modeToggle.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      window.ACTIVE_FILTERS.mode = btn.dataset.mode;
+      dispatchFiltersUpdated();
+    });
+  });
+
+  resetBtn.addEventListener('click', () => {
+    window.ACTIVE_FILTERS = Object.assign({}, DEFAULTS);
+    const dates = computeDateRange('30d');
+    window.ACTIVE_FILTERS.dateFrom = dates.dateFrom;
+    window.ACTIVE_FILTERS.dateTo = dates.dateTo;
+    verticalToggle.querySelectorAll('[data-vertical]').forEach(b => b.classList.toggle('active', b.dataset.vertical==='both'));
+    dropdownPanel.classList.remove('open');
+    dropdownBtn.classList.remove('open','active');
+    competitorBtnLabel.textContent = 'All Competitors';
+    dateFilter.querySelectorAll('[data-range]').forEach(b => b.classList.toggle('active', b.dataset.range==='30d'));
+    customDateGroup.classList.remove('visible');
+    dateFromInput.value = ''; dateToInput.value = '';
+    modeToggle.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('active', b.dataset.mode==='overview'));
+    dispatchFiltersUpdated();
+  });
+
+  document.addEventListener('click', e => {
+    if (!competitorFilter.contains(e.target)) {
+      dropdownPanel.classList.remove('open');
+      dropdownBtn.classList.remove('open');
+    }
+  });
+
+  (function init() {
+    const dates = computeDateRange(window.ACTIVE_FILTERS.dateRange||'30d');
+    window.ACTIVE_FILTERS.dateFrom = dates.dateFrom;
+    window.ACTIVE_FILTERS.dateTo = dates.dateTo;
+    updateCompetitorBtnLabel();
+  })();
+})();
+</script>

@@ -154,12 +154,16 @@
             <button class="tab" data-tab="scanner">
                 <span class="tab-icon">&#9670;</span> Inventory Scanner
             </button>
+            <button class="tab" data-tab="ci">
+                <span class="tab-icon">&#9733;</span> Competitor Intel
+            </button>
         </div>
     </nav>
     <div class="frame-container">
         <iframe id="frame-creative" src="creative.html"></iframe>
         <iframe id="frame-uploader" src="uploader/upload.html?v=5" class="hidden"></iframe>
         <iframe id="frame-scanner" src="http://localhost:3000" class="hidden"></iframe>
+        <iframe id="frame-ci" src="univest_ci_portal.html" class="hidden"></iframe>
     </div>
 
     <script>
@@ -168,6 +172,7 @@
             creative: document.getElementById('frame-creative'),
             uploader: document.getElementById('frame-uploader'),
             scanner: document.getElementById('frame-scanner'),
+            ci: document.getElementById('frame-ci'),
         };
 
         tabs.forEach(tab => {

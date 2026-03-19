@@ -1,0 +1,1170 @@
+<!-- AGENT 0 OUTPUT -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Univest — Competitor Intelligence Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ─── CSS VARIABLES ─── */
+:root {
+  --bg: #0b0c10;
+  --surface: #13141a;
+  --border: #252630;
+  --gold: #f0b429;
+  --teal: #38d9a9;
+  --blue: #4dabf7;
+  --text: #e8e9f0;
+  --muted: #7c7d8a;
+  --coral: #ff6b6b;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-sans: 'IBM Plex Sans', sans-serif;
+  --radius: 8px;
+  --transition: 0.2s ease;
+}
+
+/* ─── RESET ─── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  display: flex;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--border);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--gold);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d4981f;
+}
+
+/* ─── SIDEBAR ─── */
+#sidebar {
+  width: 60px;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 16px;
+  gap: 8px;
+  z-index: 200;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar-logo {
+  width: 36px;
+  height: 36px;
+  background: var(--gold);
+  color: #000;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.nav-item {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 18px;
+  transition: var(--transition);
+  flex-shrink: 0;
+  position: relative;
+}
+.nav-item:hover {
+  background: var(--border);
+}
+.nav-item.active {
+  background: rgba(240, 180, 41, 0.15);
+  border: 1px solid rgba(240, 180, 41, 0.3);
+}
+.nav-item[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: 52px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  z-index: 999;
+  pointer-events: none;
+}
+
+/* ─── APP CONTAINER ─── */
+#app {
+  margin-left: 60px;
+  flex: 1;
+  min-height: 100vh;
+  padding: 0;
+}
+
+/* ─── MODULES ─── */
+.module {
+  padding: 32px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.module-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.module-title::before {
+  content: attr(data-icon);
+  font-size: 22px;
+}
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.card:hover {
+  border-color: rgba(240, 180, 41, 0.2);
+  transition: border-color var(--transition);
+}
+
+/* ─── BUTTONS ─── */
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+.btn:active {
+  transform: translateY(0);
+}
+.btn-primary {
+  background: var(--gold);
+  color: #000;
+}
+.btn-secondary {
+  background: var(--border);
+  color: var(--text);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.btn-icon {
+  padding: 8px;
+  width: 34px;
+  height: 34px;
+  justify-content: center;
+}
+
+/* ─── BADGES ─── */
+.badge {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  display: inline-block;
+}
+.badge-gold {
+  background: rgba(240, 180, 41, 0.15);
+  color: var(--gold);
+  border: 1px solid rgba(240, 180, 41, 0.3);
+}
+.badge-teal {
+  background: rgba(56, 217, 169, 0.15);
+  color: var(--teal);
+  border: 1px solid rgba(56, 217, 169, 0.3);
+}
+.badge-blue {
+  background: rgba(77, 171, 247, 0.15);
+  color: var(--blue);
+  border: 1px solid rgba(77, 171, 247, 0.3);
+}
+.badge-coral {
+  background: rgba(255, 107, 107, 0.15);
+  color: var(--coral);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+.badge-muted {
+  background: rgba(124, 125, 138, 0.15);
+  color: var(--muted);
+  border: 1px solid rgba(124, 125, 138, 0.3);
+}
+
+/* ─── TAGS ─── */
+.tag {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+.tag-broking {
+  background: rgba(77, 171, 247, 0.12);
+  color: var(--blue);
+}
+.tag-ra {
+  background: rgba(56, 217, 169, 0.12);
+  color: var(--teal);
+}
+.tag-both {
+  background: rgba(240, 180, 41, 0.12);
+  color: var(--gold);
+}
+
+/* ─── STATUS CHIPS ─── */
+.chip {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.chip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.chip-active {
+  background: rgba(56, 217, 169, 0.12);
+  color: var(--teal);
+  border: 1px solid rgba(56, 217, 169, 0.25);
+}
+.chip-active::before {
+  background: var(--teal);
+  box-shadow: 0 0 6px var(--teal);
+}
+.chip-inactive {
+  background: rgba(124, 125, 138, 0.12);
+  color: var(--muted);
+  border: 1px solid rgba(124, 125, 138, 0.25);
+}
+.chip-inactive::before {
+  background: var(--muted);
+}
+.chip-new {
+  background: rgba(240, 180, 41, 0.12);
+  color: var(--gold);
+  border: 1px solid rgba(240, 180, 41, 0.25);
+}
+.chip-new::before {
+  background: var(--gold);
+  box-shadow: 0 0 6px var(--gold);
+}
+
+/* ─── GRID UTILITIES ─── */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1200px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 900px) {
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .grid-4 { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+}
+
+/* ─── FLEX UTILITIES ─── */
+.flex { display: flex; }
+.flex-col { display: flex; flex-direction: column; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.gap-4 { gap: 4px; }
+.gap-6 { gap: 6px; }
+.gap-8 { gap: 8px; }
+.gap-10 { gap: 10px; }
+.gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; }
+.gap-20 { gap: 20px; }
+.gap-24 { gap: 24px; }
+.flex-1 { flex: 1; }
+.flex-wrap { flex-wrap: wrap; }
+
+/* ─── TEXT UTILITIES ─── */
+.text-gold { color: var(--gold); }
+.text-teal { color: var(--teal); }
+.text-blue { color: var(--blue); }
+.text-coral { color: var(--coral); }
+.text-muted { color: var(--muted); }
+.text-sm { font-size: 12px; }
+.text-xs { font-size: 11px; }
+.text-lg { font-size: 16px; }
+.text-xl { font-size: 20px; }
+.font-mono { font-family: var(--font-mono); }
+.font-600 { font-weight: 600; }
+.font-700 { font-weight: 700; }
+
+/* ─── SPACING UTILITIES ─── */
+.mt-4 { margin-top: 4px; }
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mt-20 { margin-top: 20px; }
+.mb-4 { margin-bottom: 4px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-12 { margin-bottom: 12px; }
+.mb-16 { margin-bottom: 16px; }
+.p-0 { padding: 0; }
+
+/* ─── DIVIDER ─── */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 16px 0;
+}
+
+/* ─── OVERLAY ─── */
+#overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 300;
+  display: none;
+  backdrop-filter: blur(2px);
+}
+#overlay.visible {
+  display: block;
+}
+
+/* ─── FILTER BAR ─── */
+#filter-bar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+}
+
+/* ─── KPI STRIP ─── */
+#kpi-strip {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ─── AD CARD SPECIFIC ─── */
+.ad-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: var(--transition);
+  cursor: pointer;
+}
+.ad-card:hover {
+  border-color: rgba(240, 180, 41, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+.ad-card-thumb {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  position: relative;
+  overflow: hidden;
+}
+.ad-card-body {
+  padding: 14px;
+}
+.ad-card-headline {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+.ad-card-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.ad-duration-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+.ad-duration-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--teal);
+}
+
+/* ─── INSIGHT CARD ─── */
+.insight-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  border-left: 3px solid transparent;
+  transition: var(--transition);
+  position: relative;
+}
+.insight-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+.insight-card.priority-red { border-left-color: var(--coral); }
+.insight-card.priority-yellow { border-left-color: var(--gold); }
+.insight-card.priority-green { border-left-color: var(--teal); }
+.insight-card.done { opacity: 0.5; }
+.insight-label {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.insight-observation {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.insight-why {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  border-left: 2px solid var(--border);
+}
+.insight-action {
+  font-size: 12px;
+  color: var(--gold);
+  line-height: 1.5;
+  font-weight: 500;
+}
+.insight-done-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  font-size: 24px;
+  pointer-events: none;
+}
+
+/* ─── PLATFORM ICONS ─── */
+.platform-meta { color: #1877f2; }
+.platform-google { color: #ea4335; }
+.platform-youtube { color: #ff0000; }
+.platform-linkedin { color: #0a66c2; }
+
+/* ─── COMPETITOR DOT ─── */
+.comp-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* ─── PROFILE DRAWER ─── */
+#profile-drawer-container {
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  z-index: 400;
+}
+
+/* ─── FAB AREA ─── */
+#fab-area {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 250;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+/* ─── TABLE ─── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.data-table th {
+  text-align: left;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.data-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(37, 38, 48, 0.5);
+  color: var(--text);
+  vertical-align: middle;
+}
+.data-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ─── PROGRESS BAR ─── */
+.progress-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+
+/* ─── CHART CONTAINER ─── */
+.chart-container {
+  position: relative;
+  width: 100%;
+}
+
+/* ─── EMPTY STATE ─── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--muted);
+  text-align: center;
+  gap: 12px;
+}
+.empty-state-icon { font-size: 40px; }
+.empty-state-title { font-size: 16px; font-weight: 600; color: var(--text); }
+.empty-state-desc { font-size: 13px; line-height: 1.6; max-width: 360px; }
+
+/* ─── SEARCH INPUT ─── */
+.search-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 14px;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  outline: none;
+  transition: var(--transition);
+  width: 220px;
+}
+.search-input::placeholder { color: var(--muted); }
+.search-input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(240, 180, 41, 0.1);
+}
+
+/* ─── SELECT ─── */
+.select-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 32px 8px 12px;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237c7d8a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: var(--transition);
+}
+.select-input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(240, 180, 41, 0.1);
+}
+
+/* ─── TOGGLE ─── */
+.toggle-group {
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.toggle-item {
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--muted);
+  transition: var(--transition);
+  border: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  white-space: nowrap;
+}
+.toggle-item.active {
+  background: var(--gold);
+  color: #000;
+}
+.toggle-item:hover:not(.active) {
+  background: var(--border);
+  color: var(--text);
+}
+
+/* ─── TOOLTIP ─── */
+.tooltip-wrap { position: relative; display: inline-block; }
+.tooltip-wrap .tooltip {
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e1f28;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition);
+  z-index: 999;
+}
+.tooltip-wrap:hover .tooltip { opacity: 1; }
+
+/* ─── SKELETON LOADER ─── */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface) 25%, var(--border) 50%, var(--surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── FADE IN ─── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeIn 0.3s ease forwards; }
+
+/* ─── KPI CARD ─── */
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+}
+.kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.kpi-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.kpi-delta {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.kpi-delta.up { color: var(--teal); }
+.kpi-delta.down { color: var(--coral); }
+
+/* ─── SCROLLABLE LIST ─── */
+.scroll-list {
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+/* ─── COMPETITOR COLOR SWATCH ─── */
+.comp-swatch {
+  width: 4px;
+  border-radius: 2px;
+  align-self: stretch;
+  flex-shrink: 0;
+}
+
+/* ─── PULSE ANIMATION FOR LIVE ─── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.pulse { animation: pulse 2s infinite; }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 768px) {
+  #app { margin-left: 60px; }
+  .module { padding: 24px 16px; }
+  #filter-bar { padding: 10px 16px; }
+  #kpi-strip { padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar">
+  <div class="sidebar-logo">U</div>
+  <a href="#module-a" class="nav-item" title="Recent Ads">📢</a>
+  <a href="#module-b" class="nav-item" title="Evergreen Ads">🏆</a>
+  <a href="#module-c" class="nav-item" title="Content Strategy">📊</a>
+  <a href="#module-d" class="nav-item" title="Messaging Intel">💬</a>
+  <a href="#module-e" class="nav-item" title="Campaign Pulse">🔥</a>
+  <a href="#module-f" class="nav-item" title="Opportunity Radar">🎯</a>
+</nav>
+
+<div id="app">
+  <div id="filter-bar"><!-- AGENT 1 PLACEHOLDER --></div>
+  <div id="kpi-strip"><!-- AGENT 2 PLACEHOLDER --></div>
+  <section id="module-a" class="module"><!-- AGENT 3 PLACEHOLDER --></section>
+  <section id="module-b" class="module"><!-- AGENT 4 PLACEHOLDER --></section>
+  <section id="module-c" class="module"><!-- AGENT 5 PLACEHOLDER --></section>
+  <section id="module-d" class="module"><!-- AGENT 6 PLACEHOLDER --></section>
+  <section id="module-e" class="module"><!-- AGENT 7 PLACEHOLDER --></section>
+  <section id="module-f" class="module"><!-- AGENT 8 PLACEHOLDER --></section>
+  <div id="profile-drawer-container"><!-- AGENT 9 PLACEHOLDER --></div>
+  <div id="fab-area"><!-- AGENT 10 PLACEHOLDER --></div>
+</div>
+
+<div id="overlay"></div>
+
+<script>
+window.UNIVEST_DATA = {
+
+competitors: [
+  {id:'zerodha', name:'Zerodha', vertical:'broking', color:'#387ed1', activeAds:12, monthlyVolume:45, topPlatform:'meta', topTheme:'offer', strengths:['Brand recognition — #1 broker India','Free equity delivery','Kite platform UI'], gaps:['No advisory arm','Limited research content'], threats:['Largest retail user base can cross-sell anything']},
+  {id:'groww', name:'Groww', vertical:'broking', color:'#00d09c', activeAds:18, monthlyVolume:62, topPlatform:'meta', topTheme:'education', strengths:['Beginner-friendly UX','Strong social media presence','Mutual fund first approach'], gaps:['No options education depth','Limited advanced tools'], threats:['Capturing beginner market at massive scale']},
+  {id:'angelone', name:'Angel One', vertical:'broking', color:'#e84c3d', activeAds:15, monthlyVolume:55, topPlatform:'youtube', topTheme:'social_proof', strengths:['AI-powered SmartAPI','Good research reports','Options tools (SPARK)'], gaps:['Complex UI for beginners','Heavy brand spend'], threats:['AI + research positioning is unique']},
+  {id:'upstox', name:'Upstox', vertical:'both', color:'#5a4fcf', activeAds:20, monthlyVolume:70, topPlatform:'meta', topTheme:'offer', strengths:['₹0 brokerage campaigns','Good options UI','Sequoia-backed credibility'], gaps:['RA arm undermarketed','Support issues reported'], threats:['Highest ad spend in category']},
+  {id:'5paisa', name:'5paisa', vertical:'broking', color:'#f4a124', activeAds:8, monthlyVolume:25, topPlatform:'google', topTheme:'offer', strengths:['Extremely low brokerage','5paisa Research reports'], gaps:['Outdated mobile UI','Low brand affinity'], threats:['Price war trigger']},
+  {id:'dhan', name:'Dhan', vertical:'both', color:'#1cb9c8', activeAds:14, monthlyVolume:40, topPlatform:'linkedin', topTheme:'feature', strengths:['Options-first platform','Clean modern UI','API trading focus'], gaps:['Newer brand — less trust','No mutual fund push'], threats:['Winning advanced trader segment fast']},
+  {id:'paytmmoney', name:'Paytm Money', vertical:'broking', color:'#00baf2', activeAds:6, monthlyVolume:18, topPlatform:'meta', topTheme:'trust', strengths:['Paytm parent brand trust','UPI-first investing'], gaps:['Ad spend declining','Limited differentiators now'], threats:['Paytm ecosystem lock-in']},
+  {id:'samco', name:'Samco', vertical:'ra', color:'#ff6b35', activeAds:10, monthlyVolume:30, topPlatform:'youtube', topTheme:'education', strengths:['Stock Basket product','RankMF platform','Decent research quality'], gaps:['Less premium positioning','Small advisory team'], threats:['Stock Basket is unique product moat']},
+  {id:'stockgro', name:'StockGro', vertical:'ra', color:'#7b61ff', activeAds:16, monthlyVolume:48, topPlatform:'meta', topTheme:'education', strengths:['Gamified stock learning','Youth-first brand','Large community 1Cr+'], gaps:['Not SEBI RA registered','Cannot give direct calls'], threats:['Capturing students and young professionals']},
+  {id:'sensibull', name:'Sensibull', vertical:'ra', color:'#00c853', activeAds:12, monthlyVolume:35, topPlatform:'youtube', topTheme:'education', strengths:['Best-in-class options strategy builder','Free tier for awareness','Integrates with 10+ brokers'], gaps:['Niche audience (options only)','Complex for beginners'], threats:['Owns the options education mindshare']},
+  {id:'definedge', name:'Definedge', vertical:'ra', color:'#ff4081', activeAds:7, monthlyVolume:20, topPlatform:'youtube', topTheme:'education', strengths:['Renko/zone technical analysis','Professional trader tools','Strong YouTube community'], gaps:['Very niche — technical analysis only','High entry barrier'], threats:['Owns the pro technical analyst segment']},
+  {id:'weekendinvesting', name:'Weekend Investing', vertical:'ra', color:'#ff9800', activeAds:9, monthlyVolume:28, topPlatform:'linkedin', topTheme:'education', strengths:['SEBI RIA registered','Systematic smallcase-like approach','Content-first marketing'], gaps:['Small scale operations','Limited brand awareness'], threats:['SEBI RIA tag is trust signal Univest lacks in positioning']}
+],
+
+ads: [
+  /* ── ZERODHA (6 ads) ── */
+  {id:'ad_001', competitorId:'zerodha', platform:'meta', format:'video', theme:'offer', status:'active', headline:'₹0 brokerage on equity delivery. Start investing free today.', cta:'Open Account', firstSeen:'2024-11-15', lastSeen:'2025-03-19', daysRunning:124, estimatedSpend:'high', targetAudience:'25-45 urban professionals', notes:'Long-running evergreen — delivery free angle'},
+  {id:'ad_002', competitorId:'zerodha', platform:'google', format:'search', theme:'offer', status:'active', headline:'Invest in stocks for ₹0. India\'s #1 broker — Zerodha Kite.', cta:'Start Now', firstSeen:'2024-10-05', lastSeen:'2025-03-19', daysRunning:165, estimatedSpend:'high', targetAudience:'demat account seekers', notes:'Evergreen Google search ad'},
+  {id:'ad_003', competitorId:'zerodha', platform:'meta', format:'carousel', theme:'education', status:'active', headline:'5 reasons why 1.3 crore traders chose Zerodha. Swipe to see.', cta:'Learn More', firstSeen:'2025-01-20', lastSeen:'2025-03-19', daysRunning:58, estimatedSpend:'medium', targetAudience:'new investors 22-35', notes:'Social proof carousel'},
+  {id:'ad_004', competitorId:'zerodha', platform:'youtube', format:'video', theme:'education', status:'active', headline:'Learn options trading in 10 minutes. Free on Varsity by Zerodha.', cta:'Watch Free', firstSeen:'2025-03-13', lastSeen:'2025-03-19', daysRunning:6, estimatedSpend:'medium', targetAudience:'options traders 25-40', notes:'New — Varsity education push'},
+  {id:'ad_005', competitorId:'zerodha', platform:'meta', format:'image', theme:'feature', status:'inactive', headline:'Kite 3.0 is here. The fastest trading platform in India.', cta:'Try Now', firstSeen:'2024-09-10', lastSeen:'2025-01-18', daysRunning:130, estimatedSpend:'medium', targetAudience:'active traders', notes:'Retired — platform update campaign'},
+  {id:'ad_006', competitorId:'zerodha', platform:'google', format:'search', theme:'offer', status:'active', headline:'Zero commission equity investing. Open demat in 10 minutes.', cta:'Open Free', firstSeen:'2025-02-10', lastSeen:'2025-03-19', daysRunning:37, estimatedSpend:'high', targetAudience:'first-time investors', notes:'Direct response Google ad'},
+
+  /* ── GROWW (7 ads) ── */
+  {id:'ad_007', competitorId:'groww', platform:'meta', format:'video', theme:'education', status:'active', headline:'Your first ₹500 investment starts here. Join 5 crore investors on Groww.', cta:'Start Investing', firstSeen:'2024-08-20', lastSeen:'2025-03-19', daysRunning:211, estimatedSpend:'very high', targetAudience:'first-time investors 18-28', notes:'Flagship evergreen — massive spend, beginner hook'},
+  {id:'ad_008', competitorId:'groww', platform:'youtube', format:'video', theme:'education', status:'active', headline:'Mutual funds explained in 3 minutes. Start SIP with ₹100.', cta:'Start SIP', firstSeen:'2024-09-15', lastSeen:'2025-03-19', daysRunning:185, estimatedSpend:'high', targetAudience:'SIP investors 22-40', notes:'Evergreen educational YouTube pre-roll'},
+  {id:'ad_009', competitorId:'groww', platform:'meta', format:'video', theme:'education', status:'active', headline:'Stop letting FD eat your money. Mutual funds beat FD by 2x historically.', cta:'Switch Now', firstSeen:'2025-01-08', lastSeen:'2025-03-19', daysRunning:70, estimatedSpend:'high', targetAudience:'FD holders 30-50', notes:'FD vs MF angle — strong hook'},
+  {id:'ad_010', competitorId:'groww', platform:'meta', format:'story', theme:'offer', status:'active', headline:'Open demat in 5 minutes. No paperwork. No branch visit.', cta:'Open Now', firstSeen:'2025-03-14', lastSeen:'2025-03-19', daysRunning:5, estimatedSpend:'medium', targetAudience:'mobile-first 18-30', notes:'New story format — recent launch'},
+  {id:'ad_011', competitorId:'groww', platform:'google', format:'search', theme:'offer', status:'active', headline:'Best app to invest in mutual funds. Free, instant, trusted by 5Cr+.', cta:'Download', firstSeen:'2024-12-01', lastSeen:'2025-03-19', daysRunning:108, estimatedSpend:'high', targetAudience:'MF searchers', notes:'Google brand + generic keyword mix'},
+  {id:'ad_012', competitorId:'groww', platform:'meta', format:'carousel', theme:'education', status:'active', headline:'What is a SIP? How does compounding work? Swipe to learn investing basics.', cta:'Learn Free', firstSeen:'2025-02-14', lastSeen:'2025-03-19', daysRunning:33, estimatedSpend:'medium', targetAudience:'financial literacy seekers 20-30', notes:'Education carousel for beginners'},
+  {id:'ad_013', competitorId:'groww', platform:'youtube', format:'video', theme:'social_proof', status:'inactive', headline:'She started with ₹200/month. See what her portfolio looks like now.', cta:'Start Today', firstSeen:'2024-10-20', lastSeen:'2025-02-05', daysRunning:108, estimatedSpend:'medium', targetAudience:'women investors 25-40', notes:'Customer story format — retired'},
+
+  /* ── ANGEL ONE (6 ads) ── */
+  {id:'ad_014', competitorId:'angelone', platform:'youtube', format:'video', theme:'social_proof', status:'active', headline:'SmartAPI powers 50,000+ algo traders. Are you still trading manually?', cta:'Try SmartAPI', firstSeen:'2024-09-01', lastSeen:'2025-03-19', daysRunning:199, estimatedSpend:'high', targetAudience:'algo/developer traders', notes:'Evergreen — SmartAPI flagship'},
+  {id:'ad_015', competitorId:'angelone', platform:'meta', format:'video', theme:'offer', status:'active', headline:'Open Angel One account in 5 minutes. Get ₹500 trading credit instantly.', cta:'Claim Offer', firstSeen:'2025-01-15', lastSeen:'2025-03-19', daysRunning:63, estimatedSpend:'very high', targetAudience:'new investors 22-35', notes:'Referral + credit offer'},
+  {id:'ad_016', competitorId:'angelone', platform:'youtube', format:'video', theme:'education', status:'active', headline:'Options SPARK: AI predicts the best strike price for you. Free for 7 days.', cta:'Try SPARK', firstSeen:'2025-02-20', lastSeen:'2025-03-19', daysRunning:27, estimatedSpend:'high', targetAudience:'options traders 28-45', notes:'AI angle — SPARK product push'},
+  {id:'ad_017', competitorId:'angelone', platform:'google', format:'search', theme:'offer', status:'active', headline:'₹20 flat brokerage. Best research + best tools. Angel One.', cta:'Open Now', firstSeen:'2025-03-12', lastSeen:'2025-03-19', daysRunning:7, estimatedSpend:'high', targetAudience:'active traders searching broker', notes:'New — competitive brokerage + research combo'},
+  {id:'ad_018', competitorId:'angelone', platform:'meta', format:'carousel', theme:'social_proof', status:'active', headline:'2 crore+ clients trust Angel One. See why traders prefer us.', cta:'Join Now', firstSeen:'2024-11-10', lastSeen:'2025-03-19', daysRunning:129, estimatedSpend:'medium', targetAudience:'undecided investors', notes:'Social proof carousel — long running'},
+  {id:'ad_019', competitorId:'angelone', platform:'youtube', format:'video', theme:'education', status:'inactive', headline:'Learn BTST trading strategy. Angel One expert session — free replay.', cta:'Watch Now', firstSeen:'2024-08-15', lastSeen:'2025-01-10', daysRunning:148, estimatedSpend:'low', targetAudience:'active traders', notes:'Educational content — retired'},
+
+  /* ── UPSTOX (8 ads) ── */
+  {id:'ad_020', competitorId:'upstox', platform:'meta', format:'video', theme:'offer', status:'active', headline:'₹0 brokerage forever. No hidden charges. Upstox — trade free.', cta:'Open Free', firstSeen:'2024-08-10', lastSeen:'2025-03-19', daysRunning:221, estimatedSpend:'very high', targetAudience:'cost-conscious traders 22-40', notes:'Flagship evergreen — highest spend ad in category'},
+  {id:'ad_021', competitorId:'upstox', platform:'meta', format:'video', theme:'offer', status:'active', headline:'Ranbir Kapoor invests with Upstox. Open your account in 3 minutes.', cta:'Start Now', firstSeen:'2024-09-20', lastSeen:'2025-03-19', daysRunning:180, estimatedSpend:'very high', targetAudience:'general public 20-45', notes:'Celebrity endorsement — massive reach'},
+  {id:'ad_022', competitorId:'upstox', platform:'youtube', format:'video', theme:'offer', status:'active', headline:'India\'s most trusted broker. ₹0 delivery. ₹20 F&O. Try Upstox today.', cta:'Download', firstSeen:'2024-10-05', lastSeen:'2025-03-19', daysRunning:165, estimatedSpend:'very high', targetAudience:'F&O traders 25-45', notes:'Evergreen YouTube — brokerage pricing'},
+  {id:'ad_023', competitorId:'upstox', platform:'meta', format:'story', theme:'feature', status:'active', headline:'Pro charts. Real-time data. Options Greeks live. This is Upstox Pro.', cta:'Try Pro', firstSeen:'2025-02-01', lastSeen:'2025-03-19', daysRunning:46, estimatedSpend:'medium', targetAudience:'advanced traders', notes:'Pro features story ad'},
+  {id:'ad_024', competitorId:'upstox', platform:'google', format:'search', theme:'offer', status:'active', headline:'Zero brokerage stock app. Open demat account online — Upstox.', cta:'Open Now', firstSeen:'2024-11-25', lastSeen:'2025-03-19', daysRunning:114, estimatedSpend:'high', targetAudience:'demat seekers Google', notes:'Google search — generic + brand'},
+  {id:'ad_025', competitorId:'upstox', platform:'linkedin', format:'image', theme:'feature', status:'active', headline:'Institutional grade options tools — now for every retail trader. Upstox Pro.', cta:'Learn More', firstSeen:'2025-03-15', lastSeen:'2025-03-19', daysRunning:4, estimatedSpend:'medium', targetAudience:'professional traders LinkedIn', notes:'New LinkedIn push — professional audience'},
+  {id:'ad_026', competitorId:'upstox', platform:'meta', format:'carousel', theme:'education', status:'active', headline:'5 options strategies every trader should master. Swipe to learn with Upstox.', cta:'Start Learning', firstSeen:'2025-01-28', lastSeen:'2025-03-19', daysRunning:50, estimatedSpend:'medium', targetAudience:'options learners 25-40', notes:'Education carousel for options segment'},
+  {id:'ad_027', competitorId:'upstox', platform:'youtube', format:'video', theme:'social_proof', status:'inactive', headline:'From ₹10,000 to ₹2 lakhs. Upstox trader success stories.', cta:'Open Account', firstSeen:'2024-09-01', lastSeen:'2025-01-25', daysRunning:146, estimatedSpend:'medium', targetAudience:'aspiring traders', notes:'Social proof — retired'},
+
+  /* ── 5PAISA (4 ads) ── */
+  {id:'ad_028', competitorId:'5paisa', platform:'google', format:'search', theme:'offer', status:'active', headline:'Flat ₹20 brokerage per trade. Cheapest broker in India — 5paisa.', cta:'Open Account', firstSeen:'2024-10-15', lastSeen:'2025-03-19', daysRunning:155, estimatedSpend:'medium', targetAudience:'price-sensitive traders', notes:'Pure price positioning — Google'},
+  {id:'ad_029', competitorId:'5paisa', platform:'meta', format:'image', theme:'offer', status:'active', headline:'₹20 flat. No percentage. No surprises. Switch to 5paisa today.', cta:'Switch Now', firstSeen:'2025-01-10', lastSeen:'2025-03-19', daysRunning:68, estimatedSpend:'low', targetAudience:'existing broker customers', notes:'Competitor switcher ad'},
+  {id:'ad_030', competitorId:'5paisa', platform:'google', format:'search', theme:'trust', status:'active', headline:'SEBI registered broker. Research-backed calls. 5paisa Premium.', cta:'Subscribe', firstSeen:'2025-02-20', lastSeen:'2025-03-19', daysRunning:27, estimatedSpend:'low', targetAudience:'research seekers', notes:'Research advisory push'},
+  {id:'ad_031', competitorId:'5paisa', platform:'meta', format:'video', theme:'education', status:'inactive', headline:'Trade smarter with 5paisa Research. Free 30-day trial inside.', cta:'Try Free', firstSeen:'2024-08-25', lastSeen:'2025-01-05', daysRunning:133, estimatedSpend:'low', targetAudience:'retail traders', notes:'Retired — research trial offer'},
+
+  /* ── DHAN (5 ads) ── */
+  {id:'ad_032', competitorId:'dhan', platform:'linkedin', format:'carousel', theme:'feature', status:'active', headline:'Options chain. IV analysis. P&L simulator. Meet Dhan — built for options traders.', cta:'Try Free', firstSeen:'2024-10-20', lastSeen:'2025-03-19', daysRunning:150, estimatedSpend:'medium', targetAudience:'professional options traders LinkedIn', notes:'Evergreen LinkedIn carousel — options features'},
+  {id:'ad_033', competitorId:'dhan', platform:'meta', format:'video', theme:'feature', status:'active', headline:'Modern trading platform. No lag. No crashes. 99.9% uptime — Dhan.', cta:'Switch to Dhan', firstSeen:'2025-01-20', lastSeen:'2025-03-19', daysRunning:58, estimatedSpend:'medium', targetAudience:'frustrated broker customers 25-40', notes:'Pain point — platform reliability'},
+  {id:'ad_034', competitorId:'dhan', platform:'youtube', format:'video', theme:'education', status:'active', headline:'How to build a hedged options portfolio. Step-by-step on Dhan.', cta:'Watch Now', firstSeen:'2025-02-15', lastSeen:'2025-03-19', daysRunning:32, estimatedSpend:'medium', targetAudience:'intermediate options traders', notes:'Options education — YouTube'},
+  {id:'ad_035', competitorId:'dhan', platform:'linkedin', format:'image', theme:'feature', status:'active', headline:'API trading for systematic strategies. Dhan TradingView integration live.', cta:'Explore API', firstSeen:'2025-03-13', lastSeen:'2025-03-19', daysRunning:6, estimatedSpend:'medium', targetAudience:'algorithmic traders, developers', notes:'New — TradingView API launch'},
+  {id:'ad_036', competitorId:'dhan', platform:'meta', format:'story', theme:'offer', status:'active', headline:'Trade options on the go. Dhan mobile — fastest options execution in India.', cta:'Download', firstSeen:'2025-03-16', lastSeen:'2025-03-19', daysRunning:3, estimatedSpend:'low', targetAudience:'mobile traders 22-38', notes:'Very new — mobile execution story'},
+
+  /* ── PAYTM MONEY (3 ads) ── */
+  {id:'ad_037', competitorId:'paytmmoney', platform:'meta', format:'video', theme:'trust', status:'active', headline:'Backed by Paytm. SEBI registered. Invest safely with Paytm Money.', cta:'Invest Now', firstSeen:'2024-12-10', lastSeen:'2025-03-19', daysRunning:99, estimatedSpend:'medium', targetAudience:'Paytm users 25-45', notes:'Trust + parent brand angle'},
+  {id:'ad_038', competitorId:'paytmmoney', platform:'meta', format:'image', theme:'offer', status:'active', headline:'Start NPS today. Save up to ₹2 lakhs in taxes. Paytm Money.', cta:'Start NPS', firstSeen:'2025-01-28', lastSeen:'2025-03-19', daysRunning:50, estimatedSpend:'low', targetAudience:'tax-savers 28-50', notes:'NPS tax saving angle — January timing'},
+  {id:'ad_039', competitorId:'paytmmoney', platform:'google', format:'search', theme:'trust', status:'inactive', headline:'Invest in mutual funds via UPI. Instant. Safe. Paytm Money.', cta:'Invest', firstSeen:'2024-09-20', lastSeen:'2025-01-20', daysRunning:122, estimatedSpend:'medium', targetAudience:'UPI-first investors', notes:'Retired — UPI investing push'},
+
+  /* ── SAMCO (4 ads) ── */
+  {id:'ad_040', competitorId:'samco', platform:'youtube', format:'video', theme:'education', status:'active', headline:'Stock Baskets explained: invest in a theme, not just one stock.', cta:'Explore Baskets', firstSeen:'2024-09-05', lastSeen:'2025-03-19', daysRunning:195, estimatedSpend:'medium', targetAudience:'thematic investors 28-50', notes:'Evergreen — Stock Basket education'},
+  {id:'ad_041', competitorId:'samco', platform:'meta', format:'carousel', theme:'feature', status:'active', headline:'EV basket. Banking basket. IT basket. Invest in India\'s growth story.', cta:'View Baskets', firstSeen:'2025-01-05', lastSeen:'2025-03-19', daysRunning:73, estimatedSpend:'medium', targetAudience:'thematic ETF-style investors', notes:'Sectoral basket carousel'},
+  {id:'ad_042', competitorId:'samco', platform:'youtube', format:'video', theme:'education', status:'active', headline:'RankMF: data-driven mutual fund ranking. No bias. Pure performance.', cta:'Explore RankMF', firstSeen:'2025-02-10', lastSeen:'2025-03-19', daysRunning:37, estimatedSpend:'low', targetAudience:'MF research seekers', notes:'RankMF product education'},
+  {id:'ad_043', competitorId:'samco', platform:'meta', format:'video', theme:'offer', status:'inactive', headline:'Zero brokerage for first 30 days. Switch to Samco — trade smarter.', cta:'Switch Now', firstSeen:'2024-10-10', lastSeen:'2025-01-15', daysRunning:97, estimatedSpend:'low', targetAudience:'existing broker customers', notes:'Retired — trial offer'},
+
+  /* ── STOCKGRO (6 ads) ── */
+  {id:'ad_044', competitorId:'stockgro', platform:'meta', format:'story', theme:'education', status:'active', headline:'Learn to invest before you invest real money. Join 1 crore students on StockGro.', cta:'Join Free', firstSeen:'2024-10-01', lastSeen:'2025-03-19', daysRunning:169, estimatedSpend:'high', targetAudience:'students 18-24', notes:'Evergreen youth story ad — massive volume'},
+  {id:'ad_045', competitorId:'stockgro', platform:'meta', format:'video', theme:'education', status:'active', headline:'Virtual trading with real market data. Learn without losing money.', cta:'Play Now', firstSeen:'2025-01-15', lastSeen:'2025-03-19', daysRunning:63, estimatedSpend:'high', targetAudience:'college students, young professionals', notes:'Gamification angle — virtual trading'},
+  {id:'ad_046', competitorId:'stockgro', platform:'meta', format:'story', theme:'social_proof', status:'active', headline:'1 crore+ learners. 500+ mock portfolios. India\'s #1 stock learning app.', cta:'Download Now', firstSeen:'2025-02-20', lastSeen:'2025-03-19', daysRunning:27, estimatedSpend:'medium', targetAudience:'Gen Z investors', notes:'Social proof story — community size'},
+  {id:'ad_047', competitorId:'stockgro', platform:'meta', format:'video', theme:'education', status:'active', headline:'Stock market kya hota hai? 5 minute mein samjho — StockGro.', cta:'Watch Now', firstSeen:'2025-03-12', lastSeen:'2025-03-19', daysRunning:7, estimatedSpend:'medium', targetAudience:'Hindi-speaking first-time learners', notes:'New — Hindi language education video'},
+  {id:'ad_048', competitorId:'stockgro', platform:'youtube', format:'video', theme:'education', status:'active', headline:'Paper trading competition — win ₹1 lakh. Join StockGro Champions League.', cta:'Register Free', firstSeen:'2025-03-15', lastSeen:'2025-03-19', daysRunning:4, estimatedSpend:'medium', targetAudience:'competitive student traders', notes:'New competition — gamified engagement'},
+  {id:'ad_049', competitorId:'stockgro', platform:'meta', format:'carousel', theme:'feature', status:'inactive', headline:'Track your mock portfolio. Compare with friends. Learn together.', cta:'Start Learning', firstSeen:'2024-09-15', lastSeen:'2025-01-30', daysRunning:137, estimatedSpend:'medium', targetAudience:'student investors', notes:'Social learning carousel — retired'},
+
+  /* ── SENSIBULL (5 ads) ── */
+  {id:'ad_050', competitorId:'sensibull', platform:'youtube', format:'video', theme:'education', status:'active', headline:'Options strategy builder — free forever. Build & backtest on Sensibull.', cta:'Try Free', firstSeen:'2024-08-25', lastSeen:'2025-03-19', daysRunning:206, estimatedSpend:'high', targetAudience:'options traders 28-50', notes:'Flagship evergreen — free strategy builder'},
+  {id:'ad_051', competitorId:'sensibull', platform:'youtube', format:'video', theme:'education', status:'active', headline:'What is Iron Condor? Best options strategy explained — Sensibull.', cta:'Learn More', firstSeen:'2024-10-10', lastSeen:'2025-03-19', daysRunning:160, estimatedSpend:'medium', targetAudience:'options learners 25-45', notes:'Evergreen options strategy educational'},
+  {id:'ad_052', competitorId:'sensibull', platform:'meta', format:'video', theme:'offer', status:'active', headline:'Try Sensibull Pro free for 30 days. See why 10 lakh options traders love it.', cta:'Start Free Trial', firstSeen:'2025-01-20', lastSeen:'2025-03-19', daysRunning:58, estimatedSpend:'medium', targetAudience:'options traders considering paid tools', notes:'Trial offer — strong social proof number'},
+  {id:'ad_053', competitorId:'sensibull', platform:'youtube', format:'video', theme:'education', status:'active', headline:'Live options P&L. IV percentile alerts. Real-time Greek tracking. This is Sensibull.', cta:'Try Now', firstSeen:'2025-02-28', lastSeen:'2025-03-19', daysRunning:19, estimatedSpend:'medium', targetAudience:'professional options traders', notes:'Feature demo — advanced tools'},
+  {id:'ad_054', competitorId:'sensibull', platform:'meta', format:'carousel', theme:'education', status:'inactive', headline:'Bull call spread vs Bear put spread. Which to use when? Sensibull explains.', cta:'Learn', firstSeen:'2024-09-20', lastSeen:'2025-01-28', daysRunning:130, estimatedSpend:'low', targetAudience:'options learners', notes:'Education carousel — retired'},
+
+  /* ── DEFINEDGE (4 ads) ── */
+  {id:'ad_055', competitorId:'definedge', platform:'youtube', format:'video', theme:'education', status:'active', headline:'Renko charts: the cleanest way to read stock trends. Definedge Pro.', cta:'Learn Free', firstSeen:'2024-09-10', lastSeen:'2025-03-19', daysRunning:190, estimatedSpend:'medium', targetAudience:'technical analysts 30-55', notes:'Evergreen Renko education — niche but consistent'},
+  {id:'ad_056', competitorId:'definedge', platform:'youtube', format:'video', theme:'education', status:'active', headline:'Zone trading strategy: support & resistance done right. Free workshop.', cta:'Register', firstSeen:'2024-11-20', lastSeen:'2025-03-19', daysRunning:119, estimatedSpend:'medium', targetAudience:'chart-based traders', notes:'Zone strategy education — long running'},
+  {id:'ad_057', competitorId:'definedge', platform:'youtube', format:'video', theme:'feature', status:'active', headline:'DecisionPoint — AI-powered Renko signals. Never miss a trade again.', cta:'Try 7 Days Free', firstSeen:'2025-02-05', lastSeen:'2025-03-19', daysRunning:42, estimatedSpend:'medium', targetAudience:'pro technical traders', notes:'AI + Renko product push'},
+  {id:'ad_058', competitorId:'definedge', platform:'meta', format:'image', theme:'education', status:'inactive', headline:'Technical analysis masterclass — 2000+ students enrolled. Definedge.', cta:'Enroll Now', firstSeen:'2024-08-01', lastSeen:'2025-01-12', daysRunning:164, estimatedSpend:'low', targetAudience:'traders wanting TA education', notes:'Retired — course enrolment ad'},
+
+  /* ── WEEKEND INVESTING (5 ads) ── */
+  {id:'ad_059', competitorId:'weekendinvesting', platform:'linkedin', format:'carousel', theme:'education', status:'active', headline:'SEBI Registered Investment Advisor. We manage strategy, you enjoy life.', cta:'Know More', firstSeen:'2024-10-15', lastSeen:'2025-03-19', daysRunning:155, estimatedSpend:'medium', targetAudience:'HNI professionals LinkedIn', notes:'SEBI RIA trust signal — primary differentiator'},
+  {id:'ad_060', competitorId:'weekendinvesting', platform:'linkedin', format:'image', theme:'trust', status:'active', headline:'Reg No: INA000015717. SEBI RIA. Transparent. Conflict-free advice.', cta:'Consult Free', firstSeen:'2025-01-10', lastSeen:'2025-03-19', daysRunning:68, estimatedSpend:'low', targetAudience:'trust-seeking investors', notes:'SEBI reg number prominent — compliance trust'},
+  {id:'ad_061', competitorId:'weekendinvesting', platform:'youtube', format:'video', theme:'education', status:'active', headline:'Momentum + quality factor investing. Systematic, not emotional — Weekend Investing.', cta:'Learn Strategy', firstSeen:'2025-02-15', lastSeen:'2025-03-19', daysRunning:32, estimatedSpend:'low', targetAudience:'systematic investing fans', notes:'Factor investing education'},
+  {id:'ad_062', competitorId:'weekendinvesting', platform:'meta', format:'video', theme:'trust', status:'active', headline:'Tired of tips and stock recommendations? Get a SEBI-registered advisor instead.', cta:'Talk to Advisor', firstSeen:'2025-03-12', lastSeen:'2025-03-19', daysRunning:7, estimatedSpend:'low', targetAudience:'disillusioned tip-followers', notes:'New — pain point + SEBI trust angle'},
+  {id:'ad_063', competitorId:'weekendinvesting', platform:'linkedin', format:'carousel', theme:'education', status:'active', headline:'Smallcase-style portfolios, SEBI-advisor curated. Weekend Investing Mi portfolios.', cta:'Explore Portfolios', firstSeen:'2025-02-28', lastSeen:'2025-03-19', daysRunning:19, estimatedSpend:'medium', targetAudience:'wealth-building professionals 30-50', notes:'Portfolio product push on LinkedIn'},
+
+  /* ── CROSS-COMPETITOR NEW BATCH (2 recent) ── */
+  {id:'ad_064', competitorId:'groww', platform:'meta', format:'video', theme:'trust', status:'active', headline:'₹4.5 lakh crore AUM managed. Groww is India\'s most trusted investment app.', cta:'Join Groww', firstSeen:'2025-03-16', lastSeen:'2025-03-19', daysRunning:3, estimatedSpend:'very high', targetAudience:'general investors 22-45', notes:'Very new — AUM trust signal brand push'},
+  {id:'ad_065', competitorId:'upstox', platform:'meta', format:'video', theme:'offer', status:'active', headline:'New year, new portfolio. Open Upstox in 3 mins. Zero brokerage on delivery.', cta:'Open Now', firstSeen:'2025-03-17', lastSeen:'2025-03-19', daysRunning:2, estimatedSpend:'high', targetAudience:'new investors seasonal', notes:'Very new — seasonal push ad'}
+],
+
+campaigns: [
+  /* ZERODHA — Jan 2024 to Dec 2024 */
+  {competitorId:'zerodha', month:'Jan', year:2024, adCount:8, estimatedBudget:32, platformBreakdown:{meta:40, google:35, youtube:20, linkedin:5}},
+  {competitorId:'zerodha', month:'Feb', year:2024, adCount:9, estimatedBudget:35, platformBreakdown:{meta:42, google:33, youtube:20, linkedin:5}},
+  {competitorId:'zerodha', month:'Mar', year:2024, adCount:11, estimatedBudget:42, platformBreakdown:{meta:45, google:30, youtube:20, linkedin:5}},
+  {competitorId:'zerodha', month:'Apr', year:2024, adCount:10, estimatedBudget:38, platformBreakdown:{meta:43, google:32, youtube:20, linkedin:5}},
+  {competitorId:'zerodha', month:'May', year:2024, adCount:9, estimatedBudget:36, platformBreakdown:{meta:40, google:35, youtube:20, linkedin:5}},
+  {competitorId:'zerodha', month:'Jun', year:2024, adCount:10, estimatedBudget:40, platformBreakdown:{meta:42, google:30, youtube:23, linkedin:5}},
+  {competitorId:'zerodha', month:'Jul', year:2024, adCount:11, estimatedBudget:44, platformBreakdown:{meta:44, google:28, youtube:23, linkedin:5}},
+  {competitorId:'zerodha', month:'Aug', year:2024, adCount:13, estimatedBudget:50, platformBreakdown:{meta:45, google:28, youtube:22, linkedin:5}},
+  {competitorId:'zerodha', month:'Sep', year:2024, adCount:12, estimatedBudget:47, platformBreakdown:{meta:44, google:30, youtube:21, linkedin:5}},
+  {competitorId:'zerodha', month:'Oct', year:2024, adCount:11, estimatedBudget:45, platformBreakdown:{meta:43, google:32, youtube:20, linkedin:5}},
+  {competitorId:'zerodha', month:'Nov', year:2024, adCount:13, estimatedBudget:52, platformBreakdown:{meta:45, google:30, youtube:20, linkedin:5}},
+  {competitorId:'zerodha', month:'Dec', year:2024, adCount:12, estimatedBudget:48, platformBreakdown:{meta:44, google:31, youtube:20, linkedin:5}},
+
+  /* GROWW — Jan 2024 to Dec 2024 */
+  {competitorId:'groww', month:'Jan', year:2024, adCount:14, estimatedBudget:68, platformBreakdown:{meta:52, google:28, youtube:18, linkedin:2}},
+  {competitorId:'groww', month:'Feb', year:2024, adCount:15, estimatedBudget:72, platformBreakdown:{meta:53, google:27, youtube:18, linkedin:2}},
+  {competitorId:'groww', month:'Mar', year:2024, adCount:18, estimatedBudget:88, platformBreakdown:{meta:55, google:25, youtube:18, linkedin:2}},
+  {competitorId:'groww', month:'Apr', year:2024, adCount:16, estimatedBudget:78, platformBreakdown:{meta:54, google:26, youtube:18, linkedin:2}},
+  {competitorId:'groww', month:'May', year:2024, adCount:15, estimatedBudget:74, platformBreakdown:{meta:52, google:28, youtube:18, linkedin:2}},
+  {competitorId:'groww', month:'Jun', year:2024, adCount:16, estimatedBudget:79, platformBreakdown:{meta:53, google:27, youtube:18, linkedin:2}},
+  {competitorId:'groww', month:'Jul', year:2024, adCount:17, estimatedBudget:84, platformBreakdown:{meta:54, google:26, youtube:18, linkedin:2}},
+  {competitorId:'groww', month:'Aug', year:2024, adCount:19, estimatedBudget:92, platformBreakdown:{meta:55, google:25, youtube:18, linkedin:2}},
+  {competitorId:'groww', month:'Sep', year:2024, adCount:18, estimatedBudget:88, platformBreakdown:{meta:54, google:26, youtube:18, linkedin:2}},
+  {competitorId:'groww', month:'Oct', year:2024, adCount:17, estimatedBudget:83, platformBreakdown:{meta:53, google:27, youtube:18, linkedin:2}},
+  {competitorId:'groww', month:'Nov', year:2024, adCount:20, estimatedBudget:96, platformBreakdown:{meta:56, google:25, youtube:17, linkedin:2}},
+  {competitorId:'groww', month:'Dec', year:2024, adCount:18, estimatedBudget:89, platformBreakdown:{meta:54, google:26, youtube:18, linkedin:2}},
+
+  /* ANGEL ONE — Jan 2024 to Dec 2024 */
+  {competitorId:'angelone', month:'Jan', year:2024, adCount:10, estimatedBudget:48, platformBreakdown:{meta:35, google:25, youtube:38, linkedin:2}},
+  {competitorId:'angelone', month:'Feb', year:2024, adCount:11, estimatedBudget:52, platformBreakdown:{meta:36, google:24, youtube:38, linkedin:2}},
+  {competitorId:'angelone', month:'Mar', year:2024, adCount:14, estimatedBudget:65, platformBreakdown:{meta:38, google:22, youtube:38, linkedin:2}},
+  {competitorId:'angelone', month:'Apr', year:2024, adCount:13, estimatedBudget:60, platformBreakdown:{meta:37, google:23, youtube:38, linkedin:2}},
+  {competitorId:'angelone', month:'May', year:2024, adCount:12, estimatedBudget:56, platformBreakdown:{meta:36, google:24, youtube:38, linkedin:2}},
+  {competitorId:'angelone', month:'Jun', year:2024, adCount:13, estimatedBudget:61, platformBreakdown:{meta:37, google:23, youtube:38, linkedin:2}},
+  {competitorId:'angelone', month:'Jul', year:2024, adCount:14, estimatedBudget:66, platformBreakdown:{meta:38, google:22, youtube:38, linkedin:2}},
+  {competitorId:'angelone', month:'Aug', year:2024, adCount:16, estimatedBudget:76, platformBreakdown:{meta:39, google:21, youtube:38, linkedin:2}},
+  {competitorId:'angelone', month:'Sep', year:2024, adCount:15, estimatedBudget:72, platformBreakdown:{meta:38, google:22, youtube:38, linkedin:2}},
+  {competitorId:'angelone', month:'Oct', year:2024, adCount:14, estimatedBudget:67, platformBreakdown:{meta:37, google:23, youtube:38, linkedin:2}},
+  {competitorId:'angelone', month:'Nov', year:2024, adCount:16, estimatedBudget:78, platformBreakdown:{meta:39, google:21, youtube:38, linkedin:2}},
+  {competitorId:'angelone', month:'Dec', year:2024, adCount:15, estimatedBudget:72, platformBreakdown:{meta:38, google:22, youtube:38, linkedin:2}},
+
+  /* UPSTOX — Jan 2024 to Dec 2024 */
+  {competitorId:'upstox', month:'Jan', year:2024, adCount:16, estimatedBudget:78, platformBreakdown:{meta:58, google:22, youtube:18, linkedin:2}},
+  {competitorId:'upstox', month:'Feb', year:2024, adCount:17, estimatedBudget:83, platformBreakdown:{meta:59, google:21, youtube:18, linkedin:2}},
+  {competitorId:'upstox', month:'Mar', year:2024, adCount:22, estimatedBudget:106, platformBreakdown:{meta:62, google:18, youtube:18, linkedin:2}},
+  {competitorId:'upstox', month:'Apr', year:2024, adCount:19, estimatedBudget:92, platformBreakdown:{meta:60, google:20, youtube:18, linkedin:2}},
+  {competitorId:'upstox', month:'May', year:2024, adCount:18, estimatedBudget:87, platformBreakdown:{meta:59, google:21, youtube:18, linkedin:2}},
+  {competitorId:'upstox', month:'Jun', year:2024, adCount:19, estimatedBudget:92, platformBreakdown:{meta:60, google:20, youtube:18, linkedin:2}},
+  {competitorId:'upstox', month:'Jul', year:2024, adCount:21, estimatedBudget:101, platformBreakdown:{meta:61, google:19, youtube:18, linkedin:2}},
+  {competitorId:'upstox', month:'Aug', year:2024, adCount:23, estimatedBudget:112, platformBreakdown:{meta:63, google:17, youtube:18, linkedin:2}},
+  {competitorId:'upstox', month:'Sep', year:2024, adCount:22, estimatedBudget:106, platformBreakdown:{meta:62, google:18, youtube:18, linkedin:2}},
+  {competitorId:'upstox', month:'Oct', year:2024, adCount:21, estimatedBudget:101, platformBreakdown:{meta:61, google:19, youtube:18, linkedin:2}},
+  {competitorId:'upstox', month:'Nov', year:2024, adCount:24, estimatedBudget:116, platformBreakdown:{meta:63, google:17, youtube:18, linkedin:2}},
+  {competitorId:'upstox', month:'Dec', year:2024, adCount:22, estimatedBudget:107, platformBreakdown:{meta:62, google:18, youtube:18, linkedin:2}},
+
+  /* 5PAISA — Jan 2024 to Dec 2024 */
+  {competitorId:'5paisa', month:'Jan', year:2024, adCount:6, estimatedBudget:18, platformBreakdown:{meta:30, google:50, youtube:15, linkedin:5}},
+  {competitorId:'5paisa', month:'Feb', year:2024, adCount:7, estimatedBudget:21, platformBreakdown:{meta:30, google:50, youtube:15, linkedin:5}},
+  {competitorId:'5paisa', month:'Mar', year:2024, adCount:9, estimatedBudget:27, platformBreakdown:{meta:32, google:48, youtube:15, linkedin:5}},
+  {competitorId:'5paisa', month:'Apr', year:2024, adCount:7, estimatedBudget:21, platformBreakdown:{meta:30, google:50, youtube:15, linkedin:5}},
+  {competitorId:'5paisa', month:'May', year:2024, adCount:6, estimatedBudget:18, platformBreakdown:{meta:28, google:52, youtube:15, linkedin:5}},
+  {competitorId:'5paisa', month:'Jun', year:2024, adCount:7, estimatedBudget:21, platformBreakdown:{meta:30, google:50, youtube:15, linkedin:5}},
+  {competitorId:'5paisa', month:'Jul', year:2024, adCount:8, estimatedBudget:24, platformBreakdown:{meta:31, google:49, youtube:15, linkedin:5}},
+  {competitorId:'5paisa', month:'Aug', year:2024, adCount:9, estimatedBudget:27, platformBreakdown:{meta:32, google:48, youtube:15, linkedin:5}},
+  {competitorId:'5paisa', month:'Sep', year:2024, adCount:8, estimatedBudget:24, platformBreakdown:{meta:31, google:49, youtube:15, linkedin:5}},
+  {competitorId:'5paisa', month:'Oct', year:2024, adCount:7, estimatedBudget:21, platformBreakdown:{meta:30, google:50, youtube:15, linkedin:5}},
+  {competitorId:'5paisa', month:'Nov', year:2024, adCount:9, estimatedBudget:27, platformBreakdown:{meta:32, google:48, youtube:15, linkedin:5}},
+  {competitorId:'5paisa', month:'Dec', year:2024, adCount:8, estimatedBudget:24, platformBreakdown:{meta:30, google:50, youtube:15, linkedin:5}},
+
+  /* DHAN — Jan 2024 to Dec 2024 */
+  {competitorId:'dhan', month:'Jan', year:2024, adCount:7, estimatedBudget:26, platformBreakdown:{meta:35, google:20, youtube:25, linkedin:20}},
+  {competitorId:'dhan', month:'Feb', year:2024, adCount:8, estimatedBudget:30, platformBreakdown:{meta:35, google:20, youtube:25, linkedin:20}},
+  {competitorId:'dhan', month:'Mar', year:2024, adCount:11, estimatedBudget:41, platformBreakdown:{meta:37, google:18, youtube:25, linkedin:20}},
+  {competitorId:'dhan', month:'Apr', year:2024, adCount:9, estimatedBudget:34, platformBreakdown:{meta:36, google:19, youtube:25, linkedin:20}},
+  {competitorId:'dhan', month:'May', year:2024, adCount:9, estimatedBudget:34, platformBreakdown:{meta:35, google:20, youtube:25, linkedin:20}},
+  {competitorId:'dhan', month:'Jun', year:2024, adCount:10, estimatedBudget:38, platformBreakdown:{meta:36, google:19, youtube:25, linkedin:20}},
+  {competitorId:'dhan', month:'Jul', year:2024, adCount:12, estimatedBudget:45, platformBreakdown:{meta:37, google:18, youtube:25, linkedin:20}},
+  {competitorId:'dhan', month:'Aug', year:2024, adCount:13, estimatedBudget:49, platformBreakdown:{meta:38, google:17, youtube:25, linkedin:20}},
+  {competitorId:'dhan', month:'Sep', year:2024, adCount:13, estimatedBudget:49, platformBreakdown:{meta:38, google:17, youtube:25, linkedin:20}},
+  {competitorId:'dhan', month:'Oct', year:2024, adCount:12, estimatedBudget:45, platformBreakdown:{meta:37, google:18, youtube:25, linkedin:20}},
+  {competitorId:'dhan', month:'Nov', year:2024, adCount:14, estimatedBudget:53, platformBreakdown:{meta:38, google:17, youtube:25, linkedin:20}},
+  {competitorId:'dhan', month:'Dec', year:2024, adCount:14, estimatedBudget:53, platformBreakdown:{meta:38, google:17, youtube:25, linkedin:20}},
+
+  /* PAYTM MONEY — Jan 2024 to Dec 2024 */
+  {competitorId:'paytmmoney', month:'Jan', year:2024, adCount:9, estimatedBudget:34, platformBreakdown:{meta:55, google:30, youtube:12, linkedin:3}},
+  {competitorId:'paytmmoney', month:'Feb', year:2024, adCount:8, estimatedBudget:30, platformBreakdown:{meta:54, google:31, youtube:12, linkedin:3}},
+  {competitorId:'paytmmoney', month:'Mar', year:2024, adCount:10, estimatedBudget:38, platformBreakdown:{meta:56, google:29, youtube:12, linkedin:3}},
+  {competitorId:'paytmmoney', month:'Apr', year:2024, adCount:8, estimatedBudget:30, platformBreakdown:{meta:54, google:31, youtube:12, linkedin:3}},
+  {competitorId:'paytmmoney', month:'May', year:2024, adCount:7, estimatedBudget:26, platformBreakdown:{meta:53, google:32, youtube:12, linkedin:3}},
+  {competitorId:'paytmmoney', month:'Jun', year:2024, adCount:7, estimatedBudget:26, platformBreakdown:{meta:53, google:32, youtube:12, linkedin:3}},
+  {competitorId:'paytmmoney', month:'Jul', year:2024, adCount:6, estimatedBudget:23, platformBreakdown:{meta:52, google:33, youtube:12, linkedin:3}},
+  {competitorId:'paytmmoney', month:'Aug', year:2024, adCount:7, estimatedBudget:26, platformBreakdown:{meta:53, google:32, youtube:12, linkedin:3}},
+  {competitorId:'paytmmoney', month:'Sep', year:2024, adCount:6, estimatedBudget:23, platformBreakdown:{meta:52, google:33, youtube:12, linkedin:3}},
+  {competitorId:'paytmmoney', month:'Oct', year:2024, adCount:5, estimatedBudget:19, platformBreakdown:{meta:50, google:35, youtube:12, linkedin:3}},
+  {competitorId:'paytmmoney', month:'Nov', year:2024, adCount:6, estimatedBudget:23, platformBreakdown:{meta:52, google:33, youtube:12, linkedin:3}},
+  {competitorId:'paytmmoney', month:'Dec', year:2024, adCount:6, estimatedBudget:23, platformBreakdown:{meta:52, google:33, youtube:12, linkedin:3}},
+
+  /* SAMCO — Jan 2024 to Dec 2024 */
+  {competitorId:'samco', month:'Jan', year:2024, adCount:6, estimatedBudget:22, platformBreakdown:{meta:30, google:20, youtube:45, linkedin:5}},
+  {competitorId:'samco', month:'Feb', year:2024, adCount:7, estimatedBudget:26, platformBreakdown:{meta:30, google:20, youtube:45, linkedin:5}},
+  {competitorId:'samco', month:'Mar', year:2024, adCount:9, estimatedBudget:33, platformBreakdown:{meta:32, google:18, youtube:45, linkedin:5}},
+  {competitorId:'samco', month:'Apr', year:2024, adCount:8, estimatedBudget:30, platformBreakdown:{meta:31, google:19, youtube:45, linkedin:5}},
+  {competitorId:'samco', month:'May', year:2024, adCount:7, estimatedBudget:26, platformBreakdown:{meta:30, google:20, youtube:45, linkedin:5}},
+  {competitorId:'samco', month:'Jun', year:2024, adCount:8, estimatedBudget:30, platformBreakdown:{meta:31, google:19, youtube:45, linkedin:5}},
+  {competitorId:'samco', month:'Jul', year:2024, adCount:9, estimatedBudget:33, platformBreakdown:{meta:32, google:18, youtube:45, linkedin:5}},
+  {competitorId:'samco', month:'Aug', year:2024, adCount:11, estimatedBudget:41, platformBreakdown:{meta:33, google:17, youtube:45, linkedin:5}},
+  {competitorId:'samco', month:'Sep', year:2024, adCount:10, estimatedBudget:37, platformBreakdown:{meta:32, google:18, youtube:45, linkedin:5}},
+  {competitorId:'samco', month:'Oct', year:2024, adCount:9, estimatedBudget:33, platformBreakdown:{meta:31, google:19, youtube:45, linkedin:5}},
+  {competitorId:'samco', month:'Nov', year:2024, adCount:11, estimatedBudget:41, platformBreakdown:{meta:33, google:17, youtube:45, linkedin:5}},
+  {competitorId:'samco', month:'Dec', year:2024, adCount:10, estimatedBudget:37, platformBreakdown:{meta:32, google:18, youtube:45, linkedin:5}},
+
+  /* STOCKGRO — Jan 2024 to Dec 2024 */
+  {competitorId:'stockgro', month:'Jan', year:2024, adCount:11, estimatedBudget:42, platformBreakdown:{meta:62, google:10, youtube:22, linkedin:6}},
+  {competitorId:'stockgro', month:'Feb', year:2024, adCount:12, estimatedBudget:46, platformBreakdown:{meta:63, google:10, youtube:21, linkedin:6}},
+  {competitorId:'stockgro', month:'Mar', year:2024, adCount:15, estimatedBudget:57, platformBreakdown:{meta:65, google:8, youtube:21, linkedin:6}},
+  {competitorId:'stockgro', month:'Apr', year:2024, adCount:13, estimatedBudget:50, platformBreakdown:{meta:63, google:10, youtube:21, linkedin:6}},
+  {competitorId:'stockgro', month:'May', year:2024, adCount:12, estimatedBudget:46, platformBreakdown:{meta:62, google:10, youtube:22, linkedin:6}},
+  {competitorId:'stockgro', month:'Jun', year:2024, adCount:13, estimatedBudget:50, platformBreakdown:{meta:63, google:10, youtube:21, linkedin:6}},
+  {competitorId:'stockgro', month:'Jul', year:2024, adCount:15, estimatedBudget:57, platformBreakdown:{meta:64, google:9, youtube:21, linkedin:6}},
+  {competitorId:'stockgro', month:'Aug', year:2024, adCount:17, estimatedBudget:65, platformBreakdown:{meta:65, google:8, youtube:21, linkedin:6}},
+  {competitorId:'stockgro', month:'Sep', year:2024, adCount:16, estimatedBudget:61, platformBreakdown:{meta:64, google:9, youtube:21, linkedin:6}},
+  {competitorId:'stockgro', month:'Oct', year:2024, adCount:15, estimatedBudget:57, platformBreakdown:{meta:63, google:10, youtube:21, linkedin:6}},
+  {competitorId:'stockgro', month:'Nov', year:2024, adCount:18, estimatedBudget:69, platformBreakdown:{meta:65, google:8, youtube:21, linkedin:6}},
+  {competitorId:'stockgro', month:'Dec', year:2024, adCount:16, estimatedBudget:61, platformBreakdown:{meta:64, google:9, youtube:21, linkedin:6}},
+
+  /* SENSIBULL — Jan 2024 to Dec 2024 */
+  {competitorId:'sensibull', month:'Jan', year:2024, adCount:8, estimatedBudget:28, platformBreakdown:{meta:25, google:15, youtube:55, linkedin:5}},
+  {competitorId:'sensibull', month:'Feb', year:2024, adCount:9, estimatedBudget:32, platformBreakdown:{meta:25, google:15, youtube:55, linkedin:5}},
+  {competitorId:'sensibull', month:'Mar', year:2024, adCount:12, estimatedBudget:42, platformBreakdown:{meta:27, google:13, youtube:55, linkedin:5}},
+  {competitorId:'sensibull', month:'Apr', year:2024, adCount:10, estimatedBudget:35, platformBreakdown:{meta:25, google:15, youtube:55, linkedin:5}},
+  {competitorId:'sensibull', month:'May', year:2024, adCount:9, estimatedBudget:32, platformBreakdown:{meta:25, google:15, youtube:55, linkedin:5}},
+  {competitorId:'sensibull', month:'Jun', year:2024, adCount:10, estimatedBudget:35, platformBreakdown:{meta:26, google:14, youtube:55, linkedin:5}},
+  {competitorId:'sensibull', month:'Jul', year:2024, adCount:11, estimatedBudget:39, platformBreakdown:{meta:26, google:14, youtube:55, linkedin:5}},
+  {competitorId:'sensibull', month:'Aug', year:2024, adCount:13, estimatedBudget:46, platformBreakdown:{meta:27, google:13, youtube:55, linkedin:5}},
+  {competitorId:'sensibull', month:'Sep', year:2024, adCount:12, estimatedBudget:42, platformBreakdown:{meta:26, google:14, youtube:55, linkedin:5}},
+  {competitorId:'sensibull', month:'Oct', year:2024, adCount:11, estimatedBudget:39, platformBreakdown:{meta:26, google:14, youtube:55, linkedin:5}},
+  {competitorId:'sensibull', month:'Nov', year:2024, adCount:13, estimatedBudget:46, platformBreakdown:{meta:27, google:13, youtube:55, linkedin:5}},
+  {competitorId:'sensibull', month:'Dec', year:2024, adCount:12, estimatedBudget:42, platformBreakdown:{meta:26, google:14, youtube:55, linkedin:5}},
+
+  /* DEFINEDGE — Jan 2024 to Dec 2024 */
+  {competitorId:'definedge', month:'Jan', year:2024, adCount:4, estimatedBudget:14, platformBreakdown:{meta:15, google:10, youtube:70, linkedin:5}},
+  {competitorId:'definedge', month:'Feb', year:2024, adCount:5, estimatedBudget:17, platformBreakdown:{meta:15, google:10, youtube:70, linkedin:5}},
+  {competitorId:'definedge', month:'Mar', year:2024, adCount:7, estimatedBudget:24, platformBreakdown:{meta:17, google:8, youtube:70, linkedin:5}},
+  {competitorId:'definedge', month:'Apr', year:2024, adCount:6, estimatedBudget:21, platformBreakdown:{meta:16, google:9, youtube:70, linkedin:5}},
+  {competitorId:'definedge', month:'May', year:2024, adCount:5, estimatedBudget:17, platformBreakdown:{meta:15, google:10, youtube:70, linkedin:5}},
+  {competitorId:'definedge', month:'Jun', year:2024, adCount:6, estimatedBudget:21, platformBreakdown:{meta:16, google:9, youtube:70, linkedin:5}},
+  {competitorId:'definedge', month:'Jul', year:2024, adCount:7, estimatedBudget:24, platformBreakdown:{meta:17, google:8, youtube:70, linkedin:5}},
+  {competitorId:'definedge', month:'Aug', year:2024, adCount:8, estimatedBudget:28, platformBreakdown:{meta:17, google:8, youtube:70, linkedin:5}},
+  {competitorId:'definedge', month:'Sep', year:2024, adCount:7, estimatedBudget:24, platformBreakdown:{meta:16, google:9, youtube:70, linkedin:5}},
+  {competitorId:'definedge', month:'Oct', year:2024, adCount:7, estimatedBudget:24, platformBreakdown:{meta:16, google:9, youtube:70, linkedin:5}},
+  {competitorId:'definedge', month:'Nov', year:2024, adCount:8, estimatedBudget:28, platformBreakdown:{meta:17, google:8, youtube:70, linkedin:5}},
+  {competitorId:'definedge', month:'Dec', year:2024, adCount:7, estimatedBudget:24, platformBreakdown:{meta:16, google:9, youtube:70, linkedin:5}},
+
+  /* WEEKEND INVESTING — Jan 2024 to Dec 2024 */
+  {competitorId:'weekendinvesting', month:'Jan', year:2024, adCount:5, estimatedBudget:16, platformBreakdown:{meta:20, google:10, youtube:28, linkedin:42}},
+  {competitorId:'weekendinvesting', month:'Feb', year:2024, adCount:6, estimatedBudget:19, platformBreakdown:{meta:20, google:10, youtube:28, linkedin:42}},
+  {competitorId:'weekendinvesting', month:'Mar', year:2024, adCount:8, estimatedBudget:26, platformBreakdown:{meta:22, google:8, youtube:28, linkedin:42}},
+  {competitorId:'weekendinvesting', month:'Apr', year:2024, adCount:7, estimatedBudget:22, platformBreakdown:{meta:21, google:9, youtube:28, linkedin:42}},
+  {competitorId:'weekendinvesting', month:'May', year:2024, adCount:6, estimatedBudget:19, platformBreakdown:{meta:20, google:10, youtube:28, linkedin:42}},
+  {competitorId:'weekendinvesting', month:'Jun', year:2024, adCount:7, estimatedBudget:22, platformBreakdown:{meta:21, google:9, youtube:28, linkedin:42}},
+  {competitorId:'weekendinvesting', month:'Jul', year:2024, adCount:8, estimatedBudget:26, platformBreakdown:{meta:22, google:8, youtube:28, linkedin:42}},
+  {competitorId:'weekendinvesting', month:'Aug', year:2024, adCount:9, estimatedBudget:29, platformBreakdown:{meta:22, google:8, youtube:28, linkedin:42}},
+  {competitorId:'weekendinvesting', month:'Sep', year:2024, adCount:9, estimatedBudget:29, platformBreakdown:{meta:22, google:8, youtube:28, linkedin:42}},
+  {competitorId:'weekendinvesting', month:'Oct', year:2024, adCount:8, estimatedBudget:26, platformBreakdown:{meta:21, google:9, youtube:28, linkedin:42}},
+  {competitorId:'weekendinvesting', month:'Nov', year:2024, adCount:10, estimatedBudget:32, platformBreakdown:{meta:22, google:8, youtube:28, linkedin:42}},
+  {competitorId:'weekendinvesting', month:'Dec', year:2024, adCount:9, estimatedBudget:29, platformBreakdown:{meta:22, google:8, youtube:28, linkedin:42}}
+],
+
+insights: [
+  {id:'ins_001', observation:'Groww running 6+ education-first video ads targeting first-time investors with zero mention of pricing', whyItMatters:'Capturing beginner mindshare before they become high-value traders — a top-of-funnel play Univest is missing', action:'Launch Univest beginner series: "Invest like a pro in 30 days" — SEBI trust signals + simplicity narrative on Meta/YouTube', priority:'red', competitorIds:['groww'], isDone:false},
+  {id:'ins_002', observation:'Sensibull dominates YouTube options education with 12 active video ads — all free-trial led', whyItMatters:'Options traders are the highest LTV segment; Sensibull owns the education gateway', action:'Create free "Options 101" mini-course landing page, run YouTube pre-roll with options hook, capture emails for Univest RA trial', priority:'red', competitorIds:['sensibull'], isDone:false},
+  {id:'ins_003', observation:'Dhan running 5 LinkedIn ads targeting salaried professionals 25-40 with API trading and charting angle', whyItMatters:'LinkedIn HNI/professional segment is high-value and underpriced vs Meta — Dhan is getting in early', action:'Test LinkedIn campaign targeting IT professionals and finance executives with Univest research advisory positioning', priority:'yellow', competitorIds:['dhan'], isDone:false},
+  {id:'ins_004', observation:'Upstox has 3 ads running 90+ days with ₹0 brokerage + celebrity endorsement combo', whyItMatters:'Proven evergreen creative formula — celebrity trust + price offer is clearly converting at scale', action:'Identify Univest brand ambassador opportunity, test celebrity + SEBI credibility combo creative on Meta', priority:'red', competitorIds:['upstox'], isDone:false},
+  {id:'ins_005', observation:'Weekend Investing using SEBI RIA registration as primary trust signal in all ads', whyItMatters:'SEBI RIA tag is a powerful differentiator that Univest can also leverage but is underusing in ad creatives', action:'Add SEBI registration number prominently in all Univest RA ads. Test "SEBI Registered" badge creative variants.', priority:'yellow', competitorIds:['weekendinvesting'], isDone:false},
+  {id:'ins_006', observation:'StockGro capturing college/youth segment with gamified learning — 16 active ads, mostly story format', whyItMatters:'Students today = traders tomorrow. StockGro is seeding brand loyalty early at low CAC', action:'Launch Univest Campus program — free paper trading simulation with real calls. Target 18-22 on Instagram Stories.', priority:'yellow', competitorIds:['stockgro'], isDone:false},
+  {id:'ins_007', observation:'5paisa and Paytm Money showing declining ad spend — combined active ads dropped from 22 to 14 in 90 days', whyItMatters:'Their users are up for grabs. Retargeting opportunity against their audience segments', action:'Run comparison ads: "Upgrade from [generic broker] to Univest — better research, same low cost"', priority:'green', competitorIds:['5paisa','paytmmoney'], isDone:false},
+  {id:'ins_008', observation:'No competitor is running carousel format ads on LinkedIn for options strategies', whyItMatters:'LinkedIn carousel is high-engagement format for professional content — completely white space', action:'Create 5-slide LinkedIn carousel: "5 options strategies every working professional should know" — gate with email signup', priority:'green', competitorIds:[], isDone:false},
+  {id:'ins_009', observation:'Angel One running SmartAPI ads targeting algo traders and developers on Google Search', whyItMatters:'Algo trading is fast-growing segment — Angel One is owning it with technical positioning', action:'Assess if Univest has API offering. If yes, launch targeted Google ads for "algo trading API" keywords', priority:'yellow', competitorIds:['angelone'], isDone:false},
+  {id:'ins_010', observation:'Definedge running consistent YouTube ads about Renko charts — very niche but 7 active ads', whyItMatters:'Technical analysts are high-intent users who will pay for good tools — Definedge is building this niche', action:'Partner or white-label Definedge-style tools for Univest RA subscribers. Position as "pro-grade charting included"', priority:'green', competitorIds:['definedge'], isDone:false},
+  {id:'ins_011', observation:'Zero competitors running Testimonial format ads on YouTube this quarter', whyItMatters:'Social proof via real customer testimonials is a trust-builder gap across the entire category', action:'Produce 3 authentic customer story videos (₹X profit, life change narrative) for YouTube pre-roll', priority:'yellow', competitorIds:[], isDone:false},
+  {id:'ins_012', observation:'Groww and Zerodha dominate Meta with 30 combined active ads vs Univest estimated 0', whyItMatters:'Brand consideration on Meta is heavily skewed — Univest has almost no Share of Voice', action:'Immediate Meta awareness campaign needed. Budget ₹5-10L/month for brand-building video ads targeting 22-35 investors', priority:'red', competitorIds:['groww','zerodha'], isDone:false}
+],
+
+notes: {}
+
+};
+
+window.ACTIVE_FILTERS = {
+  vertical: 'both',
+  competitors: [],
+  dateRange: '30d',
+  dateFrom: null,
+  dateTo: null,
+  mode: 'overview'
+};
+
+/* ── Sidebar active state on scroll ── */
+(function() {
+  const sections = document.querySelectorAll('.module[id]');
+  const navItems = document.querySelectorAll('.nav-item');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navItems.forEach(n => n.classList.remove('active'));
+        const active = document.querySelector(`.nav-item[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { threshold: 0.3 });
+  sections.forEach(s => observer.observe(s));
+})();
+</script>
+</body>
+</html>
