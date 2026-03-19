@@ -1643,6 +1643,472 @@ ORDER BY SUM(sm.total_signup) DESC`;
 });
 
 // =============================================================================
+// DAILY ALERT EMAILS (9 AM IST)
+// =============================================================================
+
+const nodemailer = require('nodemailer');
+const cron = require('node-cron');
+
+const ALERT_EMAIL_FROM = 'kabir.agarwal@univest.in';
+const ALERT_EMAIL_APP_PASSWORD = 'foyg aeus rjzw jelo';
+const ALERT_RECIPIENTS = [
+    'mohit.mandal@univest.in',
+    'sumit.kumar@univest.in',
+    'ripal.vachher@univest.in',
+    'yash.agarwal@univest.in'
+];
+
+const ALERT_SHEET_ID = '15cUn1ykWCttlk4G1y2SvT2yKoceRqsHRYJEnWeqzEIk';
+const ALERT_SHEET_NAME = 'Creative Performance Tracker-Auto';
+
+const alertTransporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: ALERT_EMAIL_FROM, pass: ALERT_EMAIL_APP_PASSWORD }
+});
+
+// Fetch sheet data via Google Visualization API (JSON)
+async function fetchSheetForAlerts() {
+    const url = `https://docs.google.com/spreadsheets/d/${ALERT_SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(ALERT_SHEET_NAME)}`;
+    const resp = await fetch(url);
+    const text = await resp.text();
+    const jsonStr = text.replace(/^[^(]*\(/, '').replace(/\);?\s*$/, '');
+    const json = JSON.parse(jsonStr);
+    const headers = json.table.cols.map(c => (c.label || '').trim());
+    return json.table.rows.map(row => {
+        const obj = {};
+        row.c.forEach((cell, i) => {
+            if (headers[i]) obj[headers[i]] = cell ? (cell.v != null ? cell.v : '') : '';
+        });
+        return obj;
+    });
+}
+
+function parseAlertNum(v) {
+    if (v == null || v === '' || v === '-') return 0;
+    if (typeof v === 'number') return v;
+    return parseFloat(String(v).replace(/[₹,%\s]/g, '')) || 0;
+}
+
+function parseAlertPercent(v) {
+    if (v == null || v === '' || v === '-') return 0;
+    if (typeof v === 'number') return v > 1 ? v : v * 100; // 0.28 → 28
+    const n = parseFloat(String(v).replace(/[%\s]/g, ''));
+    return n > 1 ? n : n * 100;
+}
+
+function parseAlertDate(str) {
+    if (!str) return 0;
+    if (str instanceof Date) return str.getTime();
+    if (typeof str === 'string') {
+        const parts = str.split('/');
+        if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+        return new Date(str).getTime() || 0;
+    }
+    return 0;
+}
+
+function classifyServerAlerts(rows) {
+    const now = Date.now();
+    const fourteenDays = 14 * 24 * 60 * 60 * 1000;
+
+    // Normalize rows to creative objects
+    const creatives = rows
+        .filter(r => {
+            const name = r['Creative Name'] || '';
+            const live = r['Live?'] || '';
+            const spent = parseAlertNum(r['Spent (15k min)']);
+            return name.startsWith('FB_') && live === 'Live' && spent >= 15000;
+        })
+        .map(r => {
+            const goLive = parseAlertDate(r['Date - Go Live']);
+            const matured = goLive && (now - goLive) >= fourteenDays;
+            const spent = parseAlertNum(r['Spent (15k min)']);
+            const signupCost = spent / (parseAlertNum(r['Signups']) || 1);
+            const d0TrialCost = spent / (parseAlertNum(r['D0_Trials']) || 1);
+            const d6CAC = spent / (parseAlertNum(r['D6']) || 1);
+            const d6ROAS = parseAlertPercent(r['D6 ROAS (overall)']);
+            const d6CACMatured = parseAlertNum(r['D6 CAC matured']);
+            const d6ROASMatured = parseAlertPercent(r['D6 ROAS overall (matured)']);
+
+            // Pick metrics based on maturity
+            const effectiveD6CAC = matured ? (d6CACMatured || d6CAC) : d6CAC;
+            const effectiveD6ROAS = matured ? (d6ROASMatured || d6ROAS) : d6ROAS;
+
+            return {
+                name: r['Creative Name'],
+                spent, signupCost, d0TrialCost,
+                d6CAC: effectiveD6CAC,
+                d6ROAS: effectiveD6ROAS,
+                matured,
+                signups: parseAlertNum(r['Signups']),
+                d0Trials: parseAlertNum(r['D0_Trials']),
+                d6: parseAlertNum(r['D6']),
+                d6Revenue: parseAlertNum(r['D6 revenue(overall)']),
+                overallROAS: parseAlertPercent(r['Overall ROAS']),
+            };
+        });
+
+    const redAlerts = creatives.filter(d => {
+        if (d.d6ROAS > 28) return false;
+        let breaches = 0;
+        if (d.signupCost > 1000) breaches++;
+        if (d.d0TrialCost > 3500) breaches++;
+        if (d.d6CAC > 15000) breaches++;
+        return breaches >= 2;
+    });
+
+    const greenAlerts = creatives.filter(d => {
+        if (d.d6ROAS > 28) return true;
+        let hits = 0;
+        if (d.signupCost > 0 && d.signupCost < 500) hits++;
+        if (d.d0TrialCost > 0 && d.d0TrialCost < 2500) hits++;
+        if (d.d6CAC > 0 && d.d6CAC < 12000) hits++;
+        return hits >= 2;
+    });
+
+    return { redAlerts, greenAlerts };
+}
+
+function formatINRServer(v) {
+    if (!v || v === Infinity) return '-';
+    return '₹' + Math.round(v).toLocaleString('en-IN');
+}
+
+function buildAlertEmailHTML(redAlerts, greenAlerts) {
+    const date = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    const redRows = redAlerts.map(d => {
+        const reasons = [];
+        if (d.signupCost > 1000) reasons.push('Signup Cost > ₹1K');
+        if (d.d0TrialCost > 3500) reasons.push('D0 Trial > ₹3.5K');
+        if (d.d6CAC > 15000) reasons.push('D6 CAC > ₹15K');
+        return `<tr style="border-bottom:1px solid #333;">
+            <td style="padding:10px;color:#ff4d4d;font-weight:600;">${d.name}</td>
+            <td style="padding:10px;">${formatINRServer(d.spent)}</td>
+            <td style="padding:10px;">${formatINRServer(d.signupCost)}</td>
+            <td style="padding:10px;">${formatINRServer(d.d0TrialCost)}</td>
+            <td style="padding:10px;">${formatINRServer(d.d6CAC)}</td>
+            <td style="padding:10px;">${d.d6ROAS ? d.d6ROAS.toFixed(1) + '%' : '-'}</td>
+            <td style="padding:10px;color:#ff4d4d;">${reasons.join(', ')}</td>
+        </tr>`;
+    }).join('');
+
+    const greenRows = greenAlerts.map(d => {
+        const reasons = [];
+        if (d.d6ROAS > 28) reasons.push('D6 ROAS > 28%');
+        if (d.signupCost > 0 && d.signupCost < 500) reasons.push('Signup Cost < ₹500');
+        if (d.d0TrialCost > 0 && d.d0TrialCost < 2500) reasons.push('D0 Trial < ₹2.5K');
+        if (d.d6CAC > 0 && d.d6CAC < 12000) reasons.push('D6 CAC < ₹12K');
+        return `<tr style="border-bottom:1px solid #333;">
+            <td style="padding:10px;color:#00c853;font-weight:600;">${d.name}</td>
+            <td style="padding:10px;">${formatINRServer(d.spent)}</td>
+            <td style="padding:10px;">${formatINRServer(d.signupCost)}</td>
+            <td style="padding:10px;">${formatINRServer(d.d0TrialCost)}</td>
+            <td style="padding:10px;">${formatINRServer(d.d6CAC)}</td>
+            <td style="padding:10px;">${d.d6ROAS ? d.d6ROAS.toFixed(1) + '%' : '-'}</td>
+            <td style="padding:10px;color:#00c853;">${reasons.join(', ')}</td>
+        </tr>`;
+    }).join('');
+
+    const tableHeader = `<tr style="background:#1a1a2e;border-bottom:2px solid #444;">
+        <th style="padding:10px;text-align:left;">Creative</th>
+        <th style="padding:10px;text-align:left;">Spend</th>
+        <th style="padding:10px;text-align:left;">Signup Cost</th>
+        <th style="padding:10px;text-align:left;">D0 Trial Cost</th>
+        <th style="padding:10px;text-align:left;">D6 CAC</th>
+        <th style="padding:10px;text-align:left;">D6 ROAS</th>
+        <th style="padding:10px;text-align:left;">Flags</th>
+    </tr>`;
+
+    return `
+    <div style="font-family:'Inter',Arial,sans-serif;background:#08080d;color:#e0e0e0;padding:24px;max-width:900px;margin:0 auto;">
+        <h1 style="color:#fff;font-size:22px;margin-bottom:4px;">Creative Performance Alerts</h1>
+        <p style="color:#888;font-size:13px;margin-bottom:24px;">${date} • Live Creatives Only</p>
+
+        <div style="margin-bottom:32px;">
+            <h2 style="color:#ff4d4d;font-size:16px;margin-bottom:12px;">⚠ Red Alerts (${redAlerts.length})</h2>
+            ${redAlerts.length ? `<table style="width:100%;border-collapse:collapse;font-size:13px;background:#111;">${tableHeader}${redRows}</table>` : '<p style="color:#666;font-size:13px;">No red alerts — all creatives within benchmarks.</p>'}
+        </div>
+
+        <div style="margin-bottom:32px;">
+            <h2 style="color:#00c853;font-size:16px;margin-bottom:12px;">✅ Green Alerts (${greenAlerts.length})</h2>
+            ${greenAlerts.length ? `<table style="width:100%;border-collapse:collapse;font-size:13px;background:#111;">${tableHeader}${greenRows}</table>` : '<p style="color:#666;font-size:13px;">No green alerts found.</p>'}
+        </div>
+
+        <p style="color:#555;font-size:11px;border-top:1px solid #333;padding-top:12px;margin-top:24px;">
+            Auto-generated by Creative Portal • <a href="https://kabiragarwal-77777.github.io/creative-portal/" style="color:#6c63ff;">Open Dashboard</a>
+        </p>
+    </div>`;
+}
+
+async function sendAlertEmails() {
+    console.log('[Alert Cron] Fetching sheet data...');
+    try {
+        const rows = await fetchSheetForAlerts();
+        console.log(`[Alert Cron] Fetched ${rows.length} rows`);
+
+        const { redAlerts, greenAlerts } = classifyServerAlerts(rows);
+        console.log(`[Alert Cron] Red: ${redAlerts.length}, Green: ${greenAlerts.length}`);
+
+        if (redAlerts.length === 0 && greenAlerts.length === 0) {
+            console.log('[Alert Cron] No alerts to send');
+            return { sent: false, reason: 'No alerts' };
+        }
+
+        const html = buildAlertEmailHTML(redAlerts, greenAlerts);
+        const subject = `Creative Alerts: ${redAlerts.length} Red, ${greenAlerts.length} Green — ${new Date().toLocaleDateString('en-IN')}`;
+
+        await alertTransporter.sendMail({
+            from: `"Creative Portal" <${ALERT_EMAIL_FROM}>`,
+            to: ALERT_RECIPIENTS.join(', '),
+            subject,
+            html
+        });
+
+        console.log(`[Alert Cron] Email sent to ${ALERT_RECIPIENTS.length} recipients`);
+        return { sent: true, red: redAlerts.length, green: greenAlerts.length };
+    } catch (err) {
+        console.error('[Alert Cron] Error:', err.message);
+        return { sent: false, error: err.message };
+    }
+}
+
+// Schedule: 9:00 AM IST every day (IST = UTC+5:30, so 3:30 AM UTC)
+cron.schedule('30 3 * * *', () => {
+    console.log('[Alert Cron] Triggered at', new Date().toISOString());
+    sendAlertEmails();
+});
+
+// Manual trigger endpoint
+app.post('/api/send-alerts', async (req, res) => {
+    const result = await sendAlertEmails();
+    res.json(result);
+});
+
+app.get('/api/send-alerts', async (req, res) => {
+    const result = await sendAlertEmails();
+    res.json(result);
+});
+
+console.log('[Alert Cron] Scheduled daily at 9:00 AM IST');
+
+// =============================================================================
+// AD INSIGHTS & FUNNEL ENDPOINTS
+// =============================================================================
+
+app.post('/api/meta/ad-insights-daily', async (req, res) => {
+    try {
+        const { dateFrom, dateTo } = req.body;
+        if (!dateFrom || !dateTo) {
+            return res.status(400).json({ success: false, error: 'dateFrom and dateTo are required' });
+        }
+
+        const allRows = [];
+        let url = `${META_API_BASE}/${META_AD_ACCOUNT_ID}/insights`;
+        let params = metaParams({
+            fields: 'campaign_name,campaign_id,adset_name,adset_id,ad_name,ad_id,spend,impressions,clicks,cpm,ctr,cpc,actions,cost_per_action_type',
+            level: 'ad',
+            time_increment: 1,
+            time_range: JSON.stringify({ since: dateFrom, until: dateTo }),
+            filtering: JSON.stringify([
+                { field: 'ad.effective_status', operator: 'IN', value: ['ACTIVE'] }
+            ]),
+            limit: 500,
+        });
+
+        // First request
+        const qs = new URLSearchParams(params).toString();
+        let response = await fetch(`${url}?${qs}`);
+        let data = await response.json();
+
+        if (data.error) {
+            return res.status(400).json({ success: false, error: data.error.message });
+        }
+
+        if (data.data) allRows.push(...data.data);
+
+        // Paginate
+        while (data.paging && data.paging.next) {
+            response = await fetch(data.paging.next);
+            data = await response.json();
+            if (data.error) break;
+            if (data.data) allRows.push(...data.data);
+        }
+
+        // Flatten actions to extract installs
+        const rows = allRows.map(row => {
+            const actions = row.actions || [];
+            const costPerAction = row.cost_per_action_type || [];
+            const installs = actions.find(a => a.action_type === 'mobile_app_install');
+            const cpiObj = costPerAction.find(a => a.action_type === 'mobile_app_install');
+            return {
+                date_start: row.date_start,
+                campaign_name: row.campaign_name,
+                campaign_id: row.campaign_id,
+                adset_name: row.adset_name,
+                adset_id: row.adset_id,
+                ad_name: row.ad_name,
+                ad_id: row.ad_id,
+                spend: parseFloat(row.spend || 0),
+                impressions: parseInt(row.impressions || 0),
+                clicks: parseInt(row.clicks || 0),
+                cpm: parseFloat(row.cpm || 0),
+                ctr: parseFloat(row.ctr || 0),
+                cpc: parseFloat(row.cpc || 0),
+                installs: installs ? parseInt(installs.value) : 0,
+                cpi: cpiObj ? parseFloat(cpiObj.value) : null,
+            };
+        });
+
+        res.json({ success: true, data: rows, total: rows.length });
+    } catch (err) {
+        console.error('Meta ad-insights-daily error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/api/metabase/ad-funnel', async (req, res) => {
+    try {
+        const { dateFrom, dateTo } = req.body;
+        if (!dateFrom || !dateTo) {
+            return res.status(400).json({ success: false, error: 'dateFrom and dateTo are required' });
+        }
+
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(dateFrom) || !dateRegex.test(dateTo)) {
+            return res.status(400).json({ success: false, error: 'Dates must be YYYY-MM-DD' });
+        }
+
+        const sql = `
+WITH user_data AS (
+  SELECT
+    uad.user_id,
+    LOWER(TRIM(uad.tracker_sub_campaign_name)) AS tracker_sub_campaign_name,
+    uad.tracker_campaign_name,
+    uad.creative AS tracker_name,
+    priority,
+    CASE WHEN uad.network ILIKE '%Google%' THEN 'Google' ELSE uad.network END AS network,
+    date(created_at) AS event_date
+  FROM user_additional_details uad
+  LEFT JOIN users u ON u.id = uad.user_id
+  LEFT JOIN (SELECT DISTINCT "Adset ID"::bigint AS "Adset ID" FROM "Demat_Campaigns" WHERE "Adset ID" IS NOT NULL AND TRIM("Adset ID") <> '') ch ON ch."Adset ID" = uad.tracker_sub_campaign_id
+  WHERE "Adset ID" IS NULL
+    AND uad.user_id IN (SELECT id FROM users WHERE referred_by IS NULL AND user_interest IS NULL)
+    AND uad.user_id IN (SELECT u.id FROM user_devices ud WHERE ud.user_id = u.id AND ud.os IN ('android','Android Web'))
+    AND date(u.created_at) >= '${dateFrom}'
+    AND date(u.created_at) <= '${dateTo}'
+    AND (network LIKE '%Facebook%' OR network LIKE '%Instagram%')
+),
+first_payments AS (
+  SELECT
+    user_id, min(payment_date) as payment_date,
+    sum(case when rt = 1 then amount else null end) as amount,
+    sum(case when rt > 1 then amount else null end) as repeat_amount,
+    count(case when rt > 1 then amount else null end) as repeat_con,
+    sum(case when date(payment_date) - date(created_at) <= 6 then amount else null end) as d6_repeat_amount,
+    count(case when date(payment_date) - date(created_at) <= 6 then amount else null end) as d6_repeat_con,
+    sum(amount) as overall_amt,
+    count(user_id) as overall_con
+  FROM (
+    SELECT user_id, payment_date, amount, created_at,
+      ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY payment_date) AS rt
+    FROM user_transaction_history uth
+    LEFT JOIN users u ON u.id = uth.user_id
+    WHERE status = 'CHARGED' AND amount > 50
+  ) sub
+  GROUP BY 1
+),
+trial AS (
+  SELECT user_id, trial_date FROM (
+    SELECT user_id, payment_date AS trial_date, plan_id,
+      ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY payment_date DESC) AS rk
+    FROM user_transaction_history
+    WHERE (plan_id IN ('plan_000','plan_000_plus','plan_000_super') OR plan_id ILIKE '%trial%')
+      AND status = 'CHARGED'
+  ) sub WHERE rk = 1
+),
+signup_metrics AS (
+  SELECT
+    ud.event_date,
+    ud.tracker_campaign_name,
+    ud.tracker_sub_campaign_name,
+    regexp_replace(ud.tracker_name, ':.*$', '', 'g') AS tracker_name,
+    COUNT(DISTINCT ud.user_id) AS total_signup,
+    COUNT(DISTINCT CASE WHEN ud.priority = 'PAYMENT-P0' THEN ud.user_id END) AS p0_signup,
+    COUNT(DISTINCT CASE WHEN ud.priority = 'PAYMENT-P1' THEN ud.user_id END) AS p1_signup,
+    COUNT(DISTINCT t.user_id) AS total_trial,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) = ud.event_date THEN fp.user_id END) AS d0,
+    SUM(CASE WHEN DATE(fp.payment_date) = ud.event_date THEN fp.amount ELSE 0 END) AS d0_revenue,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' THEN fp.user_id END) AS d6,
+    SUM(CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' THEN fp.amount ELSE 0 END) AS d6_revenue,
+    COUNT(DISTINCT fp.user_id) AS new_converted_user,
+    SUM(fp.amount) AS new_user_rev,
+    SUM(fp.overall_amt) AS overall_revenue,
+    COUNT(DISTINCT CASE WHEN DATE(trial_date) = DATE(ud.event_date) THEN t.user_id END) AS d0_trial,
+    SUM(d6_repeat_con) AS d6_overall_con,
+    SUM(d6_repeat_amount) AS d6_overall_revenue
+  FROM user_data ud
+  LEFT JOIN first_payments fp ON ud.user_id = fp.user_id
+  LEFT JOIN trial t ON ud.user_id = t.user_id
+  GROUP BY 1,2,3,4
+)
+SELECT
+  sm.event_date AS date,
+  sm.tracker_campaign_name AS campaign_name,
+  sm.tracker_sub_campaign_name AS ad_set_name,
+  sm.tracker_name,
+  SUM(sm.total_signup) AS signups,
+  SUM(sm.p0_signup) AS p0_signup,
+  SUM(sm.p1_signup) AS p1_signup,
+  SUM(sm.total_trial) AS total_trial,
+  SUM(sm.d0_trial) AS d0_trial,
+  SUM(sm.d0) AS d0,
+  SUM(sm.d0_revenue) AS d0_revenue,
+  SUM(sm.d6) AS d6,
+  SUM(sm.d6_revenue) AS d6_revenue,
+  SUM(sm.new_converted_user) AS new_converted_user,
+  SUM(sm.new_user_rev) AS new_user_rev,
+  SUM(sm.overall_revenue) AS overall_revenue,
+  SUM(sm.d6_overall_con) AS d6_overall_con,
+  SUM(sm.d6_overall_revenue) AS d6_overall_revenue
+FROM signup_metrics sm
+GROUP BY 1,2,3,4
+ORDER BY SUM(sm.total_signup) DESC`;
+
+        const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
+            method: 'POST',
+            headers: {
+                'X-Metabase-Session': METABASE_SESSION_TOKEN,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                database: 2,
+                type: 'native',
+                native: { query: sql },
+            }),
+        });
+
+        if (!metabaseRes.ok) {
+            const errText = await metabaseRes.text();
+            return res.status(metabaseRes.status).json({ success: false, error: `Metabase API error: ${errText}` });
+        }
+
+        const result = await metabaseRes.json();
+        const columns = result.data.cols.map(c => c.name);
+        const rows = result.data.rows.map(row => {
+            const obj = {};
+            columns.forEach((col, i) => { obj[col] = row[i]; });
+            return obj;
+        });
+
+        res.json({ success: true, data: rows, total: rows.length });
+    } catch (err) {
+        console.error('Metabase ad-funnel error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// =============================================================================
 // START SERVER
 // =============================================================================
 

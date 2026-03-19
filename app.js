@@ -565,7 +565,8 @@ const views = {
     failures: { title: 'Underperformers', subtitle: 'Creatives that need attention or removal' },
     scorecard: { title: 'Scorecard', subtitle: 'Detailed performance scorecard per creative' },
     alerts: { title: 'Alerts', subtitle: 'Live creative alerts based on performance thresholds' },
-    accounts: { title: 'Accounts', subtitle: 'Manage connected ad platform accounts' }
+    accounts: { title: 'Accounts', subtitle: 'Manage connected ad platform accounts' },
+    campaignTree: { title: 'Campaign Tree', subtitle: 'Hierarchical campaign → adset → ad analysis with alerts' }
 };
 
 document.querySelectorAll('.nav-item').forEach(item => {
@@ -598,6 +599,7 @@ function renderCurrentView() {
     else if (view === 'scorecard') renderScorecardView();
     else if (view === 'alerts') renderAlertsPage();
     else if (view === 'accounts') renderAccountsView();
+    else if (view === 'campaignTree') { /* rendered on-demand via fetchCampaignTree */ }
 }
 
 // ---- Dashboard ----
@@ -1597,3 +1599,347 @@ async function init() {
     // fetchMetaData();
 }
 init();
+
+// =========================================================================
+// CAMPAIGN TREE — Hierarchical campaign → adset → ad analysis
+// =========================================================================
+const TREE_SERVER = 'http://localhost:3000';
+
+function dateToExcelSerial(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const epochDays = Date.UTC(y, m - 1, d) / 86400000;
+    return Math.round(epochDays + 25569);
+}
+
+function buildMetaKey(dateStr, campaignName, adsetName, adName) {
+    const serial = dateToExcelSerial(dateStr);
+    return serial + campaignName + adsetName.toLowerCase().trim() + adName.replace(/:.*$/, '');
+}
+
+function buildMetabaseKey(dateStr, campaignName, adsetName, trackerName) {
+    // Metabase dates come as ISO strings e.g. "2026-03-18T00:00:00+05:30"
+    const d = dateStr.substring(0, 10);
+    const serial = dateToExcelSerial(d);
+    // adsetName is already lowered in the SQL
+    return serial + campaignName + adsetName + trackerName;
+}
+
+window.fetchCampaignTree = async function () {
+    const dateFrom = document.getElementById('treeDateFrom').value;
+    const dateTo = document.getElementById('treeDateTo').value;
+    const status = document.getElementById('treeStatus');
+    const container = document.getElementById('treeContainer');
+    const summaryEl = document.getElementById('treeSummary');
+    const btn = document.getElementById('treeAnalyzeBtn');
+
+    if (!dateFrom || !dateTo) { status.textContent = 'Please select both dates.'; return; }
+
+    btn.disabled = true;
+    status.textContent = 'Fetching data from Meta API + Metabase...';
+    container.innerHTML = '';
+    summaryEl.style.display = 'none';
+
+    try {
+        // Fetch both sources in parallel
+        const [metaRes, funnelRes] = await Promise.all([
+            fetch(`${TREE_SERVER}/api/meta/ad-insights-daily`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dateFrom, dateTo }),
+            }).then(r => r.json()),
+            fetch(`${TREE_SERVER}/api/metabase/ad-funnel`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dateFrom, dateTo }),
+            }).then(r => r.json()),
+        ]);
+
+        if (!metaRes.success) throw new Error('Meta API: ' + metaRes.error);
+        if (!funnelRes.success) throw new Error('Metabase: ' + funnelRes.error);
+
+        status.textContent = `Meta: ${metaRes.total} rows | Metabase: ${funnelRes.total} rows. Matching...`;
+
+        // Build Metabase lookup by key
+        const mbByKey = {};
+        for (const row of funnelRes.data) {
+            const key = buildMetabaseKey(row.date, row.campaign_name, row.ad_set_name, row.tracker_name);
+            mbByKey[key] = row;
+        }
+
+        // Match Meta rows to Metabase and aggregate at ad level
+        // adUID = campaign_name + '|||' + adset_name + '|||' + ad_name
+        const adAgg = {};
+        let matchedKeys = 0;
+        let unmatchedKeys = 0;
+
+        for (const row of metaRes.data) {
+            const uid = row.campaign_name + '|||' + row.adset_name + '|||' + row.ad_name;
+            if (!adAgg[uid]) {
+                adAgg[uid] = {
+                    campaign_name: row.campaign_name, campaign_id: row.campaign_id,
+                    adset_name: row.adset_name, adset_id: row.adset_id,
+                    ad_name: row.ad_name, ad_id: row.ad_id,
+                    spend: 0, impressions: 0, clicks: 0, installs: 0,
+                    signups: 0, d0_trial: 0, d0: 0, d0_revenue: 0,
+                    d6: 0, d6_revenue: 0, overall_revenue: 0,
+                    new_converted_user: 0, new_user_rev: 0,
+                    p0_signup: 0, p1_signup: 0, total_trial: 0,
+                    d6_overall_con: 0, d6_overall_revenue: 0,
+                    _matched: false,
+                };
+            }
+            const a = adAgg[uid];
+            a.spend += row.spend * 1.18; // tax adjustment
+            a.impressions += row.impressions;
+            a.clicks += row.clicks;
+            a.installs += row.installs;
+
+            // Try to match to Metabase
+            const key = buildMetaKey(row.date_start, row.campaign_name, row.adset_name, row.ad_name);
+            const mb = mbByKey[key];
+            if (mb) {
+                matchedKeys++;
+                a._matched = true;
+                a.signups += Number(mb.signups) || 0;
+                a.d0_trial += Number(mb.d0_trial) || 0;
+                a.d0 += Number(mb.d0) || 0;
+                a.d0_revenue += Number(mb.d0_revenue) || 0;
+                a.d6 += Number(mb.d6) || 0;
+                a.d6_revenue += Number(mb.d6_revenue) || 0;
+                a.overall_revenue += Number(mb.overall_revenue) || 0;
+                a.new_converted_user += Number(mb.new_converted_user) || 0;
+                a.new_user_rev += Number(mb.new_user_rev) || 0;
+                a.p0_signup += Number(mb.p0_signup) || 0;
+                a.p1_signup += Number(mb.p1_signup) || 0;
+                a.total_trial += Number(mb.total_trial) || 0;
+                a.d6_overall_con += Number(mb.d6_overall_con) || 0;
+                a.d6_overall_revenue += Number(mb.d6_overall_revenue) || 0;
+            } else {
+                unmatchedKeys++;
+            }
+        }
+
+        // Also add Metabase rows that had no Meta match (spend-less but have signups)
+        const metaKeys = new Set();
+        for (const row of metaRes.data) {
+            metaKeys.add(buildMetaKey(row.date_start, row.campaign_name, row.adset_name, row.ad_name));
+        }
+        for (const row of funnelRes.data) {
+            const key = buildMetabaseKey(row.date, row.campaign_name, row.ad_set_name, row.tracker_name);
+            if (!metaKeys.has(key)) {
+                // This funnel row has no matching Meta row — add with 0 spend
+                const uid = row.campaign_name + '|||' + row.ad_set_name + '|||' + row.tracker_name;
+                if (!adAgg[uid]) {
+                    adAgg[uid] = {
+                        campaign_name: row.campaign_name, campaign_id: '',
+                        adset_name: row.ad_set_name, adset_id: '',
+                        ad_name: row.tracker_name, ad_id: '',
+                        spend: 0, impressions: 0, clicks: 0, installs: 0,
+                        signups: 0, d0_trial: 0, d0: 0, d0_revenue: 0,
+                        d6: 0, d6_revenue: 0, overall_revenue: 0,
+                        new_converted_user: 0, new_user_rev: 0,
+                        p0_signup: 0, p1_signup: 0, total_trial: 0,
+                        d6_overall_con: 0, d6_overall_revenue: 0,
+                        _matched: true,
+                    };
+                }
+                const a = adAgg[uid];
+                a.signups += Number(row.signups) || 0;
+                a.d0_trial += Number(row.d0_trial) || 0;
+                a.d0 += Number(row.d0) || 0;
+                a.d0_revenue += Number(row.d0_revenue) || 0;
+                a.d6 += Number(row.d6) || 0;
+                a.d6_revenue += Number(row.d6_revenue) || 0;
+                a.overall_revenue += Number(row.overall_revenue) || 0;
+                a.new_converted_user += Number(row.new_converted_user) || 0;
+                a.new_user_rev += Number(row.new_user_rev) || 0;
+            }
+        }
+
+        // Compute derived metrics per ad
+        const ads = Object.values(adAgg).map(a => {
+            const cpi = a.installs > 0 ? a.spend / a.installs : null;
+            const ctr = a.impressions > 0 ? (a.clicks / a.impressions) * 100 : 0;
+            const signupCost = a.signups > 0 ? a.spend / a.signups : null;
+            const d0TrialCost = a.d0_trial > 0 ? a.spend / a.d0_trial : null;
+            const d6CAC = a.d6 > 0 ? a.spend / a.d6 : null;
+            const d6ROAS = a.spend > 0 ? (a.d6_revenue / a.spend) * 100 : 0;
+            const d6OverallCAC = a.d6_overall_con > 0 ? a.spend / a.d6_overall_con : null;
+            const d6OverallROAS = a.spend > 0 ? (a.d6_overall_revenue / a.spend) * 100 : 0;
+            return { ...a, cpi, ctr, signupCost, d0TrialCost, d6CAC, d6ROAS, d6OverallCAC, d6OverallROAS };
+        });
+
+        // Build tree: campaign → adset → ad
+        const tree = {};
+        for (const ad of ads) {
+            if (!tree[ad.campaign_name]) {
+                tree[ad.campaign_name] = { name: ad.campaign_name, id: ad.campaign_id, adsets: {}, totals: null };
+            }
+            const camp = tree[ad.campaign_name];
+            if (!camp.adsets[ad.adset_name]) {
+                camp.adsets[ad.adset_name] = { name: ad.adset_name, id: ad.adset_id, ads: [], totals: null };
+            }
+            camp.adsets[ad.adset_name].ads.push(ad);
+        }
+
+        // Aggregate totals at adset and campaign level
+        function sumAds(adsList) {
+            const t = { spend: 0, impressions: 0, clicks: 0, installs: 0, signups: 0, d0_trial: 0, d0: 0, d0_revenue: 0, d6: 0, d6_revenue: 0, overall_revenue: 0, d6_overall_con: 0, d6_overall_revenue: 0 };
+            for (const a of adsList) {
+                t.spend += a.spend; t.impressions += a.impressions; t.clicks += a.clicks; t.installs += a.installs;
+                t.signups += a.signups; t.d0_trial += a.d0_trial; t.d0 += a.d0; t.d0_revenue += a.d0_revenue;
+                t.d6 += a.d6; t.d6_revenue += a.d6_revenue; t.overall_revenue += a.overall_revenue;
+                t.d6_overall_con += a.d6_overall_con; t.d6_overall_revenue += a.d6_overall_revenue;
+            }
+            t.cpi = t.installs > 0 ? t.spend / t.installs : null;
+            t.ctr = t.impressions > 0 ? (t.clicks / t.impressions) * 100 : 0;
+            t.signupCost = t.signups > 0 ? t.spend / t.signups : null;
+            t.d0TrialCost = t.d0_trial > 0 ? t.spend / t.d0_trial : null;
+            t.d6CAC = t.d6 > 0 ? t.spend / t.d6 : null;
+            t.d6ROAS = t.spend > 0 ? (t.d6_revenue / t.spend) * 100 : 0;
+            t.d6OverallCAC = t.d6_overall_con > 0 ? t.spend / t.d6_overall_con : null;
+            t.d6OverallROAS = t.spend > 0 ? (t.d6_overall_revenue / t.spend) * 100 : 0;
+            return t;
+        }
+
+        let totalSpend = 0, totalSignups = 0, totalD6 = 0, totalD6Rev = 0, totalInstalls = 0;
+        let redCount = 0, greenCount = 0;
+
+        for (const camp of Object.values(tree)) {
+            const allCampAds = [];
+            for (const adset of Object.values(camp.adsets)) {
+                adset.ads.sort((a, b) => b.spend - a.spend);
+                adset.totals = sumAds(adset.ads);
+                allCampAds.push(...adset.ads);
+            }
+            camp.totals = sumAds(allCampAds);
+            totalSpend += camp.totals.spend;
+            totalSignups += camp.totals.signups;
+            totalD6 += camp.totals.d6;
+            totalD6Rev += camp.totals.d6_revenue;
+            totalInstalls += camp.totals.installs;
+        }
+
+        // Classify alerts per ad
+        function classifyTreeAlert(d) {
+            if (d.spend < 15000) return 'neutral';
+            // D6 ROAS > 28% = green
+            if (d.d6ROAS > 28) return 'green';
+            // Count breaches
+            let breaches = 0;
+            if (d.signupCost > 1000) breaches++;
+            if (d.d0TrialCost > 3500) breaches++;
+            if (d.d6CAC > 15000) breaches++;
+            if (breaches >= 2) return 'red';
+            // Count green hits
+            let hits = 0;
+            if (d.signupCost > 0 && d.signupCost < 500) hits++;
+            if (d.d0TrialCost > 0 && d.d0TrialCost < 2500) hits++;
+            if (d.d6CAC > 0 && d.d6CAC < 12000) hits++;
+            if (hits >= 2) return 'green';
+            return 'neutral';
+        }
+
+        // Count alerts
+        for (const ad of ads) {
+            const alert = classifyTreeAlert(ad);
+            if (alert === 'red') redCount++;
+            else if (alert === 'green') greenCount++;
+        }
+
+        // Render summary
+        const overallROAS = totalSpend > 0 ? (totalD6Rev / totalSpend * 100).toFixed(1) : '0';
+        summaryEl.style.display = 'block';
+        summaryEl.innerHTML = `
+            <div class="tree-summary-cards">
+                <div class="tree-summary-card"><div class="val" style="color:#6c5ce7;">${Object.keys(tree).length}</div><div class="lbl">Campaigns</div></div>
+                <div class="tree-summary-card"><div class="val">${cur(totalSpend)}</div><div class="lbl">Total Spend</div></div>
+                <div class="tree-summary-card"><div class="val">${num(totalInstalls)}</div><div class="lbl">Installs</div></div>
+                <div class="tree-summary-card"><div class="val">${num(totalSignups)}</div><div class="lbl">Signups</div></div>
+                <div class="tree-summary-card"><div class="val">${totalD6}</div><div class="lbl">D6 Conversions</div></div>
+                <div class="tree-summary-card"><div class="val">${overallROAS}%</div><div class="lbl">D6 ROAS</div></div>
+                <div class="tree-summary-card"><div class="val" style="color:#ef4444;">${redCount}</div><div class="lbl">Red Alerts</div></div>
+                <div class="tree-summary-card"><div class="val" style="color:#10b981;">${greenCount}</div><div class="lbl">Green Alerts</div></div>
+                <div class="tree-summary-card"><div class="val" style="color:#888;">${matchedKeys}/${matchedKeys + unmatchedKeys}</div><div class="lbl">Keys Matched</div></div>
+            </div>`;
+
+        // Render tree
+        const sortedCampaigns = Object.values(tree).sort((a, b) => b.totals.spend - a.totals.spend);
+        let html = '';
+        for (const camp of sortedCampaigns) {
+            const campAlert = classifyTreeAlert(camp.totals);
+            html += renderTreeNode(camp.name, 'campaign', camp.totals, campAlert, () => {
+                let inner = '';
+                const sortedAdsets = Object.values(camp.adsets).sort((a, b) => b.totals.spend - a.totals.spend);
+                for (const adset of sortedAdsets) {
+                    const adsetAlert = classifyTreeAlert(adset.totals);
+                    inner += renderTreeNode(adset.name, 'adset', adset.totals, adsetAlert, () => {
+                        let adHtml = '';
+                        for (const ad of adset.ads) {
+                            const adAlert = classifyTreeAlert(ad);
+                            const noFunnel = !ad._matched ? ' tree-no-funnel' : '';
+                            adHtml += renderTreeNode(ad.ad_name, 'ad', ad, adAlert, null, noFunnel);
+                        }
+                        return adHtml;
+                    });
+                }
+                return inner;
+            });
+        }
+        container.innerHTML = html;
+
+        status.textContent = `Done. ${Object.keys(tree).length} campaigns, ${ads.length} ads. ${matchedKeys} key matches, ${unmatchedKeys} unmatched.`;
+
+    } catch (err) {
+        status.textContent = 'Error: ' + err.message;
+        console.error('Campaign tree error:', err);
+    } finally {
+        btn.disabled = false;
+    }
+};
+
+function renderTreeNode(name, level, metrics, alertType, childrenFn, extraClass) {
+    const id = 'tree-' + Math.random().toString(36).substr(2, 9);
+    const hasChildren = !!childrenFn;
+    const toggle = hasChildren ? `<span class="tree-toggle" onclick="toggleTreeNode('${id}')">&#9654;</span>` : '<span style="width:16px;display:inline-block;"></span>';
+    const badge = alertType !== 'neutral' ? `<span class="tree-badge ${alertType}">${alertType === 'red' ? 'RED' : 'GREEN'}</span>` : '';
+
+    const m = metrics;
+    const metricsHtml = `
+        <div class="tree-metrics">
+            <div class="tree-metric"><div class="label">Spend</div><div class="value">${cur(m.spend)}</div></div>
+            <div class="tree-metric"><div class="label">Installs</div><div class="value">${num(m.installs)}</div></div>
+            <div class="tree-metric"><div class="label">CPI</div><div class="value">${m.cpi ? '₹' + Math.round(m.cpi) : '-'}</div></div>
+            <div class="tree-metric"><div class="label">Signups</div><div class="value">${num(m.signups)}</div></div>
+            <div class="tree-metric"><div class="label">SU Cost</div><div class="value" style="color:${m.signupCost ? (m.signupCost < 500 ? '#10b981' : m.signupCost > 1000 ? '#ef4444' : '#e0e0e0') : '#888'}">${m.signupCost ? '₹' + Math.round(m.signupCost) : '-'}</div></div>
+            <div class="tree-metric"><div class="label">D0 Trial</div><div class="value">${m.d0TrialCost ? '₹' + Math.round(m.d0TrialCost) : '-'}</div></div>
+            <div class="tree-metric"><div class="label">D6 CAC</div><div class="value" style="color:${m.d6CAC ? (m.d6CAC < 12000 ? '#10b981' : m.d6CAC > 15000 ? '#ef4444' : '#e0e0e0') : '#888'}">${m.d6CAC ? '₹' + Math.round(m.d6CAC) : '-'}</div></div>
+            <div class="tree-metric"><div class="label">D6 ROAS</div><div class="value" style="color:${m.d6ROAS > 28 ? '#10b981' : m.d6ROAS > 0 ? '#ef4444' : '#888'}">${m.d6ROAS ? m.d6ROAS.toFixed(1) + '%' : '-'}</div></div>
+        </div>`;
+
+    const childrenHtml = hasChildren ? `<div class="tree-children collapsed" id="${id}-children">${childrenFn()}</div>` : '';
+
+    return `<div class="tree-node${extraClass || ''}">
+        <div class="tree-header ${level}" onclick="${hasChildren ? `toggleTreeNode('${id}')` : ''}">
+            ${toggle}
+            <span class="tree-name">${esc(name)}</span>
+            ${badge}
+            ${metricsHtml}
+        </div>
+        ${childrenHtml}
+    </div>`;
+}
+
+window.toggleTreeNode = function (id) {
+    const children = document.getElementById(id + '-children');
+    if (!children) return;
+    children.classList.toggle('collapsed');
+    const header = children.previousElementSibling;
+    const toggle = header.querySelector('.tree-toggle');
+    if (toggle) toggle.classList.toggle('open');
+};
+
+// Helper formatters (check if they exist already, define if not)
+function cur(v) { return '₹' + Math.round(v).toLocaleString('en-IN'); }
+function num(v) { return v.toLocaleString('en-IN'); }
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
