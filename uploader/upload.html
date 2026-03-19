@@ -1741,9 +1741,22 @@
         // Existing adset (skip creation) — clear first so stale values don't persist
         $('existingAdsetId').value = '';
         setVal('existingAdsetId', ['existingadsetid', 'existing_adset_id', 'adset_id', 'adsetid']);
-        console.log('[DEBUG] Sheet headers:', sheetHeaders);
-        console.log('[DEBUG] Row data for adset_id:', sheetHeaders.filter(h => h.toLowerCase().includes('adset')).map(h => h + '=' + row[h]));
-        console.log('[DEBUG] existingAdsetId field value:', $('existingAdsetId').value);
+        // Fallback: if field is still empty, try direct column access
+        if (!$('existingAdsetId').value) {
+            for (const h of sheetHeaders) {
+                const norm = h.toLowerCase().replace(/[\s_-]/g, '');
+                if (norm === 'adsetid' || norm === 'existingadsetid') {
+                    const v = row[h];
+                    if (v !== undefined && v !== '' && v !== null) {
+                        $('existingAdsetId').value = String(v);
+                        break;
+                    }
+                }
+            }
+        }
+        console.log('[DEBUG] All headers:', sheetHeaders.join(', '));
+        console.log('[DEBUG] Adset-related:', sheetHeaders.filter(h => h.toLowerCase().includes('adset')).map(h => `${h}="${row[h]}"`).join(', '));
+        console.log('[DEBUG] existingAdsetId field =', $('existingAdsetId').value);
         toggleExistingAdset();
 
         // Adset
@@ -2123,9 +2136,8 @@
     // CORE PIPELINE (reusable for single + bulk)
     // =========================================================================
     async function executeSingleRow(config, sheetRowIndex, sheetTabName, existingAdsetId) {
-        console.log('[DEBUG] executeSingleRow — existingAdsetId param:', existingAdsetId, '| config.existing_adset_id:', config.existing_adset_id);
-        let adsetId = existingAdsetId || config.existing_adset_id || null;
-        console.log('[DEBUG] resolved adsetId:', adsetId);
+        let adsetId = existingAdsetId || config.existing_adset_id || config.adset_id || null;
+        console.log('[DEBUG] resolved adsetId:', adsetId, '| param:', existingAdsetId, '| config.existing_adset_id:', config.existing_adset_id, '| config.adset_id:', config.adset_id);
         let creativeId = null;
         let adId = null;
 

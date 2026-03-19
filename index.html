@@ -151,11 +151,15 @@
             <button class="tab" data-tab="uploader">
                 <span class="tab-icon">&#9650;</span> Meta Ad Upload
             </button>
+            <button class="tab" data-tab="scanner">
+                <span class="tab-icon">&#9670;</span> Inventory Scanner
+            </button>
         </div>
     </nav>
     <div class="frame-container">
         <iframe id="frame-creative" src="creative.html"></iframe>
-        <iframe id="frame-uploader" src="uploader/upload.html?v=4" class="hidden"></iframe>
+        <iframe id="frame-uploader" src="uploader/upload.html?v=5" class="hidden"></iframe>
+        <iframe id="frame-scanner" src="http://localhost:3000" class="hidden"></iframe>
     </div>
 
     <script>
@@ -163,6 +167,7 @@
         const frames = {
             creative: document.getElementById('frame-creative'),
             uploader: document.getElementById('frame-uploader'),
+            scanner: document.getElementById('frame-scanner'),
         };
 
         tabs.forEach(tab => {
