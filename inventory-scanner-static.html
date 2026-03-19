@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1024" />
+  <title>Inventory Scanner & Competitor Analysis — Univest</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+/* ============================================================
+   INVENTORY SCANNER — Univest
+   Complete Design System & Styles
+   ============================================================ */
+
+/* --- Design Tokens --- */
+:root {
+  --bg: #0b0c10;
+  --surface: #13141a;
+  --surface-hover: #1a1b25;
+  --border: #252630;
+  --gold: #f0b429;
+  --teal: #38d9a9;
+  --blue: #4dabf7;
+  --red: #ff6b6b;
+  --green: #51cf66;
+  --text: #e8e9f0;
+  --muted: #7c7d8a;
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Fira Code', monospace;
+  --sidebar-w: 240px;
+  --topbar-h: 56px;
+  --radius: 8px;
+  --radius-sm: 4px;
+  --transition: 180ms ease;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a { color: inherit; text-decoration: none; }
+ul, ol { list-style: none; }
+input, select, button, textarea { font-family: inherit; font-size: inherit; color: inherit; outline: none; }
+img { max-width: 100%; display: block; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+* { scrollbar-width: thin; scrollbar-color: var(--border) var(--bg); }
+
+#app { display: flex; height: 100vh; overflow: hidden; }
+
+#sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: fixed;
+  width: var(--sidebar-w);
+  z-index: 100;
+}
+
+.sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid var(--border); text-align: center; }
+.logo-icon { font-size: 28px; color: var(--gold); margin-bottom: 6px; line-height: 1; }
+.sidebar-logo h1 { font-family: var(--font-mono); font-size: 15px; font-weight: 700; letter-spacing: 2px; line-height: 1.3; color: var(--text); }
+.logo-subtitle { display: block; font-size: 11px; color: var(--muted); margin-top: 4px; letter-spacing: 1px; text-transform: uppercase; }
+
+#nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+
+.nav-link {
+  display: flex; align-items: center; gap: 10px; padding: 10px 20px;
+  font-size: 13px; font-weight: 500; color: var(--muted);
+  border-left: 3px solid transparent; transition: all var(--transition);
+  position: relative; white-space: nowrap; cursor: pointer;
+}
+.nav-link:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.nav-link.active { color: var(--gold); border-left-color: var(--gold); background: rgba(240,180,41,0.06); }
+.nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+.nav-badge { margin-left: auto; background: var(--red); color: #fff; font-size: 10px; font-weight: 700; min-width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; padding: 0 5px; }
+
+.sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+.clock { font-family: var(--font-mono); font-size: 13px; color: var(--text); margin-bottom: 8px; }
+.scheduler-status { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.insight-count { color: var(--muted); }
+.insight-count span { color: var(--gold); font-weight: 600; font-family: var(--font-mono); }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.status-dot.green { background: var(--green); box-shadow: 0 0 6px rgba(81,207,102,0.5); animation: pulse 2s ease-in-out infinite; }
+
+#main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; height: 100vh; width: calc(100vw - var(--sidebar-w)); overflow: hidden; }
+#topbar { background: var(--surface); border-bottom: 1px solid var(--border); height: var(--topbar-h); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; flex-shrink: 0; z-index: 50; }
+.search-container { position: relative; flex: 1; max-width: 420px; }
+.search-container::before { content: '\2315'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; pointer-events: none; }
+#global-search { width: 100%; background: var(--surface-hover); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 14px 8px 34px; color: var(--text); transition: border-color var(--transition); }
+#global-search::placeholder { color: var(--muted); font-size: 13px; }
+#global-search:focus { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(240,180,41,0.12); }
+.topbar-actions { display: flex; align-items: center; gap: 10px; margin-left: 20px; }
+.notification-badge { background: var(--red); color: #fff; font-size: 10px; font-weight: 700; min-width: 16px; height: 16px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; padding: 0 4px; position: relative; top: -6px; left: -4px; }
+
+#content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 24px; }
+.view { display: none; animation: fadeIn 250ms ease; }
+.view.active { display: block; }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: 1px solid transparent; border-radius: var(--radius); font-size: 13px; font-weight: 600; cursor: pointer; transition: all var(--transition); white-space: nowrap; line-height: 1.4; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-gold { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+.btn-gold:hover:not(:disabled) { background: #e5a920; box-shadow: 0 2px 12px rgba(240,180,41,0.25); }
+.btn-teal { background: var(--teal); color: var(--bg); border-color: var(--teal); }
+.btn-teal:hover:not(:disabled) { background: #2bc89a; box-shadow: 0 2px 12px rgba(56,217,169,0.25); }
+.btn-outline { background: transparent; border-color: var(--border); color: var(--text); }
+.btn-outline:hover:not(:disabled) { border-color: var(--muted); background: var(--surface-hover); }
+.btn-outline.active { border-color: var(--gold); color: var(--gold); }
+.btn-icon { background: transparent; border: none; padding: 6px; font-size: 18px; cursor: pointer; position: relative; }
+.btn-icon:hover { opacity: 0.8; }
+.btn-red { background: var(--red); color: #fff; border-color: var(--red); }
+
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+.panel-title { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+.kpi-strip { display: flex; gap: 12px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px; }
+.kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; min-width: 160px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.kpi-value { font-family: var(--font-mono); font-size: 28px; font-weight: 700; color: var(--text); line-height: 1.1; }
+.kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.kpi-delta { font-size: 12px; font-family: var(--font-mono); font-weight: 500; }
+.kpi-delta.up { color: var(--green); }
+.kpi-delta.down { color: var(--red); }
+
+.dashboard-grid { display: grid; grid-template-columns: 1fr 360px; gap: 16px; }
+.dashboard-main { min-width: 0; }
+.dashboard-sidebar { min-width: 0; }
+.last-updated { font-size: 11px; color: var(--muted); text-align: right; margin-top: 12px; font-family: var(--font-mono); }
+
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+
+.inventory-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: all var(--transition); display: flex; flex-direction: column; gap: 10px; }
+.inventory-card:hover { border-color: var(--gold); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+.inventory-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.inventory-card-name { font-size: 15px; font-weight: 600; color: var(--text); line-height: 1.3; }
+.inventory-card-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.inventory-card-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted); }
+.inventory-card-row strong { color: var(--text); font-family: var(--font-mono); font-weight: 500; }
+
+.fit-bar-container { width: 100%; }
+.fit-bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.fit-bar-track { height: 6px; background: var(--surface-hover); border-radius: 3px; overflow: hidden; }
+.fit-bar-fill { height: 100%; border-radius: 3px; transition: width 400ms ease; }
+.fit-bar-fill.low { background: var(--red); }
+.fit-bar-fill.medium { background: var(--gold); }
+.fit-bar-fill.high { background: var(--green); }
+
+.fintech-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: var(--radius-sm); text-transform: uppercase; letter-spacing: 0.5px; }
+.fintech-badge.yes { background: rgba(81,207,102,0.15); color: var(--green); border: 1px solid rgba(81,207,102,0.3); }
+.fintech-badge.no { background: rgba(255,107,107,0.1); color: var(--red); border: 1px solid rgba(255,107,107,0.2); }
+
+.card-compare { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); cursor: pointer; }
+.card-compare input[type="checkbox"] { accent-color: var(--teal); }
+
+.category-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 10px; line-height: 1.5; }
+.category-badge.search { background: rgba(77,171,247,0.15); color: #4dabf7; }
+.category-badge.social { background: rgba(56,217,169,0.15); color: #38d9a9; }
+.category-badge.video { background: rgba(240,180,41,0.15); color: #f0b429; }
+.category-badge.audio { background: rgba(229,153,247,0.15); color: #e599f7; }
+.category-badge.gaming { background: rgba(255,146,43,0.15); color: #ff922b; }
+.category-badge.programmatic { background: rgba(116,192,252,0.15); color: #74c0fc; }
+.category-badge.vernacular { background: rgba(255,212,59,0.15); color: #ffd43b; }
+.category-badge.hyperlocal { background: rgba(105,219,124,0.15); color: #69db7c; }
+.category-badge.email { background: rgba(134,142,150,0.15); color: #868e96; }
+.category-badge.push { background: rgba(134,142,150,0.15); color: #868e96; }
+.category-badge.sms { background: rgba(134,142,150,0.15); color: #868e96; }
+.category-badge.influencer { background: rgba(247,131,172,0.15); color: #f783ac; }
+.category-badge.ooh { background: rgba(206,212,218,0.12); color: #ced4da; }
+.category-badge.affiliate { background: rgba(32,201,151,0.15); color: #20c997; }
+.category-badge.podcast { background: rgba(132,94,247,0.15); color: #845ef7; }
+.category-badge.ctv { background: rgba(250,176,5,0.15); color: #fab005; }
+.category-badge.regional_ott { background: rgba(250,176,5,0.15); color: #fab005; }
+
+.price-tag { display: inline-block; font-family: var(--font-mono); font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-sm); }
+.price-tag.cheap { background: rgba(81,207,102,0.12); color: var(--green); }
+.price-tag.medium { background: rgba(240,180,41,0.12); color: var(--gold); }
+.price-tag.expensive { background: rgba(255,107,107,0.12); color: var(--red); }
+
+.opp-score-bar { display: flex; align-items: center; gap: 8px; }
+.opp-score-track { flex: 1; height: 8px; background: var(--surface-hover); border-radius: 4px; overflow: hidden; }
+.opp-score-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--red) 0%, var(--gold) 50%, var(--green) 100%); transition: width 400ms ease; }
+.opp-score-value { font-family: var(--font-mono); font-size: 13px; font-weight: 600; min-width: 28px; text-align: right; }
+
+.badge { display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; line-height: 1.5; }
+.badge.gold { background: rgba(240,180,41,0.15); color: var(--gold); }
+.badge.teal { background: rgba(56,217,169,0.15); color: var(--teal); }
+.badge.red { background: rgba(255,107,107,0.15); color: var(--red); }
+.badge.blue { background: rgba(77,171,247,0.15); color: var(--blue); }
+.badge.green { background: rgba(81,207,102,0.15); color: var(--green); }
+.badge.muted { background: rgba(124,125,138,0.15); color: var(--muted); }
+
+.filter-select, .filter-input {
+  background: var(--surface-hover); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 7px 10px; color: var(--text); font-size: 13px; transition: border-color var(--transition); min-width: 0;
+}
+.filter-select {
+  padding-right: 28px; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237c7d8a'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; cursor: pointer;
+}
+.filter-select:focus, .filter-input:focus { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(240,180,41,0.1); }
+.filter-select option { background: var(--surface); color: var(--text); }
+.filter-input::placeholder { color: var(--muted); }
+.filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.explorer-toolbar { margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; }
+.explorer-actions { display: flex; gap: 8px; align-items: center; }
+
+.inventory-table { overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table thead { position: sticky; top: 0; z-index: 5; }
+.data-table th { background: var(--surface-hover); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; color: var(--muted); padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.data-table tbody tr { transition: background var(--transition); }
+.data-table tbody tr:hover { background: var(--surface-hover); }
+.data-table tbody tr:last-child td { border-bottom: none; }
+
+.modal { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; animation: fadeIn 150ms ease; backdrop-filter: blur(4px); }
+.modal-content { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; max-height: 90vh; overflow-y: auto; position: relative; animation: slideUp 250ms ease; }
+.detail-modal { width: 95%; max-width: 1200px; padding: 0; }
+.compare-modal { width: 95%; max-width: 1400px; padding: 24px; }
+.modal-close { position: absolute; top: 16px; right: 16px; background: var(--surface-hover); border: 1px solid var(--border); color: var(--muted); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; z-index: 10; transition: all var(--transition); }
+.modal-close:hover { color: var(--text); border-color: var(--muted); }
+
+.detail-header { padding: 24px 24px 0; }
+.detail-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0 24px; margin-top: 16px; overflow-x: auto; }
+.tab-btn { background: none; border: none; padding: 10px 16px; color: var(--muted); font-size: 13px; font-weight: 500; cursor: pointer; position: relative; transition: color var(--transition); white-space: nowrap; }
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--gold); }
+.tab-btn.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--gold); border-radius: 1px 1px 0 0; }
+.detail-body { padding: 24px; }
+
+.competitor-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.competitor-toolbar h2 { font-size: 16px; font-weight: 600; }
+.competitor-grid-container { overflow: auto; max-height: calc(100vh - 200px); border: 1px solid var(--border); border-radius: var(--radius); }
+.comp-grid { border-collapse: collapse; font-size: 12px; }
+.comp-grid th, .comp-grid td { padding: 8px 10px; border: 1px solid var(--border); text-align: center; white-space: nowrap; min-width: 80px; }
+.comp-grid th { background: var(--surface-hover); position: sticky; top: 0; z-index: 2; font-weight: 600; color: var(--muted); text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px; }
+.comp-grid td:first-child { position: sticky; left: 0; background: var(--surface); z-index: 1; font-weight: 600; text-align: left; }
+.comp-cell-none { background: var(--surface-hover); }
+.comp-cell-low { background: #1a3a2a; }
+.comp-cell-medium { background: #2a4a1a; }
+.comp-cell-high { background: #4a3a1a; }
+
+.detail-sidebar { position: fixed; top: 0; right: 0; width: 400px; height: 100vh; background: var(--surface); border-left: 1px solid var(--border); z-index: 200; overflow-y: auto; padding: 24px; animation: slideInRight 200ms ease; box-shadow: -8px 0 40px rgba(0,0,0,0.3); }
+.sidebar-close { position: absolute; top: 16px; right: 16px; background: var(--surface-hover); border: 1px solid var(--border); color: var(--muted); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; transition: all var(--transition); }
+.sidebar-close:hover { color: var(--text); border-color: var(--muted); }
+
+.insights-feed { max-height: 500px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.insight-card { padding: 12px; border-radius: var(--radius-sm); background: var(--surface-hover); border-left: 3px solid var(--border); cursor: pointer; transition: background var(--transition); }
+.insight-card:hover { background: rgba(255,255,255,0.04); }
+.insight-card.priority-high { border-left-color: var(--red); }
+.insight-card.priority-medium { border-left-color: var(--gold); }
+.insight-card.priority-low { border-left-color: var(--blue); }
+.insight-card.unread { background: rgba(240,180,41,0.04); }
+.insight-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; color: var(--text); }
+.insight-body { font-size: 12px; color: var(--muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.insight-time { font-size: 10px; color: var(--muted); margin-top: 6px; font-family: var(--font-mono); }
+
+.opportunity-list { display: flex; flex-direction: column; gap: 10px; }
+.opportunity-item { display: grid; grid-template-columns: 1fr 200px auto; gap: 12px; align-items: center; padding: 12px; background: var(--surface-hover); border-radius: var(--radius-sm); cursor: pointer; transition: background var(--transition); }
+.opportunity-item:hover { background: rgba(255,255,255,0.04); }
+.opportunity-name { font-weight: 600; font-size: 13px; }
+.opportunity-reason { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+.activity-feed { display: flex; flex-direction: column; gap: 8px; }
+.activity-item { display: flex; gap: 10px; padding: 10px; border-radius: var(--radius-sm); background: var(--surface-hover); font-size: 13px; align-items: flex-start; }
+.activity-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+.activity-text { flex: 1; line-height: 1.4; }
+.activity-time { font-size: 11px; color: var(--muted); font-family: var(--font-mono); white-space: nowrap; }
+
+.toggle-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: var(--muted); user-select: none; }
+.toggle-label input[type="checkbox"] { appearance: none; width: 36px; height: 20px; background: var(--border); border-radius: 10px; position: relative; cursor: pointer; transition: background var(--transition); }
+.toggle-label input[type="checkbox"]::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: var(--muted); border-radius: 50%; transition: all var(--transition); }
+.toggle-label input[type="checkbox"]:checked { background: var(--teal); }
+.toggle-label input[type="checkbox"]:checked::after { left: 18px; background: #fff; }
+
+.timeline { position: relative; padding-left: 24px; }
+.timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+.timeline-item { position: relative; padding: 12px 0 12px 16px; }
+.timeline-item::before { content: ''; position: absolute; left: -20px; top: 16px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--gold); }
+.timeline-item-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.timeline-item-body { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.timeline-item-time { font-size: 10px; color: var(--muted); font-family: var(--font-mono); margin-top: 4px; }
+
+.budget-planner { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.budget-planner > .panel:first-child { grid-column: 1 / -1; }
+.budget-controls { display: flex; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
+.budget-controls label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+.budget-input { background: var(--surface-hover); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; color: var(--text); font-family: var(--font-mono); font-size: 16px; width: 200px; transition: border-color var(--transition); }
+.budget-input:focus { border-color: var(--gold); }
+.budget-selector { display: flex; flex-wrap: wrap; gap: 8px; }
+.budget-selector-item { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--surface-hover); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; transition: all var(--transition); }
+.budget-selector-item.selected { border-color: var(--gold); background: rgba(240,180,41,0.06); }
+.budget-selector-item input[type="checkbox"] { accent-color: var(--gold); }
+
+input[type="range"] { -webkit-appearance: none; width: 100%; height: 6px; background: var(--border); border-radius: 3px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--gold); cursor: pointer; border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+
+.onboarding-timeline { position: relative; padding-left: 40px; }
+.onboarding-timeline::before { content: ''; position: absolute; left: 16px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+.onboarding-step { position: relative; padding: 16px 0; }
+.onboarding-step-number { position: absolute; left: -40px; top: 16px; width: 32px; height: 32px; border-radius: 50%; background: var(--surface); border: 2px solid var(--gold); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--gold); }
+.onboarding-step-card { background: var(--surface-hover); border-radius: var(--radius-sm); padding: 12px 16px; }
+.onboarding-step-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.onboarding-step-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+.admonitor-toolbar { margin-bottom: 16px; }
+.admonitor-toolbar h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+.ad-feed { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.ad-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: all var(--transition); }
+.ad-card:hover { border-color: var(--gold); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
+.ad-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.ad-card-competitor { font-weight: 600; font-size: 14px; }
+.ad-platform-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 10px; }
+.ad-platform-badge.meta { background: rgba(77,171,247,0.15); color: #4dabf7; }
+.ad-platform-badge.google { background: rgba(240,180,41,0.15); color: #f0b429; }
+.ad-platform-badge.youtube { background: rgba(255,107,107,0.15); color: #ff6b6b; }
+.ad-card-text { font-size: 13px; color: var(--muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ad-card-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ad-theme-tag { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: rgba(124,125,138,0.15); color: var(--muted); }
+.ad-date-range { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+.ad-spend-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+.ad-spend-badge.low { background: rgba(81,207,102,0.12); color: var(--green); }
+.ad-spend-badge.medium { background: rgba(240,180,41,0.12); color: var(--gold); }
+.ad-spend-badge.high { background: rgba(255,107,107,0.12); color: var(--red); }
+
+#keyword-table-container { overflow-x: auto; margin-bottom: 16px; }
+.keyword-gaps { display: flex; flex-direction: column; gap: 8px; }
+.keyword-gap-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--surface-hover); border-radius: var(--radius-sm); border-left: 3px solid var(--gold); }
+.keyword-gap-keyword { font-weight: 600; font-size: 13px; }
+.keyword-gap-info { font-size: 12px; color: var(--muted); }
+
+.timeline-chart-container { overflow-x: auto; padding: 8px 0; }
+.timeline-chart-container canvas { min-width: 800px; }
+
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.settings-form { display: flex; flex-direction: column; gap: 8px; }
+.settings-form label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.settings-form input { background: var(--surface-hover); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; color: var(--text); font-family: var(--font-mono); transition: border-color var(--transition); }
+.settings-form input:focus { border-color: var(--gold); }
+.settings-add { display: flex; gap: 8px; margin-top: 12px; }
+.settings-add input { flex: 1; background: var(--surface-hover); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 10px; color: var(--text); transition: border-color var(--transition); }
+.settings-add input:focus { border-color: var(--gold); }
+.settings-competitor-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.settings-competitor-item:last-child { border-bottom: none; }
+
+.toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column-reverse; gap: 8px; pointer-events: none; }
+.toast { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; min-width: 280px; max-width: 400px; font-size: 13px; pointer-events: auto; animation: slideInToast 300ms ease; display: flex; align-items: flex-start; gap: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+.toast.dismissing { animation: slideOutToast 200ms ease forwards; }
+.toast.success { border-left: 3px solid var(--green); }
+.toast.info { border-left: 3px solid var(--blue); }
+.toast.warning { border-left: 3px solid var(--gold); }
+.toast.error { border-left: 3px solid var(--red); }
+.toast-icon { font-size: 16px; flex-shrink: 0; }
+.toast-body { flex: 1; }
+.toast-title { font-weight: 600; margin-bottom: 2px; }
+.toast-message { color: var(--muted); font-size: 12px; }
+.toast-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; flex-shrink: 0; padding: 0; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@keyframes slideInToast { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideOutToast { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(40px); } }
+
+@media (max-width: 1280px) {
+  .dashboard-grid { grid-template-columns: 1fr 300px; }
+  .budget-planner { grid-template-columns: 1fr; }
+  .settings-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 1024px) {
+  :root { --sidebar-w: 56px; }
+  #sidebar { width: 56px; }
+  .sidebar-logo h1, .logo-subtitle, .nav-link span:not(.nav-icon), .nav-badge,
+  .sidebar-footer .clock, .sidebar-footer .scheduler-status, .sidebar-footer .insight-count { display: none; }
+  .sidebar-logo { padding: 16px 8px; }
+  .logo-icon { font-size: 22px; }
+  .nav-link { padding: 12px 0; justify-content: center; border-left-width: 0; border-bottom: 2px solid transparent; }
+  .nav-link.active { border-left-color: transparent; border-bottom-color: var(--gold); }
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .detail-sidebar { width: 320px; }
+}
+
+.text-gold { color: var(--gold); }
+.text-teal { color: var(--teal); }
+.text-red { color: var(--red); }
+.text-green { color: var(--green); }
+.text-muted { color: var(--muted); }
+.text-mono { font-family: var(--font-mono); }
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-16 { margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+
+<div id="app" style="min-height:100vh;">
+  <aside id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">&#x25C8;</div>
+      <h1>INVENTORY<br>SCANNER</h1>
+      <span class="logo-subtitle">by Univest</span>
+    </div>
+    <nav id="nav">
+      <a href="#" class="nav-link active" data-view="dashboard"><span class="nav-icon">&#x25C9;</span> Dashboard</a>
+      <a href="#" class="nav-link" data-view="explorer"><span class="nav-icon">&#x229E;</span> Inventory Explorer</a>
+      <a href="#" class="nav-link" data-view="competitors"><span class="nav-icon">&#x2694;</span> Competitor Map</a>
+      <a href="#" class="nav-link" data-view="discovery"><span class="nav-icon">&#x25CE;</span> Discovery Log</a>
+      <a href="#" class="nav-link" data-view="budget"><span class="nav-icon">&#x20B9;</span> Budget Planner</a>
+      <a href="#" class="nav-link" data-view="admonitor"><span class="nav-icon">&#x25C8;</span> Live Ad Monitor</a>
+      <a href="#" class="nav-link" data-view="keywords"><span class="nav-icon">&#x2315;</span> Keyword Intel</a>
+      <a href="#" class="nav-link" data-view="timeline"><span class="nav-icon">&#x25AC;</span> Competitive Timeline</a>
+      <a href="#" class="nav-link" data-view="settings"><span class="nav-icon">&#x2699;</span> Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="clock" id="clock"></div>
+      <div class="scheduler-status"><span class="status-dot green"></span> Static Mode</div>
+      <div class="insight-count"><span id="unread-count">0</span> unread insights</div>
+    </div>
+  </aside>
+
+  <main id="main">
+    <header id="topbar">
+      <div class="search-container">
+        <input type="text" id="global-search" placeholder="Search inventories... (Ctrl+K)" />
+      </div>
+      <div class="topbar-actions">
+        <select id="vertical-filter">
+          <option value="">All Verticals</option>
+          <option value="ra">Research Advisory</option>
+          <option value="broking">Broking/Demat</option>
+          <option value="both">Both</option>
+        </select>
+        <button id="btn-run-discovery" class="btn btn-gold">&#x25CE; Run Discovery</button>
+        <button id="btn-notifications" class="btn btn-icon">&#x1F514;</button>
+      </div>
+    </header>
+
+    <div id="content">
+      <!-- Dashboard -->
+      <section id="view-dashboard" class="view active">
+        <div class="kpi-strip" id="kpi-strip"></div>
+        <div class="dashboard-grid">
+          <div class="dashboard-main">
+            <div class="panel"><h2 class="panel-title">Univest Current Footprint</h2><div id="existing-inventories" class="card-grid"></div></div>
+            <div class="panel"><h2 class="panel-title">Top Opportunities</h2><div id="opportunities" class="opportunity-list"></div></div>
+            <div class="panel"><h2 class="panel-title">Competitor Activity Today</h2><div id="competitor-activity" class="activity-feed"></div></div>
+          </div>
+          <div class="dashboard-sidebar">
+            <div class="panel"><h2 class="panel-title">AI Insights <span class="badge gold" id="insight-badge">0</span></h2><div id="insights-feed" class="insights-feed"></div></div>
+            <div class="panel"><h2 class="panel-title">Trending Hooks</h2><div id="trending-hooks"></div></div>
+            <div class="panel"><h2 class="panel-title">Silent Competitors</h2><div id="silent-competitors"></div></div>
+          </div>
+        </div>
+        <div class="last-updated" id="last-updated"></div>
+      </section>
+
+      <!-- Inventory Explorer -->
+      <section id="view-explorer" class="view">
+        <div class="explorer-toolbar">
+          <div class="filter-row">
+            <select id="filter-category" class="filter-select"><option value="">All Categories</option><option value="search">Search</option><option value="social">Social</option><option value="video">Video &amp; OTT</option><option value="audio">Audio</option><option value="gaming">Gaming</option><option value="programmatic">Programmatic</option><option value="vernacular">Vernacular</option><option value="hyperlocal">Hyperlocal</option><option value="email">Email</option><option value="push">Push</option><option value="sms">SMS</option><option value="influencer">Influencer</option><option value="ooh">OOH/DOOH</option><option value="affiliate">Affiliate</option><option value="podcast">Podcast</option><option value="ctv">CTV</option><option value="regional_ott">Regional OTT</option></select>
+            <select id="filter-pricing" class="filter-select"><option value="">All Pricing</option><option value="cpm">CPM</option><option value="cpc">CPC</option><option value="cpa">CPA</option><option value="cpv">CPV</option><option value="flat">Flat Rate</option></select>
+            <select id="filter-fintech" class="filter-select"><option value="">All</option><option value="1">Fintech Friendly</option><option value="0">Not Fintech Friendly</option></select>
+            <input type="number" id="filter-min-cpm" placeholder="Min CPM" class="filter-input" />
+            <input type="number" id="filter-max-cpm" placeholder="Max CPM" class="filter-input" />
+            <input type="number" id="filter-min-fit" placeholder="Min Fit (1-10)" class="filter-input" min="1" max="10" />
+          </div>
+          <div class="explorer-actions">
+            <select id="sort-by" class="filter-select"><option value="target_audience_fit">Audience Fit</option><option value="min_cpm">CPM (Low-High)</option><option value="max_cpm">CPM (High-Low)</option><option value="estimated_monthly_reach">Reach</option><option value="created_at">Date Added</option></select>
+            <button class="btn btn-outline" id="btn-table-view">&#x2630; Table</button>
+            <button class="btn btn-outline active" id="btn-grid-view">&#x229E; Grid</button>
+            <button class="btn btn-teal" id="btn-compare" disabled>Compare (0)</button>
+          </div>
+        </div>
+        <div id="inventory-list" class="card-grid"></div>
+        <div id="inventory-table" class="inventory-table" style="display:none"></div>
+      </section>
+
+      <!-- Inventory Detail Modal -->
+      <div id="inventory-detail-modal" class="modal" style="display:none">
+        <div class="modal-content detail-modal">
+          <button class="modal-close" id="close-detail">&#x2715;</button>
+          <div class="detail-header" id="detail-header"></div>
+          <div class="detail-tabs">
+            <button class="tab-btn active" data-tab="overview">Overview</button>
+            <button class="tab-btn" data-tab="pricing">Pricing</button>
+            <button class="tab-btn" data-tab="competitors">Competitors</button>
+            <button class="tab-btn" data-tab="formats">Ad Formats</button>
+            <button class="tab-btn" data-tab="budget">Budget</button>
+            <button class="tab-btn" data-tab="onboarding">Onboarding</button>
+            <button class="tab-btn" data-tab="detail-insights">AI Insights</button>
+          </div>
+          <div class="detail-body" id="detail-body"></div>
+        </div>
+      </div>
+
+      <!-- Compare Modal -->
+      <div id="compare-modal" class="modal" style="display:none">
+        <div class="modal-content compare-modal">
+          <button class="modal-close" id="close-compare">&#x2715;</button>
+          <h2>Inventory Comparison</h2>
+          <div id="compare-content"></div>
+        </div>
+      </div>
+
+      <!-- Competitor Map -->
+      <section id="view-competitors" class="view">
+        <div class="competitor-toolbar">
+          <h2>Competitor x Inventory Map</h2>
+          <label class="toggle-label"><input type="checkbox" id="whitespace-toggle" /> Show Whitespace Only</label>
+        </div>
+        <div id="competitor-grid" class="competitor-grid-container"></div>
+      </section>
+
+      <!-- Discovery Log -->
+      <section id="view-discovery" class="view">
+        <div class="panel"><h2 class="panel-title">New Inventories (Last 7 Days)</h2><div id="new-inventories" class="card-grid"></div></div>
+        <div class="panel"><h2 class="panel-title">Discovery Run History</h2><div id="discovery-timeline" class="timeline"></div></div>
+        <div class="panel"><canvas id="discovery-chart" height="200"></canvas></div>
+      </section>
+
+      <!-- Budget Planner -->
+      <section id="view-budget" class="view">
+        <div class="budget-planner">
+          <div class="panel">
+            <h2 class="panel-title">Multi-Inventory Budget Allocator</h2>
+            <div class="budget-controls">
+              <div><label>Total Monthly Budget (&#x20B9;)</label><input type="number" id="total-budget" value="1000000" class="budget-input" /></div>
+              <button class="btn btn-gold" id="btn-allocate">AI Allocate Budget</button>
+            </div>
+            <div id="budget-inventory-selector" class="budget-selector"></div>
+          </div>
+          <div class="panel"><h2 class="panel-title">Allocation Results</h2><div id="budget-results"></div><canvas id="budget-chart" height="250"></canvas></div>
+          <div class="panel"><h2 class="panel-title">Projected Performance</h2><div id="budget-projections"></div><button class="btn btn-outline" id="btn-export-budget">Export as CSV</button></div>
+        </div>
+      </section>
+
+      <!-- Live Ad Monitor -->
+      <section id="view-admonitor" class="view">
+        <div class="admonitor-toolbar">
+          <h2>Live Ad Monitor</h2>
+          <div class="filter-row">
+            <select id="admon-platform" class="filter-select"><option value="">All Platforms</option><option value="meta">Meta</option><option value="google">Google</option><option value="youtube">YouTube</option></select>
+            <select id="admon-competitor" class="filter-select"><option value="">All Competitors</option></select>
+            <select id="admon-theme" class="filter-select"><option value="">All Themes</option><option value="Offer/Discount">Offer/Discount</option><option value="Social Proof">Social Proof</option><option value="Fear/FOMO">Fear/FOMO</option><option value="Education">Education</option><option value="Feature Highlight">Feature Highlight</option><option value="App Install">App Install</option><option value="Trust/SEBI">Trust/SEBI</option></select>
+            <select id="admon-sort" class="filter-select"><option value="newest">Newest First</option><option value="longest">Longest Running</option><option value="spend">Highest Spend</option></select>
+          </div>
+        </div>
+        <div id="ad-feed" class="ad-feed"></div>
+      </section>
+
+      <!-- Keyword Intel -->
+      <section id="view-keywords" class="view">
+        <div class="panel"><h2 class="panel-title">Search Keyword Landscape</h2><div id="keyword-table-container"></div></div>
+        <div class="panel"><h2 class="panel-title">Keyword Gaps - Act Now</h2><div id="keyword-gaps" class="keyword-gaps"></div></div>
+      </section>
+
+      <!-- Competitive Timeline -->
+      <section id="view-timeline" class="view">
+        <div class="panel"><h2 class="panel-title">Competitive Ad Timeline (Last 90 Days)</h2><div id="timeline-container" class="timeline-chart-container"><canvas id="timeline-chart" height="400"></canvas></div></div>
+      </section>
+
+      <!-- Settings -->
+      <section id="view-settings" class="view">
+        <div class="settings-grid">
+          <div class="panel">
+            <h2 class="panel-title">Competitors</h2>
+            <div id="settings-competitors"></div>
+            <div class="settings-add">
+              <input type="text" id="new-competitor-name" placeholder="Competitor name" />
+              <select id="new-competitor-vertical"><option value="both">Both</option><option value="ra">RA</option><option value="broking">Broking</option></select>
+              <button class="btn btn-teal" id="btn-add-competitor">Add</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h2 class="panel-title">Univest CPA Targets</h2>
+            <div class="settings-form">
+              <label>App Install CPA (&#x20B9;)</label><input type="number" id="cpa-install" value="800" />
+              <label>Lead CPA (&#x20B9;)</label><input type="number" id="cpa-lead" value="300" />
+              <button class="btn btn-gold" id="btn-save-targets">Save Targets</button>
+            </div>
+          </div>
+          <div class="panel"><h2 class="panel-title">Data Export</h2>
+            <button class="btn btn-outline" id="btn-export-json" style="margin-bottom:8px">Export Full DB as JSON</button>
+            <button class="btn btn-outline" id="btn-export-csv">Export Inventories CSV</button>
+          </div>
+          <div class="panel"><h2 class="panel-title">About</h2><p style="color:var(--muted);font-size:13px">Inventory Scanner v2.0 (Static) - Built for Univest growth team. Data embedded as of March 2026.</p></div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+// ============================================================
+// EMBEDDED DATA
+// ============================================================
+let idCounter = 1;
+function uid() { return 'id-' + (idCounter++); }
+
+const DATA = {
+  competitors: [
+    { id: 'c1', name: 'Zerodha', vertical: 'both', estimated_monthly_adspend: 40000000, primary_channels: 'Google Search, Content Marketing' },
+    { id: 'c2', name: 'Groww', vertical: 'both', estimated_monthly_adspend: 175000000, primary_channels: 'Meta, YouTube, OTT' },
+    { id: 'c3', name: 'Angel One', vertical: 'both', estimated_monthly_adspend: 325000000, primary_channels: 'TV, Digital mix' },
+    { id: 'c4', name: 'Upstox', vertical: 'both', estimated_monthly_adspend: 100000000, primary_channels: 'Meta, YouTube, Influencer' },
+    { id: 'c5', name: 'Dhan', vertical: 'broking', estimated_monthly_adspend: 30000000, primary_channels: 'Google, Twitter' },
+    { id: 'c6', name: '5paisa', vertical: 'both', estimated_monthly_adspend: 65000000, primary_channels: 'Google, Meta, Programmatic' },
+    { id: 'c7', name: 'Paytm Money', vertical: 'both', estimated_monthly_adspend: 125000000, primary_channels: 'Cross-platform (Paytm ecosystem)' },
+    { id: 'c8', name: 'Samco', vertical: 'broking', estimated_monthly_adspend: 15000000, primary_channels: 'Google, YouTube' },
+    { id: 'c9', name: 'Sensibull', vertical: 'ra', estimated_monthly_adspend: 7500000, primary_channels: 'Google, Twitter' },
+    { id: 'c10', name: 'Smallcase', vertical: 'ra', estimated_monthly_adspend: 40000000, primary_channels: 'Meta, Content, Influencer' },
+    { id: 'c11', name: 'INDmoney', vertical: 'both', estimated_monthly_adspend: 100000000, primary_channels: 'Meta, YouTube, Influencer' },
+    { id: 'c12', name: 'Fisdom', vertical: 'ra', estimated_monthly_adspend: 20000000, primary_channels: 'Google, Meta' },
+  ],
+
+  inventories: [
+    { id: 'i1', name: 'Google Search - UAC', category: 'search', platform_parent: 'Google', min_cpm: 40, max_cpm: 80, pricing_model: 'cpc', estimated_monthly_reach: 500000000, target_audience_fit: 9, fintech_friendly: 1, status: 'active' },
+    { id: 'i2', name: 'Google Search - Brand Keywords', category: 'search', platform_parent: 'Google', min_cpm: 60, max_cpm: 120, pricing_model: 'cpc', estimated_monthly_reach: 200000000, target_audience_fit: 10, fintech_friendly: 1, status: 'active' },
+    { id: 'i3', name: 'Google Search - Generic Finance', category: 'search', platform_parent: 'Google', min_cpm: 80, max_cpm: 200, pricing_model: 'cpc', estimated_monthly_reach: 300000000, target_audience_fit: 8, fintech_friendly: 1, status: 'active' },
+    { id: 'i4', name: 'Google Shopping Ads', category: 'search', platform_parent: 'Google', min_cpm: 50, max_cpm: 100, pricing_model: 'cpc', estimated_monthly_reach: 150000000, target_audience_fit: 3, fintech_friendly: 0, status: 'inactive' },
+    { id: 'i5', name: 'Bing Search Ads', category: 'search', platform_parent: 'Microsoft', min_cpm: 30, max_cpm: 60, pricing_model: 'cpc', estimated_monthly_reach: 20000000, target_audience_fit: 6, fintech_friendly: 1, status: 'active' },
+    { id: 'i6', name: 'Apple Search Ads', category: 'search', platform_parent: 'Apple', min_cpm: 80, max_cpm: 200, pricing_model: 'cpc', estimated_monthly_reach: 50000000, target_audience_fit: 8, fintech_friendly: 1, status: 'active' },
+    { id: 'i7', name: 'Meta Facebook Feed', category: 'social', platform_parent: 'Meta', min_cpm: 60, max_cpm: 120, pricing_model: 'cpm', estimated_monthly_reach: 350000000, target_audience_fit: 7, fintech_friendly: 1, status: 'active' },
+    { id: 'i8', name: 'Meta Instagram Feed', category: 'social', platform_parent: 'Meta', min_cpm: 80, max_cpm: 150, pricing_model: 'cpm', estimated_monthly_reach: 270000000, target_audience_fit: 8, fintech_friendly: 1, status: 'active' },
+    { id: 'i9', name: 'Instagram Reels', category: 'social', platform_parent: 'Meta', min_cpm: 50, max_cpm: 100, pricing_model: 'cpm', estimated_monthly_reach: 300000000, target_audience_fit: 7, fintech_friendly: 1, status: 'active' },
+    { id: 'i10', name: 'Instagram Stories', category: 'social', platform_parent: 'Meta', min_cpm: 40, max_cpm: 90, pricing_model: 'cpm', estimated_monthly_reach: 250000000, target_audience_fit: 7, fintech_friendly: 1, status: 'active' },
+    { id: 'i11', name: 'Meta Audience Network', category: 'social', platform_parent: 'Meta', min_cpm: 20, max_cpm: 50, pricing_model: 'cpm', estimated_monthly_reach: 400000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i12', name: 'Meta Messenger Ads', category: 'social', platform_parent: 'Meta', min_cpm: 30, max_cpm: 70, pricing_model: 'cpm', estimated_monthly_reach: 180000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i13', name: 'YouTube Skippable In-Stream', category: 'social', platform_parent: 'Google', min_cpm: 80, max_cpm: 180, pricing_model: 'cpv', estimated_monthly_reach: 450000000, target_audience_fit: 8, fintech_friendly: 1, status: 'active' },
+    { id: 'i14', name: 'YouTube Non-Skippable In-Stream', category: 'social', platform_parent: 'Google', min_cpm: 120, max_cpm: 250, pricing_model: 'cpm', estimated_monthly_reach: 450000000, target_audience_fit: 8, fintech_friendly: 1, status: 'active' },
+    { id: 'i15', name: 'YouTube Bumper Ads (6s)', category: 'social', platform_parent: 'Google', min_cpm: 100, max_cpm: 200, pricing_model: 'cpm', estimated_monthly_reach: 450000000, target_audience_fit: 7, fintech_friendly: 1, status: 'active' },
+    { id: 'i16', name: 'YouTube Shorts Ads', category: 'social', platform_parent: 'Google', min_cpm: 40, max_cpm: 90, pricing_model: 'cpv', estimated_monthly_reach: 300000000, target_audience_fit: 6, fintech_friendly: 1, status: 'new' },
+    { id: 'i17', name: 'YouTube Discovery Ads', category: 'social', platform_parent: 'Google', min_cpm: 60, max_cpm: 140, pricing_model: 'cpv', estimated_monthly_reach: 400000000, target_audience_fit: 8, fintech_friendly: 1, status: 'active' },
+    { id: 'i18', name: 'LinkedIn Sponsored Content', category: 'social', platform_parent: 'LinkedIn', min_cpm: 400, max_cpm: 900, pricing_model: 'cpm', estimated_monthly_reach: 90000000, target_audience_fit: 9, fintech_friendly: 1, status: 'active' },
+    { id: 'i19', name: 'LinkedIn InMail Sponsored', category: 'social', platform_parent: 'LinkedIn', min_cpm: 500, max_cpm: 1200, pricing_model: 'cpm', estimated_monthly_reach: 90000000, target_audience_fit: 9, fintech_friendly: 1, status: 'active' },
+    { id: 'i20', name: 'Twitter/X Promoted Tweets', category: 'social', platform_parent: 'Twitter', min_cpm: 100, max_cpm: 250, pricing_model: 'cpm', estimated_monthly_reach: 50000000, target_audience_fit: 8, fintech_friendly: 1, status: 'active' },
+    { id: 'i21', name: 'Twitter/X Promoted Trends', category: 'social', platform_parent: 'Twitter', min_cpm: 200, max_cpm: 500, pricing_model: 'flat', estimated_monthly_reach: 50000000, target_audience_fit: 7, fintech_friendly: 1, status: 'active' },
+    { id: 'i22', name: 'Snapchat Ads India', category: 'social', platform_parent: 'Snapchat', min_cpm: 60, max_cpm: 130, pricing_model: 'cpm', estimated_monthly_reach: 40000000, target_audience_fit: 4, fintech_friendly: 1, status: 'active' },
+    { id: 'i23', name: 'Pinterest Ads India', category: 'social', platform_parent: 'Pinterest', min_cpm: 80, max_cpm: 180, pricing_model: 'cpm', estimated_monthly_reach: 30000000, target_audience_fit: 4, fintech_friendly: 1, status: 'new' },
+    { id: 'i24', name: 'Reddit Ads India', category: 'social', platform_parent: 'Reddit', min_cpm: 50, max_cpm: 120, pricing_model: 'cpm', estimated_monthly_reach: 15000000, target_audience_fit: 7, fintech_friendly: 1, status: 'new' },
+    { id: 'i25', name: 'Quora Ads India', category: 'social', platform_parent: 'Quora', min_cpm: 60, max_cpm: 150, pricing_model: 'cpc', estimated_monthly_reach: 25000000, target_audience_fit: 8, fintech_friendly: 1, status: 'active' },
+    { id: 'i26', name: 'Google Display Network (GDN)', category: 'social', platform_parent: 'Google', min_cpm: 15, max_cpm: 40, pricing_model: 'cpm', estimated_monthly_reach: 600000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i27', name: 'DV360 - Open Exchange', category: 'programmatic', platform_parent: 'Google', min_cpm: 30, max_cpm: 80, pricing_model: 'cpm', estimated_monthly_reach: 500000000, target_audience_fit: 6, fintech_friendly: 1, status: 'active' },
+    { id: 'i28', name: 'DV360 - PMP Finance', category: 'programmatic', platform_parent: 'Google', min_cpm: 80, max_cpm: 200, pricing_model: 'cpm', estimated_monthly_reach: 100000000, target_audience_fit: 9, fintech_friendly: 1, status: 'active' },
+    { id: 'i29', name: 'InMobi Exchange', category: 'programmatic', platform_parent: 'InMobi', min_cpm: 20, max_cpm: 60, pricing_model: 'cpm', estimated_monthly_reach: 400000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i30', name: 'Moneycontrol Display', category: 'programmatic', platform_parent: 'Network18', min_cpm: 200, max_cpm: 450, pricing_model: 'cpm', estimated_monthly_reach: 50000000, target_audience_fit: 10, fintech_friendly: 1, status: 'active' },
+    { id: 'i31', name: 'Economic Times Display', category: 'programmatic', platform_parent: 'Times Internet', min_cpm: 250, max_cpm: 500, pricing_model: 'cpm', estimated_monthly_reach: 40000000, target_audience_fit: 10, fintech_friendly: 1, status: 'active' },
+    { id: 'i32', name: 'Livemint Display', category: 'programmatic', platform_parent: 'HT Media', min_cpm: 180, max_cpm: 400, pricing_model: 'cpm', estimated_monthly_reach: 20000000, target_audience_fit: 9, fintech_friendly: 1, status: 'active' },
+    { id: 'i33', name: 'Business Standard Display', category: 'programmatic', platform_parent: 'BS Media', min_cpm: 150, max_cpm: 350, pricing_model: 'cpm', estimated_monthly_reach: 15000000, target_audience_fit: 9, fintech_friendly: 1, status: 'active' },
+    { id: 'i34', name: 'Flipkart Ads', category: 'programmatic', platform_parent: 'Flipkart', min_cpm: 80, max_cpm: 200, pricing_model: 'cpm', estimated_monthly_reach: 300000000, target_audience_fit: 4, fintech_friendly: 1, status: 'active' },
+    { id: 'i35', name: 'Amazon DSP India', category: 'programmatic', platform_parent: 'Amazon', min_cpm: 70, max_cpm: 180, pricing_model: 'cpm', estimated_monthly_reach: 250000000, target_audience_fit: 4, fintech_friendly: 1, status: 'active' },
+    { id: 'i36', name: 'Swiggy Brand Ads', category: 'programmatic', platform_parent: 'Swiggy', min_cpm: 150, max_cpm: 350, pricing_model: 'cpm', estimated_monthly_reach: 60000000, target_audience_fit: 3, fintech_friendly: 0, status: 'under_review' },
+    { id: 'i37', name: 'Zomato Brand Ads', category: 'programmatic', platform_parent: 'Zomato', min_cpm: 150, max_cpm: 350, pricing_model: 'cpm', estimated_monthly_reach: 55000000, target_audience_fit: 3, fintech_friendly: 0, status: 'under_review' },
+    { id: 'i38', name: 'Taboola Native India', category: 'programmatic', platform_parent: 'Taboola', min_cpm: 25, max_cpm: 60, pricing_model: 'cpc', estimated_monthly_reach: 200000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i39', name: 'Outbrain Native India', category: 'programmatic', platform_parent: 'Outbrain', min_cpm: 25, max_cpm: 55, pricing_model: 'cpc', estimated_monthly_reach: 150000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i40', name: 'Columbia Native (JEENG)', category: 'programmatic', platform_parent: 'JEENG', min_cpm: 20, max_cpm: 50, pricing_model: 'cpc', estimated_monthly_reach: 80000000, target_audience_fit: 4, fintech_friendly: 1, status: 'new' },
+    { id: 'i41', name: 'YouTube Finance Influencers', category: 'influencer', platform_parent: 'YouTube', min_cpm: 100, max_cpm: 300, pricing_model: 'flat', estimated_monthly_reach: 50000000, target_audience_fit: 9, fintech_friendly: 1, status: 'active' },
+    { id: 'i42', name: 'Instagram Finance Influencers', category: 'influencer', platform_parent: 'Instagram', min_cpm: 80, max_cpm: 250, pricing_model: 'flat', estimated_monthly_reach: 40000000, target_audience_fit: 8, fintech_friendly: 1, status: 'active' },
+    { id: 'i43', name: 'Twitter/X Finfluencers', category: 'influencer', platform_parent: 'Twitter', min_cpm: 60, max_cpm: 200, pricing_model: 'flat', estimated_monthly_reach: 15000000, target_audience_fit: 9, fintech_friendly: 1, status: 'active' },
+    { id: 'i44', name: 'Telegram Finance Channels', category: 'influencer', platform_parent: 'Telegram', min_cpm: 30, max_cpm: 80, pricing_model: 'flat', estimated_monthly_reach: 20000000, target_audience_fit: 9, fintech_friendly: 1, status: 'active' },
+    { id: 'i45', name: 'LinkedIn Finance Influencers', category: 'influencer', platform_parent: 'LinkedIn', min_cpm: 200, max_cpm: 500, pricing_model: 'flat', estimated_monthly_reach: 10000000, target_audience_fit: 10, fintech_friendly: 1, status: 'new' },
+    { id: 'i46', name: 'Mumbai Metro DOOH', category: 'ooh', platform_parent: 'Times OOH', min_cpm: 10, max_cpm: 30, pricing_model: 'cpd', estimated_monthly_reach: 5000000, target_audience_fit: 6, fintech_friendly: 1, status: 'active' },
+    { id: 'i47', name: 'Bangalore Airport DOOH', category: 'ooh', platform_parent: 'JCDecaux', min_cpm: 15, max_cpm: 40, pricing_model: 'cpd', estimated_monthly_reach: 3000000, target_audience_fit: 8, fintech_friendly: 1, status: 'active' },
+    { id: 'i48', name: 'Delhi Metro DOOH', category: 'ooh', platform_parent: 'DMRC Media', min_cpm: 8, max_cpm: 25, pricing_model: 'cpd', estimated_monthly_reach: 8000000, target_audience_fit: 6, fintech_friendly: 1, status: 'active' },
+    { id: 'i49', name: 'Highway Billboard Network', category: 'ooh', platform_parent: 'Selvel Advertising', min_cpm: 5, max_cpm: 15, pricing_model: 'flat', estimated_monthly_reach: 20000000, target_audience_fit: 3, fintech_friendly: 1, status: 'active' },
+    { id: 'i50', name: 'Cab-top Digital Screens', category: 'ooh', platform_parent: 'Wrap2Earn', min_cpm: 6, max_cpm: 18, pricing_model: 'cpd', estimated_monthly_reach: 10000000, target_audience_fit: 5, fintech_friendly: 1, status: 'new' },
+    { id: 'i51', name: 'ShareChat Ads', category: 'vernacular', platform_parent: 'ShareChat', min_cpm: 30, max_cpm: 70, pricing_model: 'cpm', estimated_monthly_reach: 180000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i52', name: 'Moj Short Video Ads', category: 'vernacular', platform_parent: 'ShareChat', min_cpm: 25, max_cpm: 60, pricing_model: 'cpm', estimated_monthly_reach: 160000000, target_audience_fit: 4, fintech_friendly: 1, status: 'active' },
+    { id: 'i53', name: 'Josh Short Video Ads', category: 'vernacular', platform_parent: 'VerSe Innovation', min_cpm: 25, max_cpm: 55, pricing_model: 'cpm', estimated_monthly_reach: 150000000, target_audience_fit: 4, fintech_friendly: 1, status: 'active' },
+    { id: 'i54', name: 'Dailyhunt Native Ads', category: 'vernacular', platform_parent: 'VerSe Innovation', min_cpm: 20, max_cpm: 50, pricing_model: 'cpm', estimated_monthly_reach: 120000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i55', name: 'Glance Lock Screen Ads', category: 'vernacular', platform_parent: 'InMobi', min_cpm: 15, max_cpm: 40, pricing_model: 'cpm', estimated_monthly_reach: 200000000, target_audience_fit: 4, fintech_friendly: 1, status: 'active' },
+    { id: 'i56', name: 'Koo Promoted Posts', category: 'vernacular', platform_parent: 'Koo', min_cpm: 20, max_cpm: 50, pricing_model: 'cpm', estimated_monthly_reach: 30000000, target_audience_fit: 5, fintech_friendly: 1, status: 'inactive' },
+    { id: 'i57', name: 'Spotify Audio Ads India', category: 'audio', platform_parent: 'Spotify', min_cpm: 120, max_cpm: 200, pricing_model: 'cpm', estimated_monthly_reach: 50000000, target_audience_fit: 7, fintech_friendly: 1, status: 'active' },
+    { id: 'i58', name: 'Gaana Audio Ads', category: 'audio', platform_parent: 'Gaana', min_cpm: 60, max_cpm: 120, pricing_model: 'cpm', estimated_monthly_reach: 80000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i59', name: 'JioSaavn Audio Ads', category: 'audio', platform_parent: 'JioSaavn', min_cpm: 80, max_cpm: 150, pricing_model: 'cpm', estimated_monthly_reach: 70000000, target_audience_fit: 6, fintech_friendly: 1, status: 'active' },
+    { id: 'i60', name: 'Wynk Music Ads', category: 'audio', platform_parent: 'Airtel', min_cpm: 50, max_cpm: 100, pricing_model: 'cpm', estimated_monthly_reach: 40000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i61', name: 'MPL In-App Ads', category: 'gaming', platform_parent: 'MPL', min_cpm: 50, max_cpm: 120, pricing_model: 'cpm', estimated_monthly_reach: 60000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i62', name: 'Dream11 Brand Integrations', category: 'gaming', platform_parent: 'Dream11', min_cpm: 70, max_cpm: 150, pricing_model: 'flat', estimated_monthly_reach: 80000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i63', name: 'Ludo King Interstitial Ads', category: 'gaming', platform_parent: 'Gametion', min_cpm: 30, max_cpm: 80, pricing_model: 'cpm', estimated_monthly_reach: 50000000, target_audience_fit: 3, fintech_friendly: 1, status: 'active' },
+    { id: 'i64', name: 'Unity Ads India (Rewarded)', category: 'gaming', platform_parent: 'Unity', min_cpm: 40, max_cpm: 100, pricing_model: 'cpm', estimated_monthly_reach: 100000000, target_audience_fit: 3, fintech_friendly: 1, status: 'active' },
+    { id: 'i65', name: 'Disney+ Hotstar Ads', category: 'ctv', platform_parent: 'Disney', min_cpm: 180, max_cpm: 350, pricing_model: 'cpm', estimated_monthly_reach: 60000000, target_audience_fit: 7, fintech_friendly: 1, status: 'active' },
+    { id: 'i66', name: 'JioCinema Ads', category: 'ctv', platform_parent: 'Jio', min_cpm: 150, max_cpm: 300, pricing_model: 'cpm', estimated_monthly_reach: 80000000, target_audience_fit: 6, fintech_friendly: 1, status: 'active' },
+    { id: 'i67', name: 'SonyLIV Ads', category: 'ctv', platform_parent: 'Sony', min_cpm: 120, max_cpm: 250, pricing_model: 'cpm', estimated_monthly_reach: 40000000, target_audience_fit: 6, fintech_friendly: 1, status: 'active' },
+    { id: 'i68', name: 'Zee5 Ads', category: 'ctv', platform_parent: 'Zee', min_cpm: 100, max_cpm: 220, pricing_model: 'cpm', estimated_monthly_reach: 50000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i69', name: 'MX Player Ads', category: 'ctv', platform_parent: 'MX Media', min_cpm: 40, max_cpm: 100, pricing_model: 'cpm', estimated_monthly_reach: 150000000, target_audience_fit: 4, fintech_friendly: 1, status: 'active' },
+    { id: 'i70', name: 'Samsung TV Plus Ads', category: 'ctv', platform_parent: 'Samsung', min_cpm: 80, max_cpm: 180, pricing_model: 'cpm', estimated_monthly_reach: 20000000, target_audience_fit: 6, fintech_friendly: 1, status: 'new' },
+    { id: 'i71', name: 'Amazon miniTV Ads', category: 'ctv', platform_parent: 'Amazon', min_cpm: 60, max_cpm: 140, pricing_model: 'cpm', estimated_monthly_reach: 30000000, target_audience_fit: 5, fintech_friendly: 1, status: 'new' },
+    { id: 'i72', name: 'Google Local Services Ads', category: 'hyperlocal', platform_parent: 'Google', min_cpm: 50, max_cpm: 120, pricing_model: 'cpl', estimated_monthly_reach: 50000000, target_audience_fit: 6, fintech_friendly: 1, status: 'active' },
+    { id: 'i73', name: 'Google Maps Promoted Pins', category: 'hyperlocal', platform_parent: 'Google', min_cpm: 30, max_cpm: 80, pricing_model: 'cpc', estimated_monthly_reach: 100000000, target_audience_fit: 4, fintech_friendly: 0, status: 'under_review' },
+    { id: 'i74', name: 'Dunzo In-App Banners', category: 'hyperlocal', platform_parent: 'Dunzo', min_cpm: 40, max_cpm: 100, pricing_model: 'cpm', estimated_monthly_reach: 10000000, target_audience_fit: 3, fintech_friendly: 0, status: 'new' },
+    { id: 'i75', name: 'Moneycontrol Newsletter Sponsorship', category: 'email', platform_parent: 'Network18', min_cpm: 300, max_cpm: 600, pricing_model: 'cpm', estimated_monthly_reach: 5000000, target_audience_fit: 10, fintech_friendly: 1, status: 'active' },
+    { id: 'i76', name: 'Economic Times Newsletter', category: 'email', platform_parent: 'Times Internet', min_cpm: 350, max_cpm: 700, pricing_model: 'cpm', estimated_monthly_reach: 3000000, target_audience_fit: 10, fintech_friendly: 1, status: 'active' },
+    { id: 'i77', name: 'The Morning Context Sponsorship', category: 'email', platform_parent: 'TMC Media', min_cpm: 500, max_cpm: 1000, pricing_model: 'flat', estimated_monthly_reach: 200000, target_audience_fit: 10, fintech_friendly: 1, status: 'active' },
+    { id: 'i78', name: 'Finshots Newsletter Ads', category: 'email', platform_parent: 'Finshots', min_cpm: 250, max_cpm: 500, pricing_model: 'flat', estimated_monthly_reach: 1500000, target_audience_fit: 10, fintech_friendly: 1, status: 'active' },
+    { id: 'i79', name: 'iZooto Push Notifications', category: 'push', platform_parent: 'iZooto', min_cpm: 10, max_cpm: 30, pricing_model: 'cpm', estimated_monthly_reach: 50000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i80', name: 'WebEngage Push Campaigns', category: 'push', platform_parent: 'WebEngage', min_cpm: 5, max_cpm: 15, pricing_model: 'cpm', estimated_monthly_reach: 30000000, target_audience_fit: 7, fintech_friendly: 1, status: 'active' },
+    { id: 'i81', name: 'Gupshup Promotional SMS', category: 'sms', platform_parent: 'Gupshup', min_cpm: 200, max_cpm: 400, pricing_model: 'cpm', estimated_monthly_reach: 100000000, target_audience_fit: 6, fintech_friendly: 1, status: 'active' },
+    { id: 'i82', name: 'Karix RCS Messaging', category: 'sms', platform_parent: 'Karix', min_cpm: 150, max_cpm: 300, pricing_model: 'cpm', estimated_monthly_reach: 50000000, target_audience_fit: 6, fintech_friendly: 1, status: 'new' },
+    { id: 'i83', name: 'CueLinks Finance Vertical', category: 'affiliate', platform_parent: 'CueLinks', min_cpm: 0, max_cpm: 0, pricing_model: 'cpa', estimated_monthly_reach: 20000000, target_audience_fit: 7, fintech_friendly: 1, status: 'active' },
+    { id: 'i84', name: 'vCommission Finance', category: 'affiliate', platform_parent: 'vCommission', min_cpm: 0, max_cpm: 0, pricing_model: 'cpa', estimated_monthly_reach: 30000000, target_audience_fit: 6, fintech_friendly: 1, status: 'active' },
+    { id: 'i85', name: 'Admitad India', category: 'affiliate', platform_parent: 'Admitad', min_cpm: 0, max_cpm: 0, pricing_model: 'cpa', estimated_monthly_reach: 25000000, target_audience_fit: 6, fintech_friendly: 1, status: 'active' },
+    { id: 'i86', name: 'Spotify Podcast Ads India', category: 'podcast', platform_parent: 'Spotify', min_cpm: 150, max_cpm: 350, pricing_model: 'cpm', estimated_monthly_reach: 10000000, target_audience_fit: 8, fintech_friendly: 1, status: 'active' },
+    { id: 'i87', name: 'IVM Podcasts Sponsorship', category: 'podcast', platform_parent: 'IVM', min_cpm: 200, max_cpm: 400, pricing_model: 'flat', estimated_monthly_reach: 3000000, target_audience_fit: 7, fintech_friendly: 1, status: 'active' },
+    { id: 'i88', name: 'Hubhopper Podcast Network', category: 'podcast', platform_parent: 'Hubhopper', min_cpm: 100, max_cpm: 250, pricing_model: 'cpm', estimated_monthly_reach: 5000000, target_audience_fit: 6, fintech_friendly: 1, status: 'active' },
+    { id: 'i89', name: 'Sun NXT Ads (Tamil/Telugu)', category: 'regional_ott', platform_parent: 'Sun TV Network', min_cpm: 60, max_cpm: 140, pricing_model: 'cpm', estimated_monthly_reach: 25000000, target_audience_fit: 4, fintech_friendly: 1, status: 'active' },
+    { id: 'i90', name: 'Hoichoi Ads (Bengali)', category: 'regional_ott', platform_parent: 'SVF', min_cpm: 50, max_cpm: 120, pricing_model: 'cpm', estimated_monthly_reach: 10000000, target_audience_fit: 4, fintech_friendly: 1, status: 'active' },
+    { id: 'i91', name: 'Aha Video Ads (Telugu)', category: 'regional_ott', platform_parent: 'Arha Media', min_cpm: 50, max_cpm: 130, pricing_model: 'cpm', estimated_monthly_reach: 12000000, target_audience_fit: 4, fintech_friendly: 1, status: 'active' },
+    { id: 'i92', name: 'Planet Marathi OTT Ads', category: 'regional_ott', platform_parent: 'Planet Marathi', min_cpm: 40, max_cpm: 100, pricing_model: 'cpm', estimated_monthly_reach: 5000000, target_audience_fit: 4, fintech_friendly: 1, status: 'new' },
+    { id: 'i93', name: 'Google Video Partners', category: 'video', platform_parent: 'Google', min_cpm: 40, max_cpm: 100, pricing_model: 'cpv', estimated_monthly_reach: 300000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i94', name: 'Voot/JioCinema AVOD', category: 'video', platform_parent: 'Jio', min_cpm: 100, max_cpm: 250, pricing_model: 'cpm', estimated_monthly_reach: 60000000, target_audience_fit: 5, fintech_friendly: 1, status: 'active' },
+    { id: 'i95', name: 'Times Now Digital Video', category: 'video', platform_parent: 'Times Internet', min_cpm: 120, max_cpm: 280, pricing_model: 'cpm', estimated_monthly_reach: 20000000, target_audience_fit: 7, fintech_friendly: 1, status: 'active' },
+  ],
+
+  existingInventories: [
+    { id: 'e1', inventory_id: 'i1', current_monthly_spend: 2500000, current_cpm: 55, current_cpc: 8.5, current_ctr: 0.065, current_cpa: 320, notes: 'Primary UA channel, scaling steadily' },
+    { id: 'e2', inventory_id: 'i7', current_monthly_spend: 1800000, current_cpm: 85, current_cpc: 12, current_ctr: 0.042, current_cpa: 280, notes: 'Good for awareness + retargeting' },
+    { id: 'e3', inventory_id: 'i8', current_monthly_spend: 1200000, current_cpm: 110, current_cpc: 15, current_ctr: 0.038, current_cpa: 350, notes: 'Better for younger audience' },
+    { id: 'e4', inventory_id: 'i9', current_monthly_spend: 800000, current_cpm: 65, current_cpc: 10, current_ctr: 0.05, current_cpa: 300, notes: 'Growing channel, good engagement' },
+    { id: 'e5', inventory_id: 'i13', current_monthly_spend: 1500000, current_cpm: 120, current_cpc: null, current_ctr: 0.012, current_cpa: 450, notes: 'Brand + performance mix' },
+    { id: 'e6', inventory_id: 'i26', current_monthly_spend: 600000, current_cpm: 22, current_cpc: 5, current_ctr: 0.018, current_cpa: 500, notes: 'Retargeting only, low intent' },
+  ],
+
+  competitorSpends: [
+    { competitor_id: 'c1', inventory_id: 'i1', estimated_monthly_spend: 15000000, confidence_level: 'high', source: 'Google Ads Transparency' },
+    { competitor_id: 'c1', inventory_id: 'i2', estimated_monthly_spend: 5000000, confidence_level: 'high', source: 'Google Ads Transparency' },
+    { competitor_id: 'c1', inventory_id: 'i13', estimated_monthly_spend: 8000000, confidence_level: 'medium', source: 'YouTube Ad Library' },
+    { competitor_id: 'c1', inventory_id: 'i20', estimated_monthly_spend: 2000000, confidence_level: 'low', source: 'Estimated from visibility' },
+    { competitor_id: 'c2', inventory_id: 'i7', estimated_monthly_spend: 40000000, confidence_level: 'high', source: 'Meta Ad Library' },
+    { competitor_id: 'c2', inventory_id: 'i8', estimated_monthly_spend: 30000000, confidence_level: 'high', source: 'Meta Ad Library' },
+    { competitor_id: 'c2', inventory_id: 'i9', estimated_monthly_spend: 25000000, confidence_level: 'medium', source: 'Meta Ad Library' },
+    { competitor_id: 'c2', inventory_id: 'i13', estimated_monthly_spend: 35000000, confidence_level: 'medium', source: 'YouTube Ad Library' },
+    { competitor_id: 'c2', inventory_id: 'i65', estimated_monthly_spend: 20000000, confidence_level: 'medium', source: 'OTT ad monitoring' },
+    { competitor_id: 'c3', inventory_id: 'i1', estimated_monthly_spend: 50000000, confidence_level: 'high', source: 'Google Ads Transparency' },
+    { competitor_id: 'c3', inventory_id: 'i7', estimated_monthly_spend: 35000000, confidence_level: 'high', source: 'Meta Ad Library' },
+    { competitor_id: 'c3', inventory_id: 'i14', estimated_monthly_spend: 40000000, confidence_level: 'medium', source: 'YouTube Ad Library' },
+    { competitor_id: 'c3', inventory_id: 'i65', estimated_monthly_spend: 30000000, confidence_level: 'medium', source: 'OTT ad monitoring' },
+    { competitor_id: 'c3', inventory_id: 'i66', estimated_monthly_spend: 25000000, confidence_level: 'medium', source: 'OTT ad monitoring' },
+    { competitor_id: 'c4', inventory_id: 'i7', estimated_monthly_spend: 20000000, confidence_level: 'high', source: 'Meta Ad Library' },
+    { competitor_id: 'c4', inventory_id: 'i9', estimated_monthly_spend: 15000000, confidence_level: 'medium', source: 'Meta Ad Library' },
+    { competitor_id: 'c4', inventory_id: 'i13', estimated_monthly_spend: 25000000, confidence_level: 'medium', source: 'YouTube Ad Library' },
+    { competitor_id: 'c4', inventory_id: 'i41', estimated_monthly_spend: 15000000, confidence_level: 'low', source: 'Influencer monitoring' },
+    { competitor_id: 'c5', inventory_id: 'i1', estimated_monthly_spend: 12000000, confidence_level: 'high', source: 'Google Ads Transparency' },
+    { competitor_id: 'c5', inventory_id: 'i20', estimated_monthly_spend: 5000000, confidence_level: 'medium', source: 'Twitter observation' },
+    { competitor_id: 'c5', inventory_id: 'i3', estimated_monthly_spend: 8000000, confidence_level: 'medium', source: 'Google Ads Transparency' },
+    { competitor_id: 'c6', inventory_id: 'i1', estimated_monthly_spend: 18000000, confidence_level: 'high', source: 'Google Ads Transparency' },
+    { competitor_id: 'c6', inventory_id: 'i7', estimated_monthly_spend: 12000000, confidence_level: 'high', source: 'Meta Ad Library' },
+    { competitor_id: 'c6', inventory_id: 'i27', estimated_monthly_spend: 10000000, confidence_level: 'medium', source: 'Programmatic monitoring' },
+    { competitor_id: 'c6', inventory_id: 'i29', estimated_monthly_spend: 8000000, confidence_level: 'low', source: 'SDK detection' },
+    { competitor_id: 'c7', inventory_id: 'i1', estimated_monthly_spend: 30000000, confidence_level: 'high', source: 'Google Ads Transparency' },
+    { competitor_id: 'c7', inventory_id: 'i7', estimated_monthly_spend: 25000000, confidence_level: 'high', source: 'Meta Ad Library' },
+    { competitor_id: 'c7', inventory_id: 'i13', estimated_monthly_spend: 20000000, confidence_level: 'medium', source: 'YouTube Ad Library' },
+    { competitor_id: 'c7', inventory_id: 'i65', estimated_monthly_spend: 15000000, confidence_level: 'medium', source: 'OTT ad monitoring' },
+    { competitor_id: 'c8', inventory_id: 'i1', estimated_monthly_spend: 6000000, confidence_level: 'high', source: 'Google Ads Transparency' },
+    { competitor_id: 'c8', inventory_id: 'i13', estimated_monthly_spend: 4000000, confidence_level: 'medium', source: 'YouTube Ad Library' },
+    { competitor_id: 'c8', inventory_id: 'i26', estimated_monthly_spend: 3000000, confidence_level: 'medium', source: 'GDN monitoring' },
+    { competitor_id: 'c9', inventory_id: 'i1', estimated_monthly_spend: 3000000, confidence_level: 'high', source: 'Google Ads Transparency' },
+    { competitor_id: 'c9', inventory_id: 'i20', estimated_monthly_spend: 2000000, confidence_level: 'medium', source: 'Twitter observation' },
+    { competitor_id: 'c9', inventory_id: 'i3', estimated_monthly_spend: 2500000, confidence_level: 'medium', source: 'Google Ads Transparency' },
+    { competitor_id: 'c10', inventory_id: 'i7', estimated_monthly_spend: 10000000, confidence_level: 'high', source: 'Meta Ad Library' },
+    { competitor_id: 'c10', inventory_id: 'i8', estimated_monthly_spend: 8000000, confidence_level: 'high', source: 'Meta Ad Library' },
+    { competitor_id: 'c10', inventory_id: 'i42', estimated_monthly_spend: 10000000, confidence_level: 'low', source: 'Influencer monitoring' },
+    { competitor_id: 'c10', inventory_id: 'i41', estimated_monthly_spend: 5000000, confidence_level: 'low', source: 'Influencer monitoring' },
+    { competitor_id: 'c11', inventory_id: 'i7', estimated_monthly_spend: 22000000, confidence_level: 'high', source: 'Meta Ad Library' },
+    { competitor_id: 'c11', inventory_id: 'i9', estimated_monthly_spend: 18000000, confidence_level: 'medium', source: 'Meta Ad Library' },
+    { competitor_id: 'c11', inventory_id: 'i13', estimated_monthly_spend: 20000000, confidence_level: 'medium', source: 'YouTube Ad Library' },
+    { competitor_id: 'c11', inventory_id: 'i41', estimated_monthly_spend: 12000000, confidence_level: 'low', source: 'Influencer monitoring' },
+    { competitor_id: 'c11', inventory_id: 'i51', estimated_monthly_spend: 5000000, confidence_level: 'low', source: 'SDK detection' },
+    { competitor_id: 'c12', inventory_id: 'i1', estimated_monthly_spend: 8000000, confidence_level: 'high', source: 'Google Ads Transparency' },
+    { competitor_id: 'c12', inventory_id: 'i7', estimated_monthly_spend: 5000000, confidence_level: 'high', source: 'Meta Ad Library' },
+    { competitor_id: 'c12', inventory_id: 'i26', estimated_monthly_spend: 4000000, confidence_level: 'medium', source: 'GDN monitoring' },
+  ],
+
+  budgetRecommendations: [
+    { inventory_id: 'i1', recommended_starting_budget: 500000, recommended_testing_budget: 200000, recommended_scale_budget: 5000000, rationale: 'Highest intent channel for fintech UA. Start with branded + competitor keywords, then expand to generic.', confidence_score: 0.92 },
+    { inventory_id: 'i7', recommended_starting_budget: 400000, recommended_testing_budget: 150000, recommended_scale_budget: 3000000, rationale: 'Strong for awareness and retargeting. Use lookalike audiences from existing users.', confidence_score: 0.88 },
+    { inventory_id: 'i8', recommended_starting_budget: 300000, recommended_testing_budget: 100000, recommended_scale_budget: 2000000, rationale: 'Good for 18-35 demographic. Carousel ads perform best for fintech.', confidence_score: 0.85 },
+    { inventory_id: 'i9', recommended_starting_budget: 200000, recommended_testing_budget: 100000, recommended_scale_budget: 1500000, rationale: 'Fastest growing placement. Lower CPMs with strong engagement.', confidence_score: 0.82 },
+    { inventory_id: 'i13', recommended_starting_budget: 500000, recommended_testing_budget: 200000, recommended_scale_budget: 3000000, rationale: 'Best for brand building + consideration. Finance audience indexes high on YouTube.', confidence_score: 0.87 },
+    { inventory_id: 'i26', recommended_starting_budget: 200000, recommended_testing_budget: 100000, recommended_scale_budget: 1000000, rationale: 'Use only for retargeting. Prospecting CPAs too high for fintech.', confidence_score: 0.90 },
+    { inventory_id: 'i18', recommended_starting_budget: 300000, recommended_testing_budget: 150000, recommended_scale_budget: 1500000, rationale: 'Premium audience but high CPMs. Best for HNI targeting.', confidence_score: 0.80 },
+    { inventory_id: 'i20', recommended_starting_budget: 200000, recommended_testing_budget: 100000, recommended_scale_budget: 800000, rationale: 'Finance Twitter community highly engaged. Good for thought leadership.', confidence_score: 0.75 },
+    { inventory_id: 'i65', recommended_starting_budget: 500000, recommended_testing_budget: 300000, recommended_scale_budget: 5000000, rationale: 'Premium inventory with cricket season spikes. Plan around IPL.', confidence_score: 0.78 },
+    { inventory_id: 'i66', recommended_starting_budget: 400000, recommended_testing_budget: 200000, recommended_scale_budget: 3000000, rationale: 'Growing rapidly post-IPL rights. Good reach at lower CPMs.', confidence_score: 0.75 },
+    { inventory_id: 'i30', recommended_starting_budget: 300000, recommended_testing_budget: 150000, recommended_scale_budget: 1500000, rationale: 'Most relevant finance audience in India.', confidence_score: 0.88 },
+    { inventory_id: 'i31', recommended_starting_budget: 250000, recommended_testing_budget: 100000, recommended_scale_budget: 1200000, rationale: 'Affluent readership, strong for wealth/investment messaging.', confidence_score: 0.85 },
+    { inventory_id: 'i51', recommended_starting_budget: 150000, recommended_testing_budget: 80000, recommended_scale_budget: 800000, rationale: 'Tier 2/3 audience reach. Good for vernacular campaigns.', confidence_score: 0.70 },
+    { inventory_id: 'i57', recommended_starting_budget: 200000, recommended_testing_budget: 100000, recommended_scale_budget: 1000000, rationale: 'Growing audio ad market. Good for brand recall.', confidence_score: 0.72 },
+    { inventory_id: 'i41', recommended_starting_budget: 500000, recommended_testing_budget: 200000, recommended_scale_budget: 3000000, rationale: 'Highly trusted channel. Integration with top finance YouTubers.', confidence_score: 0.80 },
+    { inventory_id: 'i27', recommended_starting_budget: 200000, recommended_testing_budget: 100000, recommended_scale_budget: 1500000, rationale: 'Broad reach at low CPMs. Use strong audience targeting.', confidence_score: 0.75 },
+    { inventory_id: 'i29', recommended_starting_budget: 150000, recommended_testing_budget: 80000, recommended_scale_budget: 800000, rationale: 'Strong mobile reach in India. Good for app install campaigns.', confidence_score: 0.72 },
+    { inventory_id: 'i78', recommended_starting_budget: 100000, recommended_testing_budget: 50000, recommended_scale_budget: 500000, rationale: 'Hyper-targeted finance audience. Excellent engagement and trust.', confidence_score: 0.85 },
+    { inventory_id: 'i6', recommended_starting_budget: 300000, recommended_testing_budget: 150000, recommended_scale_budget: 2000000, rationale: 'High-intent iOS users. Premium demographic.', confidence_score: 0.82 },
+    { inventory_id: 'i25', recommended_starting_budget: 100000, recommended_testing_budget: 50000, recommended_scale_budget: 500000, rationale: 'High-intent users asking finance questions.', confidence_score: 0.70 },
+  ],
+
+  adFormatScores: [
+    { inventory_id: 'i1', format: 'search_text', score: 10, reason: 'Core format for search ads', best_size_spec: 'Headline 30 chars x3, Description 90 chars x2' },
+    { inventory_id: 'i7', format: 'static', score: 7, reason: 'Good performance with clear value prop imagery', best_size_spec: '1080x1080 or 1200x628' },
+    { inventory_id: 'i7', format: 'video', score: 9, reason: 'Highest engagement format on Facebook', best_size_spec: '1080x1080 or 1080x1920, 15-30s' },
+    { inventory_id: 'i7', format: 'carousel', score: 8, reason: 'Great for showcasing multiple features', best_size_spec: '1080x1080 per card, 3-5 cards' },
+    { inventory_id: 'i8', format: 'static', score: 8, reason: 'Strong visual platform', best_size_spec: '1080x1080' },
+    { inventory_id: 'i8', format: 'video', score: 9, reason: 'Top performing format', best_size_spec: '1080x1080 or 1080x1920, 15s' },
+    { inventory_id: 'i8', format: 'carousel', score: 9, reason: 'Swipeable stories drive high engagement', best_size_spec: '1080x1080, 3-10 cards' },
+    { inventory_id: 'i9', format: 'video', score: 10, reason: 'Native format, highest organic reach', best_size_spec: '1080x1920, 15-30s' },
+    { inventory_id: 'i13', format: 'video', score: 10, reason: 'Core format for YouTube ads', best_size_spec: '1920x1080, 15-60s' },
+    { inventory_id: 'i14', format: 'video', score: 10, reason: 'Guaranteed full view', best_size_spec: '1920x1080, 15s max' },
+    { inventory_id: 'i18', format: 'static', score: 8, reason: 'Professional imagery works well', best_size_spec: '1200x628 or 1080x1080' },
+    { inventory_id: 'i18', format: 'carousel', score: 8, reason: 'Document-style carousels perform well', best_size_spec: '1080x1080, 2-10 cards' },
+    { inventory_id: 'i20', format: 'static', score: 7, reason: 'Image tweets get more engagement', best_size_spec: '1200x675 or 1080x1080' },
+    { inventory_id: 'i20', format: 'video', score: 8, reason: 'Autoplay in feed drives views', best_size_spec: '1280x720, 15-30s' },
+    { inventory_id: 'i65', format: 'video', score: 10, reason: 'Primary format for OTT', best_size_spec: '1920x1080, 10-30s' },
+    { inventory_id: 'i66', format: 'video', score: 10, reason: 'Pre-roll and mid-roll video ads', best_size_spec: '1920x1080, 10-30s' },
+    { inventory_id: 'i30', format: 'static', score: 8, reason: 'Display banners on premium finance pages', best_size_spec: '728x90, 300x250, 160x600' },
+    { inventory_id: 'i30', format: 'native', score: 9, reason: 'Sponsored articles blend with editorial', best_size_spec: 'Sponsored content format' },
+    { inventory_id: 'i31', format: 'static', score: 8, reason: 'Premium display inventory', best_size_spec: '728x90, 300x250, 970x250' },
+    { inventory_id: 'i31', format: 'native', score: 9, reason: 'Sponsored stories in ET editorial', best_size_spec: 'Article format' },
+    { inventory_id: 'i51', format: 'video', score: 8, reason: 'Native video for vernacular audience', best_size_spec: '1080x1920, 10-15s' },
+    { inventory_id: 'i57', format: 'audio', score: 10, reason: 'Core format - audio ads between songs', best_size_spec: '15-30s audio, 640x640 companion' },
+    { inventory_id: 'i27', format: 'static', score: 7, reason: 'Standard IAB display sizes', best_size_spec: '300x250, 728x90, 160x600, 320x50' },
+    { inventory_id: 'i27', format: 'video', score: 8, reason: 'VAST/VPAID video across publishers', best_size_spec: '1920x1080, 15-30s' },
+    { inventory_id: 'i29', format: 'interstitial', score: 8, reason: 'Full-screen mobile interstitials', best_size_spec: '320x480 or 1080x1920' },
+    { inventory_id: 'i78', format: 'native', score: 10, reason: 'Sponsored section within newsletter', best_size_spec: '600px wide, inline' },
+    { inventory_id: 'i6', format: 'search_text', score: 10, reason: 'App Store search results format', best_size_spec: 'App icon + title + subtitle' },
+  ],
+
+  aiInsights: [
+    { id: 'ai1', inventory_id: 'i9', insight_type: 'opportunity', title: 'Reels CPMs dropping 15% QoQ', body: 'Instagram Reels CPMs have been declining steadily as Meta pushes adoption. Current CPMs are 30-40% lower than Feed. Recommend shifting 20% of Instagram Feed budget to Reels for better reach efficiency.', priority: 'high', is_read: 0 },
+    { id: 'ai2', inventory_id: 'i66', insight_type: 'opportunity', title: 'JioCinema IPL 2026 inventory opening', body: 'JioCinema is offering early-bird rates for IPL 2026 season. Locking in inventory now could save 25-30% vs in-season rates. Estimated 500M+ streaming viewers this season.', priority: 'high', is_read: 0 },
+    { id: 'ai3', inventory_id: 'i16', insight_type: 'trend', title: 'YouTube Shorts monetization expanding', body: 'YouTube is rapidly expanding Shorts ad inventory. Early advertisers seeing 40-50% lower CPVs compared to standard in-stream. Finance content consumption on Shorts growing 80% YoY.', priority: 'medium', is_read: 0 },
+    { id: 'ai4', inventory_id: null, insight_type: 'whitespace', title: 'No competitor presence on Reddit India', body: 'Reddit India finance communities (r/IndiaInvestments, r/IndianStreetBets) have 2M+ combined subscribers with zero fintech ad presence. Early mover advantage available at low CPMs.', priority: 'medium', is_read: 0 },
+    { id: 'ai5', inventory_id: 'i30', insight_type: 'benchmark', title: 'Moneycontrol CPMs increasing 20% YoY', body: 'Premium finance publisher CPMs are rising due to demand from BFSI advertisers. Consider locking annual deals for rate protection.', priority: 'medium', is_read: 0 },
+    { id: 'ai6', inventory_id: 'i1', insight_type: 'warning', title: 'Google Search CPCs rising in finance vertical', body: 'Average CPCs for finance keywords up 18% in last quarter due to increased competition from Groww, Angel One, and INDmoney. Recommend expanding to long-tail keywords.', priority: 'high', is_read: 0 },
+    { id: 'ai7', inventory_id: null, insight_type: 'seasonal', title: 'Tax season advertising window approaching', body: 'January-March is peak season for investment and tax-saving product advertising. Historically CPMs increase 30-40% during this period.', priority: 'medium', is_read: 0 },
+    { id: 'ai8', inventory_id: 'i78', insight_type: 'opportunity', title: 'Finshots expanding to 2M subscribers', body: 'Finshots newsletter has grown to 2M+ subscribers with 45%+ open rates. Their audience is exactly the fintech-savvy demographic. Limited sponsorship slots available.', priority: 'high', is_read: 0 },
+    { id: 'ai9', inventory_id: 'i18', insight_type: 'benchmark', title: 'LinkedIn HNI targeting outperforms other channels', body: 'LinkedIn campaigns targeting users with Job Title containing Director/VP/CXO show 3x better conversion rates for wealth management products despite 5x higher CPMs.', priority: 'medium', is_read: 0 },
+    { id: 'ai10', inventory_id: 'i51', insight_type: 'trend', title: 'Vernacular fintech adoption accelerating in Tier 2-3', body: 'ShareChat and Moj user data shows 120% growth in finance content consumption in Hindi, Tamil, and Telugu. Fintech brands running vernacular creatives seeing 2x better engagement.', priority: 'medium', is_read: 0 },
+  ],
+
+  onboardingGuides: [
+    { inventory_id: 'i1', step_number: 1, step_title: 'Create Google Ads Account', step_description: 'Sign up at ads.google.com with your business email. Select "App Promotion" as your campaign goal.', estimated_time: '30 minutes', contact_url: 'https://ads.google.com', minimum_commitment: 'No minimum, recommended \u20B9500/day', documents_required: 'GST certificate, Business PAN, Bank account details' },
+    { inventory_id: 'i1', step_number: 2, step_title: 'Setup Conversion Tracking', step_description: 'Install Firebase SDK. Configure app install and in-app event tracking.', estimated_time: '2-4 hours', contact_url: 'https://firebase.google.com/docs/analytics' },
+    { inventory_id: 'i1', step_number: 3, step_title: 'Create UAC Campaign', step_description: 'Choose "App installs" goal. Add text ideas, images, and video assets. Set target CPA.', estimated_time: '2-3 hours' },
+    { inventory_id: 'i1', step_number: 4, step_title: 'SEBI Compliance Setup', step_description: 'Apply for Google Financial Services advertiser verification. Submit SEBI registration certificate.', estimated_time: '3-5 business days', documents_required: 'SEBI registration certificate, Company incorporation docs' },
+    { inventory_id: 'i7', step_number: 1, step_title: 'Create Meta Business Account', step_description: 'Set up Meta Business Suite at business.facebook.com. Create an Ad Account.', estimated_time: '1 hour', contact_url: 'https://business.facebook.com', minimum_commitment: 'No minimum, recommended \u20B91000/day' },
+    { inventory_id: 'i7', step_number: 2, step_title: 'Install Meta Pixel & SDK', step_description: 'Install Meta Pixel on website. Integrate Facebook SDK in mobile app.', estimated_time: '4-6 hours' },
+    { inventory_id: 'i7', step_number: 3, step_title: 'Financial Services Ad Authorization', step_description: 'Submit RBI/SEBI license details. Upload compliance documents.', estimated_time: '5-7 business days', documents_required: 'SEBI registration, RBI authorization' },
+    { inventory_id: 'i7', step_number: 4, step_title: 'Create First Campaign', step_description: 'Use CBO. Start with Conversions objective. Create 3-5 ad sets with different audiences.', estimated_time: '3-4 hours' },
+    { inventory_id: 'i13', step_number: 1, step_title: 'Link YouTube Channel to Google Ads', step_description: 'Go to Google Ads > Tools > Linked Accounts > YouTube.', estimated_time: '30 minutes', contact_url: 'https://ads.google.com' },
+    { inventory_id: 'i13', step_number: 2, step_title: 'Prepare Video Assets', step_description: 'Create 15s, 30s, and 60s versions. Ensure strong hook in first 5 seconds.', estimated_time: '1-2 weeks' },
+    { inventory_id: 'i13', step_number: 3, step_title: 'Create Video Campaign', step_description: 'Select Video campaign > Drive conversions. Choose Skippable in-stream. Set target CPA.', estimated_time: '2-3 hours' },
+    { inventory_id: 'i18', step_number: 1, step_title: 'Create LinkedIn Campaign Manager Account', step_description: 'Go to linkedin.com/campaignmanager. Link to Company Page.', estimated_time: '30 minutes', minimum_commitment: '\u20B9500/day minimum, recommended \u20B93000/day' },
+    { inventory_id: 'i18', step_number: 2, step_title: 'Install LinkedIn Insight Tag', step_description: 'Add Insight Tag to website for conversion tracking and retargeting.', estimated_time: '1-2 hours' },
+    { inventory_id: 'i18', step_number: 3, step_title: 'Create Sponsored Content Campaign', step_description: 'Choose Website conversions objective. Target by Job Title, Industry, Seniority.', estimated_time: '2-3 hours' },
+    { inventory_id: 'i65', step_number: 1, step_title: 'Contact Hotstar Ad Sales', step_description: 'Reach out via self-serve platform or direct sales. For IPL, contact 2-3 months in advance.', estimated_time: '1-2 weeks', contact_url: 'https://www.hotstar.com/in/advertise', minimum_commitment: '\u20B95L minimum for self-serve' },
+    { inventory_id: 'i65', step_number: 2, step_title: 'Select Ad Format & Inventory', step_description: 'Choose from Pre-roll, Mid-roll, Branded Cards, or Masthead takeovers.', estimated_time: '1-2 weeks' },
+    { inventory_id: 'i65', step_number: 3, step_title: 'Submit Creatives & Go Live', step_description: 'Submit video creatives in 1920x1080 and 1080x1920. Allow 3-5 days for review.', estimated_time: '3-5 business days', documents_required: 'Video creatives, SEBI disclaimers' },
+  ],
+};
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+function fmt(n) {
+  if (n == null) return '-';
+  if (n >= 10000000) return '\u20B9' + (n / 10000000).toFixed(1) + 'Cr';
+  if (n >= 100000) return '\u20B9' + (n / 100000).toFixed(1) + 'L';
+  if (n >= 1000) return '\u20B9' + (n / 1000).toFixed(1) + 'K';
+  return '\u20B9' + n;
+}
+
+function fmtNum(n) {
+  if (n == null) return '-';
+  if (n >= 1000000000) return (n / 1000000000).toFixed(1) + 'B';
+  if (n >= 1000000) return (n / 1000000).toFixed(0) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(0) + 'K';
+  return n.toString();
+}
+
+function pctFmt(n) { return n == null ? '-' : (n * 100).toFixed(1) + '%'; }
+
+function priceClass(cpm) {
+  if (cpm <= 50) return 'cheap';
+  if (cpm <= 200) return 'medium';
+  return 'expensive';
+}
+
+function fitClass(fit) {
+  if (fit <= 4) return 'low';
+  if (fit <= 7) return 'medium';
+  return 'high';
+}
+
+function getInv(id) { return DATA.inventories.find(i => i.id === id); }
+function getComp(id) { return DATA.competitors.find(c => c.id === id); }
+
+function showToast(title, message, type) {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type || 'info');
+  t.innerHTML = '<div class="toast-body"><div class="toast-title">' + title + '</div><div class="toast-message">' + message + '</div></div><button class="toast-close" onclick="this.parentElement.remove()">\u2715</button>';
+  c.appendChild(t);
+  setTimeout(() => { t.classList.add('dismissing'); setTimeout(() => t.remove(), 200); }, 4000);
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let compareSet = new Set();
+let currentView = 'dashboard';
+let currentDetailInv = null;
+let chartInstances = {};
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    const view = link.dataset.view;
+    switchView(view);
+  });
+});
+
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.toggle('active', l.dataset.view === view));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const el = document.getElementById('view-' + view);
+  if (el) el.classList.add('active');
+
+  if (view === 'dashboard') loadDashboard();
+  else if (view === 'explorer') renderExplorer();
+  else if (view === 'competitors') renderCompetitorMap();
+  else if (view === 'discovery') renderDiscovery();
+  else if (view === 'budget') renderBudget();
+  else if (view === 'admonitor') renderAdMonitor();
+  else if (view === 'keywords') renderKeywords();
+  else if (view === 'timeline') renderTimeline();
+  else if (view === 'settings') renderSettings();
+}
+
+// ============================================================
+// CLOCK
+// ============================================================
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('en-IN', { hour12: false }) + ' IST';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function loadDashboard() {
+  const totalInv = DATA.inventories.length;
+  const activeInv = DATA.inventories.filter(i => i.status === 'active').length;
+  const fintechInv = DATA.inventories.filter(i => i.fintech_friendly).length;
+  const totalSpend = DATA.existingInventories.reduce((s, e) => s + e.current_monthly_spend, 0);
+  const avgCPA = DATA.existingInventories.reduce((s, e) => s + (e.current_cpa || 0), 0) / DATA.existingInventories.length;
+  const unread = DATA.aiInsights.filter(a => !a.is_read).length;
+
+  document.getElementById('kpi-strip').innerHTML = [
+    { label: 'Total Inventories', value: totalInv, delta: '+8 this week', up: true },
+    { label: 'Active', value: activeInv },
+    { label: 'Fintech Friendly', value: fintechInv },
+    { label: 'Competitors Tracked', value: DATA.competitors.length },
+    { label: 'Monthly Spend', value: fmt(totalSpend) },
+    { label: 'Avg CPA', value: fmt(Math.round(avgCPA)), delta: '-5%', up: false },
+  ].map(k => `<div class="kpi-card"><div class="kpi-value">${typeof k.value === 'number' ? k.value : k.value}</div><div class="kpi-label">${k.label}</div>${k.delta ? `<div class="kpi-delta ${k.up !== false ? 'up' : 'down'}">${k.delta}</div>` : ''}</div>`).join('');
+
+  // Existing inventories
+  document.getElementById('existing-inventories').innerHTML = DATA.existingInventories.map(ei => {
+    const inv = getInv(ei.inventory_id);
+    if (!inv) return '';
+    return `<div class="inventory-card" onclick="openDetail('${inv.id}')">
+      <div class="inventory-card-header"><div class="inventory-card-name">${inv.name}</div><span class="category-badge ${inv.category}">${inv.category}</span></div>
+      <div class="inventory-card-row"><span>Monthly Spend</span><strong>${fmt(ei.current_monthly_spend)}</strong></div>
+      <div class="inventory-card-row"><span>CPM / CPC</span><strong>${fmt(ei.current_cpm)} / ${ei.current_cpc ? fmt(ei.current_cpc) : '-'}</strong></div>
+      <div class="inventory-card-row"><span>CTR / CPA</span><strong>${pctFmt(ei.current_ctr)} / ${fmt(ei.current_cpa)}</strong></div>
+      <div style="font-size:11px;color:var(--muted)">${ei.notes}</div>
+    </div>`;
+  }).join('');
+
+  // Top opportunities (high fit, not currently used)
+  const existingIds = new Set(DATA.existingInventories.map(e => e.inventory_id));
+  const opps = DATA.inventories.filter(i => i.fintech_friendly && i.status === 'active' && !existingIds.has(i.id))
+    .sort((a, b) => b.target_audience_fit - a.target_audience_fit).slice(0, 8);
+  document.getElementById('opportunities').innerHTML = opps.map(inv => {
+    const compCount = DATA.competitorSpends.filter(cs => cs.inventory_id === inv.id).length;
+    const score = Math.round(inv.target_audience_fit * 10 + (compCount > 0 ? 5 : 15));
+    return `<div class="opportunity-item" onclick="openDetail('${inv.id}')">
+      <div><div class="opportunity-name">${inv.name}</div><div class="opportunity-reason">${inv.platform_parent} | ${compCount} competitors active</div></div>
+      <div class="opp-score-bar"><div class="opp-score-track"><div class="opp-score-fill" style="width:${score}%"></div></div><div class="opp-score-value">${score}</div></div>
+      <span class="category-badge ${inv.category}">${inv.category}</span>
+    </div>`;
+  }).join('');
+
+  // Competitor activity
+  const activities = [
+    { dot: 'var(--red)', text: '<strong>Angel One</strong> increased Google Search UAC spend by ~15% this month', time: '2h ago' },
+    { dot: 'var(--teal)', text: '<strong>Groww</strong> launched new Instagram Reels campaign targeting Gen-Z investors', time: '4h ago' },
+    { dot: 'var(--gold)', text: '<strong>INDmoney</strong> spotted on ShareChat for the first time - vernacular push', time: '6h ago' },
+    { dot: 'var(--blue)', text: '<strong>Upstox</strong> running YouTube Finance Influencer integrations with 3 new creators', time: '8h ago' },
+    { dot: 'var(--muted)', text: '<strong>Paytm Money</strong> Disney+ Hotstar pre-roll detected during cricket match', time: '12h ago' },
+  ];
+  document.getElementById('competitor-activity').innerHTML = activities.map(a =>
+    `<div class="activity-item"><div class="activity-dot" style="background:${a.dot}"></div><div class="activity-text">${a.text}</div><div class="activity-time">${a.time}</div></div>`
+  ).join('');
+
+  // AI Insights
+  document.getElementById('insight-badge').textContent = unread;
+  document.getElementById('unread-count').textContent = unread;
+  document.getElementById('insights-feed').innerHTML = DATA.aiInsights.map(ai => {
+    const inv = ai.inventory_id ? getInv(ai.inventory_id) : null;
+    return `<div class="insight-card priority-${ai.priority} ${ai.is_read ? '' : 'unread'}" onclick="markInsightRead('${ai.id}')">
+      <div class="insight-title">${ai.title}</div>
+      <div class="insight-body">${ai.body}</div>
+      <div class="insight-time">${ai.insight_type.toUpperCase()}${inv ? ' | ' + inv.name : ''}</div>
+    </div>`;
+  }).join('');
+
+  // Trending hooks
+  const hooks = ['Zero brokerage + free demat', 'Start SIP with \u20B9100', 'SEBI registered advisory', 'AI-powered stock picks', 'Tax-saving ELSS funds'];
+  document.getElementById('trending-hooks').innerHTML = hooks.map((h, i) =>
+    `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span class="text-gold text-mono" style="margin-right:8px">#${i + 1}</span>${h}</div>`
+  ).join('');
+
+  // Silent competitors
+  const activeCompSpends = new Set(DATA.competitorSpends.map(cs => cs.competitor_id));
+  const silent = DATA.competitors.filter(c => {
+    const spends = DATA.competitorSpends.filter(cs => cs.competitor_id === c.id);
+    return spends.length < 2;
+  });
+  document.getElementById('silent-competitors').innerHTML = (silent.length ? silent : DATA.competitors.slice(-3)).map(c =>
+    `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;display:flex;justify-content:space-between"><span>${c.name}</span><span class="badge muted">${c.vertical}</span></div>`
+  ).join('');
+
+  document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleString('en-IN');
+}
+
+function markInsightRead(id) {
+  const ai = DATA.aiInsights.find(a => a.id === id);
+  if (ai) { ai.is_read = 1; loadDashboard(); }
+}
+
+// ============================================================
+// INVENTORY EXPLORER
+// ============================================================
+function getFilteredInventories() {
+  let items = [...DATA.inventories];
+  const search = document.getElementById('global-search').value.toLowerCase();
+  const cat = document.getElementById('filter-category').value;
+  const pricing = document.getElementById('filter-pricing').value;
+  const fintech = document.getElementById('filter-fintech').value;
+  const minCpm = parseFloat(document.getElementById('filter-min-cpm').value);
+  const maxCpm = parseFloat(document.getElementById('filter-max-cpm').value);
+  const minFit = parseFloat(document.getElementById('filter-min-fit').value);
+  const sortBy = document.getElementById('sort-by').value;
+
+  if (search) items = items.filter(i => i.name.toLowerCase().includes(search) || i.platform_parent.toLowerCase().includes(search) || i.category.toLowerCase().includes(search));
+  if (cat) items = items.filter(i => i.category === cat);
+  if (pricing) items = items.filter(i => i.pricing_model === pricing);
+  if (fintech !== '') items = items.filter(i => i.fintech_friendly === parseInt(fintech));
+  if (!isNaN(minCpm)) items = items.filter(i => i.max_cpm >= minCpm);
+  if (!isNaN(maxCpm)) items = items.filter(i => i.min_cpm <= maxCpm);
+  if (!isNaN(minFit)) items = items.filter(i => i.target_audience_fit >= minFit);
+
+  if (sortBy === 'target_audience_fit') items.sort((a, b) => b.target_audience_fit - a.target_audience_fit);
+  else if (sortBy === 'min_cpm') items.sort((a, b) => a.min_cpm - b.min_cpm);
+  else if (sortBy === 'max_cpm') items.sort((a, b) => b.max_cpm - a.max_cpm);
+  else if (sortBy === 'estimated_monthly_reach') items.sort((a, b) => b.estimated_monthly_reach - a.estimated_monthly_reach);
+
+  return items;
+}
+
+function renderInventoryCard(inv) {
+  const checked = compareSet.has(inv.id) ? 'checked' : '';
+  return `<div class="inventory-card" onclick="openDetail('${inv.id}')">
+    <div class="inventory-card-header">
+      <div class="inventory-card-name">${inv.name}</div>
+      <span class="fintech-badge ${inv.fintech_friendly ? 'yes' : 'no'}">${inv.fintech_friendly ? 'Fintech OK' : 'Restricted'}</span>
+    </div>
+    <div class="inventory-card-meta">
+      <span class="category-badge ${inv.category}">${inv.category}</span>
+      <span class="price-tag ${priceClass(inv.min_cpm)}">${inv.pricing_model.toUpperCase()} \u20B9${inv.min_cpm}-${inv.max_cpm}</span>
+      ${inv.status === 'new' ? '<span class="badge teal">NEW</span>' : ''}
+    </div>
+    <div class="inventory-card-row"><span>Platform</span><strong>${inv.platform_parent}</strong></div>
+    <div class="inventory-card-row"><span>Monthly Reach</span><strong>${fmtNum(inv.estimated_monthly_reach)}</strong></div>
+    <div class="fit-bar-container">
+      <div class="fit-bar-label"><span>Audience Fit</span><span>${inv.target_audience_fit}/10</span></div>
+      <div class="fit-bar-track"><div class="fit-bar-fill ${fitClass(inv.target_audience_fit)}" style="width:${inv.target_audience_fit * 10}%"></div></div>
+    </div>
+    <label class="card-compare" onclick="event.stopPropagation()"><input type="checkbox" ${checked} onchange="toggleCompare('${inv.id}', this.checked)" /> Compare</label>
+  </div>`;
+}
+
+function renderExplorer() {
+  const items = getFilteredInventories();
+  const gridEl = document.getElementById('inventory-list');
+  const tableEl = document.getElementById('inventory-table');
+
+  if (gridEl.style.display !== 'none') {
+    gridEl.innerHTML = items.map(renderInventoryCard).join('');
+  }
+
+  if (tableEl.style.display !== 'none') {
+    renderTableView(items);
+  }
+}
+
+function renderTableView(items) {
+  const el = document.getElementById('inventory-table');
+  el.innerHTML = `<table class="data-table"><thead><tr>
+    <th>Name</th><th>Category</th><th>Platform</th><th>CPM Range</th><th>Model</th><th>Reach</th><th>Fit</th><th>Fintech</th><th>Status</th>
+  </tr></thead><tbody>${items.map(inv => `<tr style="cursor:pointer" onclick="openDetail('${inv.id}')">
+    <td style="font-weight:600">${inv.name}</td>
+    <td><span class="category-badge ${inv.category}">${inv.category}</span></td>
+    <td>${inv.platform_parent}</td>
+    <td class="text-mono">\u20B9${inv.min_cpm}-${inv.max_cpm}</td>
+    <td>${inv.pricing_model.toUpperCase()}</td>
+    <td class="text-mono">${fmtNum(inv.estimated_monthly_reach)}</td>
+    <td><strong>${inv.target_audience_fit}</strong>/10</td>
+    <td><span class="fintech-badge ${inv.fintech_friendly ? 'yes' : 'no'}">${inv.fintech_friendly ? 'Yes' : 'No'}</span></td>
+    <td>${inv.status}</td>
+  </tr>`).join('')}</tbody></table>`;
+}
+
+// View toggle
+document.getElementById('btn-grid-view').addEventListener('click', () => {
+  document.getElementById('inventory-list').style.display = '';
+  document.getElementById('inventory-table').style.display = 'none';
+  document.getElementById('btn-grid-view').classList.add('active');
+  document.getElementById('btn-table-view').classList.remove('active');
+  renderExplorer();
+});
+document.getElementById('btn-table-view').addEventListener('click', () => {
+  document.getElementById('inventory-list').style.display = 'none';
+  document.getElementById('inventory-table').style.display = '';
+  document.getElementById('btn-table-view').classList.add('active');
+  document.getElementById('btn-grid-view').classList.remove('active');
+  renderExplorer();
+});
+
+// Filters
+['filter-category', 'filter-pricing', 'filter-fintech', 'sort-by'].forEach(id => {
+  document.getElementById(id).addEventListener('change', renderExplorer);
+});
+['filter-min-cpm', 'filter-max-cpm', 'filter-min-fit'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderExplorer);
+});
+document.getElementById('global-search').addEventListener('input', () => {
+  if (currentView === 'explorer') renderExplorer();
+});
+
+// Compare
+function toggleCompare(id, checked) {
+  if (checked) compareSet.add(id); else compareSet.delete(id);
+  const btn = document.getElementById('btn-compare');
+  btn.textContent = `Compare (${compareSet.size})`;
+  btn.disabled = compareSet.size < 2;
+}
+
+document.getElementById('btn-compare').addEventListener('click', openCompare);
+document.getElementById('close-compare').addEventListener('click', () => { document.getElementById('compare-modal').style.display = 'none'; });
+
+function openCompare() {
+  if (compareSet.size < 2) return;
+  const items = [...compareSet].map(id => getInv(id)).filter(Boolean);
+  const el = document.getElementById('compare-content');
+  el.innerHTML = `<table class="data-table" style="margin-top:16px"><thead><tr><th>Attribute</th>${items.map(i => `<th>${i.name}</th>`).join('')}</tr></thead><tbody>
+    <tr><td>Category</td>${items.map(i => `<td><span class="category-badge ${i.category}">${i.category}</span></td>`).join('')}</tr>
+    <tr><td>Platform</td>${items.map(i => `<td>${i.platform_parent}</td>`).join('')}</tr>
+    <tr><td>CPM Range</td>${items.map(i => `<td class="text-mono">\u20B9${i.min_cpm}-${i.max_cpm}</td>`).join('')}</tr>
+    <tr><td>Pricing</td>${items.map(i => `<td>${i.pricing_model.toUpperCase()}</td>`).join('')}</tr>
+    <tr><td>Monthly Reach</td>${items.map(i => `<td class="text-mono">${fmtNum(i.estimated_monthly_reach)}</td>`).join('')}</tr>
+    <tr><td>Audience Fit</td>${items.map(i => `<td><strong class="text-${fitClass(i.target_audience_fit) === 'high' ? 'green' : fitClass(i.target_audience_fit) === 'medium' ? 'gold' : 'red'}">${i.target_audience_fit}/10</strong></td>`).join('')}</tr>
+    <tr><td>Fintech Friendly</td>${items.map(i => `<td><span class="fintech-badge ${i.fintech_friendly ? 'yes' : 'no'}">${i.fintech_friendly ? 'Yes' : 'No'}</span></td>`).join('')}</tr>
+    <tr><td>Competitors Active</td>${items.map(i => `<td>${DATA.competitorSpends.filter(cs => cs.inventory_id === i.id).length}</td>`).join('')}</tr>
+  </tbody></table>`;
+  document.getElementById('compare-modal').style.display = '';
+}
+
+// ============================================================
+// INVENTORY DETAIL MODAL
+// ============================================================
+function openDetail(invId) {
+  currentDetailInv = getInv(invId);
+  if (!currentDetailInv) return;
+  const modal = document.getElementById('inventory-detail-modal');
+  modal.style.display = '';
+  renderDetailHeader();
+  renderDetailTab('overview');
+  document.querySelectorAll('.detail-tabs .tab-btn').forEach(t => t.classList.toggle('active', t.dataset.tab === 'overview'));
+}
+
+document.getElementById('close-detail').addEventListener('click', () => {
+  document.getElementById('inventory-detail-modal').style.display = 'none';
+  currentDetailInv = null;
+});
+
+document.querySelectorAll('.detail-tabs .tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.detail-tabs .tab-btn').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    renderDetailTab(btn.dataset.tab);
+  });
+});
+
+function renderDetailHeader() {
+  const inv = currentDetailInv;
+  document.getElementById('detail-header').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:8px">${inv.name}</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <span class="category-badge ${inv.category}">${inv.category}</span>
+          <span class="price-tag ${priceClass(inv.min_cpm)}">${inv.pricing_model.toUpperCase()} \u20B9${inv.min_cpm}-${inv.max_cpm}</span>
+          <span class="fintech-badge ${inv.fintech_friendly ? 'yes' : 'no'}">${inv.fintech_friendly ? 'Fintech OK' : 'Restricted'}</span>
+          ${inv.status === 'new' ? '<span class="badge teal">NEW</span>' : ''}
+          <span class="badge muted">${inv.status}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderDetailTab(tab) {
+  const inv = currentDetailInv;
+  const body = document.getElementById('detail-body');
+
+  if (tab === 'overview') {
+    const existing = DATA.existingInventories.find(e => e.inventory_id === inv.id);
+    body.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div><div class="text-muted" style="font-size:11px;text-transform:uppercase;margin-bottom:4px">Platform</div><div style="font-weight:600">${inv.platform_parent}</div></div>
+        <div><div class="text-muted" style="font-size:11px;text-transform:uppercase;margin-bottom:4px">Monthly Reach</div><div style="font-weight:600;font-family:var(--font-mono)">${fmtNum(inv.estimated_monthly_reach)}</div></div>
+        <div><div class="text-muted" style="font-size:11px;text-transform:uppercase;margin-bottom:4px">Audience Fit</div>
+          <div class="fit-bar-container"><div class="fit-bar-label"><span>Score</span><span>${inv.target_audience_fit}/10</span></div><div class="fit-bar-track"><div class="fit-bar-fill ${fitClass(inv.target_audience_fit)}" style="width:${inv.target_audience_fit * 10}%"></div></div></div>
+        </div>
+        <div><div class="text-muted" style="font-size:11px;text-transform:uppercase;margin-bottom:4px">Competitors Active</div><div style="font-weight:600;font-family:var(--font-mono)">${DATA.competitorSpends.filter(cs => cs.inventory_id === inv.id).length}</div></div>
+      </div>
+      ${existing ? `<div class="panel" style="margin-top:16px"><h3 class="panel-title" style="font-size:12px">Univest Current Performance</h3>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;text-align:center">
+          <div><div class="text-mono" style="font-size:18px;font-weight:700">${fmt(existing.current_monthly_spend)}</div><div class="text-muted" style="font-size:10px">SPEND</div></div>
+          <div><div class="text-mono" style="font-size:18px;font-weight:700">${fmt(existing.current_cpm)}</div><div class="text-muted" style="font-size:10px">CPM</div></div>
+          <div><div class="text-mono" style="font-size:18px;font-weight:700">${existing.current_cpc ? fmt(existing.current_cpc) : '-'}</div><div class="text-muted" style="font-size:10px">CPC</div></div>
+          <div><div class="text-mono" style="font-size:18px;font-weight:700">${pctFmt(existing.current_ctr)}</div><div class="text-muted" style="font-size:10px">CTR</div></div>
+          <div><div class="text-mono" style="font-size:18px;font-weight:700">${fmt(existing.current_cpa)}</div><div class="text-muted" style="font-size:10px">CPA</div></div>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:var(--muted)">${existing.notes}</div>
+      </div>` : '<div class="panel" style="margin-top:16px;text-align:center;color:var(--muted)">Univest not currently active on this inventory</div>'}`;
+  } else if (tab === 'pricing') {
+    body.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="panel"><div class="text-muted" style="font-size:11px;text-transform:uppercase;margin-bottom:4px">Pricing Model</div><div style="font-size:20px;font-weight:700">${inv.pricing_model.toUpperCase()}</div></div>
+      <div class="panel"><div class="text-muted" style="font-size:11px;text-transform:uppercase;margin-bottom:4px">CPM Range</div><div style="font-size:20px;font-weight:700;font-family:var(--font-mono)">\u20B9${inv.min_cpm} - \u20B9${inv.max_cpm}</div></div>
+      <div class="panel"><div class="text-muted" style="font-size:11px;text-transform:uppercase;margin-bottom:4px">Avg CPM</div><div style="font-size:20px;font-weight:700;font-family:var(--font-mono)">\u20B9${Math.round((inv.min_cpm + inv.max_cpm) / 2)}</div></div>
+      <div class="panel"><div class="text-muted" style="font-size:11px;text-transform:uppercase;margin-bottom:4px">Cost per 1M Impressions</div><div style="font-size:20px;font-weight:700;font-family:var(--font-mono)">${fmt(Math.round((inv.min_cpm + inv.max_cpm) / 2 * 1000))}</div></div>
+    </div>`;
+  } else if (tab === 'competitors') {
+    const spends = DATA.competitorSpends.filter(cs => cs.inventory_id === inv.id);
+    body.innerHTML = spends.length ? `<table class="data-table"><thead><tr><th>Competitor</th><th>Est. Monthly Spend</th><th>Confidence</th><th>Source</th></tr></thead><tbody>${spends.map(cs => {
+      const comp = getComp(cs.competitor_id);
+      return `<tr><td style="font-weight:600">${comp ? comp.name : '-'}</td><td class="text-mono">${fmt(cs.estimated_monthly_spend)}</td><td><span class="badge ${cs.confidence_level === 'high' ? 'green' : cs.confidence_level === 'medium' ? 'gold' : 'muted'}">${cs.confidence_level}</span></td><td style="font-size:12px;color:var(--muted)">${cs.source}</td></tr>`;
+    }).join('')}</tbody></table>` : '<div style="text-align:center;color:var(--muted);padding:40px">No competitor spend data for this inventory. This could be a whitespace opportunity.</div>';
+  } else if (tab === 'formats') {
+    const formats = DATA.adFormatScores.filter(f => f.inventory_id === inv.id);
+    body.innerHTML = formats.length ? `<div style="display:flex;flex-direction:column;gap:12px">${formats.map(f => `
+      <div class="panel" style="margin-bottom:0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:600;text-transform:capitalize">${f.format.replace(/_/g, ' ')}</span>
+        <span class="badge ${f.score >= 8 ? 'green' : f.score >= 5 ? 'gold' : 'red'}">${f.score}/10</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${f.reason}</div>
+      <div style="font-size:11px;font-family:var(--font-mono);color:var(--blue)">${f.best_size_spec}</div></div>
+    `).join('')}</div>` : '<div style="text-align:center;color:var(--muted);padding:40px">No ad format data available yet.</div>';
+  } else if (tab === 'budget') {
+    const rec = DATA.budgetRecommendations.find(b => b.inventory_id === inv.id);
+    body.innerHTML = rec ? `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+      <div class="panel"><div class="text-muted" style="font-size:10px;text-transform:uppercase;margin-bottom:4px">Testing Budget</div><div style="font-size:20px;font-weight:700;font-family:var(--font-mono)">${fmt(rec.recommended_testing_budget)}</div></div>
+      <div class="panel"><div class="text-muted" style="font-size:10px;text-transform:uppercase;margin-bottom:4px">Starting Budget</div><div style="font-size:20px;font-weight:700;font-family:var(--font-mono)">${fmt(rec.recommended_starting_budget)}</div></div>
+      <div class="panel"><div class="text-muted" style="font-size:10px;text-transform:uppercase;margin-bottom:4px">Scale Budget</div><div style="font-size:20px;font-weight:700;font-family:var(--font-mono)">${fmt(rec.recommended_scale_budget)}</div></div>
+    </div>
+    <div class="panel" style="margin-top:16px"><div class="text-muted" style="font-size:11px;text-transform:uppercase;margin-bottom:8px">Rationale</div><div style="font-size:13px;line-height:1.6">${rec.rationale}</div></div>
+    <div style="margin-top:12px;display:flex;gap:16px">
+      <div><span class="text-muted" style="font-size:11px">Confidence: </span><strong class="text-mono">${Math.round(rec.confidence_score * 100)}%</strong></div>
+    </div>` : '<div style="text-align:center;color:var(--muted);padding:40px">No budget recommendation available for this inventory.</div>';
+  } else if (tab === 'onboarding') {
+    const guides = DATA.onboardingGuides.filter(g => g.inventory_id === inv.id).sort((a, b) => a.step_number - b.step_number);
+    body.innerHTML = guides.length ? `<div class="onboarding-timeline">${guides.map(g => `
+      <div class="onboarding-step">
+        <div class="onboarding-step-number">${g.step_number}</div>
+        <div class="onboarding-step-card">
+          <div class="onboarding-step-title">${g.step_title}</div>
+          <div class="onboarding-step-desc">${g.step_description}</div>
+          <div style="margin-top:8px;font-size:11px;display:flex;gap:12px;flex-wrap:wrap">
+            <span class="text-muted">Est. time: <strong class="text-gold">${g.estimated_time || '-'}</strong></span>
+            ${g.minimum_commitment ? `<span class="text-muted">Min: <strong>${g.minimum_commitment}</strong></span>` : ''}
+            ${g.documents_required ? `<span class="text-muted">Docs: <strong>${g.documents_required}</strong></span>` : ''}
+            ${g.contact_url ? `<a href="${g.contact_url}" target="_blank" style="color:var(--blue);font-size:11px">Link &rarr;</a>` : ''}
+          </div>
+        </div>
+      </div>
+    `).join('')}</div>` : '<div style="text-align:center;color:var(--muted);padding:40px">No onboarding guide available yet.</div>';
+  } else if (tab === 'detail-insights') {
+    const insights = DATA.aiInsights.filter(a => a.inventory_id === inv.id);
+    body.innerHTML = insights.length ? `<div style="display:flex;flex-direction:column;gap:12px">${insights.map(ai => `
+      <div class="insight-card priority-${ai.priority}">
+        <div class="insight-title">${ai.title}</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">${ai.body}</div>
+        <div class="insight-time">${ai.insight_type.toUpperCase()} | Priority: ${ai.priority}</div>
+      </div>
+    `).join('')}</div>` : '<div style="text-align:center;color:var(--muted);padding:40px">No AI insights for this inventory.</div>';
+  }
+}
+
+// Close modal on backdrop click
+document.getElementById('inventory-detail-modal').addEventListener('click', e => {
+  if (e.target.id === 'inventory-detail-modal') { document.getElementById('inventory-detail-modal').style.display = 'none'; currentDetailInv = null; }
+});
+document.getElementById('compare-modal').addEventListener('click', e => {
+  if (e.target.id === 'compare-modal') document.getElementById('compare-modal').style.display = 'none';
+});
+
+// ============================================================
+// COMPETITOR MAP
+// ============================================================
+function renderCompetitorMap() {
+  const whitespace = document.getElementById('whitespace-toggle').checked;
+  const topInventories = DATA.inventories.filter(i => i.fintech_friendly && i.status === 'active')
+    .sort((a, b) => b.target_audience_fit - a.target_audience_fit).slice(0, 20);
+  const comps = DATA.competitors;
+
+  let html = '<table class="comp-grid"><thead><tr><th>Inventory</th>';
+  comps.forEach(c => { html += `<th>${c.name}</th>`; });
+  html += '</tr></thead><tbody>';
+
+  topInventories.forEach(inv => {
+    const spends = DATA.competitorSpends.filter(cs => cs.inventory_id === inv.id);
+    const hasAny = spends.length > 0;
+    if (whitespace && hasAny && spends.length >= comps.length / 2) return;
+
+    html += `<tr><td style="cursor:pointer" onclick="openDetail('${inv.id}')">${inv.name}</td>`;
+    comps.forEach(c => {
+      const spend = spends.find(s => s.competitor_id === c.id);
+      if (spend) {
+        const level = spend.estimated_monthly_spend > 20000000 ? 'high' : spend.estimated_monthly_spend > 5000000 ? 'medium' : 'low';
+        html += `<td class="comp-cell-${level}" title="${fmt(spend.estimated_monthly_spend)}">${fmt(spend.estimated_monthly_spend)}</td>`;
+      } else {
+        html += `<td class="comp-cell-none" style="color:var(--muted)">-</td>`;
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('competitor-grid').innerHTML = html;
+}
+document.getElementById('whitespace-toggle').addEventListener('change', renderCompetitorMap);
+
+// ============================================================
+// DISCOVERY LOG
+// ============================================================
+function renderDiscovery() {
+  const newInvs = DATA.inventories.filter(i => i.status === 'new');
+  document.getElementById('new-inventories').innerHTML = newInvs.length ? newInvs.map(renderInventoryCard).join('') : '<div style="color:var(--muted);padding:20px">No new inventories this week.</div>';
+
+  document.getElementById('discovery-timeline').innerHTML = [
+    { title: 'Initial Seed - Full Database', body: `${DATA.inventories.length} inventories, ${DATA.competitors.length} competitors loaded`, time: '2026-03-15 10:00' },
+    { title: 'Weekly Scan Complete', body: '8 new inventories discovered, 3 price updates', time: '2026-03-12 14:30' },
+    { title: 'Competitor Spend Update', body: 'Updated spend estimates for Angel One, Groww, INDmoney', time: '2026-03-10 09:15' },
+  ].map(t => `<div class="timeline-item"><div class="timeline-item-title">${t.title}</div><div class="timeline-item-body">${t.body}</div><div class="timeline-item-time">${t.time}</div></div>`).join('');
+
+  // Discovery chart
+  const ctx = document.getElementById('discovery-chart');
+  if (chartInstances.discovery) chartInstances.discovery.destroy();
+  chartInstances.discovery = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+      datasets: [{ label: 'New Inventories Found', data: [15, 8, 12, 5, 10, 8], backgroundColor: '#f0b42966', borderColor: '#f0b429', borderWidth: 1 }]
+    },
+    options: { responsive: true, plugins: { legend: { labels: { color: '#7c7d8a' } } }, scales: { x: { ticks: { color: '#7c7d8a' }, grid: { color: '#252630' } }, y: { ticks: { color: '#7c7d8a' }, grid: { color: '#252630' } } } }
+  });
+}
+
+// ============================================================
+// BUDGET PLANNER
+// ============================================================
+let selectedBudgetInvs = new Set(['i1', 'i7', 'i8', 'i9', 'i13', 'i26']);
+
+function renderBudget() {
+  const selector = document.getElementById('budget-inventory-selector');
+  const recsMap = {};
+  DATA.budgetRecommendations.forEach(r => { recsMap[r.inventory_id] = r; });
+
+  selector.innerHTML = DATA.budgetRecommendations.map(r => {
+    const inv = getInv(r.inventory_id);
+    if (!inv) return '';
+    const sel = selectedBudgetInvs.has(r.inventory_id);
+    return `<label class="budget-selector-item ${sel ? 'selected' : ''}" onclick="toggleBudgetInv('${r.inventory_id}', this)">
+      <input type="checkbox" ${sel ? 'checked' : ''} /> ${inv.name}
+    </label>`;
+  }).join('');
+}
+
+function toggleBudgetInv(id, el) {
+  const cb = el.querySelector('input');
+  if (selectedBudgetInvs.has(id)) { selectedBudgetInvs.delete(id); el.classList.remove('selected'); } else { selectedBudgetInvs.add(id); el.classList.add('selected'); }
+}
+
+document.getElementById('btn-allocate').addEventListener('click', allocateBudget);
+
+function allocateBudget() {
+  const total = parseInt(document.getElementById('total-budget').value) || 1000000;
+  const selected = [...selectedBudgetInvs];
+  if (!selected.length) { showToast('Error', 'Select at least one inventory', 'error'); return; }
+
+  const recsMap = {};
+  DATA.budgetRecommendations.forEach(r => { recsMap[r.inventory_id] = r; });
+
+  let totalConf = 0;
+  selected.forEach(id => { totalConf += (recsMap[id] ? recsMap[id].confidence_score : 0.5); });
+
+  const allocations = selected.map(id => {
+    const inv = getInv(id);
+    const rec = recsMap[id];
+    const conf = rec ? rec.confidence_score : 0.5;
+    const alloc = Math.round(total * conf / totalConf);
+    const avgCpm = inv ? (inv.min_cpm + inv.max_cpm) / 2 : 100;
+    const impressions = Math.round(alloc / avgCpm * 1000);
+    return { id, name: inv ? inv.name : id, allocation: alloc, confidence: conf, impressions, avgCpm };
+  });
+
+  document.getElementById('budget-results').innerHTML = `<table class="data-table"><thead><tr><th>Inventory</th><th>Allocation</th><th>Est. Impressions</th><th>Avg CPM</th><th>Confidence</th></tr></thead><tbody>
+    ${allocations.map(a => `<tr><td style="font-weight:600">${a.name}</td><td class="text-mono">${fmt(a.allocation)}</td><td class="text-mono">${fmtNum(a.impressions)}</td><td class="text-mono">\u20B9${Math.round(a.avgCpm)}</td><td>${Math.round(a.confidence * 100)}%</td></tr>`).join('')}
+    <tr style="font-weight:700;border-top:2px solid var(--gold)"><td>TOTAL</td><td class="text-mono">${fmt(allocations.reduce((s, a) => s + a.allocation, 0))}</td><td class="text-mono">${fmtNum(allocations.reduce((s, a) => s + a.impressions, 0))}</td><td></td><td></td></tr>
+  </tbody></table>`;
+
+  // Chart
+  const ctx = document.getElementById('budget-chart');
+  if (chartInstances.budget) chartInstances.budget.destroy();
+  const colors = ['#f0b429', '#38d9a9', '#4dabf7', '#ff6b6b', '#51cf66', '#e599f7', '#ff922b', '#74c0fc', '#f783ac', '#845ef7'];
+  chartInstances.budget = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: allocations.map(a => a.name),
+      datasets: [{ data: allocations.map(a => a.allocation), backgroundColor: allocations.map((_, i) => colors[i % colors.length]), borderWidth: 0 }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'right', labels: { color: '#e8e9f0', font: { size: 11 } } } } }
+  });
+
+  // Projections
+  document.getElementById('budget-projections').innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+    <div class="panel" style="text-align:center"><div class="text-mono" style="font-size:22px;font-weight:700">${fmtNum(allocations.reduce((s, a) => s + a.impressions, 0))}</div><div class="text-muted" style="font-size:10px">EST. IMPRESSIONS</div></div>
+    <div class="panel" style="text-align:center"><div class="text-mono" style="font-size:22px;font-weight:700">${fmtNum(Math.round(allocations.reduce((s, a) => s + a.impressions * 0.015, 0)))}</div><div class="text-muted" style="font-size:10px">EST. CLICKS (1.5% CTR)</div></div>
+    <div class="panel" style="text-align:center"><div class="text-mono" style="font-size:22px;font-weight:700">${fmtNum(Math.round(allocations.reduce((s, a) => s + a.impressions * 0.015 * 0.02, 0)))}</div><div class="text-muted" style="font-size:10px">EST. CONVERSIONS (2% CVR)</div></div>
+  </div>`;
+
+  showToast('Budget Allocated', `\u20B9${fmtNum(total)} distributed across ${selected.length} inventories`, 'success');
+}
+
+// ============================================================
+// LIVE AD MONITOR
+// ============================================================
+function renderAdMonitor() {
+  // Populate competitor filter
+  const compFilter = document.getElementById('admon-competitor');
+  if (compFilter.options.length <= 1) {
+    DATA.competitors.forEach(c => { const o = document.createElement('option'); o.value = c.name; o.textContent = c.name; compFilter.appendChild(o); });
+  }
+
+  const ads = [
+    { competitor: 'Groww', platform: 'meta', text: 'Start your investment journey with as little as \u20B9100. Zero commission on mutual funds. Download Groww app now!', theme: 'App Install', days: 12, spend: 'high', started: '2026-03-07' },
+    { competitor: 'Angel One', platform: 'google', text: 'Open free demat account in 5 minutes. Trade stocks, F&O, commodities at flat \u20B920/order. SEBI registered.', theme: 'Offer/Discount', days: 28, spend: 'high', started: '2026-02-19' },
+    { competitor: 'Upstox', platform: 'youtube', text: 'Learn how to pick winning stocks with our free masterclass. Join 1 Cr+ investors on Upstox.', theme: 'Education', days: 7, spend: 'medium', started: '2026-03-12' },
+    { competitor: 'INDmoney', platform: 'meta', text: 'Track all your investments in one app. Stocks, mutual funds, FDs, US stocks. Free portfolio analysis!', theme: 'Feature Highlight', days: 15, spend: 'medium', started: '2026-03-04' },
+    { competitor: 'Zerodha', platform: 'google', text: 'India\'s largest broker by active clients. Flat \u20B920 or 0.03% per trade. Trusted by 1.5 Cr+ investors.', theme: 'Trust/SEBI', days: 45, spend: 'medium', started: '2026-02-02' },
+    { competitor: '5paisa', platform: 'meta', text: 'Refer and earn \u20B9500 per friend! Open demat account in 2 minutes. Lowest brokerage guaranteed.', theme: 'Offer/Discount', days: 5, spend: 'low', started: '2026-03-14' },
+    { competitor: 'Paytm Money', platform: 'youtube', text: 'Save tax up to \u20B946,800 with ELSS mutual funds. Start SIP from \u20B9500. No paperwork needed.', theme: 'Fear/FOMO', days: 20, spend: 'high', started: '2026-02-27' },
+    { competitor: 'Smallcase', platform: 'meta', text: 'Invest in themes you believe in. Curated portfolios by SEBI-registered experts. Start with \u20B95000.', theme: 'Social Proof', days: 10, spend: 'medium', started: '2026-03-09' },
+    { competitor: 'Dhan', platform: 'google', text: 'Lightning fast trading with Dhan. Options trading made simple. Free options analysis tools.', theme: 'Feature Highlight', days: 3, spend: 'low', started: '2026-03-16' },
+    { competitor: 'Groww', platform: 'youtube', text: 'Why 4 Cr+ Indians trust Groww for mutual funds. Watch real user stories. Start investing today!', theme: 'Social Proof', days: 8, spend: 'high', started: '2026-03-11' },
+    { competitor: 'Angel One', platform: 'meta', text: 'Smart money is moving to options. Learn option strategies with Angel One Academy. Free access!', theme: 'Education', days: 14, spend: 'medium', started: '2026-03-05' },
+    { competitor: 'INDmoney', platform: 'youtube', text: 'Your money is losing value! Beat inflation with smart investments. INDmoney shows you how. Free app.', theme: 'Fear/FOMO', days: 6, spend: 'medium', started: '2026-03-13' },
+  ];
+
+  const platform = document.getElementById('admon-platform').value;
+  const competitor = document.getElementById('admon-competitor').value;
+  const theme = document.getElementById('admon-theme').value;
+  const sort = document.getElementById('admon-sort').value;
+
+  let filtered = [...ads];
+  if (platform) filtered = filtered.filter(a => a.platform === platform);
+  if (competitor) filtered = filtered.filter(a => a.competitor === competitor);
+  if (theme) filtered = filtered.filter(a => a.theme === theme);
+  if (sort === 'longest') filtered.sort((a, b) => b.days - a.days);
+  else if (sort === 'spend') filtered.sort((a, b) => ({ high: 3, medium: 2, low: 1 }[b.spend] - { high: 3, medium: 2, low: 1 }[a.spend]));
+
+  document.getElementById('ad-feed').innerHTML = filtered.map(ad => `
+    <div class="ad-card">
+      <div class="ad-card-header">
+        <div class="ad-card-competitor">${ad.competitor}</div>
+        <span class="ad-platform-badge ${ad.platform}">${ad.platform}</span>
+      </div>
+      <div class="ad-card-text">${ad.text}</div>
+      <div class="ad-card-meta">
+        <span class="ad-theme-tag">${ad.theme}</span>
+        <span class="ad-spend-badge ${ad.spend}">${ad.spend.toUpperCase()} SPEND</span>
+        <span class="ad-date-range">${ad.started} | ${ad.days}d</span>
+        ${ad.days <= 3 ? '<span style="background:rgba(56,217,169,0.15);color:var(--teal);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px">NEW</span>' : ''}
+        ${ad.days >= 30 ? '<span style="background:rgba(240,180,41,0.15);color:var(--gold);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px">LONG RUN</span>' : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+['admon-platform', 'admon-competitor', 'admon-theme', 'admon-sort'].forEach(id => {
+  document.getElementById(id).addEventListener('change', renderAdMonitor);
+});
+
+// ============================================================
+// KEYWORD INTEL
+// ============================================================
+function renderKeywords() {
+  const keywords = [
+    { keyword: 'best trading app', volume: 450000, cpc: 45, competition: 'high', univest: false, competitors: ['Groww', 'Angel One', 'Upstox', 'Zerodha'] },
+    { keyword: 'demat account opening', volume: 380000, cpc: 55, competition: 'high', univest: false, competitors: ['Angel One', '5paisa', 'Groww'] },
+    { keyword: 'mutual fund sip', volume: 320000, cpc: 35, competition: 'high', univest: false, competitors: ['Groww', 'Paytm Money', 'Smallcase'] },
+    { keyword: 'stock market app', volume: 280000, cpc: 40, competition: 'high', univest: false, competitors: ['Zerodha', 'Groww', 'Angel One'] },
+    { keyword: 'best investment app 2026', volume: 220000, cpc: 50, competition: 'medium', univest: false, competitors: ['INDmoney', 'Groww'] },
+    { keyword: 'options trading app', volume: 180000, cpc: 60, competition: 'medium', univest: false, competitors: ['Dhan', 'Sensibull', 'Zerodha'] },
+    { keyword: 'stock advisory app', volume: 150000, cpc: 65, competition: 'medium', univest: true, competitors: ['Smallcase'] },
+    { keyword: 'SEBI registered advisory', volume: 120000, cpc: 70, competition: 'low', univest: true, competitors: [] },
+    { keyword: 'research advisory service', volume: 90000, cpc: 55, competition: 'low', univest: true, competitors: ['Sensibull'] },
+    { keyword: 'free portfolio tracker', volume: 200000, cpc: 30, competition: 'medium', univest: false, competitors: ['INDmoney', 'Groww'] },
+    { keyword: 'nifty prediction today', volume: 500000, cpc: 15, competition: 'low', univest: false, competitors: [] },
+    { keyword: 'intraday trading tips', volume: 350000, cpc: 25, competition: 'medium', univest: false, competitors: ['Angel One'] },
+  ];
+
+  document.getElementById('keyword-table-container').innerHTML = `<table class="data-table"><thead><tr><th>Keyword</th><th>Monthly Volume</th><th>Est. CPC</th><th>Competition</th><th>Univest Active</th><th>Competitors</th></tr></thead><tbody>
+    ${keywords.map(k => `<tr>
+      <td style="font-weight:600">${k.keyword}</td>
+      <td class="text-mono">${fmtNum(k.volume)}</td>
+      <td class="text-mono">\u20B9${k.cpc}</td>
+      <td><span class="badge ${k.competition === 'high' ? 'red' : k.competition === 'medium' ? 'gold' : 'green'}">${k.competition}</span></td>
+      <td>${k.univest ? '<span class="badge green">Active</span>' : '<span class="badge muted">No</span>'}</td>
+      <td style="font-size:12px">${k.competitors.join(', ') || '-'}</td>
+    </tr>`).join('')}
+  </tbody></table>`;
+
+  // Keyword gaps
+  const gaps = keywords.filter(k => !k.univest && k.competition !== 'high').sort((a, b) => b.volume - a.volume);
+  document.getElementById('keyword-gaps').innerHTML = gaps.map(k => `
+    <div class="keyword-gap-item">
+      <div><div class="keyword-gap-keyword">${k.keyword}</div><div class="keyword-gap-info">${fmtNum(k.volume)} monthly searches | \u20B9${k.cpc} CPC</div></div>
+      <span class="badge ${k.competition === 'low' ? 'green' : 'gold'}">${k.competition === 'low' ? 'HIGH OPPORTUNITY' : 'MEDIUM OPPORTUNITY'}</span>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// COMPETITIVE TIMELINE
+// ============================================================
+function renderTimeline() {
+  const ctx = document.getElementById('timeline-chart');
+  if (chartInstances.timeline) chartInstances.timeline.destroy();
+
+  const months = ['Oct 25', 'Nov 25', 'Dec 25', 'Jan 26', 'Feb 26', 'Mar 26'];
+  const datasets = [
+    { label: 'Angel One', data: [28, 30, 32, 35, 33, 32.5], borderColor: '#ff6b6b', fill: false },
+    { label: 'Groww', data: [15, 16, 17, 18, 17.5, 17.5], borderColor: '#38d9a9', fill: false },
+    { label: 'Upstox', data: [8, 9, 10, 11, 10, 10], borderColor: '#4dabf7', fill: false },
+    { label: 'Paytm Money', data: [10, 11, 12, 13, 12.5, 12.5], borderColor: '#f0b429', fill: false },
+    { label: 'INDmoney', data: [7, 8, 9, 10, 10, 10], borderColor: '#e599f7', fill: false },
+    { label: 'Zerodha', data: [3.5, 3.8, 4, 4, 4, 4], borderColor: '#51cf66', fill: false },
+    { label: '5paisa', data: [5, 5.5, 6, 6.5, 6.5, 6.5], borderColor: '#74c0fc', fill: false },
+  ];
+
+  chartInstances.timeline = new Chart(ctx, {
+    type: 'line',
+    data: { labels: months, datasets: datasets.map(d => ({ ...d, tension: 0.3, pointRadius: 4, borderWidth: 2 })) },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#e8e9f0', font: { size: 12 } } }, title: { display: true, text: 'Estimated Monthly Ad Spend (Cr)', color: '#7c7d8a' } },
+      scales: {
+        x: { ticks: { color: '#7c7d8a' }, grid: { color: '#252630' } },
+        y: { ticks: { color: '#7c7d8a', callback: v => '\u20B9' + v + 'Cr' }, grid: { color: '#252630' } }
+      }
+    }
+  });
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function renderSettings() {
+  document.getElementById('settings-competitors').innerHTML = DATA.competitors.map(c =>
+    `<div class="settings-competitor-item"><span>${c.name}</span><div style="display:flex;gap:8px;align-items:center"><span class="badge ${c.vertical === 'both' ? 'gold' : c.vertical === 'ra' ? 'teal' : 'blue'}">${c.vertical}</span><span class="text-mono text-muted" style="font-size:11px">${fmt(c.estimated_monthly_adspend)}/mo</span></div></div>`
+  ).join('');
+}
+
+document.getElementById('btn-add-competitor').addEventListener('click', () => {
+  const name = document.getElementById('new-competitor-name').value.trim();
+  const vertical = document.getElementById('new-competitor-vertical').value;
+  if (!name) return;
+  DATA.competitors.push({ id: 'c' + (DATA.competitors.length + 1), name, vertical, estimated_monthly_adspend: 0, primary_channels: 'Unknown' });
+  document.getElementById('new-competitor-name').value = '';
+  renderSettings();
+  showToast('Competitor Added', name + ' added to tracking list', 'success');
+});
+
+document.getElementById('btn-save-targets').addEventListener('click', () => {
+  showToast('Targets Saved', 'CPA targets updated successfully', 'success');
+});
+
+// Export
+document.getElementById('btn-export-json').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'inventory-scanner-data.json'; a.click();
+  showToast('Export Complete', 'JSON file downloaded', 'success');
+});
+
+document.getElementById('btn-export-csv').addEventListener('click', () => {
+  const headers = ['Name', 'Category', 'Platform', 'Min CPM', 'Max CPM', 'Pricing', 'Reach', 'Fit', 'Fintech', 'Status'];
+  const rows = DATA.inventories.map(i => [i.name, i.category, i.platform_parent, i.min_cpm, i.max_cpm, i.pricing_model, i.estimated_monthly_reach, i.target_audience_fit, i.fintech_friendly, i.status]);
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'inventories.csv'; a.click();
+  showToast('Export Complete', 'CSV file downloaded', 'success');
+});
+
+document.getElementById('btn-export-budget').addEventListener('click', () => {
+  showToast('Export', 'Run budget allocation first to export results', 'info');
+});
+
+// Run Discovery button
+document.getElementById('btn-run-discovery').addEventListener('click', () => {
+  showToast('Discovery', 'Static mode - discovery runs are simulated. Data is embedded.', 'info');
+});
+
+// Keyboard shortcut
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    document.getElementById('global-search').focus();
+    switchView('explorer');
+  }
+  if (e.key === 'Escape') {
+    document.getElementById('inventory-detail-modal').style.display = 'none';
+    document.getElementById('compare-modal').style.display = 'none';
+    currentDetailInv = null;
+  }
+});
+
+// ============================================================
+// INIT
+// ============================================================
+loadDashboard();
+</script>
+</body>
+</html>
