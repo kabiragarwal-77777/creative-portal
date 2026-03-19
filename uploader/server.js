@@ -2077,6 +2077,7 @@ FROM signup_metrics sm
 GROUP BY 1,2,3,4
 ORDER BY SUM(sm.total_signup) DESC`;
 
+        console.log('[ad-funnel] Running Metabase query...');
         const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
             method: 'POST',
             headers: {
@@ -2087,6 +2088,7 @@ ORDER BY SUM(sm.total_signup) DESC`;
                 database: 2,
                 type: 'native',
                 native: { query: sql },
+                constraints: { 'max-results': 100000, 'max-results-bare-rows': 100000 },
             }),
         });
 
@@ -2103,7 +2105,10 @@ ORDER BY SUM(sm.total_signup) DESC`;
             return obj;
         });
 
-        res.json({ success: true, data: rows, total: rows.length });
+        const truncated = result.data.rows_truncated || false;
+        console.log(`[ad-funnel] Done. ${rows.length} rows returned. Truncated: ${truncated}`);
+
+        res.json({ success: true, data: rows, total: rows.length, truncated });
     } catch (err) {
         console.error('Metabase ad-funnel error:', err);
         res.status(500).json({ success: false, error: err.message });
