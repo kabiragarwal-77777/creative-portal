@@ -209,6 +209,8 @@ function normalizeData() {
         record.thruPlays = parseNum(get(['ThruPlay']));
         record.threeSecViews = parseNum(get(['3-Sec', '3 Sec']));
         record.maturedSpend = parseNum(get(['Matured spends']));
+        record.d6Matured = parseNum(get(['D6 matured']));
+        record.d6CACMatured = parseNum(get(['D6 CAC matured']));
         record.d6RevenueMatured = parseNum(get(['D6 revenue overall (matured)']));
         record.d6ROASMatured = parsePercent(get(['D6 ROAS overall (matured)']));
         record.overallRevenueMatured = parseNum(get(['Overall revenue matured']));
@@ -743,28 +745,50 @@ function renderDashboard() {
 }
 
 // Shared alert classification logic
+// Determine if a creative is "matured" (go-live 14+ days ago)
+function isMatured(d) {
+    const goLive = parseDate(d.date);
+    if (!goLive) return false;
+    const daysSinceGoLive = (Date.now() - goLive) / (1000 * 60 * 60 * 24);
+    return daysSinceGoLive >= 14;
+}
+
+// Pick the right D6 CAC and D6 ROAS based on maturity
+function getAlertMetrics(d) {
+    if (isMatured(d)) {
+        return {
+            d6CAC: d.d6CACMatured || d.d6CAC,
+            d6ROAS: d.d6ROASMatured || d.d6ROAS,
+            label: 'Matured'
+        };
+    }
+    return { d6CAC: d.d6CAC, d6ROAS: d.d6ROAS, label: 'Current' };
+}
+
 function classifyAlerts(creatives) {
     const eligible = creatives.filter(d => d.spent >= 15000);
 
     const redAlerts = eligible.filter(d => {
+        const m = getAlertMetrics(d);
         // D6 ROAS > 28% = never red
-        if (d.d6ROAS > 28) return false;
+        if (m.d6ROAS > 28) return false;
         // Count breaches: signup cost > 1000, d0 trial cost > 3500, d6 CAC > 15000
         let breaches = 0;
         if (d.signupCost > 1000) breaches++;
         if (d.d0TrialCost > 3500) breaches++;
-        if (d.d6CAC > 15000) breaches++;
+        if (m.d6CAC > 15000) breaches++;
         return breaches >= 2;
     });
 
     const greenAlerts = eligible.filter(d => {
+        const m = getAlertMetrics(d);
         // D6 ROAS > 28% = always green
-        if (d.d6ROAS > 28) return true;
+        if (m.d6ROAS > 28) return true;
         // Count green hits: signup cost < 500, d0 trial cost < 2500, d6 CAC < 12000
         let hits = 0;
         if (d.signupCost > 0 && d.signupCost < 500) hits++;
         if (d.d0TrialCost > 0 && d.d0TrialCost < 2500) hits++;
-        if (d.d6CAC > 0 && d.d6CAC < 12000) hits++;
+        if (m.d6CAC > 0 && m.d6CAC < 12000) hits++;
         return hits >= 2;
     });
 
@@ -773,15 +797,18 @@ function classifyAlerts(creatives) {
 
 function getAlertReasons(d, type) {
     const reasons = [];
+    const m = getAlertMetrics(d);
+    const d6Label = m.label === 'Matured' ? 'D6 CAC (Mat.)' : 'D6 CAC';
+    const roasLabel = m.label === 'Matured' ? 'D6 ROAS (Mat.)' : 'D6 ROAS';
     if (type === 'red') {
         if (d.signupCost > 1000) reasons.push(`Signup Cost: ₹${Math.round(d.signupCost)} (> ₹1,000)`);
         if (d.d0TrialCost > 3500) reasons.push(`D0 Trial Cost: ₹${Math.round(d.d0TrialCost)} (> ₹3,500)`);
-        if (d.d6CAC > 15000) reasons.push(`D6 CAC: ₹${Math.round(d.d6CAC)} (> ₹15,000)`);
+        if (m.d6CAC > 15000) reasons.push(`${d6Label}: ₹${Math.round(m.d6CAC)} (> ₹15,000)`);
     } else {
-        if (d.d6ROAS > 28) reasons.push(`D6 ROAS: ${d.d6ROAS.toFixed(1)}% (> 28%)`);
+        if (m.d6ROAS > 28) reasons.push(`${roasLabel}: ${m.d6ROAS.toFixed(1)}% (> 28%)`);
         if (d.signupCost > 0 && d.signupCost < 500) reasons.push(`Signup Cost: ₹${Math.round(d.signupCost)} (< ₹500)`);
         if (d.d0TrialCost > 0 && d.d0TrialCost < 2500) reasons.push(`D0 Trial Cost: ₹${Math.round(d.d0TrialCost)} (< ₹2,500)`);
-        if (d.d6CAC > 0 && d.d6CAC < 12000) reasons.push(`D6 CAC: ₹${Math.round(d.d6CAC)} (< ₹12,000)`);
+        if (m.d6CAC > 0 && m.d6CAC < 12000) reasons.push(`${d6Label}: ₹${Math.round(m.d6CAC)} (< ₹12,000)`);
     }
     return reasons;
 }
