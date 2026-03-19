@@ -1691,7 +1691,11 @@ window.fetchCampaignTree = async function () {
         let unmatchedKeys = 0;
         const matchedMbKeys = new Set();
 
-        for (const row of metaRes.data) {
+        // Filter to Android only (Metabase query only has Android data)
+        const metaRows = metaRes.data.filter(r => /android/i.test(r.campaign_name));
+        console.log(`[Tree] Filtered to Android: ${metaRows.length}/${metaRes.data.length} Meta rows`);
+
+        for (const row of metaRows) {
             const adUid = row.campaign_name + '|||' + row.adset_name + '|||' + row.ad_name;
             if (!adAgg[adUid]) {
                 adAgg[adUid] = {
@@ -1775,7 +1779,7 @@ window.fetchCampaignTree = async function () {
         }
 
         const totalMbKeys = Object.keys(mbDaily).length;
-        console.log(`[Tree] Meta rows: ${metaRes.total} | MB daily keys: ${totalMbKeys} | Matched: ${matchedKeys}/${matchedKeys + unmatchedKeys} | Unmatched MB: ${totalMbKeys - matchedMbKeys.size}`);
+        console.log(`[Tree] Meta rows: ${metaRows.length} (Android) | MB daily keys: ${totalMbKeys} | Matched: ${matchedKeys}/${matchedKeys + unmatchedKeys} | Unmatched MB: ${totalMbKeys - matchedMbKeys.size}`);
 
         // Filter by spend if checkbox is checked
         const spendOnly = document.getElementById('treeSpendFilter').checked;
