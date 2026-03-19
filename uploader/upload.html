@@ -1738,7 +1738,8 @@
             return v;
         }
 
-        // Existing adset (skip creation)
+        // Existing adset (skip creation) — clear first so stale values don't persist
+        $('existingAdsetId').value = '';
         setVal('existingAdsetId', ['existingadsetid', 'existing_adset_id', 'adset_id', 'adsetid']);
         toggleExistingAdset();
 
@@ -2119,7 +2120,7 @@
     // CORE PIPELINE (reusable for single + bulk)
     // =========================================================================
     async function executeSingleRow(config, sheetRowIndex, sheetTabName, existingAdsetId) {
-        let adsetId = existingAdsetId || null;
+        let adsetId = existingAdsetId || config.existing_adset_id || null;
         let creativeId = null;
         let adId = null;
 
