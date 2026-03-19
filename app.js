@@ -1659,32 +1659,8 @@ window.fetchCampaignTree = async function () {
 
         status.textContent = `Meta: ${metaRes.total} rows | Metabase: ${funnelRes.total} rows. Matching...`;
 
-        // Build Metabase lookup by key
-        const mbByKey = {};
-        for (const row of funnelRes.data) {
-            const key = buildMetabaseKey(row.date, row.campaign_name, row.ad_set_name, row.tracker_name);
-            mbByKey[key] = row;
-        }
-        // Debug: log sample keys from both sides
-        const mbKeys = Object.keys(mbByKey);
-        console.log('[DEBUG] Metabase keys count:', mbKeys.length);
-        console.log('[DEBUG] Sample Metabase keys:', mbKeys.slice(0, 3));
-        if (metaRes.data.length > 0) {
-            const sampleMeta = metaRes.data[0];
-            console.log('[DEBUG] Sample Meta key:', buildMetaKey(sampleMeta.date_start, sampleMeta.campaign_name, sampleMeta.adset_name, sampleMeta.ad_name));
-            console.log('[DEBUG] Sample Meta row:', sampleMeta.date_start, '|', sampleMeta.campaign_name, '|', sampleMeta.adset_name, '|', sampleMeta.ad_name);
-        }
-        if (funnelRes.data.length > 0) {
-            const sampleMb = funnelRes.data[0];
-            console.log('[DEBUG] Sample MB row:', sampleMb.date, '|', sampleMb.campaign_name, '|', sampleMb.ad_set_name, '|', sampleMb.tracker_name);
-        }
-
-        // Match Meta rows to Metabase and aggregate at ad level
-        // adUID = campaign_name + '|||' + adset_name + '|||' + ad_name
+        // ── Step 1: Aggregate Meta daily rows → per ad (raw metrics only) ──
         const adAgg = {};
-        let matchedKeys = 0;
-        let unmatchedKeys = 0;
-
         for (const row of metaRes.data) {
             const uid = row.campaign_name + '|||' + row.adset_name + '|||' + row.ad_name;
             if (!adAgg[uid]) {
@@ -1706,68 +1682,92 @@ window.fetchCampaignTree = async function () {
             a.impressions += row.impressions;
             a.clicks += row.clicks;
             a.installs += row.installs;
+        }
 
-            // Try to match to Metabase
-            const key = buildMetaKey(row.date_start, row.campaign_name, row.adset_name, row.ad_name);
-            const mb = mbByKey[key];
+        // ── Step 2: Aggregate Metabase daily rows → per ad (raw funnel metrics) ──
+        // Key = campaign_name + lowered adset_name + tracker_name (no date)
+        const mbAgg = {};
+        for (const row of funnelRes.data) {
+            const uid = row.campaign_name + '|||' + row.ad_set_name + '|||' + row.tracker_name;
+            if (!mbAgg[uid]) {
+                mbAgg[uid] = {
+                    campaign_name: row.campaign_name,
+                    adset_name: row.ad_set_name,
+                    tracker_name: row.tracker_name,
+                    signups: 0, d0_trial: 0, d0: 0, d0_revenue: 0,
+                    d6: 0, d6_revenue: 0, overall_revenue: 0,
+                    new_converted_user: 0, new_user_rev: 0,
+                    p0_signup: 0, p1_signup: 0, total_trial: 0,
+                    d6_overall_con: 0, d6_overall_revenue: 0,
+                };
+            }
+            const m = mbAgg[uid];
+            m.signups += Number(row.signups) || 0;
+            m.d0_trial += Number(row.d0_trial) || 0;
+            m.d0 += Number(row.d0) || 0;
+            m.d0_revenue += Number(row.d0_revenue) || 0;
+            m.d6 += Number(row.d6) || 0;
+            m.d6_revenue += Number(row.d6_revenue) || 0;
+            m.overall_revenue += Number(row.overall_revenue) || 0;
+            m.new_converted_user += Number(row.new_converted_user) || 0;
+            m.new_user_rev += Number(row.new_user_rev) || 0;
+            m.p0_signup += Number(row.p0_signup) || 0;
+            m.p1_signup += Number(row.p1_signup) || 0;
+            m.total_trial += Number(row.total_trial) || 0;
+            m.d6_overall_con += Number(row.d6_overall_con) || 0;
+            m.d6_overall_revenue += Number(row.d6_overall_revenue) || 0;
+        }
+
+        // ── Step 3: Match Meta ads to Metabase by campaign+adset+ad ──
+        // Meta adset_name needs lowering to match Metabase (which lowered it in SQL)
+        let matchedKeys = 0;
+        let unmatchedKeys = 0;
+        for (const uid of Object.keys(adAgg)) {
+            const a = adAgg[uid];
+            // Build the Metabase-style key: campaign + lowered adset + ad (strip after colon)
+            const mbKey = a.campaign_name + '|||' + a.adset_name.toLowerCase().trim() + '|||' + a.ad_name.replace(/:.*$/, '');
+            const mb = mbAgg[mbKey];
             if (mb) {
                 matchedKeys++;
                 a._matched = true;
-                a.signups += Number(mb.signups) || 0;
-                a.d0_trial += Number(mb.d0_trial) || 0;
-                a.d0 += Number(mb.d0) || 0;
-                a.d0_revenue += Number(mb.d0_revenue) || 0;
-                a.d6 += Number(mb.d6) || 0;
-                a.d6_revenue += Number(mb.d6_revenue) || 0;
-                a.overall_revenue += Number(mb.overall_revenue) || 0;
-                a.new_converted_user += Number(mb.new_converted_user) || 0;
-                a.new_user_rev += Number(mb.new_user_rev) || 0;
-                a.p0_signup += Number(mb.p0_signup) || 0;
-                a.p1_signup += Number(mb.p1_signup) || 0;
-                a.total_trial += Number(mb.total_trial) || 0;
-                a.d6_overall_con += Number(mb.d6_overall_con) || 0;
-                a.d6_overall_revenue += Number(mb.d6_overall_revenue) || 0;
+                a.signups = mb.signups;
+                a.d0_trial = mb.d0_trial;
+                a.d0 = mb.d0;
+                a.d0_revenue = mb.d0_revenue;
+                a.d6 = mb.d6;
+                a.d6_revenue = mb.d6_revenue;
+                a.overall_revenue = mb.overall_revenue;
+                a.new_converted_user = mb.new_converted_user;
+                a.new_user_rev = mb.new_user_rev;
+                a.p0_signup = mb.p0_signup;
+                a.p1_signup = mb.p1_signup;
+                a.total_trial = mb.total_trial;
+                a.d6_overall_con = mb.d6_overall_con;
+                a.d6_overall_revenue = mb.d6_overall_revenue;
             } else {
                 unmatchedKeys++;
             }
         }
 
-        // Also add Metabase rows that had no Meta match (spend-less but have signups)
-        const metaKeys = new Set();
-        for (const row of metaRes.data) {
-            metaKeys.add(buildMetaKey(row.date_start, row.campaign_name, row.adset_name, row.ad_name));
-        }
-        for (const row of funnelRes.data) {
-            const key = buildMetabaseKey(row.date, row.campaign_name, row.ad_set_name, row.tracker_name);
-            if (!metaKeys.has(key)) {
-                // This funnel row has no matching Meta row — add with 0 spend
-                const uid = row.campaign_name + '|||' + row.ad_set_name + '|||' + row.tracker_name;
-                if (!adAgg[uid]) {
-                    adAgg[uid] = {
-                        campaign_name: row.campaign_name, campaign_id: '',
-                        adset_name: row.ad_set_name, adset_id: '',
-                        ad_name: row.tracker_name, ad_id: '',
-                        spend: 0, impressions: 0, clicks: 0, installs: 0,
-                        signups: 0, d0_trial: 0, d0: 0, d0_revenue: 0,
-                        d6: 0, d6_revenue: 0, overall_revenue: 0,
-                        new_converted_user: 0, new_user_rev: 0,
-                        p0_signup: 0, p1_signup: 0, total_trial: 0,
-                        d6_overall_con: 0, d6_overall_revenue: 0,
-                        _matched: true,
-                    };
-                }
-                const a = adAgg[uid];
-                a.signups += Number(row.signups) || 0;
-                a.d0_trial += Number(row.d0_trial) || 0;
-                a.d0 += Number(row.d0) || 0;
-                a.d0_revenue += Number(row.d0_revenue) || 0;
-                a.d6 += Number(row.d6) || 0;
-                a.d6_revenue += Number(row.d6_revenue) || 0;
-                a.overall_revenue += Number(row.overall_revenue) || 0;
-                a.new_converted_user += Number(row.new_converted_user) || 0;
-                a.new_user_rev += Number(row.new_user_rev) || 0;
+        // ── Step 4: Add Metabase-only entries (no Meta spend) ──
+        const metaUids = new Set(Object.keys(adAgg).map(uid => {
+            const a = adAgg[uid];
+            return a.campaign_name + '|||' + a.adset_name.toLowerCase().trim() + '|||' + a.ad_name.replace(/:.*$/, '');
+        }));
+        for (const uid of Object.keys(mbAgg)) {
+            if (!metaUids.has(uid)) {
+                const mb = mbAgg[uid];
+                adAgg[uid] = {
+                    campaign_name: mb.campaign_name, campaign_id: '',
+                    adset_name: mb.adset_name, adset_id: '',
+                    ad_name: mb.tracker_name, ad_id: '',
+                    spend: 0, impressions: 0, clicks: 0, installs: 0,
+                    ...mb, _matched: true,
+                };
             }
         }
+
+        console.log(`[Tree] Meta ads: ${Object.keys(adAgg).length} | MB ads: ${Object.keys(mbAgg).length} | Matched: ${matchedKeys} | Unmatched: ${unmatchedKeys}`);
 
         // Filter by spend if checkbox is checked
         const spendOnly = document.getElementById('treeSpendFilter').checked;
