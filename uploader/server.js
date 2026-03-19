@@ -1914,26 +1914,31 @@ app.post('/api/meta/ad-insights-daily', async (req, res) => {
             limit: 500,
         });
 
-        // First request
-        const qs = new URLSearchParams(params).toString();
-        let response = await fetch(`${url}?${qs}`);
-        let data = await response.json();
-
-        if (data.error) {
-            return res.status(400).json({ success: false, error: data.error.message });
-        }
-
-        if (data.data) allRows.push(...data.data);
-
         // Paginate through all results
-        let pageCount = 1;
-        while (data.paging && data.paging.next) {
+        let pageCount = 0;
+        let nextUrl = `${url}?${new URLSearchParams(params).toString()}`;
+        while (nextUrl) {
             pageCount++;
-            console.log(`[ad-insights] Fetching page ${pageCount}... (${allRows.length} rows so far)`);
-            response = await fetch(data.paging.next);
-            data = await response.json();
-            if (data.error) { console.error('[ad-insights] Pagination error:', data.error); break; }
+            console.log(`[ad-insights] Fetching page ${pageCount}...${allRows.length ? ' (' + allRows.length + ' rows so far)' : ''}`);
+            const response = await fetch(nextUrl);
+            const data = await response.json();
+
+            if (data.error) {
+                if (pageCount === 1) return res.status(400).json({ success: false, error: data.error.message });
+                console.error('[ad-insights] Pagination error:', data.error);
+                break;
+            }
+
             if (data.data) allRows.push(...data.data);
+
+            // Meta Insights API: check for paging.next cursor URL
+            // Append appsecret_proof since Meta doesn't include it in pagination URLs
+            if (data.paging && data.paging.next) {
+                const sep = data.paging.next.includes('?') ? '&' : '?';
+                nextUrl = data.paging.next + sep + 'appsecret_proof=' + encodeURIComponent(META_APP_SECRET_PROOF);
+            } else {
+                nextUrl = null;
+            }
         }
         console.log(`[ad-insights] Done. ${pageCount} pages, ${allRows.length} total rows.`);
 
