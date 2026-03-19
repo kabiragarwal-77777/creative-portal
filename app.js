@@ -1756,8 +1756,12 @@ window.fetchCampaignTree = async function () {
             }
         }
 
+        // Filter by spend if checkbox is checked
+        const spendOnly = document.getElementById('treeSpendFilter').checked;
+        const adEntries = spendOnly ? Object.values(adAgg).filter(a => a.spend > 0) : Object.values(adAgg);
+
         // Compute derived metrics per ad
-        const ads = Object.values(adAgg).map(a => {
+        const ads = adEntries.map(a => {
             const cpi = a.installs > 0 ? a.spend / a.installs : null;
             const ctr = a.impressions > 0 ? (a.clicks / a.impressions) * 100 : 0;
             const signupCost = a.signups > 0 ? a.spend / a.signups : null;

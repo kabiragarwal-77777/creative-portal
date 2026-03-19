@@ -327,6 +327,7 @@
                         <input type="date" id="treeDateFrom" style="background:#1e1e2e; border:1px solid #444; color:#e0e0e0; padding:6px 10px; border-radius:6px;">
                         <span style="color:#888;">to</span>
                         <input type="date" id="treeDateTo" style="background:#1e1e2e; border:1px solid #444; color:#e0e0e0; padding:6px 10px; border-radius:6px;">
+                        <label style="display:flex; align-items:center; gap:4px; cursor:pointer; font-size:13px; color:#aaa;"><input type="checkbox" id="treeSpendFilter" checked> With Spend Only</label>
                         <button class="btn btn-primary" onclick="fetchCampaignTree()" id="treeAnalyzeBtn">&#9889; Analyze</button>
                         <span id="treeStatus" style="color:#888; font-size:13px;"></span>
                     </div>
@@ -409,7 +410,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="app.js?v=10"></script>
+    <script src="app.js?v=11"></script>
 </body>
 </html>
 
