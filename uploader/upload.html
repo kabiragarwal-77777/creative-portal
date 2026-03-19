@@ -725,7 +725,17 @@
         <div class="section-body">
             <div class="form-grid">
 
+                <!-- Use Existing Adset -->
+                <div class="sub-heading">Use Existing Adset <span style="font-weight:400;font-size:12px;color:#aaa;">(skip adset creation)</span></div>
+
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Existing Adset ID</label>
+                    <input type="text" id="existingAdsetId" placeholder="e.g. 23851234567890123" oninput="toggleExistingAdset()">
+                    <small style="color:#aaa;">If provided, a new ad will be pushed into this adset — all fields below will be skipped.</small>
+                </div>
+
                 <!-- Basic -->
+                <div id="adsetFieldsWrapper">
                 <div class="sub-heading">Basic</div>
 
                 <div class="form-group">
@@ -906,6 +916,7 @@
                     <input type="text" id="objectStoreUrl" placeholder="https://play.google.com/store/apps/details?id=...">
                 </div>
 
+                </div><!-- /adsetFieldsWrapper -->
             </div>
         </div>
     </div>
@@ -1068,7 +1079,7 @@
 <div class="modal-overlay" id="confirmModal">
     <div class="modal">
         <h3>Confirm Ad Creation</h3>
-        <p>This will create an adset and ad on your Meta account. The adset will be set to <strong id="confirmStatus">PAUSED</strong>. Continue?</p>
+        <p id="confirmMsg">This will create an adset and ad on your Meta account. The adset will be set to <strong id="confirmStatus">PAUSED</strong>. Continue?</p>
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
             <button class="btn btn-primary" onclick="executeCreate()">Yes, Create</button>
@@ -1727,6 +1738,10 @@
             return v;
         }
 
+        // Existing adset (skip creation)
+        setVal('existingAdsetId', ['existingadsetid', 'existing_adset_id', 'adset_id', 'adsetid']);
+        toggleExistingAdset();
+
         // Adset
         setVal('adsetName', ['adsetname', 'adset_name', 'adsetName']);
         setSelect('adsetStatus', ['adsetstatus', 'adset_status']);
@@ -1841,6 +1856,14 @@
         $('toggleLabelManual').classList.toggle('active', isManualEntry);
     };
 
+    window.toggleExistingAdset = function () {
+        const id = $('existingAdsetId').value.trim();
+        const wrapper = document.getElementById('adsetFieldsWrapper');
+        if (wrapper) {
+            wrapper.style.display = id ? 'none' : '';
+        }
+    };
+
     window.toggleBudgetType = function () {
         const isDaily = qs('input[name="budgetType"]:checked').value === 'daily';
         $('budgetLabel').innerHTML = (isDaily ? 'Daily Budget' : 'Lifetime Budget') + ' (INR) <span class="required">*</span>';
@@ -1868,6 +1891,7 @@
 
         return {
             campaign_id: $('campaignId').value,
+            existing_adset_id: $('existingAdsetId').value.trim() || null,
             adset_name: $('adsetName').value.trim(),
             adset_status: $('adsetStatus').value,
             budget_type: budgetType,
@@ -1918,12 +1942,9 @@
     // VALIDATION
     // =========================================================================
     function validate() {
+        const hasExistingAdset = !!$('existingAdsetId').value.trim();
+
         const required = [
-            ['campaignId', 'Campaign'],
-            ['adsetName', 'Adset Name'],
-            ['budget', 'Budget'],
-            ['appId', 'Application ID'],
-            ['objectStoreUrl', 'Object Store URL'],
             ['adName', 'Ad Name'],
             ['primaryText', 'Primary Text'],
             ['linkUrl', 'Link URL'],
@@ -1933,9 +1954,19 @@
             ['pageId', 'Facebook Page ID'],
         ];
 
-        const strategy = $('bidStrategy').value;
-        if (strategy === 'LOWEST_COST_WITH_BID_CAP' || strategy === 'COST_CAP') {
-            required.push(['bidAmount', 'Bid Amount']);
+        if (!hasExistingAdset) {
+            // Adset creation fields only required when not reusing an existing adset
+            required.push(
+                ['campaignId', 'Campaign'],
+                ['adsetName', 'Adset Name'],
+                ['budget', 'Budget'],
+                ['appId', 'Application ID'],
+                ['objectStoreUrl', 'Object Store URL'],
+            );
+            const strategy = $('bidStrategy').value;
+            if (strategy === 'LOWEST_COST_WITH_BID_CAP' || strategy === 'COST_CAP') {
+                required.push(['bidAmount', 'Bid Amount']);
+            }
         }
 
         if (!META_ACCESS_TOKEN || !META_APPSECRET_PROOF) {
@@ -2024,7 +2055,12 @@
             return;
         }
         if (!validate()) return;
-        $('confirmStatus').textContent = $('adsetStatus').value;
+        const existingId = $('existingAdsetId').value.trim();
+        if (existingId) {
+            $('confirmMsg').innerHTML = `This will create an ad inside <strong>existing adset ${existingId}</strong>. Continue?`;
+        } else {
+            $('confirmMsg').innerHTML = `This will create an adset and ad on your Meta account. The adset will be set to <strong id="confirmStatus">${$('adsetStatus').value}</strong>. Continue?`;
+        }
         $('confirmModal').classList.add('show');
     };
 
@@ -2571,7 +2607,7 @@
                             if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
                         }
                         const adsetName = config.adset_name || '';
-                        const existingAdsetId = adsetCache[adsetName] || null;
+                        const existingAdsetId = config.existing_adset_id || adsetCache[adsetName] || null;
                         const result = await executeSingleRow(config, rowIdx + 2, sheetTabName, existingAdsetId);
                         if (adsetName && result && result.adsetId) {
                             adsetCache[adsetName] = result.adsetId;
@@ -2623,7 +2659,8 @@
                 if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
             }
             try {
-                await executeSingleRow(config, sheetRowIndex, sheetTabName);
+                const existingAdsetId = config.existing_adset_id || null;
+                await executeSingleRow(config, sheetRowIndex, sheetTabName, existingAdsetId);
             } catch (err) {
                 addLogEntry(`Pipeline failed: ${err.message}`, 'error');
             }
