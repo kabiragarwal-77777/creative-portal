@@ -1741,6 +1741,9 @@
         // Existing adset (skip creation) — clear first so stale values don't persist
         $('existingAdsetId').value = '';
         setVal('existingAdsetId', ['existingadsetid', 'existing_adset_id', 'adset_id', 'adsetid']);
+        console.log('[DEBUG] Sheet headers:', sheetHeaders);
+        console.log('[DEBUG] Row data for adset_id:', sheetHeaders.filter(h => h.toLowerCase().includes('adset')).map(h => h + '=' + row[h]));
+        console.log('[DEBUG] existingAdsetId field value:', $('existingAdsetId').value);
         toggleExistingAdset();
 
         // Adset
@@ -2120,7 +2123,9 @@
     // CORE PIPELINE (reusable for single + bulk)
     // =========================================================================
     async function executeSingleRow(config, sheetRowIndex, sheetTabName, existingAdsetId) {
+        console.log('[DEBUG] executeSingleRow — existingAdsetId param:', existingAdsetId, '| config.existing_adset_id:', config.existing_adset_id);
         let adsetId = existingAdsetId || config.existing_adset_id || null;
+        console.log('[DEBUG] resolved adsetId:', adsetId);
         let creativeId = null;
         let adId = null;
 
