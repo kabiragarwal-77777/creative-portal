@@ -2153,24 +2153,37 @@ window.fetchWeeklyBreakdown = async function () {
         const sortedCampaigns = Object.values(tree).sort((a, b) =>
             b.buckets.reduce((s, x) => s + x.spend, 0) - a.buckets.reduce((s, x) => s + x.spend, 0));
 
-        // Render column headers
-        let html = '<div class="weekly-col-headers"><div class="wk-name-spacer">Name</div>';
-        for (const bkt of buckets) html += `<div class="wk-col">${bkt.label}</div>`;
-        html += '</div>';
+        // Metric column headers (shared for all weekly tables)
+        const metricCols = ['Spend', 'Installs', 'CPI', 'Signups', 'SU Cost', 'D0 Trial', 'D6', 'D6 CAC', 'D6 ROAS'];
 
-        // Render tree
+        // Render tree: campaign → (weekly rows + adsets) → (weekly rows + ads) → weekly rows
+        let html = '';
         for (const camp of sortedCampaigns) {
+            const totalSpend = camp.buckets.reduce((s, b) => s + b.spend, 0);
+            const totalSignups = camp.buckets.reduce((s, b) => s + b.signups, 0);
             const cId = 'wk-' + Math.random().toString(36).substr(2, 8);
-            html += renderWkRow(camp.name, 'campaign', camp.buckets, cId, true);
+            html += wkHeader(camp.name, 'campaign', totalSpend, totalSignups, cId);
             html += `<div class="wk-children collapsed" id="${cId}-children">`;
+            html += wkTable(camp.buckets, buckets, metricCols);
+            // Adsets
             const sortedAdsets = Object.values(camp.adsets).sort((a, b) =>
                 b.buckets.reduce((s, x) => s + x.spend, 0) - a.buckets.reduce((s, x) => s + x.spend, 0));
             for (const adset of sortedAdsets) {
+                const asSpend = adset.buckets.reduce((s, b) => s + b.spend, 0);
+                const asSignups = adset.buckets.reduce((s, b) => s + b.signups, 0);
                 const aId = 'wk-' + Math.random().toString(36).substr(2, 8);
-                html += renderWkRow(adset.name, 'adset', adset.buckets, aId, true);
+                html += wkHeader(adset.name, 'adset', asSpend, asSignups, aId);
                 html += `<div class="wk-children collapsed" id="${aId}-children">`;
+                html += wkTable(adset.buckets, buckets, metricCols);
+                // Ads
                 for (const ad of adset.ads) {
-                    html += renderWkRow(ad.ad_name, 'ad', ad.buckets, null, false);
+                    const adSpend = ad.buckets.reduce((s, b) => s + b.spend, 0);
+                    const adSignups = ad.buckets.reduce((s, b) => s + b.signups, 0);
+                    const adNodeId = 'wk-' + Math.random().toString(36).substr(2, 8);
+                    html += wkHeader(ad.ad_name, 'ad', adSpend, adSignups, adNodeId);
+                    html += `<div class="wk-children collapsed" id="${adNodeId}-children">`;
+                    html += wkTable(ad.buckets, buckets, metricCols);
+                    html += '</div>';
                 }
                 html += '</div>';
             }
@@ -2188,27 +2201,41 @@ window.fetchWeeklyBreakdown = async function () {
     }
 };
 
-function renderWkRow(name, level, rawBuckets, nodeId, hasChildren) {
-    const toggle = hasChildren
-        ? `<span class="tree-toggle" onclick="toggleTreeNode('${nodeId}')">&#9654;</span>`
-        : '<span style="width:16px;display:inline-block;"></span>';
-    const onclick = hasChildren ? `onclick="toggleTreeNode('${nodeId}')"` : '';
+function wkHeader(name, level, totalSpend, totalSignups, nodeId) {
+    return `<div class="tree-header ${level}" onclick="toggleTreeNode('${nodeId}')">
+        <span class="tree-toggle">&#9654;</span>
+        <span class="tree-name">${esc(name)}</span>
+        <div class="tree-metrics">
+            <div class="tree-metric"><div class="label">Spend</div><div class="value">${cur(totalSpend)}</div></div>
+            <div class="tree-metric"><div class="label">Signups</div><div class="value">${num(totalSignups)}</div></div>
+        </div>
+    </div>`;
+}
 
-    let cols = '';
-    for (const raw of rawBuckets) {
+function wkTable(rawBuckets, bucketDefs, metricCols) {
+    let html = '<table class="wk-tbl"><thead><tr><th class="wk-tbl-period">Period</th>';
+    for (const col of metricCols) html += `<th>${col}</th>`;
+    html += '</tr></thead><tbody>';
+    for (let i = 0; i < rawBuckets.length; i++) {
+        const raw = rawBuckets[i];
         const m = deriveMetrics(raw);
+        const label = bucketDefs[i].label;
         const roasColor = m.d6ROAS > 28 ? '#10b981' : m.d6ROAS > 0 ? '#ef4444' : '#888';
         const suCostColor = m.signupCost ? (m.signupCost < 500 ? '#10b981' : m.signupCost > 1000 ? '#ef4444' : '#e0e0e0') : '#888';
-        cols += `<div class="wk-col-cell">
-            <div class="wk-line"><span class="wk-lbl">Spend</span><span class="wk-val">${raw.spend > 0 ? curK(raw.spend) : '-'}</span></div>
-            <div class="wk-line"><span class="wk-lbl">Signups</span><span class="wk-val">${raw.signups || '-'}</span></div>
-            <div class="wk-line"><span class="wk-lbl">SU Cost</span><span class="wk-val" style="color:${suCostColor}">${m.signupCost ? '₹' + Math.round(m.signupCost) : '-'}</span></div>
-            <div class="wk-line"><span class="wk-lbl">D6 ROAS</span><span class="wk-val" style="color:${roasColor}">${m.d6ROAS ? m.d6ROAS.toFixed(1) + '%' : '-'}</span></div>
-        </div>`;
+        const d6CACColor = m.d6CAC ? (m.d6CAC < 12000 ? '#10b981' : m.d6CAC > 15000 ? '#ef4444' : '#e0e0e0') : '#888';
+        html += `<tr>
+            <td class="wk-tbl-period">${label}</td>
+            <td>${raw.spend > 0 ? curK(raw.spend) : '-'}</td>
+            <td>${raw.installs || '-'}</td>
+            <td>${m.cpi ? '₹' + Math.round(m.cpi) : '-'}</td>
+            <td>${raw.signups || '-'}</td>
+            <td style="color:${suCostColor}">${m.signupCost ? '₹' + Math.round(m.signupCost) : '-'}</td>
+            <td>${raw.d0_trial || '-'}</td>
+            <td>${raw.d6 || '-'}</td>
+            <td style="color:${d6CACColor}">${m.d6CAC ? '₹' + Math.round(m.d6CAC) : '-'}</td>
+            <td style="color:${roasColor}">${m.d6ROAS ? m.d6ROAS.toFixed(1) + '%' : '-'}</td>
+        </tr>`;
     }
-
-    return `<div class="wk-row ${level}" ${onclick}>
-        <div class="wk-name">${toggle} ${esc(name)}</div>
-        <div class="wk-cols">${cols}</div>
-    </div>`;
+    html += '</tbody></table>';
+    return html;
 }

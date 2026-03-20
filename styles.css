@@ -1184,22 +1184,17 @@ tr:hover td {
 .tree-no-funnel { opacity: 0.5; font-style: italic; }
 
 /* ── Weekly Breakdown ── */
-.weekly-col-headers {
-    display: flex; align-items: center; padding: 6px 12px; margin-bottom: 4px;
-    background: #16161e; border-radius: 6px; position: sticky; top: 0; z-index: 5;
+.wk-tbl {
+    width: 100%; border-collapse: collapse; margin: 6px 0 12px 0; font-size: 12px;
 }
-.weekly-col-headers .wk-name-spacer { min-width: 260px; flex-shrink: 0; font-size: 11px; color: #666; text-transform: uppercase; }
-.weekly-col-headers .wk-col { width: 130px; min-width: 130px; text-align: center; font-size: 10px; color: #888; text-transform: uppercase; font-weight: 600; border-left: 1px solid #2a2a3e; padding: 4px 0; }
-.wk-row { display: flex; align-items: center; padding: 6px 12px; background: #1e1e2e; border-radius: 6px; cursor: pointer; margin-bottom: 2px; border-left: 3px solid transparent; transition: background 0.15s; }
-.wk-row:hover { background: #2a2a3e; }
-.wk-row.campaign { border-left-color: #6c5ce7; font-weight: 600; }
-.wk-row.adset { border-left-color: #00b894; margin-left: 20px; }
-.wk-row.ad { border-left-color: #0984e3; margin-left: 40px; cursor: default; }
-.wk-name { min-width: 220px; max-width: 280px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px; font-size: 13px; }
-.wk-cols { display: flex; flex: 1; }
-.wk-col-cell { width: 130px; min-width: 130px; border-left: 1px solid #2a2a3e; padding: 4px 8px; font-size: 11px; }
-.wk-col-cell .wk-line { display: flex; justify-content: space-between; gap: 4px; }
-.wk-col-cell .wk-lbl { color: #666; font-size: 9px; text-transform: uppercase; }
-.wk-col-cell .wk-val { color: #e0e0e0; font-weight: 600; text-align: right; }
-.wk-children { overflow: hidden; }
-.wk-children.collapsed { display: none; }
+.wk-tbl th {
+    text-align: right; padding: 5px 10px; color: #888; font-size: 10px; text-transform: uppercase;
+    font-weight: 600; border-bottom: 1px solid #2a2a3e; white-space: nowrap;
+}
+.wk-tbl td {
+    text-align: right; padding: 5px 10px; color: #e0e0e0; font-weight: 500;
+    border-bottom: 1px solid #1a1a2a; white-space: nowrap;
+}
+.wk-tbl tr:hover td { background: #1a1a2e; }
+.wk-tbl .wk-tbl-period { text-align: left; color: #aaa; font-weight: 600; min-width: 120px; }
+.wk-tbl th.wk-tbl-period { text-align: left; }
