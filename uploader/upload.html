@@ -795,6 +795,18 @@
                         <option value="IMPRESSIONS">IMPRESSIONS</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label>Custom Event Type</label>
+                    <select id="customEventType">
+                        <option value="" selected>(none)</option>
+                        <option value="PURCHASE">PURCHASE</option>
+                        <option value="ADD_TO_CART">ADD_TO_CART</option>
+                        <option value="INITIATED_CHECKOUT">INITIATED_CHECKOUT</option>
+                        <option value="COMPLETE_REGISTRATION">COMPLETE_REGISTRATION</option>
+                        <option value="LEAD">LEAD</option>
+                        <option value="OTHER">OTHER</option>
+                    </select>
+                </div>
 
                 <!-- Schedule -->
                 <div class="sub-heading">Schedule</div>
@@ -1228,13 +1240,22 @@
     }
 
     // Upload image to Meta — download from Drive then upload as bytes
-    async function uploadImageByUrl(driveUrl) {
-        // Download image via lh3 (CORS-friendly, works from browser)
-        const lh3Url = getDriveLh3Url(driveUrl);
-        const imgResp = await fetch(lh3Url);
-        if (!imgResp.ok) throw new Error('Failed to download image from Drive (status ' + imgResp.status + ')');
-        const blob = await imgResp.blob();
-        if (blob.size < 1000) throw new Error('Downloaded image too small (' + blob.size + ' bytes), check Drive sharing');
+    async function uploadImageByUrl(driveUrl, retries = 3) {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            // Download image via lh3 (CORS-friendly, works from browser)
+            const lh3Url = getDriveLh3Url(driveUrl);
+            const imgResp = await fetch(lh3Url);
+            if (!imgResp.ok) {
+                if (imgResp.status === 429 && attempt < retries) {
+                    const delay = attempt * 3000;
+                    console.log(`[DRIVE] 429 rate limited, retrying in ${delay / 1000}s (attempt ${attempt}/${retries})`);
+                    await new Promise(r => setTimeout(r, delay));
+                    continue;
+                }
+                throw new Error('Failed to download image from Drive (status ' + imgResp.status + ')');
+            }
+            const blob = await imgResp.blob();
+            if (blob.size < 1000) throw new Error('Downloaded image too small (' + blob.size + ' bytes), check Drive sharing');
 
         // Upload as multipart form
         const formData = new FormData();
@@ -1251,6 +1272,7 @@
         }
         if (!imageHash) throw new Error('No image hash returned from Meta API');
         return imageHash;
+        } // end retry loop
     }
 
     // Upload video to Meta using file_url param (Google Drive direct link)
@@ -1767,6 +1789,7 @@
         setVal('bidAmount', ['bidamount', 'bid_amount']);
         setSelect('billingEvent', ['billingevent', 'billing_event']);
         setSelect('optimizationGoal', ['optimizationgoal', 'optimization_goal']);
+        setSelect('customEventType', ['customeventtype', 'custom_event_type']);
         const stVal = val(['starttime', 'start_time']);
         if (stVal) $('startTime').value = parseSheetDate(stVal);
         const etVal = val(['endtime', 'end_time']);
@@ -1917,6 +1940,7 @@
             bid_amount: $('bidAmount').value || null,
             billing_event: $('billingEvent').value,
             optimization_goal: $('optimizationGoal').value,
+            custom_event_type: $('customEventType').value || null,
             start_time: $('startTime').value,
             end_time: $('endTime').value || null,
             age_min: parseInt($('ageMin').value) || 18,
@@ -2036,6 +2060,7 @@
             item('Bid Strategy', d.bid_strategy),
             item('Billing Event', d.billing_event),
             item('Optimization Goal', d.optimization_goal),
+            item('Custom Event Type', d.custom_event_type || '(none)'),
             item('Status', d.adset_status),
             item('Start Time', d.start_time),
             divider(),
@@ -2255,6 +2280,9 @@
                     application_id: config.app_id,
                     object_store_url: config.object_store_url || '',
                 };
+                if (config.custom_event_type) {
+                    promotedObject.custom_event_type = config.custom_event_type;
+                }
             }
 
             // Shared vars used by both parallel blocks and later steps
@@ -2270,25 +2298,24 @@
             // --- Asset upload promise ---
             const assetPromise = (async () => {
                 if (assetType === 'image') {
-                    const imageLogIds = {};
+                    // Upload images sequentially to avoid Drive 429 rate limits
                     for (const size of sizes) {
-                        if (driveUrls[size]) imageLogIds[size] = addLogEntry(`Uploading ${size} image via URL...`, 'pending');
-                    }
-                    const imagePromises = sizes.filter(s => driveUrls[s]).map(async (size) => {
+                        if (!driveUrls[size]) continue;
+                        const logId = addLogEntry(`Uploading ${size} image via URL...`, 'pending');
                         try {
                             const imageHash = await uploadImageByUrl(driveUrls[size]);
                             assets[size] = { imageHash };
-                            updateLogEntry(imageLogIds[size], `${size} image uploaded (${imageHash.slice(0, 12)}...)`, 'success');
+                            updateLogEntry(logId, `${size} image uploaded (${imageHash.slice(0, 12)}...)`, 'success');
                         } catch (err) {
-                            updateLogEntry(imageLogIds[size], `${size} image failed: ${err.message}`, 'error');
+                            updateLogEntry(logId, `${size} image failed: ${err.message}`, 'error');
                             throw err;
                         }
-                    });
-                    await Promise.all(imagePromises);
+                    }
                 } else {
-                    // Upload videos + poll each immediately after upload
+                    // Upload videos sequentially to avoid Drive 429 rate limits
                     const videoTitle = config.creative_name || config.adset_name || 'Ad Video';
-                    const videoPromises = sizes.filter(s => driveUrls[s]).map(async (size) => {
+                    for (const size of sizes) {
+                        if (!driveUrls[size]) continue;
                         const logId = addLogEntry(`Uploading ${size} video via URL...`, 'pending');
                         try {
                             const videoId = await uploadVideoByUrl(driveUrls[size], `${videoTitle} (${size})`);
@@ -2301,18 +2328,15 @@
                             updateLogEntry(logId, `${size} video failed: ${err.message}`, 'error');
                             throw err;
                         }
-                    });
-                    await Promise.all(videoPromises);
+                    }
 
-                    // Upload thumbnails in parallel
-                    const thumbSizes = sizes.filter(s => thumbUrls[s]);
-                    if (thumbSizes.length > 0) {
-                        await Promise.all(thumbSizes.map(async (size) => {
-                            try {
-                                const thumbHash = await uploadImageByUrl(thumbUrls[size]);
-                                if (assets[size]) assets[size].thumbnailHash = thumbHash;
-                            } catch (err) { /* non-fatal */ }
-                        }));
+                    // Upload thumbnails sequentially
+                    for (const size of sizes) {
+                        if (!thumbUrls[size]) continue;
+                        try {
+                            const thumbHash = await uploadImageByUrl(thumbUrls[size]);
+                            if (assets[size]) assets[size].thumbnailHash = thumbHash;
+                        } catch (err) { /* non-fatal */ }
                     }
                 }
             })();

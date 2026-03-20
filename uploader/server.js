@@ -266,13 +266,34 @@ function extractDriveFileId(urlOrId) {
     return null;
 }
 
-async function downloadDriveFile(driveUrl) {
+async function downloadDriveFile(driveUrl, retries = 3) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            return await _downloadDriveFileOnce(driveUrl);
+        } catch (err) {
+            const is429 = err.message && err.message.includes('429');
+            if (is429 && attempt < retries) {
+                const delay = attempt * 3000; // 3s, 6s
+                console.log(`[DRIVE] 429 rate limited, retrying in ${delay / 1000}s (attempt ${attempt}/${retries})`);
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+            }
+            throw err;
+        }
+    }
+}
+
+async function _downloadDriveFileOnce(driveUrl) {
     const fileId = extractDriveFileId(driveUrl);
     if (!fileId) throw new Error(`Could not extract Google Drive file ID from: ${driveUrl}`);
 
     // Step 1: Hit the download URL to get cookies + confirm token
     let downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
     let resp = await fetch(downloadUrl, { redirect: 'manual' });
+
+    if (resp.status === 429) {
+        throw new Error(`Failed to download image from Drive (status 429)`);
+    }
 
     // Collect cookies from all responses (needed for large file virus scan bypass)
     let cookies = (resp.headers.getSetCookie?.() || []).map(c => c.split(';')[0]).join('; ');
@@ -806,6 +827,9 @@ app.post('/api/execute-full', async (req, res) => {
                 application_id: config.app_id,
                 object_store_url: config.object_store_url || config.app_store_url || '',
             };
+            if (config.custom_event_type) {
+                promotedObject.custom_event_type = config.custom_event_type;
+            }
         }
         // Deferred deep link added below after linkUrl is defined
 
@@ -815,8 +839,7 @@ app.post('/api/execute-full', async (req, res) => {
         const assets = {};
 
         if (assetType === 'image') {
-            // Upload images in parallel
-            const uploadPromises = [];
+            // Upload images sequentially to avoid Drive 429 rate limits
             const sizes = ['horizontal', 'vertical', 'square'];
 
             for (const size of sizes) {
@@ -825,8 +848,7 @@ app.post('/api/execute-full', async (req, res) => {
                     logStep(`upload_image_${size}`, false, { error: `${size} drive URL not provided` });
                     continue;
                 }
-                uploadPromises.push(
-                    (async () => {
+                    {
                         let tmpPath = null;
                         try {
                             const file = await downloadDriveFile(driveUrl);
@@ -845,47 +867,40 @@ app.post('/api/execute-full', async (req, res) => {
                         } finally {
                             if (tmpPath) cleanupTempFile(tmpPath);
                         }
-                    })()
-                );
+                    }
             }
-            await Promise.all(uploadPromises);
         } else {
-            // Upload videos in parallel (download + upload)
+            // Upload videos sequentially to avoid Drive 429 rate limits
             const sizes = ['horizontal', 'vertical', 'square'];
-            const videoUploadPromises = [];
+            const uploadedVideos = [];
             for (const size of sizes) {
                 const driveUrl = driveUrls[size];
                 if (!driveUrl) {
                     logStep(`upload_video_${size}`, false, { error: `${size} drive URL not provided` });
                     continue;
                 }
-                videoUploadPromises.push(
-                    (async () => {
-                        let tmpPath = null;
-                        try {
-                            const file = await downloadDriveFile(driveUrl);
-                            tmpPath = file.tmpPath;
-                            const videoTitle = config.creative_name || config.adset_name || 'Ad Video';
-                            const fileSize = fs.statSync(tmpPath).size;
-                            const extraFields = { title: `${videoTitle} (${size})` };
-                            const data = fileSize > 50 * 1024 * 1024
-                                ? await metaChunkedVideoUpload(tmpPath, file.filename, extraFields)
-                                : await metaPostForm(`/${META_AD_ACCOUNT_ID}/advideos`, tmpPath, file.filename, file.contentType, extraFields);
-                            const videoId = data.id;
-                            if (!videoId) throw new Error('No video ID returned');
-                            assets[size] = { videoId };
-                            logStep(`upload_video_${size}`, true, { videoId });
-                            return { size, videoId };
-                        } catch (err) {
-                            logStep(`upload_video_${size}`, false, { error: err.message });
-                            throw err;
-                        } finally {
-                            if (tmpPath) cleanupTempFile(tmpPath);
-                        }
-                    })()
-                );
+                let tmpPath = null;
+                try {
+                    const file = await downloadDriveFile(driveUrl);
+                    tmpPath = file.tmpPath;
+                    const videoTitle = config.creative_name || config.adset_name || 'Ad Video';
+                    const fileSize = fs.statSync(tmpPath).size;
+                    const extraFields = { title: `${videoTitle} (${size})` };
+                    const data = fileSize > 50 * 1024 * 1024
+                        ? await metaChunkedVideoUpload(tmpPath, file.filename, extraFields)
+                        : await metaPostForm(`/${META_AD_ACCOUNT_ID}/advideos`, tmpPath, file.filename, file.contentType, extraFields);
+                    const videoId = data.id;
+                    if (!videoId) throw new Error('No video ID returned');
+                    assets[size] = { videoId };
+                    logStep(`upload_video_${size}`, true, { videoId });
+                    uploadedVideos.push({ size, videoId });
+                } catch (err) {
+                    logStep(`upload_video_${size}`, false, { error: err.message });
+                    throw err;
+                } finally {
+                    if (tmpPath) cleanupTempFile(tmpPath);
+                }
             }
-            const uploadedVideos = await Promise.all(videoUploadPromises);
 
             // Poll all videos for ready status in parallel
             const pollPromises = [];
@@ -915,34 +930,28 @@ app.post('/api/execute-full', async (req, res) => {
             }
             await Promise.all(pollPromises);
 
-            // Upload thumbnail images for videos in parallel
-            const thumbPromises = [];
+            // Upload thumbnail images for videos sequentially
             for (const size of sizes) {
                 const thumbUrl = thumbUrls[size];
                 if (!thumbUrl) continue;
-                thumbPromises.push(
-                    (async () => {
-                        let tmpPath = null;
-                        try {
-                            const file = await downloadDriveFile(thumbUrl);
-                            tmpPath = file.tmpPath;
-                            const data = await metaPostForm(`/${META_AD_ACCOUNT_ID}/adimages`, tmpPath, file.filename, file.contentType);
-                            let thumbHash = null;
-                            if (data.images) {
-                                const key = Object.keys(data.images)[0];
-                                if (key) thumbHash = data.images[key].hash;
-                            }
-                            if (assets[size]) assets[size].thumbnailHash = thumbHash;
-                            logStep(`upload_thumbnail_${size}`, true, { thumbHash });
-                        } catch (err) {
-                            logStep(`upload_thumbnail_${size}`, false, { error: err.message });
-                        } finally {
-                            if (tmpPath) cleanupTempFile(tmpPath);
-                        }
-                    })()
-                );
+                let tmpPath = null;
+                try {
+                    const file = await downloadDriveFile(thumbUrl);
+                    tmpPath = file.tmpPath;
+                    const data = await metaPostForm(`/${META_AD_ACCOUNT_ID}/adimages`, tmpPath, file.filename, file.contentType);
+                    let thumbHash = null;
+                    if (data.images) {
+                        const key = Object.keys(data.images)[0];
+                        if (key) thumbHash = data.images[key].hash;
+                    }
+                    if (assets[size]) assets[size].thumbnailHash = thumbHash;
+                    logStep(`upload_thumbnail_${size}`, true, { thumbHash });
+                } catch (err) {
+                    logStep(`upload_thumbnail_${size}`, false, { error: err.message });
+                } finally {
+                    if (tmpPath) cleanupTempFile(tmpPath);
+                }
             }
-            await Promise.all(thumbPromises);
         }
 
         // ------------------------------------------------------------------
@@ -2119,6 +2128,1758 @@ ORDER BY SUM(sm.total_signup) DESC`;
         res.status(500).json({ success: false, error: err.message });
     }
 });
+
+// =============================================================================
+// CREATIVE INTELLIGENCE API
+// =============================================================================
+
+// Ensure creative-intelligence directory exists for tracking data
+const ciDir = path.join(__dirname, '..', 'creative-intelligence');
+if (!fs.existsSync(ciDir)) fs.mkdirSync(ciDir, { recursive: true });
+const SIM_TRACKING_FILE = path.join(ciDir, 'sim-tracking.json');
+const CI_DATA_CACHE_FILE = path.join(ciDir, 'data-cache.json');
+const CI_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Helper: read cached creative data if fresh
+function getCachedCreativeData(dateFrom, dateTo) {
+    try {
+        if (!fs.existsSync(CI_DATA_CACHE_FILE)) return null;
+        const raw = JSON.parse(fs.readFileSync(CI_DATA_CACHE_FILE, 'utf-8'));
+        if (raw.dateFrom === dateFrom && raw.dateTo === dateTo) {
+            const age = Date.now() - new Date(raw.cachedAt).getTime();
+            if (age < CI_CACHE_MAX_AGE_MS) {
+                console.log(`[ci/cache] Using cached data (${raw.creatives.length} creatives, cached ${Math.round(age / 60000)}min ago)`);
+                return raw.creatives;
+            }
+            console.log(`[ci/cache] Cache expired (${Math.round(age / 3600000)}h old)`);
+        } else {
+            console.log(`[ci/cache] Cache date range mismatch (cached: ${raw.dateFrom}-${raw.dateTo}, requested: ${dateFrom}-${dateTo})`);
+        }
+    } catch (e) {
+        console.warn('[ci/cache] Failed to read cache:', e.message);
+    }
+    return null;
+}
+
+// Helper: save creative data to cache
+function saveCacheCreativeData(dateFrom, dateTo, creatives) {
+    try {
+        fs.writeFileSync(CI_DATA_CACHE_FILE, JSON.stringify({
+            dateFrom, dateTo,
+            cachedAt: new Date().toISOString(),
+            creativeCount: creatives.length,
+            creatives
+        }));
+        console.log(`[ci/cache] Saved ${creatives.length} creatives to cache`);
+    } catch (e) {
+        console.warn('[ci/cache] Failed to save cache:', e.message);
+    }
+}
+
+// Route 1: Fetch all historical creative performance data
+app.post('/api/ci/historical-data', async (req, res) => {
+    try {
+        console.log('[ci/historical-data] Fetching historical creative data...');
+
+        // Calculate date range: last 180 days
+        const dateTo = new Date().toISOString().slice(0, 10);
+        const dateFrom = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+        // 1. Fetch Meta ads with daily insights (all campaigns)
+        const allRows = [];
+        let url = `${META_API_BASE}/${META_AD_ACCOUNT_ID}/insights`;
+        let params = metaParams({
+            fields: 'campaign_name,campaign_id,adset_name,adset_id,ad_name,ad_id,spend,impressions,clicks,cpm,ctr,cpc,actions,cost_per_action_type',
+            level: 'ad',
+            time_increment: 1,
+            time_range: JSON.stringify({ since: dateFrom, until: dateTo }),
+            limit: 500,
+        });
+
+        let pageCount = 0;
+        let nextUrl = `${url}?${new URLSearchParams(params).toString()}`;
+        while (nextUrl) {
+            pageCount++;
+            console.log(`[ci/historical-data] Meta page ${pageCount}...${allRows.length ? ' (' + allRows.length + ' rows so far)' : ''}`);
+            const response = await fetch(nextUrl);
+            const data = await response.json();
+
+            if (data.error) {
+                if (pageCount === 1) return res.status(400).json({ success: false, error: data.error.message });
+                console.error('[ci/historical-data] Pagination error:', data.error);
+                break;
+            }
+
+            if (data.data) allRows.push(...data.data);
+
+            if (data.paging && data.paging.next) {
+                const sep = data.paging.next.includes('?') ? '&' : '?';
+                nextUrl = data.paging.next + sep + 'appsecret_proof=' + encodeURIComponent(META_APP_SECRET_PROOF);
+            } else {
+                nextUrl = null;
+            }
+        }
+        console.log(`[ci/historical-data] Meta done. ${pageCount} pages, ${allRows.length} total rows.`);
+
+        // Flatten actions
+        const metaAds = allRows.map(row => {
+            const actions = row.actions || [];
+            const costPerAction = row.cost_per_action_type || [];
+            const installs = actions.find(a => a.action_type === 'mobile_app_install');
+            const cpiObj = costPerAction.find(a => a.action_type === 'mobile_app_install');
+            return {
+                date_start: row.date_start,
+                campaign_name: row.campaign_name,
+                campaign_id: row.campaign_id,
+                adset_name: row.adset_name,
+                adset_id: row.adset_id,
+                ad_name: row.ad_name,
+                ad_id: row.ad_id,
+                spend: parseFloat(row.spend || 0),
+                impressions: parseInt(row.impressions || 0),
+                clicks: parseInt(row.clicks || 0),
+                cpm: parseFloat(row.cpm || 0),
+                ctr: parseFloat(row.ctr || 0),
+                cpc: parseFloat(row.cpc || 0),
+                installs: installs ? parseInt(installs.value) : 0,
+                cpi: cpiObj ? parseFloat(cpiObj.value) : null,
+            };
+        });
+
+        // 2. Fetch Metabase funnel data — get unique campaign names from Meta data
+        const campaignNames = [...new Set(metaAds.map(a => a.campaign_name).filter(Boolean))];
+        let funnelData = [];
+
+        if (campaignNames.length > 0) {
+            const safeNameRegex = /^[a-zA-Z0-9\-_ ]+$/;
+            const safeCampaignNames = campaignNames.filter(n => safeNameRegex.test(n));
+
+            if (safeCampaignNames.length > 0) {
+                const campaignNamesSQL = safeCampaignNames.map(n => `'${n}'`).join(',');
+
+                const sql = `
+WITH user_data AS (
+  SELECT
+    uad.user_id,
+    LOWER(TRIM(uad.tracker_sub_campaign_name)) AS tracker_sub_campaign_name,
+    uad.tracker_campaign_name,
+    uad.creative AS tracker_name,
+    priority,
+    CASE WHEN uad.network ILIKE '%Google%' THEN 'Google' ELSE uad.network END AS network,
+    date(created_at) AS event_date
+  FROM user_additional_details uad
+  LEFT JOIN users u ON u.id = uad.user_id
+  LEFT JOIN (SELECT DISTINCT "Adset ID"::bigint AS "Adset ID" FROM "Demat_Campaigns" WHERE "Adset ID" IS NOT NULL AND TRIM("Adset ID") <> '') ch ON ch."Adset ID" = uad.tracker_sub_campaign_id
+  WHERE "Adset ID" IS NULL
+    AND uad.user_id IN (SELECT id FROM users WHERE referred_by IS NULL AND user_interest IS NULL)
+    AND uad.user_id IN (SELECT u.id FROM user_devices ud WHERE ud.user_id = u.id AND ud.os IN ('android','Android Web'))
+    AND date(u.created_at) >= '${dateFrom}'
+    AND date(u.created_at) <= '${dateTo}'
+    AND (network LIKE '%Facebook%' OR network LIKE '%Instagram%')
+    AND uad.tracker_campaign_name IN (${campaignNamesSQL})
+),
+first_payments AS (
+  SELECT
+    user_id, min(payment_date) as payment_date,
+    sum(case when rt = 1 then amount else null end) as amount,
+    sum(amount) as overall_amount
+  FROM payments WHERE status = 'completed' GROUP BY 1
+),
+signup_metrics AS (
+  SELECT
+    ud.tracker_name,
+    ud.tracker_campaign_name,
+    COUNT(DISTINCT ud.user_id) AS total_signup,
+    COUNT(DISTINCT CASE WHEN ud.priority = 0 THEN ud.user_id END) AS p0_signup,
+    COUNT(DISTINCT CASE WHEN ud.priority = 1 THEN ud.user_id END) AS p1_signup,
+    COUNT(DISTINCT CASE WHEN fp.payment_date IS NOT NULL THEN ud.user_id END) AS total_trial,
+    COUNT(DISTINCT CASE WHEN fp.payment_date IS NOT NULL AND date(fp.payment_date) = ud.event_date THEN ud.user_id END) AS d0_trial,
+    COUNT(DISTINCT CASE WHEN fp.payment_date IS NOT NULL AND date(fp.payment_date) = ud.event_date AND fp.amount > 0 THEN ud.user_id END) AS d0,
+    COALESCE(SUM(CASE WHEN date(fp.payment_date) = ud.event_date AND fp.amount > 0 THEN fp.amount END), 0) AS d0_revenue,
+    COUNT(DISTINCT CASE WHEN fp.payment_date IS NOT NULL AND date(fp.payment_date) <= ud.event_date + INTERVAL '6 days' AND fp.amount > 0 THEN ud.user_id END) AS d6,
+    COALESCE(SUM(CASE WHEN date(fp.payment_date) <= ud.event_date + INTERVAL '6 days' AND fp.amount > 0 THEN fp.amount END), 0) AS d6_revenue,
+    COUNT(DISTINCT CASE WHEN fp.amount > 0 THEN ud.user_id END) AS new_converted_user,
+    COALESCE(SUM(CASE WHEN fp.amount > 0 THEN fp.amount END), 0) AS new_user_rev,
+    COALESCE(SUM(fp.overall_amount), 0) AS overall_revenue,
+    COUNT(DISTINCT CASE WHEN date(fp.payment_date) <= ud.event_date + INTERVAL '6 days' THEN ud.user_id END) AS d6_overall_con,
+    COALESCE(SUM(CASE WHEN date(fp.payment_date) <= ud.event_date + INTERVAL '6 days' THEN fp.overall_amount END), 0) AS d6_overall_revenue
+  FROM user_data ud
+  LEFT JOIN first_payments fp ON fp.user_id = ud.user_id
+  GROUP BY 1,2
+)
+SELECT
+  sm.tracker_name,
+  sm.tracker_campaign_name AS campaign_name,
+  SUM(sm.total_signup) AS signups,
+  SUM(sm.p0_signup) AS p0_signup,
+  SUM(sm.p1_signup) AS p1_signup,
+  SUM(sm.total_trial) AS total_trial,
+  SUM(sm.d0_trial) AS d0_trial,
+  SUM(sm.d0) AS d0,
+  SUM(sm.d0_revenue) AS d0_revenue,
+  SUM(sm.d6) AS d6,
+  SUM(sm.d6_revenue) AS d6_revenue,
+  SUM(sm.new_converted_user) AS new_converted_user,
+  SUM(sm.new_user_rev) AS new_user_rev,
+  SUM(sm.overall_revenue) AS overall_revenue,
+  SUM(sm.d6_overall_con) AS d6_overall_con,
+  SUM(sm.d6_overall_revenue) AS d6_overall_revenue
+FROM signup_metrics sm
+GROUP BY 1,2
+ORDER BY SUM(sm.total_signup) DESC`;
+
+                try {
+                    const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
+                        method: 'POST',
+                        headers: {
+                            'X-Metabase-Session': METABASE_SESSION_TOKEN,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            database: 2,
+                            type: 'native',
+                            native: { query: sql },
+                        }),
+                    });
+
+                    if (metabaseRes.ok) {
+                        const result = await metabaseRes.json();
+                        const columns = result.data.cols.map(c => c.name);
+                        funnelData = result.data.rows.map(row => {
+                            const obj = {};
+                            columns.forEach((col, i) => { obj[col] = row[i]; });
+                            return obj;
+                        });
+                    } else {
+                        console.error('[ci/historical-data] Metabase error:', await metabaseRes.text());
+                    }
+                } catch (mbErr) {
+                    console.error('[ci/historical-data] Metabase fetch failed:', mbErr.message);
+                }
+            }
+        }
+
+        console.log(`[ci/historical-data] Done. ${metaAds.length} Meta rows, ${funnelData.length} funnel rows.`);
+        res.json({ success: true, data: { metaAds, funnelData } });
+    } catch (err) {
+        console.error('CI historical-data error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Target campaigns for CI analysis
+const TARGET_CAMPAIGNS = [
+    'Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225',
+    'Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125'
+];
+
+const KNOWN_CREATIVES_FILE = path.join(ciDir, 'known-creatives.json');
+
+// Route 2: Learn patterns — auto-fetches Meta + Metabase data server-side
+app.post('/api/ci/learn', async (req, res) => {
+    try {
+        if (!OpenAI || !OPENAI_API_KEY) {
+            return res.status(500).json({ success: false, error: 'OpenAI not configured' });
+        }
+
+        // 1. Date range (defaults to last 180 days)
+        const dateTo = (req.body && req.body.dateTo) || new Date().toISOString().slice(0, 10);
+        const dateFrom = (req.body && req.body.dateFrom) || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const forceRefresh = !!(req.body && req.body.forceRefresh);
+        console.log(`[ci/learn] Requested data from ${dateFrom} to ${dateTo} (forceRefresh: ${forceRefresh})`);
+
+        // Check cache first (skip if forceRefresh)
+        let combinedCreatives;
+        const cached = forceRefresh ? null : getCachedCreativeData(dateFrom, dateTo);
+        if (cached) {
+            combinedCreatives = cached;
+            console.log(`[ci/learn] Using ${combinedCreatives.length} cached creatives. Skipping Meta/Metabase fetch.`);
+        } else {
+        // 2. Fetch Meta daily ad-level insights in 14-day chunks to avoid "reduce data" error
+        const allMetaRows = [];
+        const metaFields = 'campaign_name,campaign_id,adset_name,adset_id,ad_name,ad_id,spend,impressions,clicks,cpm,ctr,cpc,actions,cost_per_action_type,video_thruplay_watched_actions,video_p25_watched_actions,video_p50_watched_actions,video_p75_watched_actions,video_p100_watched_actions';
+        const CHUNK_DAYS = 14;
+
+        // Build date chunks
+        const chunks = [];
+        let chunkStart = new Date(dateFrom);
+        const endDate = new Date(dateTo);
+        while (chunkStart < endDate) {
+            let chunkEnd = new Date(chunkStart.getTime() + CHUNK_DAYS * 86400000);
+            if (chunkEnd > endDate) chunkEnd = endDate;
+            chunks.push({
+                since: chunkStart.toISOString().slice(0, 10),
+                until: chunkEnd.toISOString().slice(0, 10)
+            });
+            chunkStart = new Date(chunkEnd.getTime() + 86400000); // next day
+        }
+        console.log(`[ci/learn] Fetching Meta data in ${chunks.length} chunks of ${CHUNK_DAYS} days...`);
+
+        let totalPages = 0;
+        for (let ci = 0; ci < chunks.length; ci++) {
+            const chunk = chunks[ci];
+            console.log(`[ci/learn] Chunk ${ci + 1}/${chunks.length}: ${chunk.since} to ${chunk.until}`);
+
+            let metaParams_ = metaParams({
+                fields: metaFields,
+                level: 'ad',
+                time_increment: 1,
+                time_range: JSON.stringify(chunk),
+                limit: 500,
+            });
+
+            let nextUrl = `${META_API_BASE}/${META_AD_ACCOUNT_ID}/insights?${new URLSearchParams(metaParams_).toString()}`;
+            while (nextUrl) {
+                totalPages++;
+                const response = await fetch(nextUrl);
+                const data = await response.json();
+
+                if (data.error) {
+                    console.error(`[ci/learn] Meta error on chunk ${ci + 1}: ${data.error.message}`);
+                    break;
+                }
+
+                if (data.data) allMetaRows.push(...data.data);
+
+                if (data.paging && data.paging.next) {
+                    const sep = data.paging.next.includes('?') ? '&' : '?';
+                    nextUrl = data.paging.next + sep + 'appsecret_proof=' + encodeURIComponent(META_APP_SECRET_PROOF);
+                } else {
+                    nextUrl = null;
+                }
+            }
+            console.log(`[ci/learn] Chunk ${ci + 1} done. Total rows so far: ${allMetaRows.length}`);
+        }
+        console.log(`[ci/learn] Meta done. ${totalPages} pages across ${chunks.length} chunks, ${allMetaRows.length} total rows.`);
+
+        // Filter to TARGET_CAMPAIGNS only (server-side filter since Meta API filtering is limited)
+        const targetSet = new Set(TARGET_CAMPAIGNS.map(n => n.trim()));
+        const filteredMetaRows = allMetaRows.filter(row => targetSet.has((row.campaign_name || '').trim()));
+        console.log(`[ci/learn] Filtered to ${filteredMetaRows.length} rows from target campaigns.`);
+
+        // Flatten Meta rows into structured objects
+        const metaAds = filteredMetaRows.map(row => {
+            const actions = row.actions || [];
+            const costPerAction = row.cost_per_action_type || [];
+            const installs = actions.find(a => a.action_type === 'mobile_app_install');
+            const cpiObj = costPerAction.find(a => a.action_type === 'mobile_app_install');
+            const thruplay = row.video_thruplay_watched_actions ? parseInt((row.video_thruplay_watched_actions[0] || {}).value || 0) : 0;
+            const p25 = row.video_p25_watched_actions ? parseInt((row.video_p25_watched_actions[0] || {}).value || 0) : 0;
+            const p50 = row.video_p50_watched_actions ? parseInt((row.video_p50_watched_actions[0] || {}).value || 0) : 0;
+            const p75 = row.video_p75_watched_actions ? parseInt((row.video_p75_watched_actions[0] || {}).value || 0) : 0;
+            const p100 = row.video_p100_watched_actions ? parseInt((row.video_p100_watched_actions[0] || {}).value || 0) : 0;
+            const impressions = parseInt(row.impressions || 0);
+            // 3-second views ~ p25 for short videos, use p25 as proxy for hook
+            const threeSecViews = p25;
+            return {
+                date_start: row.date_start,
+                campaign_name: row.campaign_name,
+                campaign_id: row.campaign_id,
+                adset_name: row.adset_name,
+                adset_id: row.adset_id,
+                ad_name: row.ad_name,
+                ad_id: row.ad_id,
+                spend: parseFloat(row.spend || 0),
+                impressions,
+                clicks: parseInt(row.clicks || 0),
+                cpm: parseFloat(row.cpm || 0),
+                ctr: parseFloat(row.ctr || 0),
+                cpc: parseFloat(row.cpc || 0),
+                installs: installs ? parseInt(installs.value) : 0,
+                cpi: cpiObj ? parseFloat(cpiObj.value) : null,
+                thruplay,
+                p25, p50, p75, p100,
+                three_sec_views: threeSecViews,
+                hook_rate: impressions > 0 ? threeSecViews / impressions : 0,
+                hold_rate: threeSecViews > 0 ? thruplay / threeSecViews : 0,
+                completion_rate: impressions > 0 ? p100 / impressions : 0,
+            };
+        });
+
+        // 3. Fetch Metabase funnel data using exact SQL from /api/metabase/creative-metrics
+        const campaignNamesSQL = TARGET_CAMPAIGNS.map(n => `'${n}'`).join(',');
+
+        const sql = `
+WITH user_data AS (
+  SELECT
+    uad.user_id,
+    LOWER(TRIM(uad.tracker_sub_campaign_name)) AS tracker_sub_campaign_name,
+    uad.tracker_campaign_name,
+    uad.creative AS tracker_name,
+    priority,
+    CASE WHEN uad.network ILIKE '%Google%' THEN 'Google' ELSE uad.network END AS network,
+    date(created_at) AS event_date
+  FROM user_additional_details uad
+  LEFT JOIN users u ON u.id = uad.user_id
+  LEFT JOIN (SELECT DISTINCT "Adset ID"::bigint AS "Adset ID" FROM "Demat_Campaigns" WHERE "Adset ID" IS NOT NULL AND TRIM("Adset ID") <> '') ch ON ch."Adset ID" = uad.tracker_sub_campaign_id
+  WHERE "Adset ID" IS NULL
+    AND uad.user_id IN (SELECT id FROM users WHERE referred_by IS NULL AND user_interest IS NULL)
+    AND uad.user_id IN (SELECT u.id FROM user_devices ud WHERE ud.user_id = u.id AND ud.os IN ('android','Android Web'))
+    AND date(u.created_at) >= '${dateFrom}'
+    AND date(u.created_at) <= '${dateTo}'
+    AND (network LIKE '%Facebook%' OR network LIKE '%Instagram%')
+    AND uad.tracker_campaign_name IN (${campaignNamesSQL})
+),
+first_payments AS (
+  SELECT
+    user_id, min(payment_date) as payment_date,
+    sum(case when rt = 1 then amount else null end) as amount,
+    sum(case when rt > 1 then amount else null end) as repeat_amount,
+    count(case when rt > 1 then amount else null end) as repeat_con,
+    sum(case when date(payment_date) - date(created_at) <= 6 then amount else null end) as d6_repeat_amount,
+    count(case when date(payment_date) - date(created_at) <= 6 then amount else null end) as d6_repeat_con,
+    sum(amount) as overall_amt,
+    count(user_id) as overall_con
+  FROM (
+    SELECT user_id, payment_date, amount, created_at,
+      ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY payment_date) AS rt
+    FROM user_transaction_history uth
+    LEFT JOIN users u ON u.id = uth.user_id
+    WHERE status = 'CHARGED' AND amount > 50
+  ) sub
+  GROUP BY 1
+),
+trial AS (
+  SELECT user_id, trial_date FROM (
+    SELECT user_id, payment_date AS trial_date, plan_id,
+      ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY payment_date DESC) AS rk
+    FROM user_transaction_history
+    WHERE (plan_id IN ('plan_000','plan_000_plus','plan_000_super') OR plan_id ILIKE '%trial%')
+      AND status = 'CHARGED'
+  ) sub WHERE rk = 1
+),
+signup_metrics AS (
+  SELECT
+    ud.event_date,
+    ud.tracker_campaign_name,
+    regexp_replace(ud.tracker_name, ':.*$', '', 'g') AS tracker_name,
+    COUNT(DISTINCT ud.user_id) AS total_signup,
+    COUNT(DISTINCT CASE WHEN ud.priority = 'PAYMENT-P0' THEN ud.user_id END) AS p0_signup,
+    COUNT(DISTINCT CASE WHEN ud.priority = 'PAYMENT-P1' THEN ud.user_id END) AS p1_signup,
+    COUNT(DISTINCT t.user_id) AS total_trial,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) = ud.event_date THEN fp.user_id END) AS d0,
+    SUM(CASE WHEN DATE(fp.payment_date) = ud.event_date THEN fp.amount ELSE 0 END) AS d0_revenue,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' THEN fp.user_id END) AS d6,
+    SUM(CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' THEN fp.amount ELSE 0 END) AS d6_revenue,
+    COUNT(DISTINCT fp.user_id) AS new_converted_user,
+    SUM(fp.amount) AS new_user_rev,
+    SUM(fp.overall_amt) AS overall_revenue,
+    COUNT(DISTINCT CASE WHEN DATE(trial_date) = DATE(ud.event_date) THEN t.user_id END) AS d0_trial,
+    SUM(d6_repeat_con) AS d6_overall_con,
+    SUM(d6_repeat_amount) AS d6_overall_revenue
+  FROM user_data ud
+  LEFT JOIN first_payments fp ON ud.user_id = fp.user_id
+  LEFT JOIN trial t ON ud.user_id = t.user_id
+  GROUP BY 1,2,3
+)
+SELECT
+  sm.tracker_name,
+  sm.tracker_campaign_name AS campaign_name,
+  SUM(sm.total_signup) AS signups,
+  SUM(sm.p0_signup) AS p0_signup,
+  SUM(sm.p1_signup) AS p1_signup,
+  SUM(sm.total_trial) AS total_trial,
+  SUM(sm.d0_trial) AS d0_trial,
+  SUM(sm.d0) AS d0,
+  SUM(sm.d0_revenue) AS d0_revenue,
+  SUM(sm.d6) AS d6,
+  SUM(sm.d6_revenue) AS d6_revenue,
+  SUM(sm.new_converted_user) AS new_converted_user,
+  SUM(sm.new_user_rev) AS new_user_rev,
+  SUM(sm.overall_revenue) AS overall_revenue,
+  SUM(sm.d6_overall_con) AS d6_overall_con,
+  SUM(sm.d6_overall_revenue) AS d6_overall_revenue
+FROM signup_metrics sm
+GROUP BY 1,2
+ORDER BY SUM(sm.total_signup) DESC`;
+
+        let funnelData = [];
+        try {
+            console.log('[ci/learn] Fetching Metabase funnel data...');
+            const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
+                method: 'POST',
+                headers: {
+                    'X-Metabase-Session': METABASE_SESSION_TOKEN,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    database: 2,
+                    type: 'native',
+                    native: { query: sql },
+                }),
+            });
+
+            if (metabaseRes.ok) {
+                const result = await metabaseRes.json();
+                const columns = result.data.cols.map(c => c.name);
+                funnelData = result.data.rows.map(row => {
+                    const obj = {};
+                    columns.forEach((col, i) => { obj[col] = row[i]; });
+                    return obj;
+                });
+                console.log(`[ci/learn] Metabase done. ${funnelData.length} funnel rows.`);
+            } else {
+                console.error('[ci/learn] Metabase error:', await metabaseRes.text());
+            }
+        } catch (mbErr) {
+            console.error('[ci/learn] Metabase fetch failed:', mbErr.message);
+        }
+
+        // 4. Merge Meta + Metabase data by ad_name <-> tracker_name
+        // Build funnel lookup (case-insensitive, strip tracker suffix after colon)
+        // Metabase SQL strips `:` suffix via regexp_replace(tracker_name, ':.*$', '', 'g')
+        const funnelLookup = {};
+        for (const row of funnelData) {
+            if (row.tracker_name) {
+                const key = row.tracker_name.toLowerCase().trim();
+                funnelLookup[key] = row;
+                // Also index with prefix stripped (FB_MOF_Video_ etc)
+                const stripped = key.replace(/^fb_mof_(video_|static_)?/i, '');
+                if (stripped && stripped !== key) funnelLookup[stripped] = row;
+            }
+        }
+        console.log(`[ci/learn] Funnel lookup: ${Object.keys(funnelLookup).length} keys. Sample keys: ${Object.keys(funnelLookup).slice(0, 5).join(', ')}`);
+
+        // Aggregate Meta rows per ad_name (they are daily — roll up to totals)
+        const adAgg = {};
+        for (const row of metaAds) {
+            const key = row.ad_name;
+            if (!adAgg[key]) {
+                adAgg[key] = {
+                    ad_name: row.ad_name,
+                    ad_id: row.ad_id,
+                    campaign_name: row.campaign_name,
+                    campaign_id: row.campaign_id,
+                    adset_name: row.adset_name,
+                    adset_id: row.adset_id,
+                    spend: 0, impressions: 0, clicks: 0,
+                    installs: 0,
+                    thruplay: 0, p25: 0, p50: 0, p75: 0, p100: 0,
+                    three_sec_views: 0,
+                    daily: [],
+                    dates: [],
+                    day_of_week_counts: {},
+                };
+            }
+            const a = adAgg[key];
+            a.spend += row.spend;
+            a.impressions += row.impressions;
+            a.clicks += row.clicks;
+            a.installs += row.installs;
+            a.thruplay += row.thruplay;
+            a.p25 += row.p25;
+            a.p50 += row.p50;
+            a.p75 += row.p75;
+            a.p100 += row.p100;
+            a.three_sec_views += row.three_sec_views;
+            if (row.spend > 0) a.dates.push(row.date_start);
+            a.daily.push({ date: row.date_start, spend: row.spend, impressions: row.impressions, clicks: row.clicks, installs: row.installs });
+            // Day of week distribution
+            const dow = new Date(row.date_start).toLocaleDateString('en-US', { weekday: 'short' });
+            a.day_of_week_counts[dow] = (a.day_of_week_counts[dow] || 0) + row.spend;
+        }
+
+        // Build combined creative records
+        combinedCreatives = Object.values(adAgg).map(a => {
+            const spendDates = a.dates.sort();
+            const goLiveDate = spendDates.length > 0 ? spendDates[0] : null;
+            const daysLive = spendDates.length > 0 ? Math.ceil((new Date(spendDates[spendDates.length - 1]) - new Date(spendDates[0])) / (1000 * 60 * 60 * 24)) + 1 : 0;
+
+            // Derived Meta metrics
+            const cpm = a.impressions > 0 ? (a.spend / a.impressions) * 1000 : 0;
+            const ctr = a.impressions > 0 ? (a.clicks / a.impressions) * 100 : 0;
+            const cpc = a.clicks > 0 ? a.spend / a.clicks : 0;
+            const cpi = a.installs > 0 ? a.spend / a.installs : null;
+            const hook_rate = a.impressions > 0 ? a.three_sec_views / a.impressions : 0;
+            const hold_rate = a.three_sec_views > 0 ? a.thruplay / a.three_sec_views : 0;
+            const completion_rate = a.impressions > 0 ? a.p100 / a.impressions : 0;
+
+            // Creative type from name
+            const type = a.ad_name.includes('Video_') ? 'Video' : a.ad_name.includes('Static_') ? 'Static' : 'Unknown';
+
+            // Match funnel data — try multiple key formats
+            const funnelKey = a.ad_name.toLowerCase().trim();
+            const funnelKeyStripped = funnelKey.replace(/^fb_mof_(video_|static_)?/i, '');
+            const funnelKeyNoColon = funnelKey.replace(/:.*$/, '');
+            const funnel = funnelLookup[funnelKey] || funnelLookup[funnelKeyStripped] || funnelLookup[funnelKeyNoColon] || {};
+
+            const signups = parseInt(funnel.signups || 0);
+            const p0_signup = parseInt(funnel.p0_signup || 0);
+            const p1_signup = parseInt(funnel.p1_signup || 0);
+            const d0_trial = parseInt(funnel.d0_trial || 0);
+            const d0 = parseInt(funnel.d0 || 0);
+            const d0_revenue = parseFloat(funnel.d0_revenue || 0);
+            const d6 = parseInt(funnel.d6 || 0);
+            const d6_revenue = parseFloat(funnel.d6_revenue || 0);
+            const overall_revenue = parseFloat(funnel.overall_revenue || 0);
+            const d6_overall_revenue = parseFloat(funnel.d6_overall_revenue || 0);
+
+            // Derived funnel metrics
+            const signup_cost = signups > 0 ? a.spend / signups : null;
+            const d0_trial_cost = d0_trial > 0 ? a.spend / d0_trial : null;
+            const d6_cac = d6 > 0 ? a.spend / d6 : null;
+            const d6_roas = a.spend > 0 ? (d6_overall_revenue / a.spend) * 100 : 0;
+            const overall_roas = a.spend > 0 ? (overall_revenue / a.spend) * 100 : 0;
+
+            return {
+                ad_name: a.ad_name,
+                ad_id: a.ad_id,
+                campaign_name: a.campaign_name,
+                adset_name: a.adset_name,
+                type,
+                // Meta totals
+                spend: Math.round(a.spend * 100) / 100,
+                impressions: a.impressions,
+                clicks: a.clicks,
+                cpm: Math.round(cpm * 100) / 100,
+                ctr: Math.round(ctr * 100) / 100,
+                cpc: Math.round(cpc * 100) / 100,
+                installs: a.installs,
+                cpi: cpi ? Math.round(cpi * 100) / 100 : null,
+                // Video metrics
+                hook_rate: Math.round(hook_rate * 10000) / 100,
+                hold_rate: Math.round(hold_rate * 10000) / 100,
+                completion_rate: Math.round(completion_rate * 10000) / 100,
+                // Funnel metrics
+                signups,
+                p0_signup,
+                p1_signup,
+                d0_trial,
+                d0,
+                d0_revenue: Math.round(d0_revenue * 100) / 100,
+                d6,
+                d6_revenue: Math.round(d6_revenue * 100) / 100,
+                overall_revenue: Math.round(overall_revenue * 100) / 100,
+                d6_overall_revenue: Math.round(d6_overall_revenue * 100) / 100,
+                // Derived
+                signup_cost: signup_cost ? Math.round(signup_cost * 100) / 100 : null,
+                d0_trial_cost: d0_trial_cost ? Math.round(d0_trial_cost * 100) / 100 : null,
+                d6_cac: d6_cac ? Math.round(d6_cac * 100) / 100 : null,
+                d6_roas: Math.round(d6_roas * 100) / 100,
+                overall_roas: Math.round(overall_roas * 100) / 100,
+                // Temporal
+                go_live_date: goLiveDate,
+                days_live: daysLive,
+                day_of_week_distribution: a.day_of_week_counts,
+            };
+        });
+
+        const withFunnel = combinedCreatives.filter(c => c.signups > 0 || c.d6 > 0);
+        console.log(`[ci/learn] ${combinedCreatives.length} combined creatives built (${withFunnel.length} with funnel data).`);
+        if (combinedCreatives.length > 0 && withFunnel.length === 0) {
+            console.log(`[ci/learn] Sample ad_names: ${combinedCreatives.slice(0, 3).map(c => c.ad_name).join(', ')}`);
+            console.log(`[ci/learn] Sample funnel keys: ${Object.keys(funnelLookup).slice(0, 3).join(', ')}`);
+        }
+
+        // Save to cache for fast subsequent runs
+        saveCacheCreativeData(dateFrom, dateTo, combinedCreatives);
+
+        } // end else (cache miss)
+
+        // 5. Prepare compact data for OpenAI — include ALL Metabase funnel fields
+        const compactCreatives = combinedCreatives.map(c => ({
+            n: c.ad_name, t: c.type, cmp: c.campaign_name, ads: c.adset_name,
+            // Meta delivery
+            sp: c.spend, imp: c.impressions, clk: c.clicks,
+            cpm: c.cpm, ctr: c.ctr, cpc: c.cpc, inst: c.installs, cpi: c.cpi,
+            // Video engagement
+            hk: c.hook_rate, hd: c.hold_rate, cm: c.completion_rate,
+            // Metabase funnel (deep)
+            su: c.signups, p0: c.p0_signup, p1: c.p1_signup,
+            dt: c.d0_trial, d0: c.d0, d0r: c.d0_revenue,
+            d6: c.d6, d6r: c.d6_revenue, d6or: c.d6_overall_revenue,
+            or: c.overall_revenue,
+            // Derived efficiency
+            sc: c.signup_cost, dtc: c.d0_trial_cost, d6c: c.d6_cac,
+            d6x: c.d6_roas, ox: c.overall_roas,
+            // Temporal
+            lv: c.go_live_date, dy: c.days_live,
+        }));
+
+        // Sort by spend desc and cap at top 150 creatives to stay within token limits
+        compactCreatives.sort((a, b) => b.sp - a.sp);
+        const creativesForAI = compactCreatives.slice(0, 150);
+
+        // Build aggregated summaries for context
+        const dowSummary = {};
+        const monthSummary = {};
+        let totalSpend = 0, totalSignups = 0, totalD6 = 0, totalD0 = 0, totalInst = 0;
+        let totalD6Rev = 0, totalOverallRev = 0, totalD0Trial = 0;
+        for (const c of combinedCreatives) {
+            totalSpend += c.spend; totalSignups += c.signups; totalD6 += c.d6;
+            totalD0 += c.d0; totalInst += c.installs; totalD0Trial += c.d0_trial;
+            totalD6Rev += c.d6_overall_revenue || 0; totalOverallRev += c.overall_revenue || 0;
+            if (c.day_of_week_distribution) {
+                for (const [day, spend] of Object.entries(c.day_of_week_distribution)) {
+                    dowSummary[day] = Math.round((dowSummary[day] || 0) + spend);
+                }
+            }
+            if (c.go_live_date) {
+                const m = c.go_live_date.slice(0, 7);
+                if (!monthSummary[m]) monthSummary[m] = { spend: 0, inst: 0, su: 0, d6: 0, d6rev: 0, count: 0 };
+                monthSummary[m].spend += c.spend; monthSummary[m].inst += c.installs;
+                monthSummary[m].su += c.signups; monthSummary[m].d6 += c.d6;
+                monthSummary[m].d6rev += c.d6_overall_revenue || 0; monthSummary[m].count++;
+            }
+        }
+
+        // Aggregate summaries for context
+        const aggContext = {
+            total: { spend: Math.round(totalSpend), installs: totalInst, signups: totalSignups, d0_trial: totalD0Trial, d0: totalD0, d6: totalD6, d6_revenue: Math.round(totalD6Rev), overall_revenue: Math.round(totalOverallRev), blended_cpi: totalInst > 0 ? Math.round(totalSpend/totalInst) : null, blended_d6_roas: totalSpend > 0 ? Math.round(totalD6Rev/totalSpend*10000)/100 : 0, blended_overall_roas: totalSpend > 0 ? Math.round(totalOverallRev/totalSpend*10000)/100 : 0 },
+            by_month: monthSummary,
+            by_dow: dowSummary,
+        };
+
+        const dataPayload = JSON.stringify(creativesForAI);
+        console.log(`[ci/learn] ${combinedCreatives.length} creatives ready. Sending top ${creativesForAI.length} to OpenAI (${Math.round(dataPayload.length / 1000)}KB)...`);
+
+        // 6. Send to OpenAI gpt-4o
+        const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+
+        const systemPrompt = `You are a senior performance marketing analyst for Univest, an Indian fintech app (Research Advisory + Broking/Demat). You have Meta Ads delivery data MERGED with Metabase deep-funnel conversion data for each creative.
+
+DATA FIELD KEY (abbreviated to save tokens):
+n=ad_name, t=type(Video/Static), cmp=campaign, ads=adset,
+sp=spend(₹), imp=impressions, clk=clicks, cpm, ctr(%), cpc(₹), inst=installs, cpi(₹),
+hk=hook_rate(% of impressions that watched 3s), hd=hold_rate(% of 3s viewers that completed thruplay), cm=completion_rate(% watched 100%),
+su=signups, p0=P0 priority signups(highest intent), p1=P1 priority signups(high intent),
+dt=d0_trials(same-day trial subscriptions), d0=d0 paid conversions, d0r=d0 revenue(₹),
+d6=conversions within 6 days, d6r=d6 first-payment revenue(₹), d6or=d6 overall revenue including repeats(₹),
+or=overall lifetime revenue(₹),
+sc=signup cost(₹), dtc=d0 trial cost(₹), d6c=d6 CAC(₹),
+d6x=d6 ROAS(%), ox=overall ROAS(%),
+lv=go_live_date, dy=days_live.
+
+YOUR TASK: Produce DEEP, SPECIFIC, ACTIONABLE insights — not surface-level summaries. The marketing team needs to know EXACTLY what to do next.
+
+REQUIRED ANALYSIS (be exhaustive, cite specific creatives with their numbers):
+
+1. FULL-FUNNEL EFFICIENCY ANALYSIS
+   - Map the ENTIRE funnel: Impression → Click → Install → Signup → P0/P1 → Trial → D0 → D6 → Overall
+   - Find WHERE each creative's funnel breaks: which creatives get cheap installs but no signups? Which get signups but no conversions?
+   - Identify the "golden creatives" that have strong conversion at EVERY stage
+   - Calculate and compare: install-to-signup rate, signup-to-trial rate, trial-to-D6 rate, D6-to-overall revenue expansion
+
+2. REVENUE & ROAS DEEP-DIVE (from Metabase data)
+   - Rank creatives by D6 ROAS — what do the top 10% have in common vs bottom 10%?
+   - D6 ROAS vs Overall ROAS trajectory: which creatives show LTV expansion (overall >> d6)? Which plateau?
+   - Revenue per conversion analysis: d0r/d0 vs d6or/d6 — who generates higher ARPU?
+   - P0/P1 quality signal: do high-P0 creatives produce better D6/Overall ROAS?
+
+3. CREATIVE FORMAT & VIDEO METRICS
+   - Video vs Static: compare FULL funnel (not just CTR — go all the way to ROAS)
+   - Hook-to-ROAS correlation: does a higher hook rate actually predict better D6 ROAS?
+   - Hold rate sweet spots: what hold rate range produces the best signup-to-conversion ratio?
+   - Identify specific video creatives where engagement is high but conversions are low (and vice versa)
+
+4. NAMING PATTERN INTELLIGENCE
+   - Decode the naming convention (e.g. FB_MOF_Video_HindZinc_V0) — extract: language, concept, version, influencer name
+   - Which concepts/themes produce the best ROAS? (e.g. does "HindZinc" beat "MoneyControl"?)
+   - Version analysis: do V1/V2 iterations actually improve on V0?
+   - Influencer identification: which influencer-tagged creatives outperform brand creatives on deep funnel?
+
+5. BUDGET REALLOCATION RECOMMENDATIONS
+   - Identify underspent winners: high ROAS but low spend — recommend scaling
+   - Identify overspent losers: high spend but poor D6 ROAS — recommend cutting
+   - Calculate potential revenue impact of reallocation (e.g. "shifting ₹X from A to B could generate ₹Y more revenue")
+
+6. TEMPORAL & SEASONAL PATTERNS
+   - Monthly performance trends from go_live_dates
+   - Which creative themes work in which months?
+   - Day-of-week spend efficiency
+
+For EVERY insight: cite 3-5 specific creative names with their actual numbers. Don't be vague.
+
+Return JSON:
+{
+  "patterns": [{"name":"","description":"","evidence":[{"creative":"","metrics":{}}],"confidence":"high|medium|low","recommendation":"SPECIFIC action to take"}],
+  "top_performing_traits": [{"trait":"","impact":"quantified impact with ₹ numbers","examples":[{"creative":"","key_metric":""}]}],
+  "failure_patterns": [{"pattern":"","why_it_fails":"cite funnel stage where it breaks","examples":[{"creative":"","key_metric":""}]}],
+  "seasonal_insights": [{"period":"","observation":"","data_points":[],"recommendation":""}],
+  "content_insights": {"best_tone":"","best_hook_style":"","format_winner":"with full-funnel comparison","influencer_vs_brand":"with ROAS comparison","color_scheme_signal":""},
+  "market_correlation": {"bullish_impact":"","seasonal_multipliers":[],"day_of_week_patterns":[]},
+  "overall_summary": "3-paragraph executive summary with key ₹ numbers and top 3 immediate actions",
+  "creative_scoring_model": {"factors":[{"name":"","weight":0.0,"description":""}],"formula_description":""},
+  "budget_actions": [{"action":"scale|cut|test","creative":"","current_spend":"","current_d6_roas":"","recommended_change":"","projected_impact":""}],
+  "funnel_bottlenecks": [{"creative":"","bottleneck_stage":"","upstream_metric":"","downstream_metric":"","fix":""}]
+}`;
+
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4o',
+            max_tokens: 16000,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: `Analyze top ${creativesForAI.length} creatives by spend (${combinedCreatives.length} total).\n\nAGGREGATE CONTEXT:\n${JSON.stringify(aggContext)}\n\nPER-CREATIVE DATA:\n${dataPayload}` },
+            ],
+            response_format: { type: 'json_object' },
+        });
+
+        const rawText = completion.choices[0].message.content;
+        let parsed;
+        try {
+            parsed = JSON.parse(rawText);
+        } catch (parseErr) {
+            console.warn('[ci/learn] Failed to parse JSON, returning raw text');
+            return res.json({ success: true, data: null, rawResponse: rawText, creativesAnalyzed: combinedCreatives.length });
+        }
+
+        console.log('[ci/learn] Analysis complete.');
+        res.json({ success: true, data: parsed, creativesAnalyzed: combinedCreatives.length, dateRange: { dateFrom, dateTo } });
+    } catch (err) {
+        console.error('CI learn error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Route 2b: Detect new creatives in target campaigns
+app.post('/api/ci/detect-new-creatives', async (req, res) => {
+    try {
+        // 1. Find campaign IDs for TARGET_CAMPAIGNS
+        console.log('[ci/detect-new] Finding campaign IDs for target campaigns...');
+        const campaignsData = await metaGet('/' + META_AD_ACCOUNT_ID + '/campaigns', { fields: 'id,name', limit: 100 });
+
+        if (campaignsData.error) {
+            return res.status(400).json({ success: false, error: 'Meta API error: ' + campaignsData.error.message });
+        }
+
+        const targetCampaignIds = [];
+        for (const c of (campaignsData.data || [])) {
+            if (TARGET_CAMPAIGNS.includes(c.name)) {
+                targetCampaignIds.push({ id: c.id, name: c.name });
+            }
+        }
+
+        if (targetCampaignIds.length === 0) {
+            return res.status(404).json({ success: false, error: 'None of the TARGET_CAMPAIGNS found in Meta account' });
+        }
+        console.log(`[ci/detect-new] Found ${targetCampaignIds.length} target campaigns.`);
+
+        // 2. Fetch ads from each campaign
+        const allAds = [];
+        for (const campaign of targetCampaignIds) {
+            let adsNextUrl = null;
+            let firstPage = true;
+            while (firstPage || adsNextUrl) {
+                firstPage = false;
+                let adsData;
+                if (adsNextUrl) {
+                    const sep = adsNextUrl.includes('?') ? '&' : '?';
+                    const resp = await fetch(adsNextUrl + sep + 'appsecret_proof=' + encodeURIComponent(META_APP_SECRET_PROOF));
+                    adsData = await resp.json();
+                } else {
+                    adsData = await metaGet('/' + campaign.id + '/ads', { fields: 'id,name,status,created_time', limit: 500 });
+                }
+
+                if (adsData.error) {
+                    console.error(`[ci/detect-new] Error fetching ads for campaign ${campaign.name}:`, adsData.error);
+                    break;
+                }
+
+                for (const ad of (adsData.data || [])) {
+                    allAds.push({
+                        ad_id: ad.id,
+                        ad_name: ad.name,
+                        campaign_name: campaign.name,
+                        created_time: ad.created_time,
+                        status: ad.status,
+                    });
+                }
+
+                adsNextUrl = (adsData.paging && adsData.paging.next) ? adsData.paging.next : null;
+            }
+        }
+        console.log(`[ci/detect-new] Found ${allAds.length} total ads across target campaigns.`);
+
+        // 3. Load known creatives
+        let knownCreatives = {};
+        try {
+            if (fs.existsSync(KNOWN_CREATIVES_FILE)) {
+                knownCreatives = JSON.parse(fs.readFileSync(KNOWN_CREATIVES_FILE, 'utf-8'));
+            }
+        } catch (e) {
+            console.warn('[ci/detect-new] Could not read known-creatives.json, starting fresh.');
+            knownCreatives = {};
+        }
+
+        // 4. Compare and find new ones
+        const now = new Date().toISOString();
+        const newCreatives = [];
+        const allCreativesOut = [];
+
+        for (const ad of allAds) {
+            const isNew = !knownCreatives[ad.ad_id];
+            if (isNew) {
+                knownCreatives[ad.ad_id] = {
+                    ad_name: ad.ad_name,
+                    campaign_name: ad.campaign_name,
+                    created_time: ad.created_time,
+                    status: ad.status,
+                    first_seen: now,
+                };
+                newCreatives.push({ ...ad, is_new: true, first_seen: now });
+            }
+            allCreativesOut.push({
+                ...ad,
+                is_new: isNew,
+                first_seen: isNew ? now : (knownCreatives[ad.ad_id].first_seen || now),
+            });
+        }
+
+        // 5. Save updated known creatives
+        fs.writeFileSync(KNOWN_CREATIVES_FILE, JSON.stringify(knownCreatives, null, 2));
+        console.log(`[ci/detect-new] Done. ${newCreatives.length} new creatives detected, ${allCreativesOut.length} total.`);
+
+        res.json({ success: true, newCreatives, allCreatives: allCreativesOut });
+    } catch (err) {
+        console.error('CI detect-new-creatives error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Helper: trim learnings to fit within GPT-4o context limits (~4K tokens max for learnings)
+function trimLearnings(learnings) {
+    if (!learnings) return '';
+    // If it's already a small summary object, use as-is
+    const raw = JSON.stringify(learnings);
+    if (raw.length < 6000) return raw;
+
+    // Extract only the most useful summary fields, skip bulky evidence arrays
+    const summary = {};
+    if (learnings.overall_summary) summary.overall_summary = learnings.overall_summary;
+    if (learnings.content_insights) summary.content_insights = learnings.content_insights;
+    if (learnings.market_correlation) summary.market_correlation = learnings.market_correlation;
+    if (learnings.creative_scoring_model) summary.scoring = learnings.creative_scoring_model;
+
+    // Top performing traits — name + impact only (strip examples)
+    if (learnings.top_performing_traits) {
+        summary.top_traits = learnings.top_performing_traits.map(t => ({
+            trait: t.trait, impact: t.impact
+        }));
+    }
+    // Failure patterns — name + why only
+    if (learnings.failure_patterns) {
+        summary.failures = learnings.failure_patterns.map(f => ({
+            pattern: f.pattern, why: f.why_it_fails
+        }));
+    }
+    // Patterns — name + description + confidence only (skip evidence arrays)
+    if (learnings.patterns) {
+        summary.patterns = learnings.patterns.slice(0, 8).map(p => ({
+            name: p.name, description: p.description, confidence: p.confidence,
+            recommendation: p.recommendation
+        }));
+    }
+    // Seasonal insights — compact
+    if (learnings.seasonal_insights) {
+        summary.seasonal = learnings.seasonal_insights.map(s => ({
+            period: s.period, observation: s.observation
+        }));
+    }
+
+    const trimmed = JSON.stringify(summary);
+    // If still too large, hard-truncate
+    if (trimmed.length > 8000) return trimmed.slice(0, 8000) + '...}';
+    return trimmed;
+}
+
+// Route 3: Simulate/predict ROAS trajectory for a creative
+app.post('/api/ci/simulate', async (req, res) => {
+    try {
+        const { creative, learnings, daysLive } = req.body;
+        if (!creative) {
+            return res.status(400).json({ success: false, error: 'creative object is required' });
+        }
+
+        if (!OpenAI || !OPENAI_API_KEY) {
+            return res.status(500).json({ success: false, error: 'OpenAI not configured' });
+        }
+
+        const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+        const learningsSummary = trimLearnings(learnings);
+
+        const systemPrompt = `You are a ROAS prediction engine for Univest (Indian fintech).
+Given the creative's current early metrics and historical pattern learnings, predict the ROAS trajectory.
+
+Current creative data: ${JSON.stringify(creative)}
+Historical learnings: ${learningsSummary}
+Days live so far: ${daysLive || 0}
+
+Based on the patterns from successful and failed creatives, predict:
+1. Predicted D6 ROAS
+2. Predicted 30-day ROAS
+3. Predicted 60-day ROAS
+4. Predicted 120-day ROAS
+5. Predicted 365-day LTV ROAS
+6. Confidence interval for each prediction
+7. Key risk factors
+8. Comparison to historical average
+9. Recommended action (scale/maintain/pause/kill)
+
+Return JSON:
+{
+  "predictions": {
+    "d6": { "roas": 0, "confidence_low": 0, "confidence_high": 0 },
+    "d30": { "roas": 0, "confidence_low": 0, "confidence_high": 0 },
+    "d60": { "roas": 0, "confidence_low": 0, "confidence_high": 0 },
+    "d120": { "roas": 0, "confidence_low": 0, "confidence_high": 0 },
+    "d365": { "roas": 0, "confidence_low": 0, "confidence_high": 0 }
+  },
+  "trajectory": "improving|stable|declining",
+  "risk_factors": [],
+  "recommendation": { "action": "", "reasoning": "", "budget_suggestion": "" },
+  "similar_creatives": [{ "name": "", "final_roas": 0, "similarity_reason": "" }],
+  "overall_ltv_estimate": ""
+}`;
+
+        console.log(`[ci/simulate] Simulating ROAS for creative: ${creative.name || 'unknown'}...`);
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4o',
+            max_tokens: 4000,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: 'Predict the ROAS trajectory for this creative based on the provided data and learnings.' },
+            ],
+            response_format: { type: 'json_object' },
+        });
+
+        const rawText = completion.choices[0].message.content;
+        let parsed;
+        try {
+            parsed = JSON.parse(rawText);
+        } catch (parseErr) {
+            console.warn('[ci/simulate] Failed to parse JSON, returning raw text');
+            return res.json({ success: true, data: null, rawResponse: rawText });
+        }
+
+        console.log('[ci/simulate] Simulation complete.');
+        res.json({ success: true, data: parsed });
+    } catch (err) {
+        console.error('CI simulate error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Route 4: Generate creative recommendations
+app.post('/api/ci/recommend', async (req, res) => {
+    try {
+        const { learnings, currentCreatives } = req.body;
+        if (!learnings) {
+            return res.status(400).json({ success: false, error: 'learnings object is required' });
+        }
+
+        if (!OpenAI || !OPENAI_API_KEY) {
+            return res.status(500).json({ success: false, error: 'OpenAI not configured' });
+        }
+
+        const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+
+        const systemPrompt = `You are a creative director and performance marketing strategist for Univest (Indian fintech - Research Advisory & Broking).
+Based on the learnings from historical creative performance and current active creatives, generate specific creative recommendations.
+
+Historical learnings: ${JSON.stringify(learnings)}
+Current active creatives: ${JSON.stringify(currentCreatives || [])}
+
+Generate:
+1. 5 new video script concepts (with hook, body structure, CTA, estimated duration)
+2. 3 new static ad concepts (with headline, body copy, visual description)
+3. For each current underperforming creative: specific revamp suggestions
+4. Format recommendations (what's working: video length, aspect ratio, style)
+5. Messaging angle recommendations (what hooks/themes resonate)
+6. Compliance checklist for fintech ads (SEBI, RBI disclaimers)
+
+Return JSON:
+{
+  "new_video_scripts": [{ "title": "", "hook_line": "", "body_outline": "", "cta": "", "duration_seconds": 0, "expected_performance": "", "rationale": "" }],
+  "new_static_concepts": [{ "title": "", "headline": "", "body_copy": "", "visual_description": "", "rationale": "" }],
+  "revamp_suggestions": [{ "creative_name": "", "current_issue": "", "suggested_changes": [], "expected_improvement": "" }],
+  "format_insights": { "best_video_length": "", "best_aspect_ratio": "", "style_that_works": "" },
+  "messaging_insights": { "top_hooks": [], "top_themes": [], "avoid": [] },
+  "compliance_checklist": []
+}`;
+
+        console.log(`[ci/recommend] Generating recommendations...`);
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4o',
+            max_tokens: 8000,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: 'Generate creative recommendations based on the provided learnings and current creatives.' },
+            ],
+            response_format: { type: 'json_object' },
+        });
+
+        const rawText = completion.choices[0].message.content;
+        let parsed;
+        try {
+            parsed = JSON.parse(rawText);
+        } catch (parseErr) {
+            console.warn('[ci/recommend] Failed to parse JSON, returning raw text');
+            return res.json({ success: true, data: null, rawResponse: rawText });
+        }
+
+        console.log('[ci/recommend] Recommendations generated.');
+        res.json({ success: true, data: parsed });
+    } catch (err) {
+        console.error('CI recommend error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Route 5: Store simulation tracking data
+app.post('/api/ci/simulate-track', async (req, res) => {
+    try {
+        const { creativeId, predictedRoas, actualRoas, date } = req.body;
+        if (!creativeId) {
+            return res.status(400).json({ success: false, error: 'creativeId is required' });
+        }
+
+        // Read existing tracking data
+        let trackingData = [];
+        if (fs.existsSync(SIM_TRACKING_FILE)) {
+            try {
+                trackingData = JSON.parse(fs.readFileSync(SIM_TRACKING_FILE, 'utf8'));
+            } catch (e) {
+                trackingData = [];
+            }
+        }
+
+        // Append new record
+        const record = {
+            creativeId,
+            predictedRoas: predictedRoas || null,
+            actualRoas: actualRoas || null,
+            date: date || new Date().toISOString().slice(0, 10),
+            timestamp: new Date().toISOString(),
+        };
+        trackingData.push(record);
+
+        // Write back
+        fs.writeFileSync(SIM_TRACKING_FILE, JSON.stringify(trackingData, null, 2));
+
+        // Return all records for this creativeId
+        const creativeRecords = trackingData.filter(r => r.creativeId === creativeId);
+        console.log(`[ci/simulate-track] Stored tracking for ${creativeId}. ${creativeRecords.length} total records.`);
+        res.json({ success: true, data: creativeRecords });
+    } catch (err) {
+        console.error('CI simulate-track error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Route 6: Get simulation tracking records for a creative
+app.get('/api/ci/sim-tracking/:creativeName', async (req, res) => {
+    try {
+        const { creativeName } = req.params;
+
+        let trackingData = [];
+        if (fs.existsSync(SIM_TRACKING_FILE)) {
+            try {
+                trackingData = JSON.parse(fs.readFileSync(SIM_TRACKING_FILE, 'utf8'));
+            } catch (e) {
+                trackingData = [];
+            }
+        }
+
+        const creativeRecords = trackingData.filter(r => r.creativeId === creativeName);
+        res.json({ success: true, data: creativeRecords });
+    } catch (err) {
+        console.error('CI sim-tracking error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// =============================================================================
+// CI ROAS SIMULATOR — PERMANENT DATABASE & AUTO-SIMULATE ALL LIVE ADS
+// =============================================================================
+
+const { getCiDb } = require('../creative-intelligence/db');
+
+// Route 7: Auto-simulate ALL live ads — fetches live creatives, runs simulation for each, stores in DB
+app.post('/api/ci/simulate-all', async (req, res) => {
+    try {
+        if (!OpenAI || !OPENAI_API_KEY) {
+            return res.status(500).json({ success: false, error: 'OpenAI not configured' });
+        }
+
+        const db = getCiDb();
+        const batchId = new Date().toISOString().replace(/[:.]/g, '-');
+        console.log(`[ci/simulate-all] Starting batch ${batchId}...`);
+
+        // 1. Fetch all campaigns to find target campaigns
+        const campaignsData = await metaGet('/' + META_AD_ACCOUNT_ID + '/campaigns', {
+            fields: 'id,name,status',
+            limit: 100
+        });
+
+        if (campaignsData.error) {
+            return res.status(400).json({ success: false, error: 'Meta API error: ' + campaignsData.error.message });
+        }
+
+        // Find ACTIVE campaigns matching TARGET_CAMPAIGNS
+        const targetCampaignIds = [];
+        for (const c of (campaignsData.data || [])) {
+            if (TARGET_CAMPAIGNS.includes(c.name)) {
+                targetCampaignIds.push({ id: c.id, name: c.name });
+            }
+        }
+
+        if (targetCampaignIds.length === 0) {
+            return res.status(404).json({ success: false, error: 'No target campaigns found' });
+        }
+
+        // 2. Fetch ALL ads with ACTIVE status from target campaigns
+        const liveAds = [];
+        for (const campaign of targetCampaignIds) {
+            let firstPage = true;
+            let adsNextUrl = null;
+            while (firstPage || adsNextUrl) {
+                firstPage = false;
+                let adsData;
+                if (adsNextUrl) {
+                    const sep = adsNextUrl.includes('?') ? '&' : '?';
+                    const resp = await fetch(adsNextUrl + sep + 'appsecret_proof=' + encodeURIComponent(META_APP_SECRET_PROOF));
+                    adsData = await resp.json();
+                } else {
+                    adsData = await metaGet('/' + campaign.id + '/ads', {
+                        fields: 'id,name,status,created_time',
+                        filtering: JSON.stringify([{ field: 'effective_status', operator: 'IN', value: ['ACTIVE'] }]),
+                        limit: 500
+                    });
+                }
+
+                if (adsData.error) break;
+
+                for (const ad of (adsData.data || [])) {
+                    if (ad.status === 'ACTIVE') {
+                        liveAds.push({
+                            ad_id: ad.id,
+                            ad_name: ad.name,
+                            campaign_name: campaign.name,
+                            created_time: ad.created_time,
+                            status: ad.status,
+                        });
+                    }
+                }
+                adsNextUrl = (adsData.paging && adsData.paging.next) ? adsData.paging.next : null;
+            }
+        }
+
+        console.log(`[ci/simulate-all] Found ${liveAds.length} live ads.`);
+
+        if (liveAds.length === 0) {
+            return res.json({ success: true, message: 'No live ads found', simulations: [] });
+        }
+
+        // 3. Fetch performance data for all live ads (last 30 days)
+        const dateTo = new Date().toISOString().slice(0, 10);
+        const dateFrom = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+        const dateFrom180 = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10);
+
+        // Fetch Meta ad-level insights for these ads
+        let allMetaRows = [];
+        let nextUrl = `${META_API_BASE}/${META_AD_ACCOUNT_ID}/insights?${new URLSearchParams(metaParams({
+            fields: 'ad_name,ad_id,campaign_name,adset_name,spend,impressions,clicks,cpm,ctr,cpc,actions,cost_per_action_type,video_thruplay_watched_actions,video_p25_watched_actions,video_p50_watched_actions,video_p75_watched_actions,video_p100_watched_actions',
+            level: 'ad',
+            time_range: JSON.stringify({ since: dateFrom180, until: dateTo }),
+            limit: 500,
+        })).toString()}`;
+
+        while (nextUrl) {
+            const response = await fetch(nextUrl);
+            const data = await response.json();
+            if (data.error) break;
+            if (data.data) allMetaRows.push(...data.data);
+            if (data.paging && data.paging.next) {
+                const sep = data.paging.next.includes('?') ? '&' : '?';
+                nextUrl = data.paging.next + sep + 'appsecret_proof=' + encodeURIComponent(META_APP_SECRET_PROOF);
+            } else {
+                nextUrl = null;
+            }
+        }
+
+        // Filter to only live ad IDs
+        const liveAdIds = new Set(liveAds.map(a => a.ad_id));
+        const liveMetaRows = allMetaRows.filter(r => liveAdIds.has(r.ad_id));
+        console.log(`[ci/simulate-all] Got ${liveMetaRows.length} insight rows for ${liveAdIds.size} live ads.`);
+
+        // Aggregate per ad
+        const adAgg = {};
+        for (const row of liveMetaRows) {
+            const key = row.ad_name;
+            if (!adAgg[key]) {
+                adAgg[key] = { ad_name: row.ad_name, ad_id: row.ad_id, campaign_name: row.campaign_name, adset_name: row.adset_name || '', spend: 0, impressions: 0, clicks: 0, installs: 0, thruplay: 0, p25: 0, p50: 0, p75: 0, p100: 0, three_sec_views: 0, dates: [] };
+            }
+            const a = adAgg[key];
+            a.spend += parseFloat(row.spend || 0);
+            a.impressions += parseInt(row.impressions || 0);
+            a.clicks += parseInt(row.clicks || 0);
+            const actions = row.actions || [];
+            const installs = actions.find(x => x.action_type === 'mobile_app_install');
+            if (installs) a.installs += parseInt(installs.value);
+            a.thruplay += row.video_thruplay_watched_actions ? parseInt((row.video_thruplay_watched_actions[0] || {}).value || 0) : 0;
+            a.p25 += row.video_p25_watched_actions ? parseInt((row.video_p25_watched_actions[0] || {}).value || 0) : 0;
+            a.p100 += row.video_p100_watched_actions ? parseInt((row.video_p100_watched_actions[0] || {}).value || 0) : 0;
+            a.three_sec_views += a.p25;
+            if (parseFloat(row.spend || 0) > 0) a.dates.push(row.date_start);
+        }
+
+        // 4. Fetch Metabase funnel data for live ads
+        const campaignNamesSQL = TARGET_CAMPAIGNS.map(n => `'${n}'`).join(',');
+        const funnelSql = `
+WITH user_data AS (
+  SELECT uad.user_id, uad.tracker_campaign_name,
+    regexp_replace(uad.creative, ':.*$', '', 'g') AS tracker_name,
+    priority, date(u.created_at) AS event_date
+  FROM user_additional_details uad
+  LEFT JOIN users u ON u.id = uad.user_id
+  LEFT JOIN (SELECT DISTINCT "Adset ID"::bigint AS "Adset ID" FROM "Demat_Campaigns" WHERE "Adset ID" IS NOT NULL AND TRIM("Adset ID") <> '') ch ON ch."Adset ID" = uad.tracker_sub_campaign_id
+  WHERE "Adset ID" IS NULL
+    AND uad.user_id IN (SELECT id FROM users WHERE referred_by IS NULL AND user_interest IS NULL)
+    AND uad.user_id IN (SELECT u.id FROM user_devices ud WHERE ud.user_id = u.id AND ud.os IN ('android','Android Web'))
+    AND date(u.created_at) >= '${dateFrom180}'
+    AND date(u.created_at) <= '${dateTo}'
+    AND (network LIKE '%Facebook%' OR network LIKE '%Instagram%')
+    AND uad.tracker_campaign_name IN (${campaignNamesSQL})
+),
+first_payments AS (
+  SELECT user_id, min(payment_date) as payment_date,
+    sum(case when rt = 1 then amount else null end) as amount,
+    sum(amount) as overall_amt
+  FROM (SELECT user_id, payment_date, amount, created_at, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY payment_date) AS rt FROM user_transaction_history uth LEFT JOIN users u ON u.id = uth.user_id WHERE status = 'CHARGED' AND amount > 50) sub
+  GROUP BY 1
+),
+signup_metrics AS (
+  SELECT regexp_replace(ud.tracker_name, ':.*$', '', 'g') AS tracker_name, ud.tracker_campaign_name,
+    COUNT(DISTINCT ud.user_id) AS total_signup,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' AND fp.amount > 0 THEN ud.user_id END) AS d6,
+    SUM(CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' AND fp.amount > 0 THEN fp.amount ELSE 0 END) AS d6_revenue,
+    SUM(fp.overall_amt) AS overall_revenue,
+    COALESCE(SUM(CASE WHEN date(fp.payment_date) <= ud.event_date + INTERVAL '6 days' THEN fp.overall_amt END), 0) AS d6_overall_revenue
+  FROM user_data ud LEFT JOIN first_payments fp ON ud.user_id = fp.user_id
+  GROUP BY 1,2
+)
+SELECT sm.tracker_name, sm.tracker_campaign_name AS campaign_name,
+  SUM(sm.total_signup) AS signups, SUM(sm.d6) AS d6, SUM(sm.d6_revenue) AS d6_revenue,
+  SUM(sm.overall_revenue) AS overall_revenue, SUM(sm.d6_overall_revenue) AS d6_overall_revenue
+FROM signup_metrics sm GROUP BY 1,2 ORDER BY SUM(sm.total_signup) DESC`;
+
+        let funnelData = [];
+        try {
+            const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
+                method: 'POST',
+                headers: { 'X-Metabase-Session': METABASE_SESSION_TOKEN, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ database: 2, type: 'native', native: { query: funnelSql } }),
+            });
+            if (metabaseRes.ok) {
+                const result = await metabaseRes.json();
+                const columns = result.data.cols.map(c => c.name);
+                funnelData = result.data.rows.map(row => {
+                    const obj = {};
+                    columns.forEach((col, i) => { obj[col] = row[i]; });
+                    return obj;
+                });
+            }
+        } catch (mbErr) {
+            console.warn('[ci/simulate-all] Metabase fetch failed:', mbErr.message);
+        }
+
+        // Build funnel lookup
+        const funnelLookup = {};
+        for (const row of funnelData) {
+            if (row.tracker_name) {
+                const key = row.tracker_name.toLowerCase().trim();
+                funnelLookup[key] = row;
+                const stripped = key.replace(/^fb_mof_(video_|static_)?/i, '');
+                if (stripped && stripped !== key) funnelLookup[stripped] = row;
+            }
+        }
+
+        // 5. Build enriched creative records
+        const enrichedCreatives = Object.values(adAgg).map(a => {
+            const spendDates = a.dates.sort();
+            const goLiveDate = spendDates.length > 0 ? spendDates[0] : null;
+            const daysLive = spendDates.length > 0 ? Math.ceil((new Date(spendDates[spendDates.length - 1]) - new Date(spendDates[0])) / 86400000) + 1 : 0;
+            const cpi = a.installs > 0 ? a.spend / a.installs : null;
+            const ctr = a.impressions > 0 ? (a.clicks / a.impressions) * 100 : 0;
+            const hook_rate = a.impressions > 0 ? (a.three_sec_views / a.impressions) * 100 : 0;
+            const hold_rate = a.three_sec_views > 0 ? (a.thruplay / a.three_sec_views) * 100 : 0;
+            const completion_rate = a.impressions > 0 ? (a.p100 / a.impressions) * 100 : 0;
+            const type = a.ad_name.includes('Video_') ? 'Video' : a.ad_name.includes('Static_') ? 'Static' : 'Unknown';
+
+            const funnelKey = a.ad_name.toLowerCase().trim();
+            const funnelKeyStripped = funnelKey.replace(/^fb_mof_(video_|static_)?/i, '');
+            const funnel = funnelLookup[funnelKey] || funnelLookup[funnelKeyStripped] || {};
+
+            const signups = parseInt(funnel.signups || 0);
+            const d6 = parseInt(funnel.d6 || 0);
+            const d6_revenue = parseFloat(funnel.d6_revenue || 0);
+            const overall_revenue = parseFloat(funnel.overall_revenue || 0);
+            const d6_overall_revenue = parseFloat(funnel.d6_overall_revenue || 0);
+            const signup_cost = signups > 0 ? a.spend / signups : null;
+            const d6_cac = d6 > 0 ? a.spend / d6 : null;
+            const d6_roas = a.spend > 0 ? (d6_overall_revenue / a.spend) * 100 : 0;
+            const overall_roas = a.spend > 0 ? (overall_revenue / a.spend) * 100 : 0;
+
+            return {
+                ad_id: a.ad_id, ad_name: a.ad_name, campaign_name: a.campaign_name, adset_name: a.adset_name,
+                type, spend: Math.round(a.spend * 100) / 100, impressions: a.impressions, clicks: a.clicks,
+                installs: a.installs, cpi: cpi ? Math.round(cpi * 100) / 100 : null, ctr: Math.round(ctr * 100) / 100,
+                signups, signup_cost: signup_cost ? Math.round(signup_cost * 100) / 100 : null,
+                d6, d6_cac: d6_cac ? Math.round(d6_cac * 100) / 100 : null,
+                d6_roas: Math.round(d6_roas * 100) / 100, d6_revenue: Math.round(d6_revenue * 100) / 100,
+                d6_overall_revenue: Math.round(d6_overall_revenue * 100) / 100,
+                overall_roas: Math.round(overall_roas * 100) / 100, overall_revenue: Math.round(overall_revenue * 100) / 100,
+                hook_rate: Math.round(hook_rate * 100) / 100, hold_rate: Math.round(hold_rate * 100) / 100,
+                completion_rate: Math.round(completion_rate * 100) / 100,
+                go_live_date: goLiveDate, days_live: daysLive,
+            };
+        });
+
+        console.log(`[ci/simulate-all] ${enrichedCreatives.length} enriched creatives ready for simulation.`);
+
+        // 6. Build a compact peer summary for GPT context (not full cached data)
+        const peerSummary = enrichedCreatives.map(c => ({
+            name: c.ad_name, type: c.type, spend: c.spend, cpi: c.cpi,
+            d6_roas: c.d6_roas, overall_roas: c.overall_roas, days_live: c.days_live
+        }));
+        const peerSummaryStr = JSON.stringify(peerSummary);
+
+        // 7. Run simulation for each creative via GPT-4o
+        const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+        const results = [];
+        const insertSim = db.prepare(`
+            INSERT INTO simulations (ad_id, ad_name, campaign_name, adset_name, creative_type,
+                spend, impressions, clicks, installs, cpi, ctr, signups, signup_cost,
+                d6, d6_cac, d6_roas, d6_revenue, d6_overall_revenue, overall_roas, overall_revenue,
+                hook_rate, hold_rate, completion_rate, days_live, go_live_date,
+                predicted_d6_roas, predicted_d6_low, predicted_d6_high,
+                predicted_d30_roas, predicted_d30_low, predicted_d30_high,
+                predicted_d60_roas, predicted_d60_low, predicted_d60_high,
+                predicted_d120_roas, predicted_d120_low, predicted_d120_high,
+                predicted_d365_roas, predicted_d365_low, predicted_d365_high,
+                trajectory, action, reasoning, budget_suggestion, risk_factors, similar_creatives,
+                raw_response, batch_id, is_live)
+            VALUES (?,?,?,?,?, ?,?,?,?,?,?,?,?, ?,?,?,?,?,?,?, ?,?,?,?,?, ?,?,?, ?,?,?, ?,?,?, ?,?,?, ?,?,?, ?,?,?,?,?,?, ?,?,?)
+        `);
+
+        // Simulate in batches of 3 concurrently
+        for (let i = 0; i < enrichedCreatives.length; i += 3) {
+            const batch = enrichedCreatives.slice(i, i + 3);
+            const promises = batch.map(async (creative) => {
+                try {
+                    const systemPrompt = `You are a ROAS prediction engine for Univest (Indian fintech).
+Given the creative's current metrics and peer context, predict the ROAS trajectory.
+
+Creative data: ${JSON.stringify(creative)}
+Peer creatives (for relative comparison): ${peerSummaryStr.length < 6000 ? peerSummaryStr : JSON.stringify(peerSummary.slice(0, 10))}
+Days live: ${creative.days_live || 0}
+
+Predict D6/30/60/120/365-day ROAS with confidence intervals.
+Return JSON:
+{
+  "predictions": {
+    "d6": { "roas": 0, "low": 0, "high": 0 },
+    "d30": { "roas": 0, "low": 0, "high": 0 },
+    "d60": { "roas": 0, "low": 0, "high": 0 },
+    "d120": { "roas": 0, "low": 0, "high": 0 },
+    "d365": { "roas": 0, "low": 0, "high": 0 }
+  },
+  "trajectory": "improving|stable|declining",
+  "risk_factors": ["string"],
+  "recommendation": { "action": "SCALE|MAINTAIN|PAUSE|KILL", "reasoning": "", "budget_suggestion": "" },
+  "similar_creatives": [{ "name": "", "final_roas": 0, "similarity_reason": "" }]
+}`;
+
+                    const completion = await openai.chat.completions.create({
+                        model: 'gpt-4o',
+                        max_tokens: 2000,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: 'Predict ROAS trajectory.' },
+                        ],
+                        response_format: { type: 'json_object' },
+                    });
+
+                    const rawText = completion.choices[0].message.content;
+                    let parsed;
+                    try { parsed = JSON.parse(rawText); } catch(e) { parsed = {}; }
+
+                    const preds = parsed.predictions || {};
+                    const rec = parsed.recommendation || {};
+
+                    // Insert into DB
+                    const info = insertSim.run(
+                        creative.ad_id, creative.ad_name, creative.campaign_name, creative.adset_name, creative.type,
+                        creative.spend, creative.impressions, creative.clicks, creative.installs, creative.cpi, creative.ctr,
+                        creative.signups, creative.signup_cost,
+                        creative.d6, creative.d6_cac, creative.d6_roas, creative.d6_revenue, creative.d6_overall_revenue,
+                        creative.overall_roas, creative.overall_revenue,
+                        creative.hook_rate, creative.hold_rate, creative.completion_rate,
+                        creative.days_live, creative.go_live_date,
+                        preds.d6 ? preds.d6.roas : null, preds.d6 ? preds.d6.low : null, preds.d6 ? preds.d6.high : null,
+                        preds.d30 ? preds.d30.roas : null, preds.d30 ? preds.d30.low : null, preds.d30 ? preds.d30.high : null,
+                        preds.d60 ? preds.d60.roas : null, preds.d60 ? preds.d60.low : null, preds.d60 ? preds.d60.high : null,
+                        preds.d120 ? preds.d120.roas : null, preds.d120 ? preds.d120.low : null, preds.d120 ? preds.d120.high : null,
+                        preds.d365 ? preds.d365.roas : null, preds.d365 ? preds.d365.low : null, preds.d365 ? preds.d365.high : null,
+                        parsed.trajectory || null,
+                        rec.action || null, rec.reasoning || null, rec.budget_suggestion || null,
+                        JSON.stringify(parsed.risk_factors || []),
+                        JSON.stringify(parsed.similar_creatives || []),
+                        rawText, batchId, 1
+                    );
+
+                    return { success: true, ad_name: creative.ad_name, simulation_id: info.lastInsertRowid, predictions: preds, action: rec.action };
+                } catch (err) {
+                    console.error(`[ci/simulate-all] Error simulating ${creative.ad_name}:`, err.message);
+                    return { success: false, ad_name: creative.ad_name, error: err.message };
+                }
+            });
+
+            const batchResults = await Promise.all(promises);
+            results.push(...batchResults);
+            console.log(`[ci/simulate-all] Batch ${Math.floor(i/3) + 1} done (${results.length}/${enrichedCreatives.length})`);
+        }
+
+        console.log(`[ci/simulate-all] Batch ${batchId} complete. ${results.filter(r => r.success).length}/${results.length} succeeded.`);
+        res.json({ success: true, batchId, total: results.length, succeeded: results.filter(r => r.success).length, results });
+    } catch (err) {
+        console.error('CI simulate-all error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Route 8: Get all simulations from DB (with optional filters)
+app.get('/api/ci/simulations', (req, res) => {
+    try {
+        const db = getCiDb();
+        const { ad_name, batch_id, live_only, limit: lim } = req.query;
+        let sql = 'SELECT * FROM simulations';
+        const conditions = [];
+        const params = [];
+
+        if (ad_name) { conditions.push('ad_name = ?'); params.push(ad_name); }
+        if (batch_id) { conditions.push('batch_id = ?'); params.push(batch_id); }
+        if (live_only === '1' || live_only === 'true') { conditions.push('is_live = 1'); }
+
+        if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
+        sql += ' ORDER BY simulated_at DESC';
+        if (lim) sql += ' LIMIT ' + parseInt(lim);
+
+        const rows = db.prepare(sql).all(...params);
+        // Parse JSON fields
+        for (const row of rows) {
+            try { row.risk_factors = JSON.parse(row.risk_factors || '[]'); } catch(e) { row.risk_factors = []; }
+            try { row.similar_creatives = JSON.parse(row.similar_creatives || '[]'); } catch(e) { row.similar_creatives = []; }
+        }
+
+        res.json({ success: true, data: rows, total: rows.length });
+    } catch (err) {
+        console.error('CI simulations error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Route 9: Get latest simulation for each ad (deduplicated — one row per ad_name)
+app.get('/api/ci/simulations/latest', (req, res) => {
+    try {
+        const db = getCiDb();
+        const rows = db.prepare(`
+            SELECT s.* FROM simulations s
+            INNER JOIN (SELECT ad_name, MAX(id) AS max_id FROM simulations GROUP BY ad_name) latest
+            ON s.id = latest.max_id
+            ORDER BY s.spend DESC
+        `).all();
+
+        for (const row of rows) {
+            try { row.risk_factors = JSON.parse(row.risk_factors || '[]'); } catch(e) { row.risk_factors = []; }
+            try { row.similar_creatives = JSON.parse(row.similar_creatives || '[]'); } catch(e) { row.similar_creatives = []; }
+        }
+
+        res.json({ success: true, data: rows, total: rows.length });
+    } catch (err) {
+        console.error('CI simulations/latest error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Route 10: Get simulation history for a specific ad (all runs over time)
+app.get('/api/ci/simulations/history/:adName', (req, res) => {
+    try {
+        const db = getCiDb();
+        const rows = db.prepare('SELECT * FROM simulations WHERE ad_name = ? ORDER BY simulated_at DESC').all(req.params.adName);
+
+        for (const row of rows) {
+            try { row.risk_factors = JSON.parse(row.risk_factors || '[]'); } catch(e) { row.risk_factors = []; }
+            try { row.similar_creatives = JSON.parse(row.similar_creatives || '[]'); } catch(e) { row.similar_creatives = []; }
+        }
+
+        res.json({ success: true, data: rows, total: rows.length });
+    } catch (err) {
+        console.error('CI simulation history error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Route 11: Update actual ROAS for a simulation (for accuracy tracking)
+app.post('/api/ci/simulations/update-actuals', async (req, res) => {
+    try {
+        const db = getCiDb();
+
+        // Fetch current actual ROAS from Meta + Metabase for all simulated ads
+        const latestSims = db.prepare(`
+            SELECT s.* FROM simulations s
+            INNER JOIN (SELECT ad_name, MAX(id) AS max_id FROM simulations GROUP BY ad_name) latest
+            ON s.id = latest.max_id
+        `).all();
+
+        if (latestSims.length === 0) {
+            return res.json({ success: true, message: 'No simulations to update', updated: 0 });
+        }
+
+        // Fetch current Meta spend for these ads
+        const dateTo = new Date().toISOString().slice(0, 10);
+        const dateFrom = new Date(Date.now() - 180 * 86400000).toISOString().slice(0, 10);
+
+        let allMetaRows = [];
+        let nextUrl = `${META_API_BASE}/${META_AD_ACCOUNT_ID}/insights?${new URLSearchParams(metaParams({
+            fields: 'ad_name,ad_id,spend',
+            level: 'ad',
+            time_range: JSON.stringify({ since: dateFrom, until: dateTo }),
+            limit: 500,
+        })).toString()}`;
+
+        while (nextUrl) {
+            const response = await fetch(nextUrl);
+            const data = await response.json();
+            if (data.error) break;
+            if (data.data) allMetaRows.push(...data.data);
+            if (data.paging && data.paging.next) {
+                const sep = data.paging.next.includes('?') ? '&' : '?';
+                nextUrl = data.paging.next + sep + 'appsecret_proof=' + encodeURIComponent(META_APP_SECRET_PROOF);
+            } else {
+                nextUrl = null;
+            }
+        }
+
+        // Aggregate spend per ad
+        const spendMap = {};
+        for (const row of allMetaRows) {
+            spendMap[row.ad_name] = (spendMap[row.ad_name] || 0) + parseFloat(row.spend || 0);
+        }
+
+        const insertActual = db.prepare(`
+            INSERT INTO simulation_actuals (simulation_id, ad_name, actual_overall_roas, actual_spend, recorded_at)
+            VALUES (?, ?, ?, ?, datetime('now'))
+        `);
+
+        let updated = 0;
+        for (const sim of latestSims) {
+            const currentSpend = spendMap[sim.ad_name];
+            if (currentSpend !== undefined) {
+                insertActual.run(sim.id, sim.ad_name, sim.overall_roas, currentSpend);
+                updated++;
+            }
+        }
+
+        res.json({ success: true, updated, total: latestSims.length });
+    } catch (err) {
+        console.error('CI update-actuals error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Route 12: Get simulation stats/summary
+app.get('/api/ci/simulations/stats', (req, res) => {
+    try {
+        const db = getCiDb();
+        const stats = {
+            total_simulations: db.prepare('SELECT COUNT(*) as c FROM simulations').get().c,
+            unique_ads: db.prepare('SELECT COUNT(DISTINCT ad_name) as c FROM simulations').get().c,
+            total_batches: db.prepare('SELECT COUNT(DISTINCT batch_id) as c FROM simulations').get().c,
+            latest_batch: db.prepare('SELECT batch_id, simulated_at, COUNT(*) as ads_count FROM simulations GROUP BY batch_id ORDER BY simulated_at DESC LIMIT 1').get(),
+            action_breakdown: db.prepare("SELECT action, COUNT(*) as count FROM simulations WHERE id IN (SELECT MAX(id) FROM simulations GROUP BY ad_name) GROUP BY action").all(),
+            avg_predicted_d6: db.prepare("SELECT AVG(predicted_d6_roas) as avg FROM simulations WHERE id IN (SELECT MAX(id) FROM simulations GROUP BY ad_name)").get().avg,
+        };
+        res.json({ success: true, data: stats });
+    } catch (err) {
+        console.error('CI simulation stats error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// =============================================================================
+// INVENTORY SCANNER ROUTES (mounted from inventory-scanner module)
+// =============================================================================
+
+try {
+    const scannerRoutes = require('../inventory-scanner/routes');
+    const scannerAgents = require('../inventory-scanner/agents');
+    const { getDb: getScannerDb, isSeeded: isScannerSeeded } = require('../inventory-scanner/database/db');
+
+    // Initialize scanner DB and seed if needed
+    getScannerDb();
+    if (!isScannerSeeded()) {
+        console.log('[Scanner] First run — seeding database...');
+        try {
+            const { runSeed } = require('../inventory-scanner/data/seed');
+            runSeed();
+            console.log('[Scanner] Database seeded');
+        } catch (e) { console.error('[Scanner] Seed error:', e.message); }
+    }
+
+    // Mount all scanner API routes
+    app.use('/api/inventories', scannerRoutes.inventoriesRouter);
+    app.use('/api/discovery', scannerRoutes.discoveryRouter);
+    app.use('/api/competitors', scannerRoutes.competitorsRouter);
+    app.use('/api/onboarding', scannerRoutes.onboardingRouter);
+    app.use('/api/insights', scannerRoutes.insightsRouter);
+    app.use('/api/pricing', scannerRoutes.pricingRouter);
+    app.use('/api/budget', scannerRoutes.budgetRouter);
+    app.use('/api/formats', scannerRoutes.formatsRouter);
+    app.use('/api/meta', scannerRoutes.metaRouter);
+    app.use('/api/google', scannerRoutes.googleRouter);
+    app.use('/api/synthesis', scannerRoutes.synthesisRouter);
+
+    // Scheduler routes
+    app.get('/api/scheduler/status', (req, res) => {
+        try {
+            const status = scannerAgents.getSchedulerStatus();
+            res.json({ success: true, data: status, error: null, timestamp: new Date().toISOString() });
+        } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
+    });
+    app.post('/api/scheduler/run/:jobName', async (req, res) => {
+        try {
+            const result = await scannerAgents.runSchedulerJob(req.params.jobName);
+            res.json({ success: true, data: result, error: null, timestamp: new Date().toISOString() });
+        } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
+    });
+
+    console.log('[Scanner] Inventory scanner routes mounted');
+} catch (err) {
+    console.warn('[Scanner] Could not mount inventory scanner routes:', err.message);
+}
+
+// =============================================================================
+// CREATIVE INTELLIGENCE v2 — Pipeline, Dashboard, Actions, Trends
+// =============================================================================
+
+try {
+    const ciRoutes = require('../creative-intelligence/routes');
+    const ciRouter = ciRoutes({
+        metaApiBase: META_API_BASE,
+        metaAdAccountId: META_AD_ACCOUNT_ID,
+        metaAccessToken: META_ACCESS_TOKEN,
+        metaAppSecretProof: META_APP_SECRET_PROOF,
+        metabaseUrl: METABASE_URL,
+        metabaseSessionToken: METABASE_SESSION_TOKEN,
+        openaiApiKey: OPENAI_API_KEY,
+        targetCampaigns: TARGET_CAMPAIGNS,
+    });
+    app.use('/api/ci2', ciRouter);
+    console.log('[CI2] Creative Intelligence v2 routes mounted at /api/ci2');
+} catch (err) {
+    console.warn('[CI2] Could not mount CI v2 routes:', err.message);
+}
 
 // =============================================================================
 // START SERVER
