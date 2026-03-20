@@ -1792,7 +1792,7 @@ window.fetchCampaignTree = async function () {
             const signupCost = a.signups > 0 ? a.spend / a.signups : null;
             const d0TrialCost = a.d0_trial > 0 ? a.spend / a.d0_trial : null;
             const d6CAC = a.d6 > 0 ? a.spend / a.d6 : null;
-            const d6ROAS = a.spend > 0 ? (a.d6_revenue / a.spend) * 100 : 0;
+            const d6ROAS = a.spend > 0 ? ((a.d6_overall_revenue || a.d6_revenue) / a.spend) * 100 : 0;
             const d6OverallCAC = a.d6_overall_con > 0 ? a.spend / a.d6_overall_con : null;
             const d6OverallROAS = a.spend > 0 ? (a.d6_overall_revenue / a.spend) * 100 : 0;
             return { ...a, cpi, ctr, signupCost, d0TrialCost, d6CAC, d6ROAS, d6OverallCAC, d6OverallROAS };
@@ -1825,7 +1825,7 @@ window.fetchCampaignTree = async function () {
             t.signupCost = t.signups > 0 ? t.spend / t.signups : null;
             t.d0TrialCost = t.d0_trial > 0 ? t.spend / t.d0_trial : null;
             t.d6CAC = t.d6 > 0 ? t.spend / t.d6 : null;
-            t.d6ROAS = t.spend > 0 ? (t.d6_revenue / t.spend) * 100 : 0;
+            t.d6ROAS = t.spend > 0 ? ((t.d6_overall_revenue || t.d6_revenue) / t.spend) * 100 : 0;
             t.d6OverallCAC = t.d6_overall_con > 0 ? t.spend / t.d6_overall_con : null;
             t.d6OverallROAS = t.spend > 0 ? (t.d6_overall_revenue / t.spend) * 100 : 0;
             return t;
@@ -2015,7 +2015,8 @@ function deriveMetrics(r) {
         signupCost: r.signups > 0 ? r.spend / r.signups : null,
         d0TrialCost: r.d0_trial > 0 ? r.spend / r.d0_trial : null,
         d6CAC: r.d6 > 0 ? r.spend / r.d6 : null,
-        d6ROAS: r.spend > 0 ? (r.d6_revenue / r.spend) * 100 : 0,
+        d6ROAS: r.spend > 0 ? ((r.d6_overall_revenue || r.d6_revenue) / r.spend) * 100 : 0,
+        overallROAS: r.spend > 0 ? (r.overall_revenue / r.spend) * 100 : 0,
     };
 }
 
