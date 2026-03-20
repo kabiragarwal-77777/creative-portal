@@ -1977,22 +1977,26 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 // =========================================================================
 // WEEKLY BREAKDOWN
 // =========================================================================
+function localDateStr(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
 function getWeekBuckets() {
-    const today = new Date(); today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(12, 0, 0, 0); // noon to avoid DST issues
     const buckets = [];
     // Bucket 0: Today
-    const todayStr = today.toISOString().substring(0, 10);
+    const todayStr = localDateStr(today);
     buckets.push({ label: 'Today', from: todayStr, to: todayStr, dates: new Set([todayStr]) });
     // Buckets 1-4: last 4 weeks (7 days each, going backwards from yesterday)
     for (let w = 0; w < 4; w++) {
         const endDay = new Date(today); endDay.setDate(endDay.getDate() - 1 - (w * 7));
         const startDay = new Date(endDay); startDay.setDate(startDay.getDate() - 6);
         const dates = new Set();
-        for (let d = new Date(startDay); d <= endDay; d.setDate(d.getDate() + 1)) {
-            dates.add(d.toISOString().substring(0, 10));
+        for (const dt = new Date(startDay); dt <= endDay; dt.setDate(dt.getDate() + 1)) {
+            dates.add(localDateStr(dt));
         }
-        const fromStr = startDay.toISOString().substring(0, 10);
-        const toStr = endDay.toISOString().substring(0, 10);
+        const fromStr = localDateStr(startDay);
+        const toStr = localDateStr(endDay);
         const fmtFrom = startDay.getDate() + ' ' + startDay.toLocaleString('en', { month: 'short' });
         const fmtTo = endDay.getDate() + ' ' + endDay.toLocaleString('en', { month: 'short' });
         buckets.push({ label: fmtFrom + ' - ' + fmtTo, from: fromStr, to: toStr, dates });
@@ -2046,83 +2050,91 @@ window.fetchWeeklyBreakdown = async function () {
     const dateTo = buckets[0].to; // today
 
     try {
-        const [metaRes, funnelRes] = await Promise.all([
-            fetch(`${TREE_SERVER}/api/meta/ad-insights-daily`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dateFrom, dateTo }),
-            }).then(r => r.json()),
-            fetch(`${TREE_SERVER}/api/metabase/ad-funnel`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dateFrom, dateTo }),
-            }).then(r => r.json()),
-        ]);
+        // Fetch Meta + Metabase for EACH bucket in parallel (5 buckets × 2 sources = 10 calls)
+        // Each Meta call is aggregated (no time_increment=1), so returns 1 row per ad per bucket
+        status.textContent = 'Fetching 5 weekly buckets from Meta + Metabase...';
 
-        if (!metaRes.success) throw new Error('Meta API: ' + metaRes.error);
-        if (!funnelRes.success) throw new Error('Metabase: ' + funnelRes.error);
+        const bucketResults = await Promise.all(buckets.map(async (bkt, idx) => {
+            const [metaRes, mbRes] = await Promise.all([
+                fetch(`${TREE_SERVER}/api/meta/ad-insights-daily`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dateFrom: bkt.from, dateTo: bkt.to }),
+                }).then(r => r.json()),
+                fetch(`${TREE_SERVER}/api/metabase/ad-funnel`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dateFrom: bkt.from, dateTo: bkt.to }),
+                }).then(r => r.json()),
+            ]);
+            console.log(`[Weekly] Bucket ${idx} (${bkt.label}): Meta=${metaRes.total || 0} MB=${mbRes.total || 0}`);
+            return { meta: metaRes, mb: mbRes, bucketIdx: idx };
+        }));
 
-        status.textContent = `Meta: ${metaRes.total} | MB: ${funnelRes.total}. Building weekly view...`;
-
-        // Build Metabase daily lookup
-        const mbDaily = {};
-        for (const row of funnelRes.data) {
-            const d = String(row.date).substring(0, 10);
-            const key = d + '|||' + row.campaign_name + '|||' + row.ad_set_name + '|||' + row.tracker_name;
-            if (!mbDaily[key]) mbDaily[key] = emptyRaw();
-            const m = mbDaily[key];
-            m.signups += Number(row.signups) || 0;
-            m.d0_trial += Number(row.d0_trial) || 0;
-            m.d0 += Number(row.d0) || 0;
-            m.d0_revenue += Number(row.d0_revenue) || 0;
-            m.d6 += Number(row.d6) || 0;
-            m.d6_revenue += Number(row.d6_revenue) || 0;
-            m.overall_revenue += Number(row.overall_revenue) || 0;
-            m.d6_overall_con += Number(row.d6_overall_con) || 0;
-            m.d6_overall_revenue += Number(row.d6_overall_revenue) || 0;
-        }
-
-        // Helper: find bucket index for a date
-        function getBucketIdx(dateStr) {
-            for (let i = 0; i < buckets.length; i++) {
-                if (buckets[i].dates.has(dateStr)) return i;
-            }
-            return -1;
-        }
-
-        // Filter to Android, build per-ad bucketed data
-        const metaRows = metaRes.data.filter(r => /android/i.test(r.campaign_name));
+        // Build per-ad bucketed data
         const adWeekly = {};
         let matched = 0, unmatched = 0;
 
-        for (const row of metaRows) {
-            const adUid = row.campaign_name + '|||' + row.adset_name + '|||' + row.ad_name;
-            if (!adWeekly[adUid]) {
-                adWeekly[adUid] = {
-                    campaign_name: row.campaign_name, adset_name: row.adset_name, ad_name: row.ad_name,
-                    campaign_id: row.campaign_id, adset_id: row.adset_id, ad_id: row.ad_id,
-                    buckets: buckets.map(() => emptyRaw()),
-                };
+        for (const { meta, mb, bucketIdx } of bucketResults) {
+            if (!meta.success || !mb.success) continue;
+
+            // Build Metabase lookup for this bucket: campaign+adset+ad → aggregated funnel
+            const mbLookup = {};
+            for (const row of mb.data) {
+                const key = row.campaign_name + '|||' + row.ad_set_name + '|||' + row.tracker_name;
+                if (!mbLookup[key]) mbLookup[key] = emptyRaw();
+                const m = mbLookup[key];
+                m.signups += Number(row.signups) || 0;
+                m.d0_trial += Number(row.d0_trial) || 0;
+                m.d0 += Number(row.d0) || 0;
+                m.d0_revenue += Number(row.d0_revenue) || 0;
+                m.d6 += Number(row.d6) || 0;
+                m.d6_revenue += Number(row.d6_revenue) || 0;
+                m.overall_revenue += Number(row.overall_revenue) || 0;
+                m.d6_overall_con += Number(row.d6_overall_con) || 0;
+                m.d6_overall_revenue += Number(row.d6_overall_revenue) || 0;
             }
-            const bIdx = getBucketIdx(row.date_start);
-            if (bIdx < 0) continue;
 
-            const b = adWeekly[adUid].buckets[bIdx];
-            b.spend += row.spend * 1.18;
-            b.impressions += row.impressions;
-            b.clicks += row.clicks;
-            b.installs += row.installs;
+            // Process Meta rows for this bucket
+            const metaRows = meta.data.filter(r => /android/i.test(r.campaign_name));
+            // Aggregate Meta by ad (since time_increment=1 may return multiple daily rows per ad)
+            const metaByAd = {};
+            for (const row of metaRows) {
+                const adUid = row.campaign_name + '|||' + row.adset_name + '|||' + row.ad_name;
+                if (!metaByAd[adUid]) {
+                    metaByAd[adUid] = { ...row, spend: 0, impressions: 0, clicks: 0, installs: 0 };
+                }
+                metaByAd[adUid].spend += row.spend;
+                metaByAd[adUid].impressions += row.impressions;
+                metaByAd[adUid].clicks += row.clicks;
+                metaByAd[adUid].installs += row.installs;
+            }
 
-            // Match to Metabase
-            const mbKey = row.date_start + '|||' + row.campaign_name + '|||' + row.adset_name.toLowerCase().trim() + '|||' + row.ad_name.replace(/:.*$/, '');
-            const mb = mbDaily[mbKey];
-            if (mb) {
-                matched++;
-                b.signups += mb.signups; b.d0_trial += mb.d0_trial;
-                b.d0 += mb.d0; b.d0_revenue += mb.d0_revenue;
-                b.d6 += mb.d6; b.d6_revenue += mb.d6_revenue;
-                b.overall_revenue += mb.overall_revenue;
-                b.d6_overall_con += mb.d6_overall_con;
-                b.d6_overall_revenue += mb.d6_overall_revenue;
-            } else { unmatched++; }
+            for (const [adUid, row] of Object.entries(metaByAd)) {
+                if (!adWeekly[adUid]) {
+                    adWeekly[adUid] = {
+                        campaign_name: row.campaign_name, adset_name: row.adset_name, ad_name: row.ad_name,
+                        campaign_id: row.campaign_id, adset_id: row.adset_id, ad_id: row.ad_id,
+                        buckets: buckets.map(() => emptyRaw()),
+                    };
+                }
+                const b = adWeekly[adUid].buckets[bucketIdx];
+                b.spend += row.spend * 1.18;
+                b.impressions += row.impressions;
+                b.clicks += row.clicks;
+                b.installs += row.installs;
+
+                // Match to Metabase
+                const mbKey = row.campaign_name + '|||' + row.adset_name.toLowerCase().trim() + '|||' + row.ad_name.replace(/:.*$/, '');
+                const mbRow = mbLookup[mbKey];
+                if (mbRow) {
+                    matched++;
+                    b.signups += mbRow.signups; b.d0_trial += mbRow.d0_trial;
+                    b.d0 += mbRow.d0; b.d0_revenue += mbRow.d0_revenue;
+                    b.d6 += mbRow.d6; b.d6_revenue += mbRow.d6_revenue;
+                    b.overall_revenue += mbRow.overall_revenue;
+                    b.d6_overall_con += mbRow.d6_overall_con;
+                    b.d6_overall_revenue += mbRow.d6_overall_revenue;
+                } else { unmatched++; }
+            }
         }
 
         // Filter spend-only if checked
