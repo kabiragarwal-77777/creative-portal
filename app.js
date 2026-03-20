@@ -2070,33 +2070,47 @@ window.fetchWeeklyBreakdown = async function () {
             return { meta: metaRes, mb: mbRes, bucketIdx: idx };
         }));
 
-        // Build per-ad bucketed data
+        // Build per-ad bucketed data + direct campaign/adset Metabase aggregates
         const adWeekly = {};
+        const campMB = {};   // campaign → buckets (direct from Metabase)
+        const adsetMB = {};  // campaign|||adset → buckets (direct from Metabase)
         let matched = 0, unmatched = 0;
+
+        function addMBToRaw(target, row) {
+            target.signups += Number(row.signups) || 0;
+            target.d0_trial += Number(row.d0_trial) || 0;
+            target.d0 += Number(row.d0) || 0;
+            target.d0_revenue += Number(row.d0_revenue) || 0;
+            target.d6 += Number(row.d6) || 0;
+            target.d6_revenue += Number(row.d6_revenue) || 0;
+            target.overall_revenue += Number(row.overall_revenue) || 0;
+            target.d6_overall_con += Number(row.d6_overall_con) || 0;
+            target.d6_overall_revenue += Number(row.d6_overall_revenue) || 0;
+        }
 
         for (const { meta, mb, bucketIdx } of bucketResults) {
             if (!meta.success || !mb.success) continue;
 
-            // Build Metabase lookup for this bucket: campaign+adset+ad → aggregated funnel
+            // ── Direct Metabase aggregates by campaign and adset (no ad-level matching) ──
+            for (const row of mb.data) {
+                // Campaign level
+                if (!campMB[row.campaign_name]) campMB[row.campaign_name] = buckets.map(() => emptyRaw());
+                addMBToRaw(campMB[row.campaign_name][bucketIdx], row);
+                // Adset level
+                const asKey = row.campaign_name + '|||' + row.ad_set_name;
+                if (!adsetMB[asKey]) adsetMB[asKey] = buckets.map(() => emptyRaw());
+                addMBToRaw(adsetMB[asKey][bucketIdx], row);
+            }
+
+            // ── Ad-level: Meta spend + matched Metabase funnel ──
             const mbLookup = {};
             for (const row of mb.data) {
                 const key = row.campaign_name + '|||' + row.ad_set_name + '|||' + row.tracker_name;
                 if (!mbLookup[key]) mbLookup[key] = emptyRaw();
-                const m = mbLookup[key];
-                m.signups += Number(row.signups) || 0;
-                m.d0_trial += Number(row.d0_trial) || 0;
-                m.d0 += Number(row.d0) || 0;
-                m.d0_revenue += Number(row.d0_revenue) || 0;
-                m.d6 += Number(row.d6) || 0;
-                m.d6_revenue += Number(row.d6_revenue) || 0;
-                m.overall_revenue += Number(row.overall_revenue) || 0;
-                m.d6_overall_con += Number(row.d6_overall_con) || 0;
-                m.d6_overall_revenue += Number(row.d6_overall_revenue) || 0;
+                addMBToRaw(mbLookup[key], row);
             }
 
-            // Process Meta rows for this bucket
             const metaRows = meta.data.filter(r => /android/i.test(r.campaign_name));
-            // Aggregate Meta by ad (since time_increment=1 may return multiple daily rows per ad)
             const metaByAd = {};
             for (const row of metaRows) {
                 const adUid = row.campaign_name + '|||' + row.adset_name + '|||' + row.ad_name;
@@ -2123,17 +2137,11 @@ window.fetchWeeklyBreakdown = async function () {
                 b.clicks += row.clicks;
                 b.installs += row.installs;
 
-                // Match to Metabase
                 const mbKey = row.campaign_name + '|||' + row.adset_name.toLowerCase().trim() + '|||' + row.ad_name.replace(/:.*$/, '');
                 const mbRow = mbLookup[mbKey];
                 if (mbRow) {
                     matched++;
-                    b.signups += mbRow.signups; b.d0_trial += mbRow.d0_trial;
-                    b.d0 += mbRow.d0; b.d0_revenue += mbRow.d0_revenue;
-                    b.d6 += mbRow.d6; b.d6_revenue += mbRow.d6_revenue;
-                    b.overall_revenue += mbRow.overall_revenue;
-                    b.d6_overall_con += mbRow.d6_overall_con;
-                    b.d6_overall_revenue += mbRow.d6_overall_revenue;
+                    addMBToRaw(b, mbRow);
                 } else { unmatched++; }
             }
         }
@@ -2151,15 +2159,26 @@ window.fetchWeeklyBreakdown = async function () {
             camp.adsets[ad.adset_name].ads.push(ad);
         }
 
-        // Aggregate buckets at adset and campaign level
+        // Campaign/adset buckets: use Meta spend from ads + direct Metabase funnel (not ad rollup)
         for (const camp of Object.values(tree)) {
-            const campAds = [];
+            // Campaign: sum Meta spend from ads, funnel from direct Metabase
+            const spendBuckets = sumRawBuckets(Object.values(camp.adsets).flatMap(as => as.ads), buckets.length);
+            const mbBuckets = campMB[camp.name] || buckets.map(() => emptyRaw());
+            camp.buckets = spendBuckets.map((sb, i) => ({
+                ...mbBuckets[i],
+                spend: sb.spend, impressions: sb.impressions, clicks: sb.clicks, installs: sb.installs,
+            }));
+
             for (const adset of Object.values(camp.adsets)) {
                 adset.ads.sort((a, b) => b.buckets.reduce((s, x) => s + x.spend, 0) - a.buckets.reduce((s, x) => s + x.spend, 0));
-                adset.buckets = sumRawBuckets(adset.ads, buckets.length);
-                campAds.push(...adset.ads);
+                const asSpendBuckets = sumRawBuckets(adset.ads, buckets.length);
+                const asKey = camp.name + '|||' + adset.name.toLowerCase().trim();
+                const asMbBuckets = adsetMB[asKey] || buckets.map(() => emptyRaw());
+                adset.buckets = asSpendBuckets.map((sb, i) => ({
+                    ...asMbBuckets[i],
+                    spend: sb.spend, impressions: sb.impressions, clicks: sb.clicks, installs: sb.installs,
+                }));
             }
-            camp.buckets = sumRawBuckets(campAds, buckets.length);
         }
 
         // Sort campaigns by total spend
