@@ -1968,7 +1968,247 @@ window.toggleTreeNode = function (id) {
     if (toggle) toggle.classList.toggle('open');
 };
 
-// Helper formatters (check if they exist already, define if not)
+// Helper formatters
 function cur(v) { return '₹' + Math.round(v).toLocaleString('en-IN'); }
+function curK(v) { return v >= 100000 ? '₹' + (v/100000).toFixed(1) + 'L' : v >= 1000 ? '₹' + (v/1000).toFixed(1) + 'K' : '₹' + Math.round(v); }
 function num(v) { return v.toLocaleString('en-IN'); }
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// =========================================================================
+// WEEKLY BREAKDOWN
+// =========================================================================
+function getWeekBuckets() {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const buckets = [];
+    // Bucket 0: Today
+    const todayStr = today.toISOString().substring(0, 10);
+    buckets.push({ label: 'Today', from: todayStr, to: todayStr, dates: new Set([todayStr]) });
+    // Buckets 1-4: last 4 weeks (7 days each, going backwards from yesterday)
+    for (let w = 0; w < 4; w++) {
+        const endDay = new Date(today); endDay.setDate(endDay.getDate() - 1 - (w * 7));
+        const startDay = new Date(endDay); startDay.setDate(startDay.getDate() - 6);
+        const dates = new Set();
+        for (let d = new Date(startDay); d <= endDay; d.setDate(d.getDate() + 1)) {
+            dates.add(d.toISOString().substring(0, 10));
+        }
+        const fromStr = startDay.toISOString().substring(0, 10);
+        const toStr = endDay.toISOString().substring(0, 10);
+        const fmtFrom = startDay.getDate() + ' ' + startDay.toLocaleString('en', { month: 'short' });
+        const fmtTo = endDay.getDate() + ' ' + endDay.toLocaleString('en', { month: 'short' });
+        buckets.push({ label: fmtFrom + ' - ' + fmtTo, from: fromStr, to: toStr, dates });
+    }
+    return buckets;
+}
+
+function emptyRaw() {
+    return { spend: 0, impressions: 0, clicks: 0, installs: 0, signups: 0, d0_trial: 0, d0: 0, d0_revenue: 0, d6: 0, d6_revenue: 0, overall_revenue: 0, d6_overall_con: 0, d6_overall_revenue: 0 };
+}
+
+function deriveMetrics(r) {
+    return {
+        ...r,
+        cpi: r.installs > 0 ? r.spend / r.installs : null,
+        signupCost: r.signups > 0 ? r.spend / r.signups : null,
+        d0TrialCost: r.d0_trial > 0 ? r.spend / r.d0_trial : null,
+        d6CAC: r.d6 > 0 ? r.spend / r.d6 : null,
+        d6ROAS: r.spend > 0 ? (r.d6_revenue / r.spend) * 100 : 0,
+    };
+}
+
+function sumRawBuckets(items, bucketCount) {
+    const result = [];
+    for (let b = 0; b < bucketCount; b++) {
+        const sum = emptyRaw();
+        for (const item of items) {
+            const src = item.buckets[b];
+            for (const k of Object.keys(sum)) sum[k] += src[k] || 0;
+        }
+        result.push(sum);
+    }
+    return result;
+}
+
+window.fetchWeeklyBreakdown = async function () {
+    const status = document.getElementById('treeStatus');
+    const treeContainer = document.getElementById('treeContainer');
+    const weeklyContainer = document.getElementById('weeklyTreeContainer');
+    const btn = document.getElementById('weeklyBtn');
+
+    btn.disabled = true;
+    treeContainer.style.display = 'none';
+    weeklyContainer.style.display = 'block';
+    weeklyContainer.innerHTML = '';
+    document.getElementById('treeSummary').style.display = 'none';
+    status.textContent = 'Fetching last 28 days + today...';
+
+    const buckets = getWeekBuckets();
+    const dateFrom = buckets[buckets.length - 1].from; // oldest week start
+    const dateTo = buckets[0].to; // today
+
+    try {
+        const [metaRes, funnelRes] = await Promise.all([
+            fetch(`${TREE_SERVER}/api/meta/ad-insights-daily`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dateFrom, dateTo }),
+            }).then(r => r.json()),
+            fetch(`${TREE_SERVER}/api/metabase/ad-funnel`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dateFrom, dateTo }),
+            }).then(r => r.json()),
+        ]);
+
+        if (!metaRes.success) throw new Error('Meta API: ' + metaRes.error);
+        if (!funnelRes.success) throw new Error('Metabase: ' + funnelRes.error);
+
+        status.textContent = `Meta: ${metaRes.total} | MB: ${funnelRes.total}. Building weekly view...`;
+
+        // Build Metabase daily lookup
+        const mbDaily = {};
+        for (const row of funnelRes.data) {
+            const d = String(row.date).substring(0, 10);
+            const key = d + '|||' + row.campaign_name + '|||' + row.ad_set_name + '|||' + row.tracker_name;
+            if (!mbDaily[key]) mbDaily[key] = emptyRaw();
+            const m = mbDaily[key];
+            m.signups += Number(row.signups) || 0;
+            m.d0_trial += Number(row.d0_trial) || 0;
+            m.d0 += Number(row.d0) || 0;
+            m.d0_revenue += Number(row.d0_revenue) || 0;
+            m.d6 += Number(row.d6) || 0;
+            m.d6_revenue += Number(row.d6_revenue) || 0;
+            m.overall_revenue += Number(row.overall_revenue) || 0;
+            m.d6_overall_con += Number(row.d6_overall_con) || 0;
+            m.d6_overall_revenue += Number(row.d6_overall_revenue) || 0;
+        }
+
+        // Helper: find bucket index for a date
+        function getBucketIdx(dateStr) {
+            for (let i = 0; i < buckets.length; i++) {
+                if (buckets[i].dates.has(dateStr)) return i;
+            }
+            return -1;
+        }
+
+        // Filter to Android, build per-ad bucketed data
+        const metaRows = metaRes.data.filter(r => /android/i.test(r.campaign_name));
+        const adWeekly = {};
+        let matched = 0, unmatched = 0;
+
+        for (const row of metaRows) {
+            const adUid = row.campaign_name + '|||' + row.adset_name + '|||' + row.ad_name;
+            if (!adWeekly[adUid]) {
+                adWeekly[adUid] = {
+                    campaign_name: row.campaign_name, adset_name: row.adset_name, ad_name: row.ad_name,
+                    campaign_id: row.campaign_id, adset_id: row.adset_id, ad_id: row.ad_id,
+                    buckets: buckets.map(() => emptyRaw()),
+                };
+            }
+            const bIdx = getBucketIdx(row.date_start);
+            if (bIdx < 0) continue;
+
+            const b = adWeekly[adUid].buckets[bIdx];
+            b.spend += row.spend * 1.18;
+            b.impressions += row.impressions;
+            b.clicks += row.clicks;
+            b.installs += row.installs;
+
+            // Match to Metabase
+            const mbKey = row.date_start + '|||' + row.campaign_name + '|||' + row.adset_name.toLowerCase().trim() + '|||' + row.ad_name.replace(/:.*$/, '');
+            const mb = mbDaily[mbKey];
+            if (mb) {
+                matched++;
+                b.signups += mb.signups; b.d0_trial += mb.d0_trial;
+                b.d0 += mb.d0; b.d0_revenue += mb.d0_revenue;
+                b.d6 += mb.d6; b.d6_revenue += mb.d6_revenue;
+                b.overall_revenue += mb.overall_revenue;
+                b.d6_overall_con += mb.d6_overall_con;
+                b.d6_overall_revenue += mb.d6_overall_revenue;
+            } else { unmatched++; }
+        }
+
+        // Filter spend-only if checked
+        const spendOnly = document.getElementById('treeSpendFilter').checked;
+        const adList = Object.values(adWeekly).filter(a => !spendOnly || a.buckets.some(b => b.spend > 0));
+
+        // Build tree: campaign → adset → ad
+        const tree = {};
+        for (const ad of adList) {
+            if (!tree[ad.campaign_name]) tree[ad.campaign_name] = { name: ad.campaign_name, adsets: {} };
+            const camp = tree[ad.campaign_name];
+            if (!camp.adsets[ad.adset_name]) camp.adsets[ad.adset_name] = { name: ad.adset_name, ads: [] };
+            camp.adsets[ad.adset_name].ads.push(ad);
+        }
+
+        // Aggregate buckets at adset and campaign level
+        for (const camp of Object.values(tree)) {
+            const campAds = [];
+            for (const adset of Object.values(camp.adsets)) {
+                adset.ads.sort((a, b) => b.buckets.reduce((s, x) => s + x.spend, 0) - a.buckets.reduce((s, x) => s + x.spend, 0));
+                adset.buckets = sumRawBuckets(adset.ads, buckets.length);
+                campAds.push(...adset.ads);
+            }
+            camp.buckets = sumRawBuckets(campAds, buckets.length);
+        }
+
+        // Sort campaigns by total spend
+        const sortedCampaigns = Object.values(tree).sort((a, b) =>
+            b.buckets.reduce((s, x) => s + x.spend, 0) - a.buckets.reduce((s, x) => s + x.spend, 0));
+
+        // Render column headers
+        let html = '<div class="weekly-col-headers"><div class="wk-name-spacer">Name</div>';
+        for (const bkt of buckets) html += `<div class="wk-col">${bkt.label}</div>`;
+        html += '</div>';
+
+        // Render tree
+        for (const camp of sortedCampaigns) {
+            const cId = 'wk-' + Math.random().toString(36).substr(2, 8);
+            html += renderWkRow(camp.name, 'campaign', camp.buckets, cId, true);
+            html += `<div class="wk-children collapsed" id="${cId}-children">`;
+            const sortedAdsets = Object.values(camp.adsets).sort((a, b) =>
+                b.buckets.reduce((s, x) => s + x.spend, 0) - a.buckets.reduce((s, x) => s + x.spend, 0));
+            for (const adset of sortedAdsets) {
+                const aId = 'wk-' + Math.random().toString(36).substr(2, 8);
+                html += renderWkRow(adset.name, 'adset', adset.buckets, aId, true);
+                html += `<div class="wk-children collapsed" id="${aId}-children">`;
+                for (const ad of adset.ads) {
+                    html += renderWkRow(ad.ad_name, 'ad', ad.buckets, null, false);
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+        }
+
+        weeklyContainer.innerHTML = html;
+        status.textContent = `Weekly: ${sortedCampaigns.length} campaigns, ${adList.length} ads. Matched: ${matched}/${matched + unmatched}`;
+
+    } catch (err) {
+        status.textContent = 'Error: ' + err.message;
+        console.error('Weekly breakdown error:', err);
+    } finally {
+        btn.disabled = false;
+    }
+};
+
+function renderWkRow(name, level, rawBuckets, nodeId, hasChildren) {
+    const toggle = hasChildren
+        ? `<span class="tree-toggle" onclick="toggleTreeNode('${nodeId}')">&#9654;</span>`
+        : '<span style="width:16px;display:inline-block;"></span>';
+    const onclick = hasChildren ? `onclick="toggleTreeNode('${nodeId}')"` : '';
+
+    let cols = '';
+    for (const raw of rawBuckets) {
+        const m = deriveMetrics(raw);
+        const roasColor = m.d6ROAS > 28 ? '#10b981' : m.d6ROAS > 0 ? '#ef4444' : '#888';
+        const suCostColor = m.signupCost ? (m.signupCost < 500 ? '#10b981' : m.signupCost > 1000 ? '#ef4444' : '#e0e0e0') : '#888';
+        cols += `<div class="wk-col-cell">
+            <div class="wk-line"><span class="wk-lbl">Spend</span><span class="wk-val">${raw.spend > 0 ? curK(raw.spend) : '-'}</span></div>
+            <div class="wk-line"><span class="wk-lbl">Signups</span><span class="wk-val">${raw.signups || '-'}</span></div>
+            <div class="wk-line"><span class="wk-lbl">SU Cost</span><span class="wk-val" style="color:${suCostColor}">${m.signupCost ? '₹' + Math.round(m.signupCost) : '-'}</span></div>
+            <div class="wk-line"><span class="wk-lbl">D6 ROAS</span><span class="wk-val" style="color:${roasColor}">${m.d6ROAS ? m.d6ROAS.toFixed(1) + '%' : '-'}</span></div>
+        </div>`;
+    }
+
+    return `<div class="wk-row ${level}" ${onclick}>
+        <div class="wk-name">${toggle} ${esc(name)}</div>
+        <div class="wk-cols">${cols}</div>
+    </div>`;
+}

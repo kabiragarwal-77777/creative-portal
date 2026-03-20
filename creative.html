@@ -6,7 +6,7 @@
     <title>Creative Performance Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=2">
+    <link rel="stylesheet" href="styles.css?v=3">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
 </head>
@@ -329,10 +329,12 @@
                         <input type="date" id="treeDateTo" style="background:#1e1e2e; border:1px solid #444; color:#e0e0e0; padding:6px 10px; border-radius:6px;">
                         <label style="display:flex; align-items:center; gap:4px; cursor:pointer; font-size:13px; color:#aaa;"><input type="checkbox" id="treeSpendFilter" checked> With Spend Only</label>
                         <button class="btn btn-primary" onclick="fetchCampaignTree()" id="treeAnalyzeBtn">&#9889; Analyze</button>
+                        <button class="btn btn-secondary" onclick="fetchWeeklyBreakdown()" id="weeklyBtn">&#128197; Weekly Breakdown</button>
                         <span id="treeStatus" style="color:#888; font-size:13px;"></span>
                     </div>
                     <div id="treeSummary" style="display:none; margin-bottom:20px;"></div>
                     <div id="treeContainer"></div>
+                    <div id="weeklyTreeContainer" style="display:none; overflow-x:auto;"></div>
                 </div>
             </div>
 
@@ -410,7 +412,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="app.js?v=15"></script>
+    <script src="app.js?v=16"></script>
 </body>
 </html>
 
