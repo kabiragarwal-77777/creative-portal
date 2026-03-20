@@ -1167,8 +1167,8 @@ tr:hover td {
 .tree-metric { text-align: right; min-width: 70px; }
 .tree-metric .label { color: #666; font-size: 10px; text-transform: uppercase; }
 .tree-metric .value { font-weight: 600; color: #e0e0e0; }
-.tree-children { overflow: hidden; }
-.tree-children.collapsed { display: none; }
+.tree-children, .wk-children { overflow: hidden; }
+.tree-children.collapsed, .wk-children.collapsed { display: none; }
 .tree-badge { padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; flex-shrink: 0; }
 .tree-badge.red { background: rgba(239,68,68,0.15); color: #ef4444; }
 .tree-badge.green { background: rgba(16,185,129,0.15); color: #10b981; }
