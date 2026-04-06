@@ -31,15 +31,198 @@ const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID || '';
 const GOOGLE_SHEET_TAB = process.env.GOOGLE_SHEET_TAB || '';
 const GOOGLE_APPS_SCRIPT_URL = process.env.GOOGLE_APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbyKYm0aNJHvjAuc6KxrcZAzuIpc2qs_RT8sbngiwC5-m-6-2gPVY7uV2z4gSFLtVHTysw/exec';
 
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
+const ANALYTICS_SHEET_ID = '1S_NYpXFsBgKe3N4nrL4BSvtzwydpfoqx4eMSWFYPVFY';
+const ANALYTICS_SHEET_GID = '1655578542';
+
 const METABASE_SESSION_TOKEN = process.env.METABASE_SESSION_TOKEN || '';
 const METABASE_URL = 'https://analytics.univest.in';
+
+function parseGvizResponse(text) {
+    const start = text.indexOf('setResponse(');
+    if (start === -1) throw new Error('Invalid GViz payload');
+    const jsonText = text.slice(start + 'setResponse('.length, text.lastIndexOf(');'));
+    return JSON.parse(jsonText);
+}
+
+function stripJsonFences(text) {
+    return String(text || '').replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+}
+
+function safeJsonParse(text, fallback = null) {
+    try { return JSON.parse(stripJsonFences(text)); } catch (e) { return fallback; }
+}
+
+function topItems(list, sortKey, limit) {
+    return (Array.isArray(list) ? list.slice() : [])
+        .sort((a, b) => (Number(b && b[sortKey]) || 0) - (Number(a && a[sortKey]) || 0))
+        .slice(0, limit);
+}
+
+function summarizeByPredicate(list, predicate, labelKey, valueKey, limit) {
+    return (Array.isArray(list) ? list.filter(predicate) : [])
+        .sort((a, b) => (Number(b && b[valueKey]) || 0) - (Number(a && a[valueKey]) || 0))
+        .slice(0, limit)
+        .map(item => ({
+            label: item && item[labelKey] || '',
+            value: item && item[valueKey] != null ? item[valueKey] : null
+        }));
+}
+
+function inferOptimizerUseCaseFallback(userRequest, runtimeContext) {
+    const q = String(userRequest || '').toLowerCase();
+    const target = runtimeContext && runtimeContext.request_scope ? runtimeContext.request_scope : {};
+    let useCase = 'account_revamp';
+    if (q.includes('overview') || q.includes('deep dive') || q.includes('make it better')) useCase = 'campaign_overview';
+    if (q.includes('underperform') || q.includes('why') || q.includes('diagnos')) useCase = 'root_cause';
+    if (q.includes('scale')) useCase = 'scale_decision';
+    if (q.includes('creative')) useCase = 'creative_actionables';
+    if (target.target_type && target.target_type !== 'account') useCase = 'campaign_overview';
+    return {
+        use_case: useCase,
+        entity_focus: target.target_type || 'account',
+        needs_clarification: false,
+        clarification_question: ''
+    };
+}
+
+function buildOptimizerBrainEvidence(runtimeContext) {
+    const campaigns = Array.isArray(runtimeContext && runtimeContext.campaigns) ? runtimeContext.campaigns : [];
+    const adSets = Array.isArray(runtimeContext && runtimeContext.ad_sets) ? runtimeContext.ad_sets : [];
+    const ads = Array.isArray(runtimeContext && runtimeContext.ads) ? runtimeContext.ads : [];
+    const requestScope = runtimeContext && runtimeContext.request_scope ? runtimeContext.request_scope : {};
+    const targetQuery = String(requestScope.target_query || '').toLowerCase();
+    const targetType = requestScope.target_type || 'account';
+
+    const scopedCampaigns = campaigns.filter(c => !targetQuery || String(c.name || '').toLowerCase().includes(targetQuery));
+    const scopedAdSets = adSets.filter(a => {
+        if (!targetQuery) return true;
+        return String(a.name || '').toLowerCase().includes(targetQuery) || String(a.campaign_name || '').toLowerCase().includes(targetQuery);
+    });
+    const scopedAds = ads.filter(a => {
+        if (!targetQuery) return true;
+        return String(a.name || '').toLowerCase().includes(targetQuery) ||
+            String(a.adset_name || '').toLowerCase().includes(targetQuery) ||
+            String(a.campaign_name || '').toLowerCase().includes(targetQuery);
+    });
+
+    const targetSlice = {
+        target_type: targetType,
+        target_query: requestScope.target_query || '',
+        campaign_count: scopedCampaigns.length,
+        adset_count: scopedAdSets.length,
+        ad_count: scopedAds.length,
+        campaigns: scopedCampaigns.slice(0, 8),
+        ad_sets: scopedAdSets.slice(0, 16),
+        ads: scopedAds.slice(0, 24)
+    };
+
+    const breakdowns = runtimeContext && runtimeContext.breakdowns ? runtimeContext.breakdowns : ((runtimeContext && runtimeContext.breakdown_context && runtimeContext.breakdown_context.breakdowns) || {});
+    const ageGender = Array.isArray(breakdowns.age_gender) ? breakdowns.age_gender : [];
+    const placement = Array.isArray(breakdowns.placement) ? breakdowns.placement : [];
+    const geography = Array.isArray(breakdowns.geography) ? breakdowns.geography : [];
+    const device = Array.isArray(breakdowns.device) ? breakdowns.device : [];
+    const hourly = Array.isArray(breakdowns.hourly) ? breakdowns.hourly : [];
+
+    const historicalWinners = {
+        campaigns: topItems(campaigns, 'd6_roas_window', 5).map(c => ({ name: c.name, d6_roas_window: c.d6_roas_window, spend_window: c.spend_window })),
+        ad_sets: topItems(adSets, 'd6_roas_window', 8).map(a => ({ campaign_name: a.campaign_name, name: a.name, d6_roas_window: a.d6_roas_window, spend_window: a.spend_window })),
+        ads: topItems(ads.filter(a => a && a.is_account_winner), 'd6_roas_window', 10).map(a => ({ campaign_name: a.campaign_name, adset_name: a.adset_name, name: a.name, d6_roas_window: a.d6_roas_window, spend_window: a.spend_window }))
+    };
+
+    const weakPoints = {
+        campaigns: topItems(campaigns.filter(c => Number(c.d6_roas_window) > 0), 'spend_window', 8)
+            .filter(c => Number(c.d6_roas_window) < 20)
+            .map(c => ({ name: c.name, d6_roas_window: c.d6_roas_window, spend_window: c.spend_window })),
+        ad_sets: topItems(adSets.filter(a => Number(a.d6_roas_window) > 0), 'spend_window', 12)
+            .filter(a => Number(a.d6_roas_window) < 20)
+            .map(a => ({ campaign_name: a.campaign_name, name: a.name, d6_roas_window: a.d6_roas_window, spend_window: a.spend_window }))
+    };
+
+    const dimensionalHighlights = {
+        best_age_gender: summarizeByPredicate(ageGender, row => row && row.cpa_7d != null, 'age_band', 'roas_7d', 5),
+        best_placements: summarizeByPredicate(placement, row => row && row.roas_7d != null, 'placement', 'roas_7d', 5),
+        weak_placements: summarizeByPredicate(placement, row => row && row.cpa_7d != null, 'placement', 'cpa_7d', 5),
+        best_geos: summarizeByPredicate(geography, row => row && row.roas_7d != null, 'location', 'roas_7d', 5),
+        weak_geos: summarizeByPredicate(geography, row => row && row.cpa_7d != null, 'location', 'cpa_7d', 5),
+        device_summary: topItems(device, 'roas_7d', 5),
+        best_hours: topItems(hourly.filter(h => Number(h && h.conversions) > 0), 'conversions', 8)
+    };
+
+    const metaOperatorAudit = runtimeContext && runtimeContext.meta_operator_audit ? runtimeContext.meta_operator_audit : null;
+    const dataIntegrity = runtimeContext && runtimeContext.data_integrity_gate ? runtimeContext.data_integrity_gate : ((runtimeContext && runtimeContext.performance_summary && runtimeContext.performance_summary.data_integrity_gate) || null);
+
+    return {
+        user_request: runtimeContext && runtimeContext.user_request || '',
+        request_scope: requestScope,
+        target_slice: targetSlice,
+        historical_winners: historicalWinners,
+        weak_points: weakPoints,
+        dimensional_highlights: dimensionalHighlights,
+        meta_operator_audit: metaOperatorAudit,
+        data_integrity_gate: dataIntegrity,
+        external_context: runtimeContext && runtimeContext.external_context ? runtimeContext.external_context : null,
+        playbook_rules: Array.isArray(runtimeContext && runtimeContext.playbook_rules) ? runtimeContext.playbook_rules.slice(0, 20) : [],
+        account_metrics: runtimeContext && runtimeContext.performance_summary ? runtimeContext.performance_summary : {}
+    };
+}
+
+function countPattern(text, regex) {
+    const matches = String(text || '').match(regex);
+    return matches ? matches.length : 0;
+}
+
+function analyzeOptimizerDraftQuality(draft) {
+    const plan = draft && draft.optimizer_plan ? draft.optimizer_plan : (draft || {});
+    const actions = Array.isArray(plan.actions) ? plan.actions : [];
+    const operatorAnswer = String(plan.operator_answer || '');
+    const morningBrief = plan.morning_brief || {};
+    const doNow = Array.isArray(morningBrief.what_to_do_right_now) ? morningBrief.what_to_do_right_now : [];
+    const campaignInsights = Array.isArray(morningBrief.campaign_insights) ? morningBrief.campaign_insights : [];
+
+    const vagueVerbCount = countPattern(operatorAnswer, /\b(check|review|look at|investigate|monitor closely|assess)\b/gi);
+    const concreteVerbCount = countPattern(operatorAnswer, /\b(pause|scale|increase|decrease|cut|refresh|replace|duplicate|exclude|shift|hold|reactivate|fix|launch|switch)\b/gi);
+    const repetitiveActionMap = actions.reduce((acc, item) => {
+        const key = String(item && (item.action_detail || item.action_type || '')).toLowerCase().trim();
+        if (!key) return acc;
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+    }, {});
+    const maxRepeated = Object.values(repetitiveActionMap).reduce((m, v) => Math.max(m, v), 0);
+    const weakActions = actions.filter(item => {
+        const detail = String(item && item.action_detail || '');
+        return !detail || /\b(check|review|investigate|look at)\b/i.test(detail);
+    });
+
+    const errors = [];
+    if (!actions.length && !doNow.length) errors.push('No actionable recommendations were produced.');
+    if (vagueVerbCount >= 3 && concreteVerbCount < Math.max(2, Math.floor(vagueVerbCount / 2))) errors.push('Operator answer is too vague and relies on check/review language instead of actions.');
+    if (actions.length >= 4 && maxRepeated >= Math.ceil(actions.length * 0.7)) errors.push('Too many recommendations repeat the same action pattern across different entities.');
+    if (weakActions.length >= Math.max(2, Math.floor(actions.length * 0.5))) errors.push('Many actions lack a concrete do-line and still read like diagnostics.');
+    if (campaignInsights.length && !campaignInsights.some(item => String(item && (item.adset_insights || item.creative_insights || '')).trim())) errors.push('Campaign insights are present but do not go deep enough into adset or creative specifics.');
+    if (operatorAnswer && !/\b(pause|scale|increase|decrease|refresh|replace|exclude|shift|hold|reactivate|fix|launch|switch)\b/i.test(operatorAnswer)) errors.push('Operator answer does not contain enough explicit performance-marketer action verbs.');
+
+    return {
+        passed: errors.length === 0,
+        errors,
+        stats: {
+            action_count: actions.length,
+            do_now_count: doNow.length,
+            vague_verb_count: vagueVerbCount,
+            concrete_verb_count: concreteVerbCount,
+            max_repeated_action_pattern: maxRepeated,
+            weak_action_count: weakActions.length
+        }
+    };
+}
 
 // Helper: write results back to Google Sheet via Apps Script
 async function writeResultToSheet(rowIndex, data, tabName) {
     try {
         const payload = {
-            row: rowIndex + 1, // +1 because sheet row 1 is headers, data starts at row 2
+            row: rowIndex,
             tab: tabName || 'Sheet1',
+            campaign_id: data.campaign_id || '',
             adset_id: data.adset_id || '',
             ad_id: data.ad_id || '',
             upload_status: data.upload_status || '',
@@ -75,11 +258,150 @@ app.use((req, res, next) => {
     next();
 });
 
+// =============================================================================
+// AUTHENTICATION — Simple username/password gate
+// =============================================================================
+const PORTAL_USER = process.env.PORTAL_USER || 'univest';
+const PORTAL_PASS = process.env.PORTAL_PASS || 'univest2026';
+
+// Sessions stored in memory (resets on restart)
+const authSessions = new Map();
+
+function generateSessionId() {
+    return require('crypto').randomBytes(32).toString('hex');
+}
+
+function parseCookies(cookieHeader) {
+    const cookies = {};
+    if (!cookieHeader) return cookies;
+    cookieHeader.split(';').forEach(c => {
+        const [key, ...rest] = c.trim().split('=');
+        if (key) cookies[key.trim()] = rest.join('=').trim();
+    });
+    return cookies;
+}
+
+// Login page HTML
+const LOGIN_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Univest Portal</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',-apple-system,sans-serif;background:#08080d;color:#e2e2e2;height:100vh;display:flex;align-items:center;justify-content:center}
+.login-box{background:#0f0f18;border:1px solid #2a2a3e;border-radius:12px;padding:40px;width:360px;text-align:center}
+.login-box h1{font-size:18px;font-weight:700;margin-bottom:6px}
+.login-box .sub{font-size:12px;color:#888;margin-bottom:28px}
+.brand-icon{width:48px;height:48px;background:linear-gradient(135deg,#6c5ce7,#00d4aa);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;margin:0 auto 20px}
+input{width:100%;padding:12px 14px;background:#13131f;border:1px solid #2a2a3e;border-radius:8px;color:#e2e2e2;font-size:14px;font-family:inherit;margin-bottom:12px;outline:none;transition:border 0.2s}
+input:focus{border-color:#6c5ce7}
+input::placeholder{color:#555}
+button{width:100%;padding:12px;background:#6c5ce7;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s}
+button:hover{background:#7c6ef0}
+.error{color:#ef4444;font-size:12px;margin-bottom:12px;display:none}
+</style>
+</head>
+<body>
+<div class="login-box">
+<div class="brand-icon">PM</div>
+<h1>Performance Marketing Auto</h1>
+<div class="sub">Sign in to access the portal</div>
+<form method="POST" action="/auth/login">
+<div class="error" id="err"></div>
+<input type="text" name="username" placeholder="Username" required autocomplete="username">
+<input type="password" name="password" placeholder="Password" required autocomplete="current-password">
+<button type="submit">Sign In</button>
+</form>
+</div>
+<script>
+if(location.search.includes('error=1'))document.getElementById('err').style.display='block',document.getElementById('err').textContent='Invalid username or password';
+</script>
+</body></html>`;
+
+// Auth middleware — checks session cookie, skips login/auth routes and internal requests
+app.use((req, res, next) => {
+    // Skip auth for login routes
+    if (req.path === '/auth/login' || req.path === '/auth/logout') return next();
+
+    // Skip auth for all API routes — they're called internally by server, schedulers, and iframes
+    // The login page blocks access to HTML pages; API data alone is not useful without the UI
+    if (req.path.startsWith('/api/')) return next();
+
+    // Skip auth for google-creative assets and shared static files (loaded inside authenticated iframe)
+    if (req.path.startsWith('/google-creative') || req.path === '/google-creative.html') return next();
+    if (/\.(css|js|ico|png|jpg|svg|woff2?)(\?.*)?$/.test(req.path)) return next();
+
+    const cookies = parseCookies(req.headers.cookie);
+    const sessionId = cookies['portal_session'];
+
+    if (sessionId && authSessions.has(sessionId)) {
+        // Valid session — refresh expiry
+        const session = authSessions.get(sessionId);
+        session.lastAccess = Date.now();
+        return next();
+    }
+
+    // Not authenticated
+    if (req.path.startsWith('/api/')) {
+        return res.status(401).json({ success: false, error: 'Not authenticated', timestamp: new Date().toISOString() });
+    }
+
+    // Serve login page for all other requests
+    res.setHeader('Content-Type', 'text/html');
+    return res.send(LOGIN_HTML);
+});
+
+// Login endpoint
+app.post('/auth/login', (req, res) => {
+    const { username, password } = req.body || {};
+    if (username === PORTAL_USER && password === PORTAL_PASS) {
+        const sessionId = generateSessionId();
+        authSessions.set(sessionId, { user: username, createdAt: Date.now(), lastAccess: Date.now() });
+        res.setHeader('Set-Cookie', `portal_session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`);
+        return res.redirect('/');
+    }
+    return res.redirect('/auth/login?error=1');
+});
+
+// Login page (GET)
+app.get('/auth/login', (req, res) => {
+    res.setHeader('Content-Type', 'text/html');
+    res.send(LOGIN_HTML);
+});
+
+// Logout endpoint
+app.get('/auth/logout', (req, res) => {
+    const cookies = parseCookies(req.headers.cookie);
+    const sessionId = cookies['portal_session'];
+    if (sessionId) authSessions.delete(sessionId);
+    res.setHeader('Set-Cookie', 'portal_session=; Path=/; HttpOnly; Max-Age=0');
+    res.redirect('/auth/login');
+});
+
+// Clean up expired sessions every hour (24h max age)
+setInterval(() => {
+    const now = Date.now();
+    for (const [id, session] of authSessions) {
+        if (now - session.lastAccess > 24 * 60 * 60 * 1000) authSessions.delete(id);
+    }
+}, 60 * 60 * 1000);
+
 // Static files — serve both uploader and parent creative-portal directory
 const parentDir = path.join(__dirname, '..');
+app.use((req, res, next) => {
+    if (req.path === '/upload.html' || req.path === '/uploader/upload.html') {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        res.setHeader('Surrogate-Control', 'no-store');
+    }
+    next();
+});
 app.use('/uploader', express.static(__dirname));
 app.use('/analyser', express.static(path.join(parentDir, 'analyser')));
 app.use(express.static(parentDir));
+app.use('/google-creative/public', express.static(path.join(__dirname, '..', 'google-creative', 'public')));
 
 // =============================================================================
 // META API HELPERS
@@ -138,7 +460,8 @@ async function metaPostForm(endpoint, filePath, filename, contentType, extraFiel
     console.log(`[META POST FORM] ${url} file=${filename}`);
     const fileBuffer = fs.readFileSync(filePath);
     const formData = new FormData(); // native FormData
-    formData.append('source', new Blob([fileBuffer], { type: contentType }), filename);
+    const fileFieldName = endpoint.includes('/adimages') ? 'filename' : 'source';
+    formData.append(fileFieldName, new Blob([fileBuffer], { type: contentType }), filename);
     formData.append('access_token', META_ACCESS_TOKEN);
     formData.append('appsecret_proof', META_APP_SECRET_PROOF);
     for (const [k, v] of Object.entries(extraFields)) {
@@ -266,15 +589,34 @@ function extractDriveFileId(urlOrId) {
     return null;
 }
 
+function extractDriveFolderId(urlOrId) {
+    if (!urlOrId) return null;
+    // Pattern: /folders/FOLDER_ID
+    let match = urlOrId.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    // Pattern: ?id=FOLDER_ID (from open?id=)
+    match = urlOrId.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (match) return match[1];
+    // Assume raw folder ID if no URL pattern matched
+    if (/^[a-zA-Z0-9_-]+$/.test(urlOrId)) return urlOrId;
+    return null;
+}
+
 async function downloadDriveFile(driveUrl, retries = 3) {
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             return await _downloadDriveFileOnce(driveUrl);
         } catch (err) {
             const is429 = err.message && err.message.includes('429');
-            if (is429 && attempt < retries) {
-                const delay = attempt * 3000; // 3s, 6s
-                console.log(`[DRIVE] 429 rate limited, retrying in ${delay / 1000}s (attempt ${attempt}/${retries})`);
+            const isTransientFetch = err.message && (
+                err.message.includes('fetch failed') ||
+                err.message.includes('ECONNRESET') ||
+                err.message.includes('ETIMEDOUT') ||
+                err.message.includes('UND_ERR')
+            );
+            if ((is429 || isTransientFetch) && attempt < retries) {
+                const delay = attempt * 5000; // 5s, 10s
+                console.log(`[DRIVE] ${is429 ? 'rate limit' : 'transient fetch error'} retrying in ${delay / 1000}s (attempt ${attempt}/${retries})`);
                 await new Promise(r => setTimeout(r, delay));
                 continue;
             }
@@ -289,7 +631,7 @@ async function _downloadDriveFileOnce(driveUrl) {
 
     // Step 1: Hit the download URL to get cookies + confirm token
     let downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-    let resp = await fetch(downloadUrl, { redirect: 'manual' });
+    let resp = await fetch(downloadUrl, { redirect: 'manual', signal: AbortSignal.timeout(120000) });
 
     if (resp.status === 429) {
         throw new Error(`Failed to download image from Drive (status 429)`);
@@ -302,7 +644,7 @@ async function _downloadDriveFileOnce(driveUrl) {
     while (resp.status >= 300 && resp.status < 400) {
         const location = resp.headers.get('location');
         if (!location) break;
-        resp = await fetch(location, { redirect: 'manual', headers: cookies ? { cookie: cookies } : {} });
+        resp = await fetch(location, { redirect: 'manual', headers: cookies ? { cookie: cookies } : {}, signal: AbortSignal.timeout(120000) });
         const newCookies = resp.headers.getSetCookie?.() || [];
         if (newCookies.length) {
             const existing = new Map(cookies.split('; ').filter(Boolean).map(c => { const [k,...v] = c.split('='); return [k, v.join('=')]; }));
@@ -326,7 +668,7 @@ async function _downloadDriveFileOnce(driveUrl) {
         let retryUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=${confirmMatch ? confirmMatch[1] : 't'}`;
         if (uuidMatch) retryUrl += `&uuid=${uuidMatch[1]}`;
         console.log(`[DRIVE] Large file detected, retrying with confirm token + cookies`);
-        resp = await fetch(retryUrl, { redirect: 'follow', headers: cookies ? { cookie: cookies } : {} });
+        resp = await fetch(retryUrl, { redirect: 'follow', headers: cookies ? { cookie: cookies } : {}, signal: AbortSignal.timeout(120000) });
         contentType = resp.headers.get('content-type') || 'application/octet-stream';
         contentDisp = resp.headers.get('content-disposition') || '';
 
@@ -336,6 +678,7 @@ async function _downloadDriveFileOnce(driveUrl) {
             resp = await fetch(`https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`, {
                 redirect: 'follow',
                 headers: cookies ? { cookie: cookies } : {},
+                signal: AbortSignal.timeout(120000),
             });
             contentType = resp.headers.get('content-type') || 'application/octet-stream';
             contentDisp = resp.headers.get('content-disposition') || '';
@@ -393,6 +736,15 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(parentDir, 'index.html'));
 });
 
+// 1b. Serve Meta uploader on the main host path
+app.get('/upload.html', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+    res.sendFile(path.join(__dirname, 'upload.html'));
+});
+
 // 2. Fetch all campaigns
 app.get('/api/campaigns', async (req, res) => {
     try {
@@ -414,6 +766,73 @@ app.get('/api/adsets/:campaignId', async (req, res) => {
             limit: 500,
         });
         res.json({ success: true, adsets: data.data || [] });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message, metaError: err.metaError });
+    }
+});
+
+// 3b. Fetch single campaign details by ID
+app.get('/api/campaign-details/:id', async (req, res) => {
+    try {
+        const data = await metaGet(`/${req.params.id}`, {
+            fields: 'id,name,status,objective,special_ad_categories,bid_strategy,daily_budget,lifetime_budget',
+        });
+        res.json({ success: true, campaign: data });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message, metaError: err.metaError });
+    }
+});
+
+// 3c. Fetch single adset details by ID
+app.get('/api/adset-details/:id', async (req, res) => {
+    try {
+        const data = await metaGet(`/${req.params.id}`, {
+            fields: 'id,name,status,daily_budget,lifetime_budget,targeting,optimization_goal,billing_event,bid_strategy,bid_amount,start_time,end_time,campaign_id,promoted_object',
+        });
+        res.json({ success: true, adset: data });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message, metaError: err.metaError });
+    }
+});
+
+app.get('/api/adset-delivery-estimate/:id', async (req, res) => {
+    try {
+        const data = await metaGet(`/${req.params.id}/delivery_estimate`, {
+            fields: 'estimate_ready,daily_outcomes_curve'
+        });
+        const estimate = Array.isArray(data && data.data) ? data.data[0] : data;
+        res.json({ success: true, delivery_estimate: estimate || null });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message, metaError: err.metaError });
+    }
+});
+
+app.get('/api/adset-attribution-split/:id', async (req, res) => {
+    try {
+        const data = await metaGet(`/${req.params.id}/insights`, {
+            level: 'adset',
+            date_preset: 'last_7d',
+            fields: 'spend,actions,action_values',
+            action_attribution_windows: '["1d_click","7d_click","1d_view","7d_view"]',
+            limit: 1
+        });
+        const row = Array.isArray(data && data.data) ? data.data[0] : null;
+        const spend = Number(row && row.spend || 0);
+        const actionValues = Array.isArray(row && row.action_values) ? row.action_values : [];
+        const roasByWindow = {};
+        actionValues.forEach(item => {
+            const windowKey = String(item && item.action_attribution_window || '').toLowerCase();
+            const value = Number(item && item.value || 0);
+            if (!windowKey || !isFinite(value)) return;
+            roasByWindow[windowKey] = (roasByWindow[windowKey] || 0) + value;
+        });
+        res.json({
+            success: true,
+            attribution_split: {
+                spend,
+                revenue_by_window: roasByWindow
+            }
+        });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message, metaError: err.metaError });
     }
@@ -456,6 +875,49 @@ app.get('/api/search-regions', async (req, res) => {
         if (data.error) throw new Error(data.error.message);
         res.json({ success: true, regions: data.data });
     } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// 5b. Resolve Google Drive folder → find -H, -V, -S files
+app.post('/api/resolve-folder', async (req, res) => {
+    try {
+        const { folderUrl } = req.body;
+        if (!folderUrl) return res.status(400).json({ success: false, error: 'folderUrl is required' });
+        if (!GOOGLE_API_KEY) return res.status(400).json({ success: false, error: 'GOOGLE_API_KEY not configured' });
+
+        const folderId = extractDriveFolderId(folderUrl);
+        if (!folderId) return res.status(400).json({ success: false, error: 'Could not extract folder ID from URL' });
+
+        // List files in folder using Google Drive API v3
+        const apiUrl = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType)&key=${GOOGLE_API_KEY}`;
+        const resp = await fetch(apiUrl);
+        if (!resp.ok) {
+            const errText = await resp.text();
+            throw new Error(`Google Drive API error (${resp.status}): ${errText}`);
+        }
+        const data = await resp.json();
+        const files = data.files || [];
+
+        console.log(`[FOLDER] Found ${files.length} files in folder ${folderId}:`, files.map(f => f.name).join(', '));
+
+        // Match files by -H, -V, -S suffix (before extension)
+        const result = { horizontal: null, vertical: null, square: null, files: files.map(f => f.name) };
+        for (const file of files) {
+            const baseName = file.name.replace(/\.[^.]+$/, ''); // strip extension
+            const driveLink = `https://drive.google.com/file/d/${file.id}/view`;
+            if (/-horizontal$/i.test(baseName)) {
+                result.horizontal = driveLink;
+            } else if (/-vertical$/i.test(baseName)) {
+                result.vertical = driveLink;
+            } else if (/-square$/i.test(baseName)) {
+                result.square = driveLink;
+            }
+        }
+
+        res.json({ success: true, ...result });
+    } catch (err) {
+        console.error('[FOLDER] Error:', err.message);
         res.status(500).json({ success: false, error: err.message });
     }
 });
@@ -687,6 +1149,91 @@ app.post('/api/create-ad', async (req, res) => {
     }
 });
 
+// 11b. Update ad status (pause/activate)
+app.post('/api/meta/ad-status', async (req, res) => {
+    try {
+        const { ad_id, status } = req.body;
+        if (!ad_id) return res.status(400).json({ success: false, error: 'ad_id is required' });
+        const validStatuses = ['PAUSED', 'ACTIVE'];
+        const newStatus = (status || 'PAUSED').toUpperCase();
+        if (!validStatuses.includes(newStatus)) {
+            return res.status(400).json({ success: false, error: 'status must be PAUSED or ACTIVE' });
+        }
+        const data = await metaPost(`/${ad_id}`, { status: newStatus });
+        res.json({ success: true, ad_id, status: newStatus, raw: data });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message, metaError: err.metaError });
+    }
+});
+
+// 11c. Update adset budget (for ABO)
+app.post('/api/meta/adset-budget', async (req, res) => {
+    try {
+        const { adset_id, daily_budget, action } = req.body;
+        if (!adset_id) return res.status(400).json({ success: false, error: 'adset_id is required' });
+
+        // If action is 'increase' or 'decrease', fetch current and adjust by 20%
+        if (action === 'increase' || action === 'decrease') {
+            const current = await metaGet(`/${adset_id}`, { fields: 'daily_budget,name' });
+            const currentBudget = parseInt(current.daily_budget || 0); // in cents
+            const multiplier = action === 'increase' ? 1.20 : 0.80;
+            const newBudget = Math.round(currentBudget * multiplier);
+            const data = await metaPost(`/${adset_id}`, { daily_budget: newBudget });
+            res.json({
+                success: true, adset_id,
+                adset_name: current.name,
+                previous_budget: currentBudget / 100,
+                new_budget: newBudget / 100,
+                action,
+                change_pct: action === 'increase' ? '+20%' : '-20%',
+                raw: data
+            });
+        } else if (daily_budget) {
+            // Direct budget set (in rupees, convert to paisa for Meta API)
+            const budgetCents = Math.round(daily_budget * 100);
+            const data = await metaPost(`/${adset_id}`, { daily_budget: budgetCents });
+            res.json({ success: true, adset_id, new_budget: daily_budget, raw: data });
+        } else {
+            return res.status(400).json({ success: false, error: 'Provide daily_budget (rupees) or action (increase/decrease)' });
+        }
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message, metaError: err.metaError });
+    }
+});
+
+// 11d. Update campaign budget (for CBO)
+app.post('/api/meta/campaign-budget', async (req, res) => {
+    try {
+        const { campaign_id, daily_budget, action } = req.body;
+        if (!campaign_id) return res.status(400).json({ success: false, error: 'campaign_id is required' });
+
+        if (action === 'increase' || action === 'decrease') {
+            const current = await metaGet(`/${campaign_id}`, { fields: 'daily_budget,name' });
+            const currentBudget = parseInt(current.daily_budget || 0);
+            const multiplier = action === 'increase' ? 1.20 : 0.80;
+            const newBudget = Math.round(currentBudget * multiplier);
+            const data = await metaPost(`/${campaign_id}`, { daily_budget: newBudget });
+            res.json({
+                success: true, campaign_id,
+                campaign_name: current.name,
+                previous_budget: currentBudget / 100,
+                new_budget: newBudget / 100,
+                action,
+                change_pct: action === 'increase' ? '+20%' : '-20%',
+                raw: data
+            });
+        } else if (daily_budget) {
+            const budgetCents = Math.round(daily_budget * 100);
+            const data = await metaPost(`/${campaign_id}`, { daily_budget: budgetCents });
+            res.json({ success: true, campaign_id, new_budget: daily_budget, raw: data });
+        } else {
+            return res.status(400).json({ success: false, error: 'Provide daily_budget (rupees) or action (increase/decrease)' });
+        }
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message, metaError: err.metaError });
+    }
+});
+
 // 12. Full orchestration endpoint
 app.post('/api/execute-full', async (req, res) => {
     const config = req.body;
@@ -722,6 +1269,32 @@ app.post('/api/execute-full', async (req, res) => {
         }
         if (config.start_time) config.start_time = parseGSheetsDate(config.start_time);
         if (config.end_time) config.end_time = parseGSheetsDate(config.end_time);
+
+        // Auto-resolve folder URL to individual asset links
+        const folderUrl = config.asset_folder || config.folder_url || config.folder || null;
+        if (folderUrl && GOOGLE_API_KEY) {
+            const folderId = extractDriveFolderId(folderUrl);
+            if (folderId) {
+                console.log(`[EXECUTE-FULL] Resolving folder ${folderId} to individual assets...`);
+                try {
+                    const apiUrl = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType)&key=${GOOGLE_API_KEY}`;
+                    const resp = await fetch(apiUrl);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        for (const file of (data.files || [])) {
+                            const baseName = file.name.replace(/\.[^.]+$/, '');
+                            const driveLink = `https://drive.google.com/file/d/${file.id}/view`;
+                            if (/-horizontal$/i.test(baseName) && !config.asset_horizontal) config.asset_horizontal = driveLink;
+                            else if (/-vertical$/i.test(baseName) && !config.asset_vertical) config.asset_vertical = driveLink;
+                            else if (/-square$/i.test(baseName) && !config.asset_square) config.asset_square = driveLink;
+                        }
+                        console.log(`[EXECUTE-FULL] Folder resolved: H=${config.asset_horizontal}, V=${config.asset_vertical}, S=${config.asset_square}`);
+                    }
+                } catch (err) {
+                    console.error(`[EXECUTE-FULL] Folder resolution failed: ${err.message}`);
+                }
+            }
+        }
 
         // Normalize field names from frontend format
         // ------------------------------------------------------------------
@@ -986,14 +1559,18 @@ app.post('/api/execute-full', async (req, res) => {
             india_finserv_payer: regulatoryId,
         });
 
-        let adsetId;
-        try {
-            const adsetData = await metaPost(`/${META_AD_ACCOUNT_ID}/adsets`, adsetParams);
-            adsetId = adsetData.id;
-            logStep('create_adset', true, { adsetId });
-        } catch (err) {
-            logStep('create_adset', false, { error: err.message, metaError: err.metaError });
-            throw err;
+        let adsetId = String(config.existing_adset_id || config.adset_id || '').trim() || null;
+        if (adsetId) {
+            logStep('reuse_adset', true, { adsetId });
+        } else {
+            try {
+                const adsetData = await metaPost(`/${META_AD_ACCOUNT_ID}/adsets`, adsetParams);
+                adsetId = adsetData.id;
+                logStep('create_adset', true, { adsetId });
+            } catch (err) {
+                logStep('create_adset', false, { error: err.message, metaError: err.metaError });
+                throw err;
+            }
         }
 
         // ------------------------------------------------------------------
@@ -1030,8 +1607,17 @@ app.post('/api/execute-full', async (req, res) => {
                 }
 
                 // Build link_urls with deeplink if provided
+                // Only set deeplink_url for actual deep links (app schemes or verified app links)
                 const vidLinkUrl = { website_url: feedLinkUrl, display_url: '' };
-                if (linkUrl && linkUrl !== feedLinkUrl) vidLinkUrl.deeplink_url = linkUrl;
+                if (linkUrl && linkUrl !== feedLinkUrl) {
+                    // Check if it's a real deep link (custom scheme like univest://) vs regular web URL
+                    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(linkUrl) && !linkUrl.startsWith('http')) {
+                        vidLinkUrl.deeplink_url = linkUrl;
+                    } else {
+                        // Regular web URL — use as website_url instead of deeplink_url
+                        vidLinkUrl.website_url = linkUrl;
+                    }
+                }
 
                 const vidFeedSpec = {
                     videos,
@@ -1078,8 +1664,15 @@ app.post('/api/execute-full', async (req, res) => {
                 }
 
                 // Build link_urls with deeplink if provided
+                // Only set deeplink_url for actual deep links (custom scheme), not regular web URLs
                 const imgLinkUrl = { website_url: feedLinkUrl, display_url: '' };
-                if (linkUrl && linkUrl !== feedLinkUrl) imgLinkUrl.deeplink_url = linkUrl;
+                if (linkUrl && linkUrl !== feedLinkUrl) {
+                    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(linkUrl) && !linkUrl.startsWith('http')) {
+                        imgLinkUrl.deeplink_url = linkUrl;
+                    } else {
+                        imgLinkUrl.website_url = linkUrl;
+                    }
+                }
 
                 const imgFeedSpec = {
                     images,
@@ -1473,8 +2066,8 @@ app.post('/api/analyse', async (req, res) => {
 
         const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4o',
-            max_tokens: 8000,
+            model: 'gpt-5.4',
+            max_completion_tokens: 8000,
             messages: openaiMessages,
         });
 
@@ -1524,25 +2117,25 @@ app.post('/api/metabase/creative-metrics', async (req, res) => {
 
         const campaignNamesSQL = campaignNames.map(n => `'${n}'`).join(',');
 
+        // FIXED: ID-based join via SPLIT_PART(tracker_name, ':', 2)
         const sql = `
-WITH user_data AS (
-  SELECT
+WITH meta_attributed AS (
+  SELECT DISTINCT
+    SPLIT_PART(uad.tracker_name, ':', 2) AS meta_campaign_id,
+    uad.tracker_campaign_name AS campaign_name,
+    LOWER(TRIM(uad.tracker_sub_campaign_name)) AS adset_name,
+    regexp_replace(uad.creative, ':.*$', '', 'g') AS tracker_name,
     uad.user_id,
-    LOWER(TRIM(uad.tracker_sub_campaign_name)) AS tracker_sub_campaign_name,
-    uad.tracker_campaign_name,
-    uad.creative AS tracker_name,
-    priority,
-    CASE WHEN uad.network ILIKE '%Google%' THEN 'Google' ELSE uad.network END AS network,
-    date(created_at) AS event_date
+    u.priority,
+    DATE(u.created_at) AS signup_date
   FROM user_additional_details uad
-  LEFT JOIN users u ON u.id = uad.user_id
-  LEFT JOIN (SELECT DISTINCT "Adset ID"::bigint AS "Adset ID" FROM "Demat_Campaigns" WHERE "Adset ID" IS NOT NULL AND TRIM("Adset ID") <> '') ch ON ch."Adset ID" = uad.tracker_sub_campaign_id
-  WHERE "Adset ID" IS NULL
-    AND uad.user_id IN (SELECT id FROM users WHERE referred_by IS NULL AND user_interest IS NULL)
-    AND uad.user_id IN (SELECT u.id FROM user_devices ud WHERE ud.user_id = u.id AND ud.os IN ('android','Android Web'))
-    AND date(u.created_at) >= '${dateFrom}'
-    AND date(u.created_at) <= '${dateTo}'
-    AND (network LIKE '%Facebook%' OR network LIKE '%Instagram%')
+  INNER JOIN users u ON u.id = uad.user_id
+  WHERE (uad.network ILIKE '%facebook%' OR uad.network ILIKE '%instagram%' OR uad.network = 'Facebook')
+    AND SPLIT_PART(uad.tracker_name, ':', 2) != ''
+    AND SPLIT_PART(uad.tracker_name, ':', 2) IS NOT NULL
+    AND u.referred_by IS NULL
+    AND DATE(u.created_at) >= '${dateFrom}'
+    AND DATE(u.created_at) <= '${dateTo}'
     AND uad.tracker_campaign_name IN (${campaignNamesSQL})
 ),
 first_payments AS (
@@ -1551,8 +2144,22 @@ first_payments AS (
     sum(case when rt = 1 then amount else null end) as amount,
     sum(case when rt > 1 then amount else null end) as repeat_amount,
     count(case when rt > 1 then amount else null end) as repeat_con,
+    sum(case when date(payment_date) - date(created_at) <= 6 then amount else null end) as d6_window_amount,
+    count(case when date(payment_date) - date(created_at) <= 6 then amount else null end) as d6_window_con,
     sum(case when date(payment_date) - date(created_at) <= 6 then amount else null end) as d6_repeat_amount,
     count(case when date(payment_date) - date(created_at) <= 6 then amount else null end) as d6_repeat_con,
+    sum(case when date(payment_date) - date(created_at) <= 15 then amount else null end) as d15_window_amount,
+    count(case when date(payment_date) - date(created_at) <= 15 then amount else null end) as d15_window_con,
+    sum(case when date(payment_date) - date(created_at) <= 15 then amount else null end) as d15_repeat_amount,
+    count(case when date(payment_date) - date(created_at) <= 15 then amount else null end) as d15_repeat_con,
+    sum(case when date(payment_date) - date(created_at) <= 30 then amount else null end) as d30_window_amount,
+    count(case when date(payment_date) - date(created_at) <= 30 then amount else null end) as d30_window_con,
+    sum(case when date(payment_date) - date(created_at) <= 30 then amount else null end) as d30_repeat_amount,
+    count(case when date(payment_date) - date(created_at) <= 30 then amount else null end) as d30_repeat_con,
+    sum(case when date(payment_date) - date(created_at) <= 60 then amount else null end) as d60_window_amount,
+    count(case when date(payment_date) - date(created_at) <= 60 then amount else null end) as d60_window_con,
+    sum(case when date(payment_date) - date(created_at) <= 60 then amount else null end) as d60_repeat_amount,
+    count(case when date(payment_date) - date(created_at) <= 60 then amount else null end) as d60_repeat_con,
     sum(amount) as overall_amt,
     count(user_id) as overall_con
   FROM (
@@ -1575,31 +2182,39 @@ trial AS (
 ),
 signup_metrics AS (
   SELECT
-    ud.event_date,
-    ud.tracker_campaign_name,
-    regexp_replace(ud.tracker_name, ':.*$', '', 'g') AS tracker_name,
-    COUNT(DISTINCT ud.user_id) AS total_signup,
-    COUNT(DISTINCT CASE WHEN ud.priority = 'PAYMENT-P0' THEN ud.user_id END) AS p0_signup,
-    COUNT(DISTINCT CASE WHEN ud.priority = 'PAYMENT-P1' THEN ud.user_id END) AS p1_signup,
+    ma.signup_date AS event_date,
+    ma.campaign_name AS tracker_campaign_name,
+    ma.tracker_name,
+    ma.meta_campaign_id,
+    COUNT(DISTINCT ma.user_id) AS total_signup,
+    COUNT(DISTINCT CASE WHEN ma.priority = 'PAYMENT-P0' THEN ma.user_id END) AS p0_signup,
+    COUNT(DISTINCT CASE WHEN ma.priority = 'PAYMENT-P1' THEN ma.user_id END) AS p1_signup,
     COUNT(DISTINCT t.user_id) AS total_trial,
-    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) = ud.event_date THEN fp.user_id END) AS d0,
-    SUM(CASE WHEN DATE(fp.payment_date) = ud.event_date THEN fp.amount ELSE 0 END) AS d0_revenue,
-    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' THEN fp.user_id END) AS d6,
-    SUM(CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' THEN fp.amount ELSE 0 END) AS d6_revenue,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) = ma.signup_date THEN fp.user_id END) AS d0,
+    SUM(CASE WHEN DATE(fp.payment_date) = ma.signup_date THEN fp.amount ELSE 0 END) AS d0_revenue,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) <= ma.signup_date + INTERVAL '6 day' THEN fp.user_id END) AS d6,
+    SUM(CASE WHEN DATE(fp.payment_date) <= ma.signup_date + INTERVAL '6 day' THEN fp.amount ELSE 0 END) AS d6_revenue,
     COUNT(DISTINCT fp.user_id) AS new_converted_user,
     SUM(fp.amount) AS new_user_rev,
     SUM(fp.overall_amt) AS overall_revenue,
-    COUNT(DISTINCT CASE WHEN DATE(trial_date) = DATE(ud.event_date) THEN t.user_id END) AS d0_trial,
-    SUM(d6_repeat_con) AS d6_overall_con,
-    SUM(d6_repeat_amount) AS d6_overall_revenue
-  FROM user_data ud
-  LEFT JOIN first_payments fp ON ud.user_id = fp.user_id
-  LEFT JOIN trial t ON ud.user_id = t.user_id
-  GROUP BY 1,2,3
+    COUNT(DISTINCT CASE WHEN DATE(trial_date) = DATE(ma.signup_date) THEN t.user_id END) AS d0_trial,
+    SUM(d6_window_con) AS d6_overall_con,
+    SUM(d6_window_amount) AS d6_overall_revenue,
+    SUM(d15_window_con) AS d15_overall_con,
+    SUM(d15_window_amount) AS d15_overall_revenue,
+    SUM(d30_window_con) AS d30_overall_con,
+    SUM(d30_window_amount) AS d30_overall_revenue,
+    SUM(d60_window_con) AS d60_overall_con,
+    SUM(d60_window_amount) AS d60_overall_revenue
+  FROM meta_attributed ma
+  LEFT JOIN first_payments fp ON ma.user_id = fp.user_id
+  LEFT JOIN trial t ON ma.user_id = t.user_id
+  GROUP BY 1,2,3,4
 )
 SELECT
   sm.tracker_name,
   sm.tracker_campaign_name AS campaign_name,
+  sm.meta_campaign_id,
   SUM(sm.total_signup) AS signups,
   SUM(sm.p0_signup) AS p0_signup,
   SUM(sm.p1_signup) AS p1_signup,
@@ -1615,7 +2230,7 @@ SELECT
   SUM(sm.d6_overall_con) AS d6_overall_con,
   SUM(sm.d6_overall_revenue) AS d6_overall_revenue
 FROM signup_metrics sm
-GROUP BY 1,2
+GROUP BY 1,2,3
 ORDER BY SUM(sm.total_signup) DESC`;
 
         const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
@@ -1905,17 +2520,226 @@ console.log('[Alert Cron] Scheduled daily at 9:00 AM IST');
 // AD INSIGHTS & FUNNEL ENDPOINTS
 // =============================================================================
 
+// In-memory cache for heavy API calls (30-min TTL default)
+const _apiCache = {};
+function getCached(key, maxAgeMs = 1800000) {
+    const entry = _apiCache[key];
+    if (entry && Date.now() - entry.ts < maxAgeMs) return entry.data;
+    return null;
+}
+function getCacheAge(key) {
+    const entry = _apiCache[key];
+    return entry ? Date.now() - entry.ts : null;
+}
+function setCache(key, data) { _apiCache[key] = { data, ts: Date.now() }; }
+
+function extractMetaInstallMetrics(row) {
+    const actions = row.actions || [];
+    const costPerAction = row.cost_per_action_type || [];
+    const installs = actions.find(a => a.action_type === 'mobile_app_install');
+    const cpiObj = costPerAction.find(a => a.action_type === 'mobile_app_install');
+    return {
+        installs: installs ? parseInt(installs.value || 0, 10) : 0,
+        cpi: cpiObj ? parseFloat(cpiObj.value || 0) : null,
+    };
+}
+
+function deriveMetaRollupMetrics(bucket) {
+    const spend = Number(bucket.spend || 0);
+    const impressions = Number(bucket.impressions || 0);
+    const clicks = Number(bucket.clicks || 0);
+    const reach = Number(bucket.reach || 0);
+    const installs = Number(bucket.installs || 0);
+    return {
+        spend,
+        impressions,
+        clicks,
+        reach,
+        installs,
+        cpm: impressions > 0 ? (spend * 1000) / impressions : 0,
+        ctr: impressions > 0 ? (clicks * 100) / impressions : 0,
+        cpc: clicks > 0 ? spend / clicks : 0,
+        cpi: installs > 0 ? spend / installs : null,
+        frequency: reach > 0 ? impressions / reach : 0,
+    };
+}
+
+function aggregateMetaBreakdown(rows, getKey, formatRow) {
+    const buckets = new Map();
+    let totalSpend = 0;
+
+    rows.forEach(row => {
+        const key = getKey(row);
+        if (!key) return;
+        const current = buckets.get(key) || {
+            spend: 0,
+            impressions: 0,
+            clicks: 0,
+            reach: 0,
+            installs: 0,
+        };
+        const { installs } = extractMetaInstallMetrics(row);
+        current.spend += parseFloat(row.spend || 0);
+        current.impressions += parseInt(row.impressions || 0, 10);
+        current.clicks += parseInt(row.clicks || 0, 10);
+        current.reach += parseInt(row.reach || 0, 10);
+        current.installs += installs;
+        buckets.set(key, current);
+        totalSpend += parseFloat(row.spend || 0);
+    });
+
+    return Array.from(buckets.entries())
+        .map(([key, bucket]) => {
+            const metrics = deriveMetaRollupMetrics(bucket);
+            const spendSharePct = totalSpend > 0 ? (metrics.spend / totalSpend) * 100 : 0;
+            return formatRow(key, bucket, metrics, spendSharePct);
+        })
+        .sort((a, b) => (b.spend || 0) - (a.spend || 0));
+}
+
+function normalizeMetaDevicePlatform(value) {
+    const raw = String(value || '').toLowerCase();
+    if (!raw) return '';
+    if (raw.includes('iphone') || raw.includes('ipad') || raw.includes('ipod') || raw.includes('ios')) return 'mobile_ios';
+    if (raw.includes('android')) return 'mobile_android';
+    if (raw.includes('desktop') || raw.includes('computer')) return 'desktop';
+    if (raw.includes('mobile')) return 'mobile_other';
+    return raw.replace(/[^a-z0-9]+/g, '_');
+}
+
+function parseMetaHourlyBucket(value) {
+    const raw = String(value || '');
+    const match = raw.match(/^(\d{2}):/);
+    return match ? parseInt(match[1], 10) : null;
+}
+
+function getMetaDayOfWeek(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(`${dateStr}T00:00:00+05:30`);
+    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    return days[date.getUTCDay()] || '';
+}
+
+async function fetchMetaInsightsRows({
+    fields,
+    level = 'ad',
+    timeRange,
+    timeIncrement = 1,
+    breakdowns = [],
+    limit = 500,
+    logLabel = 'meta-insights',
+}) {
+    const allRows = [];
+    let pageCount = 0;
+    let paginationBroke = false;
+    const params = metaParams({
+        fields,
+        level,
+        time_increment: timeIncrement,
+        time_range: JSON.stringify(timeRange),
+        limit,
+        ...(breakdowns.length ? { breakdowns: breakdowns.join(',') } : {}),
+    });
+
+    let nextUrl = `${META_API_BASE}/${META_AD_ACCOUNT_ID}/insights?${new URLSearchParams(params).toString()}`;
+    while (nextUrl) {
+        pageCount++;
+        console.log(`[${logLabel}] Fetching page ${pageCount}...${allRows.length ? ' (' + allRows.length + ' rows so far)' : ''}`);
+        let response;
+        let lastFetchErr = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                response = await fetch(nextUrl, { signal: AbortSignal.timeout(30000) });
+                lastFetchErr = null;
+                break;
+            } catch (fetchErr) {
+                lastFetchErr = fetchErr;
+                const code = fetchErr && fetchErr.cause && fetchErr.cause.code;
+                const isTransient = code === 'ECONNRESET' || code === 'ETIMEDOUT' || code === 'UND_ERR_CONNECT_TIMEOUT';
+                if (!isTransient || attempt === 3) break;
+                console.warn(`[${logLabel}] Page ${pageCount} fetch attempt ${attempt} failed (${code || fetchErr.message}). Retrying...`);
+                await new Promise(r => setTimeout(r, attempt * 1200));
+            }
+        }
+        if (!response) throw lastFetchErr || new Error(`Meta insights request failed on page ${pageCount}`);
+
+        const data = await response.json();
+        if (data.error) {
+            if (pageCount === 1) throw new Error(data.error.message || 'Meta insights error');
+            console.error(`[${logLabel}] Pagination error on page ${pageCount}:`, data.error.message || data.error);
+            paginationBroke = true;
+            break;
+        }
+
+        if (data.data) allRows.push(...data.data);
+        if (data.paging && data.paging.next) {
+            const sep = data.paging.next.includes('?') ? '&' : '?';
+            nextUrl = data.paging.next + sep + 'appsecret_proof=' + encodeURIComponent(META_APP_SECRET_PROOF);
+        } else {
+            nextUrl = null;
+        }
+    }
+
+    console.log(`[${logLabel}] Done. ${pageCount} pages, ${allRows.length} total rows.${paginationBroke ? ' WARNING: pagination broke - data may be truncated!' : ''}`);
+    return { rows: allRows, pageCount, paginationBroke };
+}
+
+// Force clear all caches
+app.post('/api/cache/clear', (req, res) => {
+    Object.keys(_apiCache).forEach(k => delete _apiCache[k]);
+    // Delete disk caches
+    const ciDir = path.join(__dirname, '..', 'creative-intelligence');
+    try {
+        fs.readdirSync(ciDir).filter(f => f.startsWith('insights-cache-') || f.startsWith('funnel-cache-') || f.startsWith('apex-breakdowns-cache-')).forEach(f => {
+            try { fs.unlinkSync(path.join(ciDir, f)); } catch(e) {}
+        });
+    } catch(e) {}
+    console.log('[Cache] All caches cleared');
+    res.json({ success: true, message: 'All caches cleared' });
+});
+
 app.post('/api/meta/ad-insights-daily', async (req, res) => {
     try {
-        const { dateFrom, dateTo } = req.body;
+        const { dateFrom, dateTo, noCache } = req.body;
         if (!dateFrom || !dateTo) {
             return res.status(400).json({ success: false, error: 'dateFrom and dateTo are required' });
+        }
+
+        // Check memory cache, then disk cache
+        const cacheKey = `insights_${dateFrom}_${dateTo}`;
+        const diskFile = path.join(__dirname, '..', 'creative-intelligence', `insights-cache-${dateFrom}-${dateTo}.json`);
+        let diskCache = null;
+        let diskAgeMin = null;
+        try {
+            if (fs.existsSync(diskFile)) {
+                diskCache = JSON.parse(fs.readFileSync(diskFile, 'utf-8'));
+                diskAgeMin = diskCache.ts ? Math.round((Date.now() - diskCache.ts) / 60000) : null;
+            }
+        } catch(e) {}
+        if (!noCache) {
+            const cached = getCached(cacheKey);
+            if (cached) {
+                console.log(`[ad-insights] Serving from memory (${cached.length} rows)`);
+                return res.json({ success: true, data: cached, total: cached.length, cached: true });
+            }
+            if (diskCache && diskCache.data && diskCache.data.length > 0 && diskCache.ts && Date.now() - diskCache.ts < 6 * 3600000) {
+                console.log(`[ad-insights] Serving from disk (${diskCache.data.length} rows, ${diskAgeMin}min old)`);
+                setCache(cacheKey, diskCache.data);
+                return res.json({
+                    success: true,
+                    data: diskCache.data,
+                    total: diskCache.data.length,
+                    cached: true,
+                    stale: (Date.now() - diskCache.ts) >= 2 * 3600000,
+                    data_age_min: diskAgeMin,
+                });
+            }
         }
 
         const allRows = [];
         let url = `${META_API_BASE}/${META_AD_ACCOUNT_ID}/insights`;
         let params = metaParams({
-            fields: 'campaign_name,campaign_id,adset_name,adset_id,ad_name,ad_id,spend,impressions,clicks,cpm,ctr,cpc,actions,cost_per_action_type',
+            fields: 'campaign_name,campaign_id,adset_name,adset_id,ad_name,ad_id,spend,impressions,clicks,cpm,ctr,cpc,actions,cost_per_action_type,video_thruplay_watched_actions,video_p25_watched_actions,video_p100_watched_actions',
             level: 'ad',
             time_increment: 1,
             time_range: JSON.stringify({ since: dateFrom, until: dateTo }),
@@ -1925,16 +2749,34 @@ app.post('/api/meta/ad-insights-daily', async (req, res) => {
 
         // Paginate through all results
         let pageCount = 0;
+        let paginationBroke = false;
         let nextUrl = `${url}?${new URLSearchParams(params).toString()}`;
         while (nextUrl) {
             pageCount++;
             console.log(`[ad-insights] Fetching page ${pageCount}...${allRows.length ? ' (' + allRows.length + ' rows so far)' : ''}`);
-            const response = await fetch(nextUrl);
+            let response;
+            let lastFetchErr = null;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    response = await fetch(nextUrl, { signal: AbortSignal.timeout(30000) });
+                    lastFetchErr = null;
+                    break;
+                } catch (fetchErr) {
+                    lastFetchErr = fetchErr;
+                    const code = fetchErr && fetchErr.cause && fetchErr.cause.code;
+                    const isTransient = code === 'ECONNRESET' || code === 'ETIMEDOUT' || code === 'UND_ERR_CONNECT_TIMEOUT';
+                    if (!isTransient || attempt === 3) break;
+                    console.warn(`[ad-insights] Page ${pageCount} fetch attempt ${attempt} failed (${code || fetchErr.message}). Retrying...`);
+                    await new Promise(r => setTimeout(r, attempt * 1200));
+                }
+            }
+            if (!response) throw lastFetchErr || new Error(`Meta insights request failed on page ${pageCount}`);
             const data = await response.json();
 
             if (data.error) {
                 if (pageCount === 1) return res.status(400).json({ success: false, error: data.error.message });
-                console.error('[ad-insights] Pagination error:', data.error);
+                console.error('[ad-insights] Pagination error on page', pageCount, ':', data.error.message || data.error);
+                paginationBroke = true;
                 break;
             }
 
@@ -1949,14 +2791,32 @@ app.post('/api/meta/ad-insights-daily', async (req, res) => {
                 nextUrl = null;
             }
         }
-        console.log(`[ad-insights] Done. ${pageCount} pages, ${allRows.length} total rows.`);
+        console.log(`[ad-insights] Done. ${pageCount} pages, ${allRows.length} total rows.${paginationBroke ? ' WARNING: pagination broke — data may be truncated!' : ''}`);
 
-        // Flatten actions to extract installs
+        // If pagination broke, check if disk cache has MORE data — prefer larger dataset
+        if (paginationBroke) {
+            try {
+                if (diskCache && diskCache.data) {
+                    const disk = JSON.parse(fs.readFileSync(diskFile, 'utf-8'));
+                    if (disk.data && disk.data.length > allRows.length) {
+                        console.log(`[ad-insights] Disk cache has ${disk.data.length} rows vs truncated ${allRows.length} — using disk cache.`);
+                        setCache(cacheKey, disk.data);
+                        const ageMin = disk.ts ? Math.round((Date.now() - disk.ts) / 60000) : 9999;
+                        return res.json({ success: true, data: disk.data, total: disk.data.length, cached: true, data_age_min: ageMin, warning: `Meta API truncated at page ${pageCount}. Using cached data (${ageMin}min old, ${disk.data.length} rows).` });
+                    }
+                }
+            } catch (e) { /* proceed with truncated data if disk read fails */ }
+        }
+
+        // Flatten actions to extract installs + video metrics
         const rows = allRows.map(row => {
             const actions = row.actions || [];
             const costPerAction = row.cost_per_action_type || [];
             const installs = actions.find(a => a.action_type === 'mobile_app_install');
             const cpiObj = costPerAction.find(a => a.action_type === 'mobile_app_install');
+            const thruplay = row.video_thruplay_watched_actions ? parseInt((row.video_thruplay_watched_actions[0] || {}).value || 0) : 0;
+            const p25 = row.video_p25_watched_actions ? parseInt((row.video_p25_watched_actions[0] || {}).value || 0) : 0;
+            const p100 = row.video_p100_watched_actions ? parseInt((row.video_p100_watched_actions[0] || {}).value || 0) : 0;
             return {
                 date_start: row.date_start,
                 campaign_name: row.campaign_name,
@@ -1973,21 +2833,500 @@ app.post('/api/meta/ad-insights-daily', async (req, res) => {
                 cpc: parseFloat(row.cpc || 0),
                 installs: installs ? parseInt(installs.value) : 0,
                 cpi: cpiObj ? parseFloat(cpiObj.value) : null,
+                thruplay, p25, p100,
             };
         });
 
-        res.json({ success: true, data: rows, total: rows.length });
+        setCache(cacheKey, rows);
+
+        // Only save to disk if we got a complete dataset (no pagination break)
+        // Never overwrite disk cache with fewer rows — prevents poisoning from truncated API responses
+        if (!paginationBroke) {
+            try {
+                let shouldWrite = true;
+                if (fs.existsSync(diskFile)) {
+                    try {
+                        const existing = diskCache;
+                        if (existing.data && existing.data.length > rows.length * 1.5) {
+                            console.log(`[ad-insights] Disk has ${existing.data.length} rows, new fetch has ${rows.length} — keeping disk (possible partial fetch).`);
+                            shouldWrite = false;
+                        }
+                    } catch (e) { /* corrupted disk cache, overwrite */ }
+                }
+                if (shouldWrite) {
+                    fs.writeFileSync(diskFile, JSON.stringify({ ts: Date.now(), data: rows }));
+                    console.log(`[ad-insights] Saved to disk: ${rows.length} rows`);
+                }
+            } catch(e) {}
+        } else {
+            console.log(`[ad-insights] Skipping disk write — pagination broke, data is truncated (${rows.length} rows).`);
+        }
+
+        res.json({ success: true, data: rows, total: rows.length, truncated: paginationBroke || false });
     } catch (err) {
+        // Fallback to disk cache on error — flag with age so frontend knows
+        try {
+            if (diskCache && diskCache.data && diskCache.data.length > 0) {
+                const stale = diskCache;
+                const ageMin = stale.ts ? Math.round((Date.now() - stale.ts) / 60000) : 9999;
+                console.log(`[ad-insights] Error fallback — disk cache (${stale.data.length} rows, ${ageMin}min old). Error: ${err.message}`);
+                setCache(cacheKey, stale.data);
+                return res.json({ success: true, data: stale.data, total: stale.data.length, cached: true, stale: true, data_age_min: ageMin, warning: `Data is ${ageMin}min old (Meta API error: ${err.message})` });
+            }
+        } catch(e2) {}
         console.error('Meta ad-insights-daily error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/api/meta/apex-breakdowns', async (req, res) => {
+    const { dateFrom, dateTo, noCache } = req.body || {};
+    if (!dateFrom || !dateTo) {
+        return res.status(400).json({ success: false, error: 'dateFrom and dateTo are required' });
+    }
+
+    const cacheKey = `apex_breakdowns_${dateFrom}_${dateTo}`;
+    const diskFile = path.join(__dirname, '..', 'creative-intelligence', `apex-breakdowns-cache-${dateFrom}-${dateTo}.json`);
+    let diskCache = null;
+    let diskAgeMin = null;
+
+    try {
+        if (fs.existsSync(diskFile)) {
+            diskCache = JSON.parse(fs.readFileSync(diskFile, 'utf-8'));
+            diskAgeMin = diskCache.ts ? Math.round((Date.now() - diskCache.ts) / 60000) : null;
+        }
+    } catch (e) {}
+
+    try {
+        if (!noCache) {
+            const cached = getCached(cacheKey, 6 * 3600000);
+            if (cached) {
+                console.log(`[apex-breakdowns] Serving from memory`);
+                return res.json({ success: true, ...cached, cached: true });
+            }
+            if (diskCache && diskCache.data && diskCache.ts && Date.now() - diskCache.ts < 6 * 3600000) {
+                console.log(`[apex-breakdowns] Serving from disk (${diskAgeMin}min old)`);
+                setCache(cacheKey, diskCache.data);
+                return res.json({
+                    success: true,
+                    ...diskCache.data,
+                    cached: true,
+                    stale: (Date.now() - diskCache.ts) >= 2 * 3600000,
+                    data_age_min: diskAgeMin,
+                });
+            }
+        }
+
+        const commonFields = 'spend,impressions,clicks,actions,cost_per_action_type';
+        const timeRange = { since: dateFrom, until: dateTo };
+
+        const breakdownJobs = {
+            age_gender: fetchMetaInsightsRows({
+                fields: commonFields,
+                level: 'ad',
+                timeRange,
+                timeIncrement: 'all_days',
+                breakdowns: ['age', 'gender'],
+                logLabel: 'apex-breakdowns/age-gender',
+            }),
+            placement: fetchMetaInsightsRows({
+                fields: commonFields,
+                level: 'ad',
+                timeRange,
+                timeIncrement: 'all_days',
+                breakdowns: ['publisher_platform', 'platform_position'],
+                logLabel: 'apex-breakdowns/placement',
+            }),
+            device: fetchMetaInsightsRows({
+                fields: commonFields,
+                level: 'ad',
+                timeRange,
+                timeIncrement: 'all_days',
+                breakdowns: ['impression_device'],
+                logLabel: 'apex-breakdowns/device',
+            }),
+            geography: fetchMetaInsightsRows({
+                fields: commonFields,
+                level: 'ad',
+                timeRange,
+                timeIncrement: 'all_days',
+                breakdowns: ['region'],
+                logLabel: 'apex-breakdowns/geography',
+            }),
+            hourly: fetchMetaInsightsRows({
+                fields: commonFields,
+                level: 'ad',
+                timeRange,
+                breakdowns: ['hourly_stats_aggregated_by_audience_time_zone'],
+                timeIncrement: 1,
+                logLabel: 'apex-breakdowns/hourly',
+            }),
+        };
+
+        const settled = await Promise.allSettled(Object.values(breakdownJobs));
+        const breakdownResults = {};
+        const breakdownErrors = {};
+        Object.keys(breakdownJobs).forEach((key, index) => {
+            const result = settled[index];
+            if (result.status === 'fulfilled') {
+                breakdownResults[key] = result.value;
+            } else {
+                breakdownResults[key] = { rows: [], paginationBroke: false };
+                breakdownErrors[key] = result.reason ? result.reason.message : 'Breakdown unavailable';
+                console.warn(`[apex-breakdowns] ${key} unavailable: ${breakdownErrors[key]}`);
+            }
+        });
+
+        const ageGenderResp = breakdownResults.age_gender;
+        const placementResp = breakdownResults.placement;
+        const deviceResp = breakdownResults.device;
+        const geographyResp = breakdownResults.geography;
+        const hourlyResp = breakdownResults.hourly;
+
+        const age_gender = aggregateMetaBreakdown(
+            ageGenderResp.rows,
+            row => {
+                const ageBand = row.age || '';
+                const gender = String(row.gender || '').toLowerCase() || 'unknown';
+                return ageBand ? `${ageBand}__${gender}` : '';
+            },
+            (key, bucket, metrics, spendSharePct) => {
+                const [age_band, gender] = key.split('__');
+                return {
+                    age_band,
+                    gender,
+                    spend_7d: metrics.spend,
+                    impressions_7d: metrics.impressions,
+                    cpm_7d: metrics.cpm,
+                    ctr_7d: metrics.ctr,
+                    cpc_7d: metrics.cpc,
+                    installs_7d: metrics.installs,
+                    cpi_7d: metrics.cpi,
+                    spend_share_pct: spendSharePct,
+                };
+            }
+        );
+
+        const placement = aggregateMetaBreakdown(
+            placementResp.rows,
+            row => {
+                const platform = String(row.publisher_platform || '').toLowerCase().trim();
+                const position = String(row.platform_position || '').toLowerCase().trim();
+                return platform && position ? `${platform}_${position}` : '';
+            },
+            (key, bucket, metrics, spendSharePct) => ({
+                placement: key,
+                spend_7d: metrics.spend,
+                impressions_7d: metrics.impressions,
+                cpm_7d: metrics.cpm,
+                ctr_7d: metrics.ctr,
+                cpc_7d: metrics.cpc,
+                installs_7d: metrics.installs,
+                cpi_7d: metrics.cpi,
+                spend_share_pct: spendSharePct,
+            })
+        );
+
+        const device = aggregateMetaBreakdown(
+            deviceResp.rows,
+            row => normalizeMetaDevicePlatform(row.impression_device),
+            (key, bucket, metrics, spendSharePct) => ({
+                device: key,
+                spend_7d: metrics.spend,
+                impressions_7d: metrics.impressions,
+                ctr_7d: metrics.ctr,
+                cpc_7d: metrics.cpc,
+                cpi_7d: metrics.cpi,
+                installs_7d: metrics.installs,
+                spend_share_pct: spendSharePct,
+            })
+        );
+
+        const geography = aggregateMetaBreakdown(
+            geographyResp.rows,
+            row => String(row.region || '').trim(),
+            (key, bucket, metrics, spendSharePct) => ({
+                region: key,
+                spend_7d: metrics.spend,
+                impressions_7d: metrics.impressions,
+                cpm_7d: metrics.cpm,
+                ctr_7d: metrics.ctr,
+                cpc_7d: metrics.cpc,
+                installs_7d: metrics.installs,
+                cpi_7d: metrics.cpi,
+                spend_share_pct: spendSharePct,
+            })
+        );
+
+        const hourly = aggregateMetaBreakdown(
+            hourlyResp.rows,
+            row => {
+                const hour = parseMetaHourlyBucket(row.hourly_stats_aggregated_by_audience_time_zone);
+                const day = getMetaDayOfWeek(row.date_start);
+                return hour == null || !day ? '' : `${day}__${hour}`;
+            },
+            (key, bucket, metrics) => {
+                const [day_of_week, hourRaw] = key.split('__');
+                return {
+                    day_of_week,
+                    hour: parseInt(hourRaw, 10),
+                    spend: metrics.spend,
+                    impressions: metrics.impressions,
+                    clicks: metrics.clicks,
+                    installs: metrics.installs,
+                    ctr: metrics.ctr,
+                    cpc: metrics.cpc,
+                    cpi: metrics.cpi,
+                };
+            }
+        ).sort((a, b) => {
+            const dayOrder = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+            return (dayOrder.indexOf(a.day_of_week) - dayOrder.indexOf(b.day_of_week)) || (a.hour - b.hour);
+        });
+
+        const payload = {
+            dateFrom,
+            dateTo,
+            breakdowns: {
+                age_gender,
+                placement,
+                device,
+                geography,
+                hourly,
+            },
+            limitations: [
+                'These breakdown tables are Meta delivery breakdowns only.',
+                'Canonical D6 revenue and D6 ROAS remain sourced from the existing Metabase funnel path.',
+                'Breakdown rows currently surface spend, clicks, installs, CPI, CTR, CPC, CPM, and impression volume where available.',
+            ],
+            unavailable_breakdowns: breakdownErrors,
+            freshness: {
+                generated_at: new Date().toISOString(),
+                truncated: Boolean(
+                    ageGenderResp.paginationBroke ||
+                    placementResp.paginationBroke ||
+                    deviceResp.paginationBroke ||
+                    geographyResp.paginationBroke ||
+                    hourlyResp.paginationBroke
+                ),
+            },
+        };
+
+        setCache(cacheKey, payload);
+        try {
+            fs.writeFileSync(diskFile, JSON.stringify({ ts: Date.now(), data: payload }));
+        } catch (e) {}
+
+        return res.json({ success: true, ...payload });
+    } catch (err) {
+        try {
+            if (diskCache && diskCache.data) {
+                const ageMin = diskCache.ts ? Math.round((Date.now() - diskCache.ts) / 60000) : 9999;
+                setCache(cacheKey, diskCache.data);
+                return res.json({
+                    success: true,
+                    ...diskCache.data,
+                    cached: true,
+                    stale: true,
+                    data_age_min: ageMin,
+                    warning: `Using cached breakdown data (${ageMin}min old) due to Meta API error: ${err.message}`,
+                });
+            }
+        } catch (e) {}
+        console.error('Meta apex-breakdowns error:', err);
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// GET /api/meta/ads-status — returns all ads with live/paused status + campaign name
+// Cached in-memory (1 hour) + on disk (survives restarts)
+const ADS_STATUS_FILE = path.join(__dirname, '..', 'creative-intelligence', 'ads-status-cache.json');
+const ADS_STATUS_CACHE_KEY = 'ads_status_v2';
+const ADS_STATUS_CACHE_VERSION = 2;
+
+function budgetMinorToRupees(value) {
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? n / 100 : null;
+}
+
+function normalizeAdsStatusRow(ad) {
+    const campaign = ad && ad.campaign ? ad.campaign : {};
+    const adset = ad && ad.adset ? ad.adset : {};
+    const campaignDailyBudget = budgetMinorToRupees(campaign.daily_budget);
+    const campaignLifetimeBudget = budgetMinorToRupees(campaign.lifetime_budget);
+    const adsetDailyBudget = budgetMinorToRupees(adset.daily_budget);
+    const adsetLifetimeBudget = budgetMinorToRupees(adset.lifetime_budget);
+    const hasCampaignBudget = campaignDailyBudget != null || campaignLifetimeBudget != null;
+    const hasAdsetBudget = adsetDailyBudget != null || adsetLifetimeBudget != null;
+
+    let budgetLevel = 'unknown';
+    let budgetType = 'unknown';
+    let budgetEntityType = '';
+    let budgetEntityId = '';
+    let budgetEntityName = '';
+    let budgetCurrentDailyBudget = null;
+
+    if (hasCampaignBudget && hasAdsetBudget) {
+        budgetLevel = 'unknown';
+        budgetType = 'ambiguous';
+    } else if (hasCampaignBudget) {
+        budgetLevel = 'campaign';
+        budgetType = campaignDailyBudget != null ? 'daily' : 'lifetime';
+        budgetEntityType = 'campaign';
+        budgetEntityId = ad.campaign_id || campaign.id || '';
+        budgetEntityName = campaign.name || '';
+        budgetCurrentDailyBudget = campaignDailyBudget;
+    } else if (hasAdsetBudget) {
+        budgetLevel = 'adset';
+        budgetType = adsetDailyBudget != null ? 'daily' : 'lifetime';
+        budgetEntityType = 'adset';
+        budgetEntityId = ad.adset_id || adset.id || '';
+        budgetEntityName = adset.name || '';
+        budgetCurrentDailyBudget = adsetDailyBudget;
+    }
+
+    return {
+        ad_id: ad.id,
+        ad_name: ad.name,
+        status: ad.effective_status || ad.status || 'UNKNOWN',
+        raw_status: ad.status || '',
+        adset_id: ad.adset_id || adset.id || '',
+        adset_name: adset.name || '',
+        adset_status: adset.effective_status || 'UNKNOWN',
+        campaign_id: ad.campaign_id || campaign.id || '',
+        campaign_name: campaign.name || '',
+        campaign_status: campaign.effective_status || 'UNKNOWN',
+        created_time: ad.created_time,
+        campaign_daily_budget: campaignDailyBudget,
+        campaign_lifetime_budget: campaignLifetimeBudget,
+        adset_daily_budget: adsetDailyBudget,
+        adset_lifetime_budget: adsetLifetimeBudget,
+        budget_level: budgetLevel,
+        budget_type: budgetType,
+        budget_entity_type: budgetEntityType,
+        budget_entity_id: budgetEntityId,
+        budget_entity_name: budgetEntityName,
+        budget_current_daily_budget: budgetCurrentDailyBudget
+    };
+}
+
+function hasRichAdsStatusShape(rows) {
+    if (!Array.isArray(rows) || rows.length === 0) return false;
+    const sample = rows[0] || {};
+    return Object.prototype.hasOwnProperty.call(sample, 'adset_id') &&
+        Object.prototype.hasOwnProperty.call(sample, 'campaign_status') &&
+        Object.prototype.hasOwnProperty.call(sample, 'budget_level');
+}
+
+function readAdsStatusDiskCache() {
+    if (!fs.existsSync(ADS_STATUS_FILE)) return null;
+    const diskCache = JSON.parse(fs.readFileSync(ADS_STATUS_FILE, 'utf-8'));
+    if (!diskCache || diskCache.version !== ADS_STATUS_CACHE_VERSION || !hasRichAdsStatusShape(diskCache.data)) return null;
+    return diskCache;
+}
+
+app.get('/api/meta/ads-status', async (req, res) => {
+    try {
+        const forceRefresh = String(req.query.fresh || req.query.forceRefresh || '') === '1';
+        // Check in-memory cache (1 hour TTL)
+        const cached = forceRefresh ? null : getCached(ADS_STATUS_CACHE_KEY, 3600000);
+        if (!forceRefresh && hasRichAdsStatusShape(cached)) {
+            console.log(`[ads-status] Serving from memory cache (${cached.length} ads)`);
+            return res.json({ success: true, data: cached, total: cached.length, cached: true });
+        }
+
+        // Check disk cache (4 hour TTL)
+        try {
+            const diskCache = readAdsStatusDiskCache();
+            if (!forceRefresh && diskCache && diskCache.ts && Date.now() - diskCache.ts < 4 * 3600000) {
+                console.log(`[ads-status] Serving from disk cache (${diskCache.data.length} ads, ${Math.round((Date.now() - diskCache.ts) / 60000)}min old)`);
+                setCache(ADS_STATUS_CACHE_KEY, diskCache.data);
+                return res.json({ success: true, data: diskCache.data, total: diskCache.data.length, cached: true });
+            }
+        } catch(e) {}
+
+        const allAds = [];
+        let nextUrl = `${META_API_BASE}/${META_AD_ACCOUNT_ID}/ads?${new URLSearchParams(metaParams({
+            fields: 'id,name,status,effective_status,campaign_id,adset_id,campaign{id,name,effective_status,daily_budget,lifetime_budget},adset{id,name,effective_status,daily_budget,lifetime_budget},created_time',
+            limit: 500
+        })).toString()}`;
+
+        let pageCount = 0;
+        while (nextUrl) {
+            pageCount++;
+            const response = await fetch(nextUrl);
+            const data = await response.json();
+            if (data.error) {
+                if (pageCount === 1) {
+                    // Rate limited — try disk cache as fallback (any age)
+                    try {
+                        const stale = readAdsStatusDiskCache();
+                        if (stale && stale.data && stale.data.length) {
+                            console.log(`[ads-status] Rate limited — serving stale disk cache (${stale.data.length} ads)`);
+                            setCache(ADS_STATUS_CACHE_KEY, stale.data);
+                            return res.json({ success: true, data: stale.data, total: stale.data.length, cached: true, stale: true });
+                        }
+                    } catch(e) {}
+                    return res.status(400).json({ success: false, error: data.error.message });
+                }
+                break;
+            }
+            if (data.data) {
+                allAds.push(...data.data.map(normalizeAdsStatusRow));
+            }
+            if (data.paging && data.paging.next) {
+                const sep = data.paging.next.includes('?') ? '&' : '?';
+                nextUrl = data.paging.next + sep + 'appsecret_proof=' + encodeURIComponent(META_APP_SECRET_PROOF);
+            } else {
+                nextUrl = null;
+            }
+        }
+        console.log(`[ads-status] Done. ${pageCount} pages, ${allAds.length} ads.`);
+        setCache(ADS_STATUS_CACHE_KEY, allAds);
+        // Save to disk for restart persistence
+        try { fs.writeFileSync(ADS_STATUS_FILE, JSON.stringify({ version: ADS_STATUS_CACHE_VERSION, ts: Date.now(), data: allAds })); } catch(e) {}
+        res.json({ success: true, data: allAds, total: allAds.length });
+    } catch (err) {
+        // Fallback to disk cache on any error
+        try {
+            const stale = readAdsStatusDiskCache();
+            if (stale && stale.data && stale.data.length) {
+                console.log(`[ads-status] Error fallback — serving disk cache (${stale.data.length} ads)`);
+                return res.json({ success: true, data: stale.data, total: stale.data.length, cached: true, stale: true });
+            }
+        } catch(e2) {}
+        console.error('Meta ads-status error:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });
 
 app.post('/api/metabase/ad-funnel', async (req, res) => {
     try {
-        const { dateFrom, dateTo } = req.body;
+        const { dateFrom, dateTo, noCache } = req.body;
         if (!dateFrom || !dateTo) {
             return res.status(400).json({ success: false, error: 'dateFrom and dateTo are required' });
+        }
+
+        // Check memory cache, then disk cache
+        const funnelCacheKey = `funnel_${dateFrom}_${dateTo}`;
+        const funnelDiskFile = path.join(__dirname, '..', 'creative-intelligence', `funnel-cache-${dateFrom}-${dateTo}.json`);
+        if (!noCache) {
+            const funnelCached = getCached(funnelCacheKey);
+            if (funnelCached) {
+                console.log(`[ad-funnel] Serving from memory (${funnelCached.length} rows)`);
+                return res.json({ success: true, data: funnelCached, total: funnelCached.length, cached: true });
+            }
+            try {
+                if (fs.existsSync(funnelDiskFile)) {
+                    const disk = JSON.parse(fs.readFileSync(funnelDiskFile, 'utf-8'));
+                    if (disk.ts && Date.now() - disk.ts < 2 * 3600000 && disk.data && disk.data.length > 0) {
+                        const ageMin = Math.round((Date.now() - disk.ts) / 60000);
+                        console.log(`[ad-funnel] Serving from disk (${disk.data.length} rows, ${ageMin}min old)`);
+                        setCache(funnelCacheKey, disk.data);
+                        return res.json({ success: true, data: disk.data, total: disk.data.length, cached: true, data_age_min: ageMin });
+                    }
+                }
+            } catch(e) {}
         }
 
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -1995,25 +3334,25 @@ app.post('/api/metabase/ad-funnel', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Dates must be YYYY-MM-DD' });
         }
 
+        // FIXED: ID-based join via SPLIT_PART(tracker_name, ':', 2)
         const sql = `
-WITH user_data AS (
+WITH meta_attributed AS (
   SELECT
+    SPLIT_PART(uad.tracker_name, ':', 2) AS meta_campaign_id,
+    uad.tracker_campaign_name AS campaign_name,
+    LOWER(TRIM(uad.tracker_sub_campaign_name)) AS adset_name,
+    regexp_replace(uad.creative, ':.*$', '', 'g') AS tracker_name,
     uad.user_id,
-    LOWER(TRIM(uad.tracker_sub_campaign_name)) AS tracker_sub_campaign_name,
-    uad.tracker_campaign_name,
-    uad.creative AS tracker_name,
-    priority,
-    CASE WHEN uad.network ILIKE '%Google%' THEN 'Google' ELSE uad.network END AS network,
-    date(created_at) AS event_date
+    u.priority,
+    DATE(u.created_at) AS signup_date
   FROM user_additional_details uad
-  LEFT JOIN users u ON u.id = uad.user_id
-  LEFT JOIN (SELECT DISTINCT "Adset ID"::bigint AS "Adset ID" FROM "Demat_Campaigns" WHERE "Adset ID" IS NOT NULL AND TRIM("Adset ID") <> '') ch ON ch."Adset ID" = uad.tracker_sub_campaign_id
-  WHERE "Adset ID" IS NULL
-    AND uad.user_id IN (SELECT id FROM users WHERE referred_by IS NULL AND user_interest IS NULL)
-    AND uad.user_id IN (SELECT u.id FROM user_devices ud WHERE ud.user_id = u.id AND ud.os IN ('android','Android Web'))
-    AND date(u.created_at) >= '${dateFrom}'
-    AND date(u.created_at) <= '${dateTo}'
-    AND (network LIKE '%Facebook%' OR network LIKE '%Instagram%')
+  INNER JOIN users u ON u.id = uad.user_id
+  WHERE (uad.network ILIKE '%facebook%' OR uad.network ILIKE '%instagram%' OR uad.network = 'Facebook')
+    AND SPLIT_PART(uad.tracker_name, ':', 2) != ''
+    AND SPLIT_PART(uad.tracker_name, ':', 2) IS NOT NULL
+    AND u.referred_by IS NULL
+    AND DATE(u.created_at) >= '${dateFrom}'
+    AND DATE(u.created_at) <= '${dateTo}'
 ),
 first_payments AS (
   SELECT
@@ -2023,6 +3362,14 @@ first_payments AS (
     count(case when rt > 1 then amount else null end) as repeat_con,
     sum(case when date(payment_date) - date(created_at) <= 6 then amount else null end) as d6_repeat_amount,
     count(case when date(payment_date) - date(created_at) <= 6 then amount else null end) as d6_repeat_con,
+    sum(case when date(payment_date) - date(created_at) <= 15 then amount else null end) as d15_repeat_amount,
+    count(case when date(payment_date) - date(created_at) <= 15 then amount else null end) as d15_repeat_con,
+    sum(case when date(payment_date) - date(created_at) <= 30 then amount else null end) as d30_repeat_amount,
+    count(case when date(payment_date) - date(created_at) <= 30 then amount else null end) as d30_repeat_con,
+    sum(case when date(payment_date) - date(created_at) <= 60 then amount else null end) as d60_repeat_amount,
+    count(case when date(payment_date) - date(created_at) <= 60 then amount else null end) as d60_repeat_con,
+    sum(case when date(payment_date) - date(created_at) <= 180 then amount else null end) as d180_repeat_amount,
+    count(case when date(payment_date) - date(created_at) <= 180 then amount else null end) as d180_repeat_con,
     sum(amount) as overall_amt,
     count(user_id) as overall_con
   FROM (
@@ -2045,34 +3392,44 @@ trial AS (
 ),
 signup_metrics AS (
   SELECT
-    ud.event_date,
-    ud.tracker_campaign_name,
-    ud.tracker_sub_campaign_name,
-    regexp_replace(ud.tracker_name, ':.*$', '', 'g') AS tracker_name,
-    COUNT(DISTINCT ud.user_id) AS total_signup,
-    COUNT(DISTINCT CASE WHEN ud.priority = 'PAYMENT-P0' THEN ud.user_id END) AS p0_signup,
-    COUNT(DISTINCT CASE WHEN ud.priority = 'PAYMENT-P1' THEN ud.user_id END) AS p1_signup,
+    ma.signup_date AS event_date,
+    ma.campaign_name AS tracker_campaign_name,
+    ma.adset_name AS tracker_sub_campaign_name,
+    ma.tracker_name,
+    ma.meta_campaign_id,
+    COUNT(DISTINCT ma.user_id) AS total_signup,
+    COUNT(DISTINCT CASE WHEN ma.priority = 'PAYMENT-P0' THEN ma.user_id END) AS p0_signup,
+    COUNT(DISTINCT CASE WHEN ma.priority = 'PAYMENT-P1' THEN ma.user_id END) AS p1_signup,
     COUNT(DISTINCT t.user_id) AS total_trial,
-    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) = ud.event_date THEN fp.user_id END) AS d0,
-    SUM(CASE WHEN DATE(fp.payment_date) = ud.event_date THEN fp.amount ELSE 0 END) AS d0_revenue,
-    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' THEN fp.user_id END) AS d6,
-    SUM(CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' THEN fp.amount ELSE 0 END) AS d6_revenue,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) = ma.signup_date THEN fp.user_id END) AS d0,
+    SUM(CASE WHEN DATE(fp.payment_date) = ma.signup_date THEN fp.amount ELSE 0 END) AS d0_revenue,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) <= ma.signup_date + INTERVAL '6 day' THEN fp.user_id END) AS d6,
+    SUM(CASE WHEN DATE(fp.payment_date) <= ma.signup_date + INTERVAL '6 day' THEN fp.amount ELSE 0 END) AS d6_revenue,
     COUNT(DISTINCT fp.user_id) AS new_converted_user,
     SUM(fp.amount) AS new_user_rev,
     SUM(fp.overall_amt) AS overall_revenue,
-    COUNT(DISTINCT CASE WHEN DATE(trial_date) = DATE(ud.event_date) THEN t.user_id END) AS d0_trial,
+    COUNT(DISTINCT CASE WHEN DATE(trial_date) = DATE(ma.signup_date) THEN t.user_id END) AS d0_trial,
     SUM(d6_repeat_con) AS d6_overall_con,
-    SUM(d6_repeat_amount) AS d6_overall_revenue
-  FROM user_data ud
-  LEFT JOIN first_payments fp ON ud.user_id = fp.user_id
-  LEFT JOIN trial t ON ud.user_id = t.user_id
-  GROUP BY 1,2,3,4
+    SUM(d6_repeat_amount) AS d6_overall_revenue,
+    SUM(d15_repeat_con) AS d15_overall_con,
+    SUM(d15_repeat_amount) AS d15_overall_revenue,
+    SUM(d30_repeat_con) AS d30_overall_con,
+    SUM(d30_repeat_amount) AS d30_overall_revenue,
+    SUM(d60_repeat_con) AS d60_overall_con,
+    SUM(d60_repeat_amount) AS d60_overall_revenue,
+    SUM(d180_repeat_con) AS d180_overall_con,
+    SUM(d180_repeat_amount) AS d180_overall_revenue
+  FROM meta_attributed ma
+  LEFT JOIN first_payments fp ON ma.user_id = fp.user_id
+  LEFT JOIN trial t ON ma.user_id = t.user_id
+  GROUP BY 1,2,3,4,5
 )
 SELECT
   sm.event_date AS date,
   sm.tracker_campaign_name AS campaign_name,
   sm.tracker_sub_campaign_name AS ad_set_name,
   sm.tracker_name,
+  sm.meta_campaign_id,
   SUM(sm.total_signup) AS signups,
   SUM(sm.p0_signup) AS p0_signup,
   SUM(sm.p1_signup) AS p1_signup,
@@ -2086,10 +3443,22 @@ SELECT
   SUM(sm.new_user_rev) AS new_user_rev,
   SUM(sm.overall_revenue) AS overall_revenue,
   SUM(sm.d6_overall_con) AS d6_overall_con,
-  SUM(sm.d6_overall_revenue) AS d6_overall_revenue
+  SUM(sm.d6_overall_revenue) AS d6_overall_revenue,
+  SUM(sm.d15_overall_con) AS d15_overall_con,
+  SUM(sm.d15_overall_revenue) AS d15_overall_revenue,
+  SUM(sm.d30_overall_con) AS d30_overall_con,
+  SUM(sm.d30_overall_revenue) AS d30_overall_revenue,
+  SUM(sm.d60_overall_con) AS d60_overall_con,
+  SUM(sm.d60_overall_revenue) AS d60_overall_revenue,
+  SUM(sm.d180_overall_con) AS d180_overall_con,
+  SUM(sm.d180_overall_revenue) AS d180_overall_revenue
 FROM signup_metrics sm
-GROUP BY 1,2,3,4
+GROUP BY 1,2,3,4,5
 ORDER BY SUM(sm.total_signup) DESC`;
+
+        if (!METABASE_SESSION_TOKEN) {
+            throw new Error('Metabase session token is missing. Set METABASE_SESSION_TOKEN in uploader/.env and restart the server.');
+        }
 
         console.log('[ad-funnel] Running Metabase query...');
         const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
@@ -2108,7 +3477,10 @@ ORDER BY SUM(sm.total_signup) DESC`;
 
         if (!metabaseRes.ok) {
             const errText = await metabaseRes.text();
-            return res.status(metabaseRes.status).json({ success: false, error: `Metabase API error: ${errText}` });
+            if (metabaseRes.status === 401) {
+                throw new Error(`Metabase session expired or is invalid (401): ${errText}`);
+            }
+            throw new Error(`Metabase API error (${metabaseRes.status}): ${errText}`);
         }
 
         const result = await metabaseRes.json();
@@ -2121,10 +3493,193 @@ ORDER BY SUM(sm.total_signup) DESC`;
 
         const truncated = result.data.rows_truncated || false;
         console.log(`[ad-funnel] Done. ${rows.length} rows returned. Truncated: ${truncated}`);
+        // Only cache non-empty results
+        if (rows.length > 0) {
+            setCache(funnelCacheKey, rows);
+            try { fs.writeFileSync(funnelDiskFile, JSON.stringify({ ts: Date.now(), data: rows })); } catch(e) {}
+        }
 
         res.json({ success: true, data: rows, total: rows.length, truncated });
     } catch (err) {
+        try {
+            if (fs.existsSync(funnelDiskFile)) {
+                const stale = JSON.parse(fs.readFileSync(funnelDiskFile, 'utf-8'));
+                console.log(`[ad-funnel] Error fallback — disk (${stale.data.length} rows)`);
+                setCache(funnelCacheKey, stale.data);
+                return res.json({
+                    success: true,
+                    data: stale.data,
+                    total: stale.data.length,
+                    cached: true,
+                    stale: true,
+                    warning: err.message,
+                });
+                }
+        } catch(e2) {}
         console.error('Metabase ad-funnel error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/api/metabase/debug-user-attribution', async (req, res) => {
+    try {
+        const { signupDate, campaignName, adsetName, trackerName } = req.body || {};
+        if (!signupDate || !campaignName || !adsetName || !trackerName) {
+            return res.status(400).json({
+                success: false,
+                error: 'signupDate, campaignName, adsetName, and trackerName are required',
+            });
+        }
+
+        const safe = (value) => String(value).replace(/'/g, "''");
+        const sql = `
+WITH exact_attribution AS (
+  SELECT
+    uad.user_id,
+    DATE(u.created_at) AS signup_date,
+    u.priority,
+    uad.tracker_name AS raw_tracker_name,
+    uad.tracker_campaign_name AS campaign_name,
+    LOWER(TRIM(uad.tracker_sub_campaign_name)) AS adset_name,
+    regexp_replace(uad.creative, ':.*$', '', 'g') AS tracker_name
+  FROM user_additional_details uad
+  INNER JOIN users u ON u.id = uad.user_id
+  WHERE (uad.network ILIKE '%facebook%' OR uad.network ILIKE '%instagram%' OR uad.network = 'Facebook')
+    AND u.referred_by IS NULL
+    AND DATE(u.created_at) = '${safe(signupDate)}'
+    AND uad.tracker_campaign_name = '${safe(campaignName)}'
+    AND LOWER(TRIM(uad.tracker_sub_campaign_name)) = LOWER(TRIM('${safe(adsetName)}'))
+    AND regexp_replace(uad.creative, ':.*$', '', 'g') = '${safe(trackerName)}'
+),
+attrib_users AS (
+  SELECT
+    ea.user_id,
+    ea.signup_date,
+    MIN(ea.priority) AS priority,
+    COUNT(*) AS attribution_rows,
+    STRING_AGG(ea.raw_tracker_name, ' | ' ORDER BY ea.raw_tracker_name) AS raw_trackers
+  FROM exact_attribution ea
+  GROUP BY 1,2
+),
+payment_events AS (
+  SELECT
+    uth.user_id,
+    uth.payment_date,
+    uth.amount,
+    ROW_NUMBER() OVER (PARTITION BY uth.user_id ORDER BY uth.payment_date) AS rt
+  FROM user_transaction_history uth
+  WHERE uth.status = 'CHARGED'
+    AND uth.amount > 50
+),
+user_breakdown AS (
+  SELECT
+    au.user_id,
+    au.signup_date,
+    au.priority,
+    au.attribution_rows,
+    au.raw_trackers,
+    COUNT(*) FILTER (WHERE DATE(pe.payment_date) <= au.signup_date + INTERVAL '6 day') AS payments_first_6d,
+    COALESCE(SUM(CASE WHEN DATE(pe.payment_date) <= au.signup_date + INTERVAL '6 day' THEN pe.amount ELSE 0 END), 0) AS revenue_first_6d_all_payments,
+    COUNT(*) FILTER (WHERE pe.rt = 1 AND DATE(pe.payment_date) <= au.signup_date + INTERVAL '6 day') AS new_payments_first_6d,
+    COALESCE(SUM(CASE WHEN pe.rt = 1 AND DATE(pe.payment_date) <= au.signup_date + INTERVAL '6 day' THEN pe.amount ELSE 0 END), 0) AS d6_revenue,
+    COUNT(*) FILTER (WHERE pe.rt > 1 AND DATE(pe.payment_date) <= au.signup_date + INTERVAL '6 day') AS repeat_payments_first_6d,
+    COALESCE(SUM(CASE WHEN pe.rt > 1 AND DATE(pe.payment_date) <= au.signup_date + INTERVAL '6 day' THEN pe.amount ELSE 0 END), 0) AS d6_repeat_amount,
+    STRING_AGG(
+      TO_CHAR(pe.payment_date, 'YYYY-MM-DD HH24:MI:SS') || ' | rt=' || pe.rt::text || ' | amount=' || COALESCE(pe.amount, 0)::text,
+      ' || '
+      ORDER BY pe.payment_date
+    ) FILTER (WHERE DATE(pe.payment_date) <= au.signup_date + INTERVAL '6 day') AS payment_trace
+  FROM attrib_users au
+  LEFT JOIN payment_events pe ON pe.user_id = au.user_id
+  GROUP BY 1,2,3,4,5
+),
+current_formula AS (
+  SELECT
+    COUNT(DISTINCT au.user_id) AS signups,
+    COUNT(DISTINCT CASE WHEN ub.d6_revenue > 0 THEN au.user_id END) AS d6,
+    COALESCE(SUM(ub.d6_revenue), 0) AS d6_revenue,
+    COALESCE(SUM(ub.repeat_payments_first_6d), 0) AS d6_overall_con,
+    COALESCE(SUM(ub.d6_repeat_amount), 0) AS d6_overall_revenue,
+    COALESCE(SUM(ub.revenue_first_6d_all_payments), 0) AS total_revenue_first_6d_all_payments,
+    COALESCE(SUM(CASE WHEN ub.attribution_rows > 1 THEN 1 ELSE 0 END), 0) AS users_with_duplicate_attribution_rows
+  FROM attrib_users au
+  LEFT JOIN user_breakdown ub ON ub.user_id = au.user_id
+)
+SELECT
+  'summary' AS row_type,
+  NULL::text AS user_id,
+  NULL::text AS priority,
+  NULL::bigint AS attribution_rows,
+  NULL::text AS raw_trackers,
+  NULL::bigint AS payments_first_6d,
+  NULL::numeric AS revenue_first_6d_all_payments,
+  NULL::bigint AS new_payments_first_6d,
+  NULL::numeric AS d6_revenue,
+  NULL::bigint AS repeat_payments_first_6d,
+  NULL::numeric AS d6_repeat_amount,
+  NULL::text AS payment_trace,
+  signups::numeric AS signups,
+  d6::numeric AS d6,
+  d6_overall_con::numeric AS d6_overall_con,
+  d6_overall_revenue::numeric AS d6_overall_revenue,
+  total_revenue_first_6d_all_payments::numeric AS total_revenue_first_6d_all_payments,
+  users_with_duplicate_attribution_rows::numeric AS users_with_duplicate_attribution_rows
+FROM current_formula
+UNION ALL
+SELECT
+  'user' AS row_type,
+  ub.user_id::text,
+  ub.priority::text,
+  ub.attribution_rows::bigint,
+  ub.raw_trackers::text,
+  ub.payments_first_6d::bigint,
+  ub.revenue_first_6d_all_payments::numeric,
+  ub.new_payments_first_6d::bigint,
+  ub.d6_revenue::numeric,
+  ub.repeat_payments_first_6d::bigint,
+  ub.d6_repeat_amount::numeric,
+  ub.payment_trace::text,
+  NULL::numeric,
+  NULL::numeric,
+  NULL::numeric,
+  NULL::numeric,
+  NULL::numeric,
+  NULL::numeric
+FROM user_breakdown ub
+ORDER BY row_type, revenue_first_6d_all_payments DESC NULLS LAST`;
+
+        const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
+            method: 'POST',
+            headers: {
+                'X-Metabase-Session': METABASE_SESSION_TOKEN,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                database: 2,
+                type: 'native',
+                native: { query: sql },
+                constraints: { 'max-results': 10000, 'max-results-bare-rows': 10000 },
+            }),
+        });
+
+        if (!metabaseRes.ok) {
+            const errText = await metabaseRes.text();
+            return res.status(metabaseRes.status).json({ success: false, error: `Metabase API error: ${errText}` });
+        }
+
+        const result = await metabaseRes.json();
+        const columns = result.data.cols.map(c => c.name);
+        const rows = result.data.rows.map(row => {
+            const obj = {};
+            columns.forEach((col, i) => { obj[col] = row[i]; });
+            return obj;
+        });
+
+        const summary = rows.find(r => r.row_type === 'summary') || null;
+        const users = rows.filter(r => r.row_type === 'user');
+        res.json({ success: true, summary, users, total: users.length });
+    } catch (err) {
+        console.error('Metabase debug-user-attribution error:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });
@@ -2257,25 +3812,25 @@ app.post('/api/ci/historical-data', async (req, res) => {
             if (safeCampaignNames.length > 0) {
                 const campaignNamesSQL = safeCampaignNames.map(n => `'${n}'`).join(',');
 
+                // FIXED: ID-based join via SPLIT_PART(tracker_name, ':', 2)
                 const sql = `
-WITH user_data AS (
+WITH meta_attributed AS (
   SELECT
+    SPLIT_PART(uad.tracker_name, ':', 2) AS meta_campaign_id,
+    uad.tracker_campaign_name AS campaign_name,
+    LOWER(TRIM(uad.tracker_sub_campaign_name)) AS adset_name,
+    regexp_replace(uad.creative, ':.*$', '', 'g') AS tracker_name,
     uad.user_id,
-    LOWER(TRIM(uad.tracker_sub_campaign_name)) AS tracker_sub_campaign_name,
-    uad.tracker_campaign_name,
-    uad.creative AS tracker_name,
-    priority,
-    CASE WHEN uad.network ILIKE '%Google%' THEN 'Google' ELSE uad.network END AS network,
-    date(created_at) AS event_date
+    u.priority,
+    DATE(u.created_at) AS signup_date
   FROM user_additional_details uad
-  LEFT JOIN users u ON u.id = uad.user_id
-  LEFT JOIN (SELECT DISTINCT "Adset ID"::bigint AS "Adset ID" FROM "Demat_Campaigns" WHERE "Adset ID" IS NOT NULL AND TRIM("Adset ID") <> '') ch ON ch."Adset ID" = uad.tracker_sub_campaign_id
-  WHERE "Adset ID" IS NULL
-    AND uad.user_id IN (SELECT id FROM users WHERE referred_by IS NULL AND user_interest IS NULL)
-    AND uad.user_id IN (SELECT u.id FROM user_devices ud WHERE ud.user_id = u.id AND ud.os IN ('android','Android Web'))
-    AND date(u.created_at) >= '${dateFrom}'
-    AND date(u.created_at) <= '${dateTo}'
-    AND (network LIKE '%Facebook%' OR network LIKE '%Instagram%')
+  INNER JOIN users u ON u.id = uad.user_id
+  WHERE (uad.network ILIKE '%facebook%' OR uad.network ILIKE '%instagram%' OR uad.network = 'Facebook')
+    AND SPLIT_PART(uad.tracker_name, ':', 2) != ''
+    AND SPLIT_PART(uad.tracker_name, ':', 2) IS NOT NULL
+    AND u.referred_by IS NULL
+    AND DATE(u.created_at) >= '${dateFrom}'
+    AND DATE(u.created_at) <= '${dateTo}'
     AND uad.tracker_campaign_name IN (${campaignNamesSQL})
 ),
 first_payments AS (
@@ -2283,33 +3838,42 @@ first_payments AS (
     user_id, min(payment_date) as payment_date,
     sum(case when rt = 1 then amount else null end) as amount,
     sum(amount) as overall_amount
-  FROM payments WHERE status = 'completed' GROUP BY 1
+  FROM (
+    SELECT user_id, payment_date, amount, created_at,
+      ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY payment_date) AS rt
+    FROM user_transaction_history uth
+    LEFT JOIN users u ON u.id = uth.user_id
+    WHERE status = 'CHARGED' AND amount > 50
+  ) sub
+  GROUP BY 1
 ),
 signup_metrics AS (
   SELECT
-    ud.tracker_name,
-    ud.tracker_campaign_name,
-    COUNT(DISTINCT ud.user_id) AS total_signup,
-    COUNT(DISTINCT CASE WHEN ud.priority = 0 THEN ud.user_id END) AS p0_signup,
-    COUNT(DISTINCT CASE WHEN ud.priority = 1 THEN ud.user_id END) AS p1_signup,
-    COUNT(DISTINCT CASE WHEN fp.payment_date IS NOT NULL THEN ud.user_id END) AS total_trial,
-    COUNT(DISTINCT CASE WHEN fp.payment_date IS NOT NULL AND date(fp.payment_date) = ud.event_date THEN ud.user_id END) AS d0_trial,
-    COUNT(DISTINCT CASE WHEN fp.payment_date IS NOT NULL AND date(fp.payment_date) = ud.event_date AND fp.amount > 0 THEN ud.user_id END) AS d0,
-    COALESCE(SUM(CASE WHEN date(fp.payment_date) = ud.event_date AND fp.amount > 0 THEN fp.amount END), 0) AS d0_revenue,
-    COUNT(DISTINCT CASE WHEN fp.payment_date IS NOT NULL AND date(fp.payment_date) <= ud.event_date + INTERVAL '6 days' AND fp.amount > 0 THEN ud.user_id END) AS d6,
-    COALESCE(SUM(CASE WHEN date(fp.payment_date) <= ud.event_date + INTERVAL '6 days' AND fp.amount > 0 THEN fp.amount END), 0) AS d6_revenue,
-    COUNT(DISTINCT CASE WHEN fp.amount > 0 THEN ud.user_id END) AS new_converted_user,
+    ma.tracker_name,
+    ma.campaign_name AS tracker_campaign_name,
+    ma.meta_campaign_id,
+    COUNT(DISTINCT ma.user_id) AS total_signup,
+    COUNT(DISTINCT CASE WHEN ma.priority = 0 THEN ma.user_id END) AS p0_signup,
+    COUNT(DISTINCT CASE WHEN ma.priority = 1 THEN ma.user_id END) AS p1_signup,
+    COUNT(DISTINCT CASE WHEN fp.payment_date IS NOT NULL THEN ma.user_id END) AS total_trial,
+    COUNT(DISTINCT CASE WHEN fp.payment_date IS NOT NULL AND date(fp.payment_date) = ma.signup_date THEN ma.user_id END) AS d0_trial,
+    COUNT(DISTINCT CASE WHEN fp.payment_date IS NOT NULL AND date(fp.payment_date) = ma.signup_date AND fp.amount > 0 THEN ma.user_id END) AS d0,
+    COALESCE(SUM(CASE WHEN date(fp.payment_date) = ma.signup_date AND fp.amount > 0 THEN fp.amount END), 0) AS d0_revenue,
+    COUNT(DISTINCT CASE WHEN fp.payment_date IS NOT NULL AND date(fp.payment_date) <= ma.signup_date + INTERVAL '6 days' AND fp.amount > 0 THEN ma.user_id END) AS d6,
+    COALESCE(SUM(CASE WHEN date(fp.payment_date) <= ma.signup_date + INTERVAL '6 days' AND fp.amount > 0 THEN fp.amount END), 0) AS d6_revenue,
+    COUNT(DISTINCT CASE WHEN fp.amount > 0 THEN ma.user_id END) AS new_converted_user,
     COALESCE(SUM(CASE WHEN fp.amount > 0 THEN fp.amount END), 0) AS new_user_rev,
     COALESCE(SUM(fp.overall_amount), 0) AS overall_revenue,
-    COUNT(DISTINCT CASE WHEN date(fp.payment_date) <= ud.event_date + INTERVAL '6 days' THEN ud.user_id END) AS d6_overall_con,
-    COALESCE(SUM(CASE WHEN date(fp.payment_date) <= ud.event_date + INTERVAL '6 days' THEN fp.overall_amount END), 0) AS d6_overall_revenue
-  FROM user_data ud
-  LEFT JOIN first_payments fp ON fp.user_id = ud.user_id
-  GROUP BY 1,2
+    COUNT(DISTINCT CASE WHEN date(fp.payment_date) <= ma.signup_date + INTERVAL '6 days' THEN ma.user_id END) AS d6_overall_con,
+    COALESCE(SUM(CASE WHEN date(fp.payment_date) <= ma.signup_date + INTERVAL '6 days' THEN fp.overall_amount END), 0) AS d6_overall_revenue
+  FROM meta_attributed ma
+  LEFT JOIN first_payments fp ON fp.user_id = ma.user_id
+  GROUP BY 1,2,3
 )
 SELECT
   sm.tracker_name,
   sm.tracker_campaign_name AS campaign_name,
+  sm.meta_campaign_id,
   SUM(sm.total_signup) AS signups,
   SUM(sm.p0_signup) AS p0_signup,
   SUM(sm.p1_signup) AS p1_signup,
@@ -2325,7 +3889,7 @@ SELECT
   SUM(sm.d6_overall_con) AS d6_overall_con,
   SUM(sm.d6_overall_revenue) AS d6_overall_revenue
 FROM signup_metrics sm
-GROUP BY 1,2
+GROUP BY 1,2,3
 ORDER BY SUM(sm.total_signup) DESC`;
 
                 try {
@@ -2369,6 +3933,7 @@ ORDER BY SUM(sm.total_signup) DESC`;
 
 // Target campaigns for CI analysis
 const TARGET_CAMPAIGNS = [
+    'Test4-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_200326',
     'Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225',
     'Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125'
 ];
@@ -2499,25 +4064,25 @@ app.post('/api/ci/learn', async (req, res) => {
         // 3. Fetch Metabase funnel data using exact SQL from /api/metabase/creative-metrics
         const campaignNamesSQL = TARGET_CAMPAIGNS.map(n => `'${n}'`).join(',');
 
+        // FIXED: ID-based join via SPLIT_PART(tracker_name, ':', 2)
         const sql = `
-WITH user_data AS (
+WITH meta_attributed AS (
   SELECT
+    SPLIT_PART(uad.tracker_name, ':', 2) AS meta_campaign_id,
+    uad.tracker_campaign_name AS campaign_name,
+    LOWER(TRIM(uad.tracker_sub_campaign_name)) AS adset_name,
+    regexp_replace(uad.creative, ':.*$', '', 'g') AS tracker_name,
     uad.user_id,
-    LOWER(TRIM(uad.tracker_sub_campaign_name)) AS tracker_sub_campaign_name,
-    uad.tracker_campaign_name,
-    uad.creative AS tracker_name,
-    priority,
-    CASE WHEN uad.network ILIKE '%Google%' THEN 'Google' ELSE uad.network END AS network,
-    date(created_at) AS event_date
+    u.priority,
+    DATE(u.created_at) AS signup_date
   FROM user_additional_details uad
-  LEFT JOIN users u ON u.id = uad.user_id
-  LEFT JOIN (SELECT DISTINCT "Adset ID"::bigint AS "Adset ID" FROM "Demat_Campaigns" WHERE "Adset ID" IS NOT NULL AND TRIM("Adset ID") <> '') ch ON ch."Adset ID" = uad.tracker_sub_campaign_id
-  WHERE "Adset ID" IS NULL
-    AND uad.user_id IN (SELECT id FROM users WHERE referred_by IS NULL AND user_interest IS NULL)
-    AND uad.user_id IN (SELECT u.id FROM user_devices ud WHERE ud.user_id = u.id AND ud.os IN ('android','Android Web'))
-    AND date(u.created_at) >= '${dateFrom}'
-    AND date(u.created_at) <= '${dateTo}'
-    AND (network LIKE '%Facebook%' OR network LIKE '%Instagram%')
+  INNER JOIN users u ON u.id = uad.user_id
+  WHERE (uad.network ILIKE '%facebook%' OR uad.network ILIKE '%instagram%' OR uad.network = 'Facebook')
+    AND SPLIT_PART(uad.tracker_name, ':', 2) != ''
+    AND SPLIT_PART(uad.tracker_name, ':', 2) IS NOT NULL
+    AND u.referred_by IS NULL
+    AND DATE(u.created_at) >= '${dateFrom}'
+    AND DATE(u.created_at) <= '${dateTo}'
     AND uad.tracker_campaign_name IN (${campaignNamesSQL})
 ),
 first_payments AS (
@@ -2550,31 +4115,33 @@ trial AS (
 ),
 signup_metrics AS (
   SELECT
-    ud.event_date,
-    ud.tracker_campaign_name,
-    regexp_replace(ud.tracker_name, ':.*$', '', 'g') AS tracker_name,
-    COUNT(DISTINCT ud.user_id) AS total_signup,
-    COUNT(DISTINCT CASE WHEN ud.priority = 'PAYMENT-P0' THEN ud.user_id END) AS p0_signup,
-    COUNT(DISTINCT CASE WHEN ud.priority = 'PAYMENT-P1' THEN ud.user_id END) AS p1_signup,
+    ma.signup_date AS event_date,
+    ma.campaign_name AS tracker_campaign_name,
+    ma.tracker_name,
+    ma.meta_campaign_id,
+    COUNT(DISTINCT ma.user_id) AS total_signup,
+    COUNT(DISTINCT CASE WHEN ma.priority = 'PAYMENT-P0' THEN ma.user_id END) AS p0_signup,
+    COUNT(DISTINCT CASE WHEN ma.priority = 'PAYMENT-P1' THEN ma.user_id END) AS p1_signup,
     COUNT(DISTINCT t.user_id) AS total_trial,
-    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) = ud.event_date THEN fp.user_id END) AS d0,
-    SUM(CASE WHEN DATE(fp.payment_date) = ud.event_date THEN fp.amount ELSE 0 END) AS d0_revenue,
-    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' THEN fp.user_id END) AS d6,
-    SUM(CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' THEN fp.amount ELSE 0 END) AS d6_revenue,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) = ma.signup_date THEN fp.user_id END) AS d0,
+    SUM(CASE WHEN DATE(fp.payment_date) = ma.signup_date THEN fp.amount ELSE 0 END) AS d0_revenue,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) <= ma.signup_date + INTERVAL '6 day' THEN fp.user_id END) AS d6,
+    SUM(CASE WHEN DATE(fp.payment_date) <= ma.signup_date + INTERVAL '6 day' THEN fp.amount ELSE 0 END) AS d6_revenue,
     COUNT(DISTINCT fp.user_id) AS new_converted_user,
     SUM(fp.amount) AS new_user_rev,
     SUM(fp.overall_amt) AS overall_revenue,
-    COUNT(DISTINCT CASE WHEN DATE(trial_date) = DATE(ud.event_date) THEN t.user_id END) AS d0_trial,
+    COUNT(DISTINCT CASE WHEN DATE(trial_date) = DATE(ma.signup_date) THEN t.user_id END) AS d0_trial,
     SUM(d6_repeat_con) AS d6_overall_con,
     SUM(d6_repeat_amount) AS d6_overall_revenue
-  FROM user_data ud
-  LEFT JOIN first_payments fp ON ud.user_id = fp.user_id
-  LEFT JOIN trial t ON ud.user_id = t.user_id
-  GROUP BY 1,2,3
+  FROM meta_attributed ma
+  LEFT JOIN first_payments fp ON ma.user_id = fp.user_id
+  LEFT JOIN trial t ON ma.user_id = t.user_id
+  GROUP BY 1,2,3,4
 )
 SELECT
   sm.tracker_name,
   sm.tracker_campaign_name AS campaign_name,
+  sm.meta_campaign_id,
   SUM(sm.total_signup) AS signups,
   SUM(sm.p0_signup) AS p0_signup,
   SUM(sm.p1_signup) AS p1_signup,
@@ -2590,7 +4157,7 @@ SELECT
   SUM(sm.d6_overall_con) AS d6_overall_con,
   SUM(sm.d6_overall_revenue) AS d6_overall_revenue
 FROM signup_metrics sm
-GROUP BY 1,2
+GROUP BY 1,2,3
 ORDER BY SUM(sm.total_signup) DESC`;
 
         let funnelData = [];
@@ -2718,8 +4285,10 @@ ORDER BY SUM(sm.total_signup) DESC`;
             const signup_cost = signups > 0 ? a.spend / signups : null;
             const d0_trial_cost = d0_trial > 0 ? a.spend / d0_trial : null;
             const d6_cac = d6 > 0 ? a.spend / d6 : null;
-            const d6_roas = a.spend > 0 ? (d6_overall_revenue / a.spend) * 100 : 0;
-            const overall_roas = a.spend > 0 ? (overall_revenue / a.spend) * 100 : 0;
+            // ROAS validity check — reject revenue/spend > 50x as matching error
+            const _vR = (sp, rev) => { if (!sp || sp <= 0 || !rev || rev < 0) return null; if (rev / sp > 50) return null; return (rev / sp) * 100; };
+            const d6_roas = _vR(a.spend, d6_overall_revenue);
+            const overall_roas = _vR(a.spend, overall_revenue);
 
             return {
                 ad_name: a.ad_name,
@@ -2755,8 +4324,8 @@ ORDER BY SUM(sm.total_signup) DESC`;
                 signup_cost: signup_cost ? Math.round(signup_cost * 100) / 100 : null,
                 d0_trial_cost: d0_trial_cost ? Math.round(d0_trial_cost * 100) / 100 : null,
                 d6_cac: d6_cac ? Math.round(d6_cac * 100) / 100 : null,
-                d6_roas: Math.round(d6_roas * 100) / 100,
-                overall_roas: Math.round(overall_roas * 100) / 100,
+                d6_roas: d6_roas != null ? Math.round(d6_roas * 100) / 100 : null,
+                overall_roas: overall_roas != null ? Math.round(overall_roas * 100) / 100 : null,
                 // Temporal
                 go_live_date: goLiveDate,
                 days_live: daysLive,
@@ -2905,8 +4474,8 @@ Return JSON:
 }`;
 
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4o',
-            max_tokens: 16000,
+            model: 'gpt-5.4',
+            max_completion_tokens: 16000,
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: `Analyze top ${creativesForAI.length} creatives by spend (${combinedCreatives.length} total).\n\nAGGREGATE CONTEXT:\n${JSON.stringify(aggContext)}\n\nPER-CREATIVE DATA:\n${dataPayload}` },
@@ -3133,8 +4702,8 @@ Return JSON:
 
         console.log(`[ci/simulate] Simulating ROAS for creative: ${creative.name || 'unknown'}...`);
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4o',
-            max_tokens: 4000,
+            model: 'gpt-5.4',
+            max_completion_tokens: 4000,
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: 'Predict the ROAS trajectory for this creative based on the provided data and learnings.' },
@@ -3199,8 +4768,8 @@ Return JSON:
 
         console.log(`[ci/recommend] Generating recommendations...`);
         const completion = await openai.chat.completions.create({
-            model: 'gpt-4o',
-            max_tokens: 8000,
+            model: 'gpt-5.4',
+            max_completion_tokens: 8000,
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: 'Generate creative recommendations based on the provided learnings and current creatives.' },
@@ -3221,6 +4790,291 @@ Return JSON:
         res.json({ success: true, data: parsed });
     } catch (err) {
         console.error('CI recommend error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Route: Analytics sheet validation source
+app.get('/api/validation/analytics-sheet', async (req, res) => {
+    try {
+        const gid = req.query.gid || ANALYTICS_SHEET_GID;
+        const limit = Math.max(1, Math.min(5000, parseInt(req.query.limit || '500', 10)));
+        const url = `https://docs.google.com/spreadsheets/d/${ANALYTICS_SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`;
+        const response = await fetch(url, { signal: AbortSignal.timeout(60000) });
+        if (!response.ok) {
+            return res.status(response.status).json({ success: false, error: `Sheet request failed with status ${response.status}` });
+        }
+        const payload = parseGvizResponse(await response.text());
+        const cols = (payload.table && payload.table.cols ? payload.table.cols : []).map(col => col.label || col.id);
+        const rows = (payload.table && payload.table.rows ? payload.table.rows : []).slice(0, limit).map(row => {
+            const obj = {};
+            cols.forEach((col, idx) => {
+                const cell = row.c && row.c[idx] ? row.c[idx] : null;
+                obj[col] = cell ? (cell.f != null ? cell.f : cell.v) : null;
+            });
+            return obj;
+        });
+        res.json({
+            success: true,
+            sheet_id: ANALYTICS_SHEET_ID,
+            gid,
+            total: rows.length,
+            columns: cols,
+            rows,
+            source_url: url,
+        });
+    } catch (err) {
+        console.error('[validation/analytics-sheet] Error:', err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Route: Generic AI analyze proxy — accepts system + prompt, returns OpenAI response
+app.post('/api/optimizer/brain', async (req, res) => {
+    try {
+        const runtimeContext = req.body && req.body.runtime_context;
+        const userRequest = (req.body && req.body.user_request) || (runtimeContext && runtimeContext.user_request) || '';
+        if (!runtimeContext || !userRequest) {
+            return res.status(400).json({ success: false, error: 'runtime_context and user_request are required' });
+        }
+        if (!OpenAI || !OPENAI_API_KEY) {
+            return res.status(500).json({ success: false, error: 'OpenAI not configured. Set OPENAI_API_KEY env var.' });
+        }
+
+        const openai = new OpenAI({ apiKey: OPENAI_API_KEY, timeout: 240000 });
+        const evidence = buildOptimizerBrainEvidence(runtimeContext);
+
+        const classifierSystem = [
+            'You classify a performance marketer operator request.',
+            'Return JSON only.',
+            'Use one use_case from: account_revamp, campaign_overview, root_cause, scale_decision, creative_actionables, queue_validation, clarification_needed.',
+            'Keep it concise.'
+        ].join('\n');
+        const classifierPrompt = JSON.stringify({
+            user_request: userRequest,
+            request_scope: runtimeContext.request_scope || {},
+            target_scope: runtimeContext.target_scope || null
+        });
+
+        let useCase = inferOptimizerUseCaseFallback(userRequest, runtimeContext);
+        try {
+            const classify = await openai.chat.completions.create({
+                model: 'gpt-4.1',
+                max_completion_tokens: 700,
+                response_format: { type: 'json_object' },
+                messages: [
+                    { role: 'system', content: classifierSystem },
+                    { role: 'user', content: classifierPrompt }
+                ]
+            });
+            useCase = safeJsonParse(classify.choices[0].message.content, useCase) || useCase;
+        } catch (e) {
+            console.warn('[optimizer/brain] classifier fallback:', e.message);
+        }
+
+        if (useCase && useCase.needs_clarification) {
+            return res.json({
+                success: true,
+                mode: 'clarification',
+                use_case: useCase,
+                evidence,
+                optimizer_plan: {
+                    executive_summary: useCase.clarification_question || 'I need one clarification before I can answer this properly.',
+                    operator_answer: useCase.clarification_question || 'I need one clarification before I can answer this properly.',
+                    actions: [],
+                    do_not_touch: [],
+                    watch_list: []
+                }
+            });
+        }
+
+        const strategistSystem = [
+            'You are an expert performance marketer with 20+ years of experience working in a financial advisory brand.',
+            'You are APEX, a world-class performance marketer operating a Meta account like it is your own money.',
+            'Return JSON only.',
+            'Use the user_request first, then the evidence, then the playbook rules.',
+            'Do not be vague. Give specific actions with exact entities and exact numbers where evidence allows.',
+            'If evidence is insufficient for an exact numeric change, say what data is missing and still give the next best concrete action.',
+            'You must factor: campaign settings, adset settings, ad issues, audiences, location settings, placements, bid strategy, optimization event, historical winners, external context, and risks not present in historical data.',
+            'Prioritize meta_operator_audit and data_integrity_gate before making any recommendation that depends on ROAS/CAC.',
+            'If Meta-side evidence says CPI, CTR, CPM, audience concentration, placement waste, geo inefficiency, or bid/learning issues are the real problem, say that directly.',
+            'For campaign deep dives, cover active adsets and active ads explicitly. Say which particular ads are not working and why.',
+            'Keep the final answer operator-friendly, not analyst-style.'
+        ].join('\n');
+
+        const strategistPrompt = JSON.stringify({
+            user_request: userRequest,
+            use_case: useCase,
+            evidence,
+            required_output: {
+                optimizer_plan: {
+                    executive_summary: 'short operator summary',
+                    operator_answer: 'full answer in one readable top-to-bottom document',
+                    actions: [
+                        {
+                            action_id: 'ACT-001',
+                            priority: 'P1|P2|P3',
+                            action_type: 'PAUSE_AD|ACTIVATE_AD|ACTIVATE_ADSET|PAUSE_ADSET|ACTIVATE_CAMPAIGN|PAUSE_CAMPAIGN|UPDATE_ADSET_BUDGET|UPDATE_CAMPAIGN_BUDGET|MONITOR|CREATIVE_CHANGE',
+                            entity_type: 'campaign|adset|ad|account',
+                            entity_id: 'meta id if known',
+                            entity_name: 'entity name',
+                            campaign_name: '',
+                            adset_name: '',
+                            diagnosis: 'exact why',
+                            action_detail: 'exact do',
+                            expected_impact: 'expected outcome',
+                            risk: 'main risk',
+                            success_metric: 'what metric proves it worked',
+                            confidence: 'HIGH|MEDIUM|LOW',
+                            budget_change: { current_daily_budget: 0, recommended_daily_budget: 0, change_pct: '' }
+                        }
+                    ],
+                    do_not_touch: [{ entity_name: '', entity_id: '', reason: '' }],
+                    watch_list: [{ entity_name: '', priority: 'P2|P3', watch_reason: '', trigger_for_action: '' }],
+                    morning_brief: {
+                        market_read: { posture: '', summary: '', signals: [] },
+                        account_pulse: {},
+                        what_to_do_right_now: [],
+                        what_to_leave_alone: [],
+                        campaign_insights: [],
+                        this_weeks_moves: [],
+                        thirty_day_horizon: { risks: [], opportunities: [] }
+                    }
+                }
+            }
+        });
+
+        const strategy = await openai.chat.completions.create({
+            model: 'gpt-4.1',
+            max_completion_tokens: 9000,
+            response_format: { type: 'json_object' },
+            messages: [
+                { role: 'system', content: strategistSystem },
+                { role: 'user', content: strategistPrompt }
+            ]
+        });
+        let strategyJson = safeJsonParse(strategy.choices[0].message.content, {}) || {};
+
+        const qaSystem = [
+            'You are the final optimizer-answer QA gate.',
+            'Return JSON only.',
+            'Reject vague answers.',
+            'Check that the answer contains concrete entities, concrete reasons, and actionable changes.',
+            'If weak, tighten it using the same evidence without inventing facts.'
+        ].join('\n');
+        const qaPrompt = JSON.stringify({
+            user_request: userRequest,
+            use_case: useCase,
+            evidence,
+            draft: strategyJson
+        });
+
+        try {
+            const qa = await openai.chat.completions.create({
+                model: 'gpt-4.1',
+                max_completion_tokens: 2500,
+                response_format: { type: 'json_object' },
+                messages: [
+                    { role: 'system', content: qaSystem },
+                    { role: 'user', content: qaPrompt }
+                ]
+            });
+            const qaJson = safeJsonParse(qa.choices[0].message.content, null);
+            if (qaJson && qaJson.tightened_answer && typeof qaJson.tightened_answer === 'object') {
+                strategyJson = qaJson.tightened_answer;
+            }
+            let qaGate = analyzeOptimizerDraftQuality(strategyJson);
+            if (!qaGate.passed) {
+                const fixerSystem = [
+                    'You are PERFORMANCE MARKETER final QA.',
+                    'Return JSON only.',
+                    'You are fixing a weak optimizer answer.',
+                    'Eliminate vague check/review language unless there is truly insufficient evidence.',
+                    'Make recommendations differentiated by entity. Different entities should not receive the same generic advice unless the evidence is genuinely identical.',
+                    'Every weak entity needs a concrete action or an explicit no-change-needed decision.',
+                    'For campaign deep dives, include active adsets and active ads with specific fixes.'
+                ].join('\n');
+                const fixerPrompt = JSON.stringify({
+                    user_request: userRequest,
+                    use_case: useCase,
+                    evidence,
+                    qa_errors: qaGate.errors,
+                    draft: strategyJson,
+                    required_output: 'Return the same optimizer_plan schema, but repaired.'
+                });
+                try {
+                    const repair = await openai.chat.completions.create({
+                        model: 'gpt-4.1',
+                        max_completion_tokens: 4000,
+                        response_format: { type: 'json_object' },
+                        messages: [
+                            { role: 'system', content: fixerSystem },
+                            { role: 'user', content: fixerPrompt }
+                        ]
+                    });
+                    const repairedJson = safeJsonParse(repair.choices[0].message.content, null);
+                    if (repairedJson && typeof repairedJson === 'object') {
+                        strategyJson = repairedJson;
+                        qaGate = analyzeOptimizerDraftQuality(strategyJson);
+                    }
+                } catch (repairErr) {
+                    console.warn('[optimizer/brain] repair fallback:', repairErr.message);
+                }
+            }
+            return res.json({
+                success: true,
+                use_case: useCase,
+                evidence,
+                qa: qaJson,
+                qa_gate: qaGate,
+                ...strategyJson
+            });
+        } catch (e) {
+            console.warn('[optimizer/brain] qa fallback:', e.message);
+            const qaGate = analyzeOptimizerDraftQuality(strategyJson);
+            return res.json({
+                success: true,
+                use_case: useCase,
+                evidence,
+                qa_gate: qaGate,
+                ...strategyJson
+            });
+        }
+    } catch (err) {
+        console.error('[optimizer/brain] Error:', err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/api/ai/analyze', async (req, res) => {
+    try {
+        const { system, prompt, max_tokens } = req.body;
+        const performanceMarketerPrefix = 'You are an expert performance marketer with 20+ years of experience working in a financial advisory brand.';
+        if (!system || !prompt) {
+            return res.status(400).json({ success: false, error: 'system and prompt are required' });
+        }
+        if (!OpenAI || !OPENAI_API_KEY) {
+            return res.status(500).json({ success: false, error: 'OpenAI not configured. Set OPENAI_API_KEY env var.' });
+        }
+
+        const openai = new OpenAI({ apiKey: OPENAI_API_KEY, timeout: 240000 });
+        console.log(`[ai/analyze] Running AI analysis (prompt length: ${prompt.length} chars)...`);
+
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4.1',
+            max_completion_tokens: max_tokens || 8000,
+            messages: [
+                { role: 'system', content: performanceMarketerPrefix + '\n\n' + system },
+                { role: 'user', content: prompt },
+            ],
+            response_format: { type: 'json_object' },
+        });
+
+        const content = completion.choices[0].message.content;
+        console.log(`[ai/analyze] Done. Response length: ${content.length} chars`);
+        res.json({ success: true, content: content });
+    } catch (err) {
+        console.error('[ai/analyze] Error:', err.message);
         res.status(500).json({ success: false, error: err.message });
     }
 });
@@ -3423,22 +5277,24 @@ app.post('/api/ci/simulate-all', async (req, res) => {
             if (parseFloat(row.spend || 0) > 0) a.dates.push(row.date_start);
         }
 
-        // 4. Fetch Metabase funnel data for live ads
-        const campaignNamesSQL = TARGET_CAMPAIGNS.map(n => `'${n}'`).join(',');
+        // FIXED: ID-based join via SPLIT_PART(tracker_name, ':', 2)
         const funnelSql = `
-WITH user_data AS (
-  SELECT uad.user_id, uad.tracker_campaign_name,
+WITH meta_attributed AS (
+  SELECT
+    SPLIT_PART(uad.tracker_name, ':', 2) AS meta_campaign_id,
+    uad.tracker_campaign_name AS campaign_name,
     regexp_replace(uad.creative, ':.*$', '', 'g') AS tracker_name,
-    priority, date(u.created_at) AS event_date
+    uad.user_id,
+    u.priority,
+    DATE(u.created_at) AS signup_date
   FROM user_additional_details uad
-  LEFT JOIN users u ON u.id = uad.user_id
-  LEFT JOIN (SELECT DISTINCT "Adset ID"::bigint AS "Adset ID" FROM "Demat_Campaigns" WHERE "Adset ID" IS NOT NULL AND TRIM("Adset ID") <> '') ch ON ch."Adset ID" = uad.tracker_sub_campaign_id
-  WHERE "Adset ID" IS NULL
-    AND uad.user_id IN (SELECT id FROM users WHERE referred_by IS NULL AND user_interest IS NULL)
-    AND uad.user_id IN (SELECT u.id FROM user_devices ud WHERE ud.user_id = u.id AND ud.os IN ('android','Android Web'))
-    AND date(u.created_at) >= '${dateFrom180}'
-    AND date(u.created_at) <= '${dateTo}'
-    AND (network LIKE '%Facebook%' OR network LIKE '%Instagram%')
+  INNER JOIN users u ON u.id = uad.user_id
+  WHERE (uad.network ILIKE '%facebook%' OR uad.network ILIKE '%instagram%' OR uad.network = 'Facebook')
+    AND SPLIT_PART(uad.tracker_name, ':', 2) != ''
+    AND SPLIT_PART(uad.tracker_name, ':', 2) IS NOT NULL
+    AND u.referred_by IS NULL
+    AND DATE(u.created_at) >= '${dateFrom180}'
+    AND DATE(u.created_at) <= '${dateTo}'
     AND uad.tracker_campaign_name IN (${campaignNamesSQL})
 ),
 first_payments AS (
@@ -3449,19 +5305,22 @@ first_payments AS (
   GROUP BY 1
 ),
 signup_metrics AS (
-  SELECT regexp_replace(ud.tracker_name, ':.*$', '', 'g') AS tracker_name, ud.tracker_campaign_name,
-    COUNT(DISTINCT ud.user_id) AS total_signup,
-    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' AND fp.amount > 0 THEN ud.user_id END) AS d6,
-    SUM(CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' AND fp.amount > 0 THEN fp.amount ELSE 0 END) AS d6_revenue,
+  SELECT
+    ma.tracker_name,
+    ma.campaign_name AS tracker_campaign_name,
+    ma.meta_campaign_id,
+    COUNT(DISTINCT ma.user_id) AS total_signup,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) <= ma.signup_date + INTERVAL '6 day' AND fp.amount > 0 THEN ma.user_id END) AS d6,
+    SUM(CASE WHEN DATE(fp.payment_date) <= ma.signup_date + INTERVAL '6 day' AND fp.amount > 0 THEN fp.amount ELSE 0 END) AS d6_revenue,
     SUM(fp.overall_amt) AS overall_revenue,
-    COALESCE(SUM(CASE WHEN date(fp.payment_date) <= ud.event_date + INTERVAL '6 days' THEN fp.overall_amt END), 0) AS d6_overall_revenue
-  FROM user_data ud LEFT JOIN first_payments fp ON ud.user_id = fp.user_id
-  GROUP BY 1,2
+    COALESCE(SUM(CASE WHEN date(fp.payment_date) <= ma.signup_date + INTERVAL '6 days' THEN fp.overall_amt END), 0) AS d6_overall_revenue
+  FROM meta_attributed ma LEFT JOIN first_payments fp ON ma.user_id = fp.user_id
+  GROUP BY 1,2,3
 )
-SELECT sm.tracker_name, sm.tracker_campaign_name AS campaign_name,
+SELECT sm.tracker_name, sm.tracker_campaign_name AS campaign_name, sm.meta_campaign_id,
   SUM(sm.total_signup) AS signups, SUM(sm.d6) AS d6, SUM(sm.d6_revenue) AS d6_revenue,
   SUM(sm.overall_revenue) AS overall_revenue, SUM(sm.d6_overall_revenue) AS d6_overall_revenue
-FROM signup_metrics sm GROUP BY 1,2 ORDER BY SUM(sm.total_signup) DESC`;
+FROM signup_metrics sm GROUP BY 1,2,3 ORDER BY SUM(sm.total_signup) DESC`;
 
         let funnelData = [];
         try {
@@ -3517,8 +5376,10 @@ FROM signup_metrics sm GROUP BY 1,2 ORDER BY SUM(sm.total_signup) DESC`;
             const d6_overall_revenue = parseFloat(funnel.d6_overall_revenue || 0);
             const signup_cost = signups > 0 ? a.spend / signups : null;
             const d6_cac = d6 > 0 ? a.spend / d6 : null;
-            const d6_roas = a.spend > 0 ? (d6_overall_revenue / a.spend) * 100 : 0;
-            const overall_roas = a.spend > 0 ? (overall_revenue / a.spend) * 100 : 0;
+            // ROAS validity check — reject revenue/spend > 50x as matching error
+            const _vR2 = (sp, rev) => { if (!sp || sp <= 0 || !rev || rev < 0) return null; if (rev / sp > 50) return null; return (rev / sp) * 100; };
+            const d6_roas = _vR2(a.spend, d6_overall_revenue);
+            const overall_roas = _vR2(a.spend, overall_revenue);
 
             return {
                 ad_id: a.ad_id, ad_name: a.ad_name, campaign_name: a.campaign_name, adset_name: a.adset_name,
@@ -3526,9 +5387,9 @@ FROM signup_metrics sm GROUP BY 1,2 ORDER BY SUM(sm.total_signup) DESC`;
                 installs: a.installs, cpi: cpi ? Math.round(cpi * 100) / 100 : null, ctr: Math.round(ctr * 100) / 100,
                 signups, signup_cost: signup_cost ? Math.round(signup_cost * 100) / 100 : null,
                 d6, d6_cac: d6_cac ? Math.round(d6_cac * 100) / 100 : null,
-                d6_roas: Math.round(d6_roas * 100) / 100, d6_revenue: Math.round(d6_revenue * 100) / 100,
+                d6_roas: d6_roas != null ? Math.round(d6_roas * 100) / 100 : null, d6_revenue: Math.round(d6_revenue * 100) / 100,
                 d6_overall_revenue: Math.round(d6_overall_revenue * 100) / 100,
-                overall_roas: Math.round(overall_roas * 100) / 100, overall_revenue: Math.round(overall_revenue * 100) / 100,
+                overall_roas: overall_roas != null ? Math.round(overall_roas * 100) / 100 : null, overall_revenue: Math.round(overall_revenue * 100) / 100,
                 hook_rate: Math.round(hook_rate * 100) / 100, hold_rate: Math.round(hold_rate * 100) / 100,
                 completion_rate: Math.round(completion_rate * 100) / 100,
                 go_live_date: goLiveDate, days_live: daysLive,
@@ -3591,8 +5452,8 @@ Return JSON:
 }`;
 
                     const completion = await openai.chat.completions.create({
-                        model: 'gpt-4o',
-                        max_tokens: 2000,
+                        model: 'gpt-5.4',
+                        max_completion_tokens: 2000,
                         messages: [
                             { role: 'system', content: systemPrompt },
                             { role: 'user', content: 'Predict ROAS trajectory.' },
@@ -3882,6 +5743,624 @@ try {
 }
 
 // =============================================================================
+// GOOGLE ADS API ROUTES — Ad insights, funnel, campaigns
+// =============================================================================
+
+// Ensure google-creative directory exists for cache files
+const gcDir = path.join(__dirname, '..', 'google-creative');
+if (!fs.existsSync(gcDir)) fs.mkdirSync(gcDir, { recursive: true });
+
+function hasGoogleAdsCredentials() {
+    return !!(
+        process.env.GOOGLE_ADS_CLIENT_ID &&
+        process.env.GOOGLE_ADS_CLIENT_SECRET &&
+        process.env.GOOGLE_ADS_DEVELOPER_TOKEN &&
+        process.env.GOOGLE_ADS_CUSTOMER_ID &&
+        process.env.GOOGLE_ADS_REFRESH_TOKEN
+    );
+}
+
+function requireGoogleAdsId(value, fieldName) {
+    const id = String(value || '').trim();
+    if (!/^\d+$/.test(id)) {
+        throw new Error(`${fieldName} must be a numeric Google Ads ID`);
+    }
+    return id;
+}
+
+function createGoogleAdsCustomer(options = {}) {
+    if (!hasGoogleAdsCredentials()) {
+        throw new Error('Google Ads API credentials not configured');
+    }
+
+    const { GoogleAdsApi } = require('google-ads-api');
+    const client = new GoogleAdsApi({
+        client_id: process.env.GOOGLE_ADS_CLIENT_ID,
+        client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET,
+        developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
+    });
+
+    const hooks = options.validateOnly ? {
+        onMutationStart: async ({ editOptions }) => {
+            editOptions({ validate_only: true });
+        },
+    } : undefined;
+
+    return client.Customer({
+        customer_id: process.env.GOOGLE_ADS_CUSTOMER_ID,
+        login_customer_id: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID,
+        refresh_token: process.env.GOOGLE_ADS_REFRESH_TOKEN,
+    }, hooks);
+}
+
+// Route 1: POST /api/google/ad-insights-daily
+app.post('/api/google/ad-insights-daily', async (req, res) => {
+    try {
+        const { dateFrom, dateTo, noCache } = req.body;
+        if (!dateFrom || !dateTo) return res.status(400).json({ success: false, error: 'dateFrom and dateTo required' });
+
+        // Cache check (same pattern as Meta)
+        const cacheKey = `gc_insights_${dateFrom}_${dateTo}`;
+        const diskFile = path.join(__dirname, '..', 'google-creative', `insights-cache-${dateFrom}-${dateTo}.json`);
+        if (!noCache) {
+            const cached = getCached(cacheKey);
+            if (cached) return res.json({ success: true, data: cached, total: cached.length, cached: true });
+            try {
+                if (fs.existsSync(diskFile)) {
+                    const disk = JSON.parse(fs.readFileSync(diskFile, 'utf-8'));
+                    if (disk.ts && Date.now() - disk.ts < 24 * 3600000) {
+                        setCache(cacheKey, disk.data);
+                        return res.json({ success: true, data: disk.data, total: disk.data.length, cached: true });
+                    }
+                }
+            } catch(e) {}
+        }
+
+        // Check credentials
+        if (!process.env.GOOGLE_ADS_DEVELOPER_TOKEN || !process.env.GOOGLE_ADS_REFRESH_TOKEN) {
+            return res.json({ success: true, data: [], total: 0, warning: 'Google Ads API credentials not configured' });
+        }
+
+        const { GoogleAdsApi } = require('google-ads-api');
+        const client = new GoogleAdsApi({
+            client_id: process.env.GOOGLE_ADS_CLIENT_ID,
+            client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET,
+            developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
+        });
+        const customer = client.Customer({
+            customer_id: process.env.GOOGLE_ADS_CUSTOMER_ID,
+            login_customer_id: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID,
+            refresh_token: process.env.GOOGLE_ADS_REFRESH_TOKEN,
+        });
+
+        // Fetch campaign + ad group level daily data
+        const rows = await customer.query(`
+            SELECT
+                segments.date,
+                campaign.id,
+                campaign.name,
+                campaign.status,
+                campaign.advertising_channel_type,
+                ad_group.id,
+                ad_group.name,
+                metrics.cost_micros,
+                metrics.impressions,
+                metrics.clicks,
+                metrics.conversions,
+                metrics.all_conversions_value
+            FROM ad_group
+            WHERE segments.date BETWEEN '${dateFrom}' AND '${dateTo}'
+              AND campaign.status = 'ENABLED'
+            ORDER BY segments.date DESC
+        `);
+
+        const data = rows.map(r => ({
+            date_start: r.segments.date,
+            campaign_name: r.campaign.name,
+            campaign_id: String(r.campaign.id),
+            campaign_type: r.campaign.advertising_channel_type,
+            adset_name: r.ad_group.name,
+            adset_id: String(r.ad_group.id),
+            spend: (r.metrics.cost_micros || 0) / 1_000_000,
+            impressions: r.metrics.impressions || 0,
+            clicks: r.metrics.clicks || 0,
+            conversions: r.metrics.conversions || 0,
+            conversion_value: r.metrics.all_conversions_value || 0,
+        }));
+
+        setCache(cacheKey, data);
+        try { fs.writeFileSync(diskFile, JSON.stringify({ ts: Date.now(), data })); } catch(e) {}
+        console.log(`[gc-insights] ${data.length} rows fetched (${dateFrom} to ${dateTo})`);
+        res.json({ success: true, data, total: data.length });
+    } catch (err) {
+        // Fallback to disk cache
+        const diskFile = path.join(__dirname, '..', 'google-creative', `insights-cache-${req.body.dateFrom}-${req.body.dateTo}.json`);
+        try {
+            if (fs.existsSync(diskFile)) {
+                const stale = JSON.parse(fs.readFileSync(diskFile, 'utf-8'));
+                return res.json({ success: true, data: stale.data, total: stale.data.length, cached: true, stale: true });
+            }
+        } catch(e2) {}
+        const errMsg = err.message || err.details || JSON.stringify(err) || 'Unknown Google Ads API error';
+        console.error('[gc-insights] Error:', errMsg);
+        res.status(500).json({ success: false, error: errMsg, data: [] });
+    }
+});
+
+// Route 2: POST /api/google/ad-funnel — Google Ads funnel data from Metabase
+app.post('/api/google/ad-funnel', async (req, res) => {
+    try {
+        const { dateFrom, dateTo, noCache } = req.body;
+        if (!dateFrom || !dateTo) {
+            return res.status(400).json({ success: false, error: 'dateFrom and dateTo are required' });
+        }
+
+        const funnelCacheKey = `gc_funnel_${dateFrom}_${dateTo}`;
+        const funnelDiskFile = path.join(__dirname, '..', 'google-creative', `gc-funnel-cache-${dateFrom}-${dateTo}.json`);
+        if (!noCache) {
+            const funnelCached = getCached(funnelCacheKey);
+            if (funnelCached) {
+                console.log(`[gc-ad-funnel] Serving from memory (${funnelCached.length} rows)`);
+                return res.json({ success: true, data: funnelCached, total: funnelCached.length, cached: true });
+            }
+            try {
+                if (fs.existsSync(funnelDiskFile)) {
+                    const disk = JSON.parse(fs.readFileSync(funnelDiskFile, 'utf-8'));
+                    if (disk.ts && Date.now() - disk.ts < 2 * 3600000 && disk.data && disk.data.length > 0) {
+                        console.log(`[gc-ad-funnel] Serving from disk (${disk.data.length} rows, ${Math.round((Date.now() - disk.ts) / 60000)}min old)`);
+                        setCache(funnelCacheKey, disk.data);
+                        return res.json({ success: true, data: disk.data, total: disk.data.length, cached: true });
+                    }
+                }
+            } catch(e) {}
+        }
+
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        const sql = `
+WITH user_data AS (
+  SELECT
+    uad.user_id,
+    LOWER(TRIM(uad.tracker_sub_campaign_name)) AS tracker_sub_campaign_name,
+    uad.tracker_campaign_name,
+    uad.creative AS tracker_name,
+    priority,
+    CASE WHEN uad.network ILIKE '%Google%' AND network <> 'Google Pay (Custom)' THEN 'Google' ELSE uad.network END AS network,
+    date(created_at) AS event_date
+  FROM user_additional_details uad
+  LEFT JOIN users u ON u.id = uad.user_id
+  LEFT JOIN (SELECT DISTINCT "Adset ID"::bigint AS "Adset ID" FROM "Demat_Campaigns" WHERE "Adset ID" IS NOT NULL AND TRIM("Adset ID") <> '') ch ON ch."Adset ID" = uad.tracker_sub_campaign_id
+  WHERE "Adset ID" IS NULL
+    AND uad.user_id IN (SELECT id FROM users WHERE referred_by IS NULL AND user_interest IS NULL)
+    AND uad.user_id IN (SELECT u.id FROM user_devices ud WHERE ud.user_id = u.id AND ud.os IN ('android','Android Web'))
+    AND date(u.created_at) >= '${dateFrom}'
+    AND date(u.created_at) <= '${dateTo}'
+    AND uad.network ILIKE '%Google%' AND uad.network <> 'Google Pay (Custom)'
+),
+first_payments AS (
+  SELECT
+    user_id, min(payment_date) as payment_date,
+    sum(case when rt = 1 then amount else null end) as amount,
+    sum(case when rt > 1 then amount else null end) as repeat_amount,
+    count(case when rt > 1 then amount else null end) as repeat_con,
+    sum(case when date(payment_date) - date(created_at) <= 6 then amount else null end) as d6_repeat_amount,
+    count(case when date(payment_date) - date(created_at) <= 6 then amount else null end) as d6_repeat_con,
+    sum(case when date(payment_date) - date(created_at) <= 15 then amount else null end) as d15_repeat_amount,
+    count(case when date(payment_date) - date(created_at) <= 15 then amount else null end) as d15_repeat_con,
+    sum(case when date(payment_date) - date(created_at) <= 30 then amount else null end) as d30_repeat_amount,
+    count(case when date(payment_date) - date(created_at) <= 30 then amount else null end) as d30_repeat_con,
+    sum(case when date(payment_date) - date(created_at) <= 60 then amount else null end) as d60_repeat_amount,
+    count(case when date(payment_date) - date(created_at) <= 60 then amount else null end) as d60_repeat_con,
+    sum(amount) as overall_amt,
+    count(user_id) as overall_con
+  FROM (
+    SELECT user_id, payment_date, amount, created_at,
+      ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY payment_date) AS rt
+    FROM user_transaction_history uth
+    LEFT JOIN users u ON u.id = uth.user_id
+    WHERE status = 'CHARGED' AND amount > 50
+  ) sub
+  GROUP BY 1
+),
+trial AS (
+  SELECT user_id, trial_date FROM (
+    SELECT user_id, payment_date AS trial_date, plan_id,
+      ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY payment_date DESC) AS rk
+    FROM user_transaction_history
+    WHERE (plan_id IN ('plan_000','plan_000_plus','plan_000_super') OR plan_id ILIKE '%trial%')
+      AND status = 'CHARGED'
+  ) sub WHERE rk = 1
+),
+signup_metrics AS (
+  SELECT
+    ud.event_date,
+    ud.tracker_campaign_name,
+    ud.tracker_sub_campaign_name,
+    regexp_replace(ud.tracker_name, ':.*$', '', 'g') AS tracker_name,
+    COUNT(DISTINCT ud.user_id) AS total_signup,
+    COUNT(DISTINCT CASE WHEN ud.priority = 'PAYMENT-P0' THEN ud.user_id END) AS p0_signup,
+    COUNT(DISTINCT CASE WHEN ud.priority = 'PAYMENT-P1' THEN ud.user_id END) AS p1_signup,
+    COUNT(DISTINCT t.user_id) AS total_trial,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) = ud.event_date THEN fp.user_id END) AS d0,
+    SUM(CASE WHEN DATE(fp.payment_date) = ud.event_date THEN fp.amount ELSE 0 END) AS d0_revenue,
+    COUNT(DISTINCT CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' THEN fp.user_id END) AS d6,
+    SUM(CASE WHEN DATE(fp.payment_date) <= ud.event_date + INTERVAL '6 day' THEN fp.amount ELSE 0 END) AS d6_revenue,
+    COUNT(DISTINCT fp.user_id) AS new_converted_user,
+    SUM(fp.amount) AS new_user_rev,
+    SUM(fp.overall_amt) AS overall_revenue,
+    COUNT(DISTINCT CASE WHEN DATE(trial_date) = DATE(ud.event_date) THEN t.user_id END) AS d0_trial,
+    SUM(d6_repeat_con) AS d6_overall_con,
+    SUM(d6_repeat_amount) AS d6_overall_revenue,
+    SUM(d15_repeat_con) AS d15_overall_con,
+    SUM(d15_repeat_amount) AS d15_overall_revenue,
+    SUM(d30_repeat_con) AS d30_overall_con,
+    SUM(d30_repeat_amount) AS d30_overall_revenue,
+    SUM(d60_repeat_con) AS d60_overall_con,
+    SUM(d60_repeat_amount) AS d60_overall_revenue
+  FROM user_data ud
+  LEFT JOIN first_payments fp ON ud.user_id = fp.user_id
+  LEFT JOIN trial t ON ud.user_id = t.user_id
+  GROUP BY 1,2,3,4
+)
+SELECT
+  sm.event_date AS date,
+  sm.tracker_campaign_name AS campaign_name,
+  sm.tracker_sub_campaign_name AS ad_set_name,
+  sm.tracker_name,
+  SUM(sm.total_signup) AS signups,
+  SUM(sm.p0_signup) AS p0_signup,
+  SUM(sm.p1_signup) AS p1_signup,
+  SUM(sm.total_trial) AS total_trial,
+  SUM(sm.d0_trial) AS d0_trial,
+  SUM(sm.d0) AS d0,
+  SUM(sm.d0_revenue) AS d0_revenue,
+  SUM(sm.d6) AS d6,
+  SUM(sm.d6_revenue) AS d6_revenue,
+  SUM(sm.new_converted_user) AS new_converted_user,
+  SUM(sm.new_user_rev) AS new_user_rev,
+  SUM(sm.overall_revenue) AS overall_revenue,
+  SUM(sm.d6_overall_con) AS d6_overall_con,
+  SUM(sm.d6_overall_revenue) AS d6_overall_revenue,
+  SUM(sm.d15_overall_con) AS d15_overall_con,
+  SUM(sm.d15_overall_revenue) AS d15_overall_revenue,
+  SUM(sm.d30_overall_con) AS d30_overall_con,
+  SUM(sm.d30_overall_revenue) AS d30_overall_revenue,
+  SUM(sm.d60_overall_con) AS d60_overall_con,
+  SUM(sm.d60_overall_revenue) AS d60_overall_revenue
+FROM signup_metrics sm
+GROUP BY 1,2,3,4
+ORDER BY SUM(sm.total_signup) DESC`;
+
+        if (!METABASE_SESSION_TOKEN) {
+            throw new Error('Metabase session token is missing. Set METABASE_SESSION_TOKEN in uploader/.env and restart the server.');
+        }
+
+        console.log('[gc-ad-funnel] Running Metabase query...');
+        const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
+            method: 'POST',
+            headers: {
+                'X-Metabase-Session': METABASE_SESSION_TOKEN,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                database: 2,
+                type: 'native',
+                native: { query: sql },
+                constraints: { 'max-results': 100000, 'max-results-bare-rows': 100000 },
+            }),
+        });
+
+        if (!metabaseRes.ok) {
+            const errText = await metabaseRes.text();
+            if (metabaseRes.status === 401) {
+                throw new Error(`Metabase session expired or is invalid (401): ${errText}`);
+            }
+            throw new Error(`Metabase API error (${metabaseRes.status}): ${errText}`);
+        }
+
+        const result = await metabaseRes.json();
+        const columns = result.data.cols.map(c => c.name);
+        const rows = result.data.rows.map(row => {
+            const obj = {};
+            columns.forEach((col, i) => { obj[col] = row[i]; });
+            return obj;
+        });
+
+        const truncated = result.data.rows_truncated || false;
+        console.log(`[gc-ad-funnel] Done. ${rows.length} rows returned. Truncated: ${truncated}`);
+        setCache(funnelCacheKey, rows);
+        try { fs.writeFileSync(funnelDiskFile, JSON.stringify({ ts: Date.now(), data: rows })); } catch(e) {}
+
+        res.json({ success: true, data: rows, total: rows.length, truncated });
+    } catch (err) {
+        try {
+            if (fs.existsSync(funnelDiskFile)) {
+                const stale = JSON.parse(fs.readFileSync(funnelDiskFile, 'utf-8'));
+                console.log(`[gc-ad-funnel] Error fallback — disk (${stale.data.length} rows)`);
+                setCache(funnelCacheKey, stale.data);
+                return res.json({
+                    success: true,
+                    data: stale.data,
+                    total: stale.data.length,
+                    cached: true,
+                    stale: true,
+                    warning: err.message,
+                });
+            }
+        } catch(e2) {}
+        console.error('Metabase gc-ad-funnel error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Route 3: GET /api/google/campaigns — List Google Ads campaigns
+app.get('/api/google/campaigns', async (req, res) => {
+    try {
+        if (!process.env.GOOGLE_ADS_DEVELOPER_TOKEN || !process.env.GOOGLE_ADS_REFRESH_TOKEN) {
+            return res.json({ success: true, data: [], warning: 'Google Ads API credentials not configured' });
+        }
+        const { GoogleAdsApi } = require('google-ads-api');
+        const client = new GoogleAdsApi({
+            client_id: process.env.GOOGLE_ADS_CLIENT_ID,
+            client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET,
+            developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
+        });
+        const customer = client.Customer({
+            customer_id: process.env.GOOGLE_ADS_CUSTOMER_ID,
+            login_customer_id: process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID,
+            refresh_token: process.env.GOOGLE_ADS_REFRESH_TOKEN,
+        });
+        const rows = await customer.query(`
+            SELECT campaign.id, campaign.name, campaign.status,
+                   campaign.advertising_channel_type, campaign.bidding_strategy_type,
+                   campaign_budget.amount_micros
+            FROM campaign
+            WHERE campaign.status != 'REMOVED'
+            ORDER BY campaign.name
+        `);
+        const data = rows.map(r => ({
+            campaign_id: String(r.campaign.id),
+            campaign_name: r.campaign.name,
+            status: r.campaign.status === 2 ? 'ENABLED' : r.campaign.status === 3 ? 'PAUSED' : 'OTHER',
+            channel_type: r.campaign.advertising_channel_type,
+            bidding_strategy: r.campaign.bidding_strategy_type,
+            budget_per_day: (r.campaign_budget?.amount_micros || 0) / 1_000_000,
+        }));
+        res.json({ success: true, data, total: data.length });
+    } catch(err) {
+        console.error('[gc-campaigns] Error:', err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Route 4: POST /api/google/campaign-budget — Update Google campaign budget
+app.post('/api/google/campaign-budget', async (req, res) => {
+    try {
+        if (!hasGoogleAdsCredentials()) {
+            return res.status(500).json({ success: false, error: 'Google Ads API credentials not configured' });
+        }
+
+        const campaignId = requireGoogleAdsId(req.body && req.body.campaign_id, 'campaign_id');
+        const action = String((req.body && req.body.action) || '').toLowerCase();
+        const validateOnly = !!(req.body && req.body.validate_only);
+        const pctInput = Number(
+            req.body && (req.body.pct != null ? req.body.pct : req.body.change_pct)
+        );
+        const changePct = pctInput > 0
+            ? pctInput
+            : (action === 'increase' || action === 'decrease' ? 20 : 0);
+
+        if (!['increase', 'decrease'].includes(action)) {
+            return res.status(400).json({ success: false, error: 'action must be increase or decrease' });
+        }
+        if (!(changePct > 0 && changePct <= 90)) {
+            return res.status(400).json({ success: false, error: 'pct must be between 1 and 90' });
+        }
+
+        const customer = createGoogleAdsCustomer({ validateOnly });
+        const rows = await customer.query(`
+            SELECT
+                campaign.id,
+                campaign.name,
+                campaign_budget.resource_name,
+                campaign_budget.amount_micros
+            FROM campaign
+            WHERE campaign.id = ${campaignId}
+            LIMIT 1
+        `);
+
+        if (!rows.length) {
+            return res.status(404).json({ success: false, error: 'Campaign not found', campaign_id: campaignId });
+        }
+
+        const row = rows[0];
+        const previousBudgetMicros = Number(row.campaign_budget?.amount_micros) || 0;
+        if (previousBudgetMicros <= 0) {
+            return res.status(400).json({ success: false, error: 'Campaign budget is missing or invalid', campaign_id: campaignId });
+        }
+
+        const factor = action === 'increase' ? (1 + (changePct / 100)) : (1 - (changePct / 100));
+        const nextBudgetMicros = Math.max(1_000_000, Math.round(previousBudgetMicros * factor));
+
+        await customer.mutateResources([{
+            entity: 'campaign_budget',
+            operation: 'update',
+            resource: {
+                resource_name: row.campaign_budget.resource_name,
+                amount_micros: nextBudgetMicros,
+            },
+        }]);
+
+        console.log(`[gc-budget] ${validateOnly ? 'Validated' : 'Updated'} campaign ${campaignId} ${action} ${changePct}%`);
+        res.json({
+            success: true,
+            validate_only: validateOnly,
+            campaign_id: campaignId,
+            campaign_name: row.campaign.name,
+            action,
+            change_pct: changePct,
+            previous_budget: previousBudgetMicros / 1_000_000,
+            new_budget: nextBudgetMicros / 1_000_000,
+        });
+    } catch (err) {
+        console.error('[gc-budget] Error:', err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Route 5: POST /api/google/adgroup-status — Pause or enable a Google ad group
+app.post('/api/google/adgroup-status', async (req, res) => {
+    try {
+        if (!hasGoogleAdsCredentials()) {
+            return res.status(500).json({ success: false, error: 'Google Ads API credentials not configured' });
+        }
+
+        const adgroupId = requireGoogleAdsId(
+            (req.body && (req.body.adgroup_id != null ? req.body.adgroup_id : req.body.ad_group_id)),
+            'adgroup_id'
+        );
+        const status = String((req.body && req.body.status) || '').toUpperCase();
+        const validateOnly = !!(req.body && req.body.validate_only);
+
+        if (!['PAUSED', 'ENABLED'].includes(status)) {
+            return res.status(400).json({ success: false, error: 'status must be PAUSED or ENABLED' });
+        }
+
+        const customer = createGoogleAdsCustomer({ validateOnly });
+        const rows = await customer.query(`
+            SELECT
+                ad_group.id,
+                ad_group.name,
+                ad_group.resource_name,
+                ad_group.status,
+                campaign.id,
+                campaign.name
+            FROM ad_group
+            WHERE ad_group.id = ${adgroupId}
+            LIMIT 1
+        `);
+
+        if (!rows.length) {
+            return res.status(404).json({ success: false, error: 'Ad group not found', adgroup_id: adgroupId });
+        }
+
+        const row = rows[0];
+        const statusValue = status === 'PAUSED' ? 3 : 2;
+
+        await customer.mutateResources([{
+            entity: 'ad_group',
+            operation: 'update',
+            resource: {
+                resource_name: row.ad_group.resource_name,
+                status: statusValue,
+            },
+        }]);
+
+        console.log(`[gc-adgroup] ${validateOnly ? 'Validated' : 'Updated'} ad group ${adgroupId} -> ${status}`);
+        res.json({
+            success: true,
+            validate_only: validateOnly,
+            adgroup_id: adgroupId,
+            adgroup_name: row.ad_group.name,
+            campaign_id: String(row.campaign.id),
+            campaign_name: row.campaign.name,
+            previous_status: row.ad_group.status,
+            new_status: status,
+        });
+    } catch (err) {
+        console.error('[gc-adgroup] Error:', err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// =============================================================================
+// GOOGLE CREATIVE INTELLIGENCE — Google Ads creative analysis layer
+// =============================================================================
+
+try {
+    const gcRoutes = require('../google-creative/server');
+    const gcRouter = gcRoutes({
+        metabaseUrl: METABASE_URL,
+        metabaseSessionToken: METABASE_SESSION_TOKEN,
+        openaiApiKey: OPENAI_API_KEY,
+    });
+    app.use('/api/gc', gcRouter);
+    console.log('[GC] Google Creative Intelligence routes mounted at /api/gc');
+} catch (err) {
+    console.warn('[GC] Could not mount Google Creative Intelligence routes:', err.message);
+}
+
+// =============================================================================
+// META WRITE API — Campaign Optimizer execution
+// =============================================================================
+
+try {
+    const metaWrite = require('./meta-write');
+    app.use('/api/meta-write', metaWrite);
+    console.log('[MetaWrite] Meta write routes mounted at /api/meta-write');
+} catch (err) {
+    console.warn('[MetaWrite] Could not mount meta-write routes:', err.message);
+}
+
+// =============================================================================
+// TREND SCANNER
+// =============================================================================
+try {
+    const trendRoutes = require('../trend-scanner/routes');
+    app.use('/api/trends', trendRoutes);
+    console.log('[TrendScanner] Trend scanner routes mounted at /api/trends');
+} catch (err) {
+    console.warn('[TrendScanner] Could not mount trend-scanner routes:', err.message);
+}
+
+// =============================================================================
+// COMPETITOR INTELLIGENCE — Real-time competitor ad analysis + AI briefs
+// =============================================================================
+try {
+    const competitorRoutes = require('../competitor-routes');
+    const competitorRouter = competitorRoutes({
+        metaAccessToken: META_ACCESS_TOKEN,
+        openaiApiKey: OPENAI_API_KEY,
+    });
+    app.use('/api/competitor', competitorRouter);
+    console.log('[CompetitorIntel] Competitor intelligence routes mounted at /api/competitor');
+} catch (err) {
+    console.warn('[CompetitorIntel] Could not mount competitor intelligence routes:', err.message);
+}
+
+// =============================================================================
+// FEEDBACK ENGINE (Self-Learning)
+// =============================================================================
+try {
+    const feedbackRoutes = require('../feedback-engine/server');
+    const feRouter = feedbackRoutes({ metabaseUrl: METABASE_URL, metabaseSessionToken: METABASE_SESSION_TOKEN, openaiApiKey: OPENAI_API_KEY });
+    app.use('/api/fe', feRouter);
+    require('../feedback-engine/agents/feScheduler');
+    console.log('[FeedbackEngine] Self-learning routes mounted at /api/fe');
+} catch (err) {
+    console.warn('[FeedbackEngine] Could not mount feedback engine:', err.message);
+}
+
+// =============================================================================
+// AUDIENCE TESTING — Audience performance scanner + AI recommendations
+// =============================================================================
+try {
+    const atRoutes = require('../audience-testing/server');
+    const atRouter = atRoutes({
+        metaAccessToken: META_ACCESS_TOKEN,
+        metaAdAccountId: META_AD_ACCOUNT_ID,
+        metabaseUrl: METABASE_URL,
+        metabaseSessionToken: METABASE_SESSION_TOKEN,
+        anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+    });
+    app.use('/api/at', atRouter);
+    app.use('/audience-testing/public', express.static(path.join(__dirname, '..', 'audience-testing', 'public')));
+    require('../audience-testing/agents/atScheduler');
+    console.log('[AudienceTesting] Routes mounted at /api/at, scheduler started');
+} catch (err) {
+    console.warn('[AudienceTesting] Could not mount audience testing:', err.message);
+}
+
+// =============================================================================
 // START SERVER
 // =============================================================================
 
@@ -3893,5 +6372,29 @@ if (process.env.VERCEL) {
         console.log(`Meta Ad Upload Server running on http://localhost:${PORT}`);
         console.log(`Ad Account: ${META_AD_ACCOUNT_ID}`);
         console.log(`API Version: ${META_API_VERSION}`);
+
+        // Pre-warm cache after 5 seconds (let server settle + avoid competing with ROAS tracker)
+        setTimeout(() => {
+            const warmTo = new Date().toISOString().slice(0, 10);
+            const warmFrom = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+            console.log(`[Cache] Pre-warming insights cache (${warmFrom} to ${warmTo})...`);
+            Promise.all([
+                fetch(`http://localhost:${PORT}/api/meta/ad-insights-daily`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dateFrom: warmFrom, dateTo: warmTo })
+                }).then(r => r.json()).then(d => {
+                    console.log(`[Cache] Insights pre-warmed: ${d.total || 0} rows`);
+                }),
+                fetch(`http://localhost:${PORT}/api/metabase/ad-funnel`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dateFrom: warmFrom, dateTo: warmTo })
+                }).then(r => r.json()).then(d => {
+                    console.log(`[Cache] Funnel pre-warmed: ${d.total || 0} rows`);
+                }),
+                fetch(`http://localhost:${PORT}/api/meta/ads-status`).then(r => r.json()).then(d => {
+                    console.log(`[Cache] Ads-status pre-warmed: ${d.total || 0} ads`);
+                })
+            ]).catch(e => console.warn('[Cache] Pre-warm failed:', e.message));
+        }, 5000);
     });
 }

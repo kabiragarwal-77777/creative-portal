@@ -730,7 +730,7 @@
 
                 <div class="form-group" style="grid-column: 1 / -1;">
                     <label>Existing Adset ID</label>
-                    <input type="text" id="existingAdsetId" placeholder="e.g. 23851234567890123" oninput="toggleExistingAdset()">
+                    <input type="text" id="existingAdsetId" placeholder="e.g. 23851234567890123" oninput="toggleExistingAdset()" onpaste="setTimeout(toggleExistingAdset, 50)">
                     <small style="color:#aaa;">If provided, a new ad will be pushed into this adset — all fields below will be skipped.</small>
                 </div>
 
@@ -1009,6 +1009,10 @@
                     </div>
                 </div>
 
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="assetFolder">Asset Folder URL <small>(Drive folder with -horizontal, -vertical, -square files)</small></label>
+                    <input type="text" id="assetFolder" placeholder="https://drive.google.com/drive/folders/...">
+                </div>
                 <div class="form-group">
                     <label>Horizontal Asset &mdash; 16:9 / Landscape <span class="required">*</span></label>
                     <input type="text" id="assetHorizontal" placeholder="Google Drive URL">
@@ -1229,7 +1233,7 @@
     }
 
     // =========================================================================
-    // ASSET UPLOAD VIA URL (no server needed)
+    // ASSET UPLOAD VIA SERVER PROXY
     // =========================================================================
 
     // Get a CORS-friendly direct image URL from Google Drive
@@ -1239,68 +1243,34 @@
         return `https://lh3.googleusercontent.com/d/${fileId}=s2000`;
     }
 
-    // Upload image to Meta — download from Drive then upload as bytes
-    async function uploadImageByUrl(driveUrl, retries = 3) {
-        for (let attempt = 1; attempt <= retries; attempt++) {
-            // Download image via lh3 (CORS-friendly, works from browser)
-            const lh3Url = getDriveLh3Url(driveUrl);
-            const imgResp = await fetch(lh3Url);
-            if (!imgResp.ok) {
-                if (imgResp.status === 429 && attempt < retries) {
-                    const delay = attempt * 3000;
-                    console.log(`[DRIVE] 429 rate limited, retrying in ${delay / 1000}s (attempt ${attempt}/${retries})`);
-                    await new Promise(r => setTimeout(r, delay));
-                    continue;
-                }
-                throw new Error('Failed to download image from Drive (status ' + imgResp.status + ')');
-            }
-            const blob = await imgResp.blob();
-            if (blob.size < 1000) throw new Error('Downloaded image too small (' + blob.size + ' bytes), check Drive sharing');
-
-        // Upload as multipart form
-        const formData = new FormData();
-        formData.append('access_token', META_ACCESS_TOKEN);
-        if (META_APPSECRET_PROOF) formData.append('appsecret_proof', META_APPSECRET_PROOF);
-        formData.append('filename', blob, 'image.jpg');
-        const resp = await fetch(`${META_API_BASE}/${META_AD_ACCOUNT_ID}/adimages`, { method: 'POST', body: formData });
+    // Upload image to Meta via server-side Drive download to avoid browser 429/CORS issues
+    async function uploadImageByUrl(driveUrl) {
+        const resp = await fetch('/api/upload-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ driveUrl }),
+        });
         const data = await resp.json();
-        if (data.error) throw new Error(data.error.error_user_msg || data.error.message);
-        let imageHash = null;
-        if (data.images) {
-            const key = Object.keys(data.images)[0];
-            if (key) imageHash = data.images[key].hash;
+        if (!resp.ok || !data.success) {
+            throw new Error(data.error || 'Image upload failed');
         }
-        if (!imageHash) throw new Error('No image hash returned from Meta API');
-        return imageHash;
-        } // end retry loop
+        if (!data.imageHash) throw new Error('No image hash returned from Meta API');
+        return data.imageHash;
     }
 
-    // Upload video to Meta using file_url param (Google Drive direct link)
+    // Upload video to Meta via server-side Drive download to avoid browser-side rate limits
     async function uploadVideoByUrl(driveUrl, title) {
-        const directUrl = getDriveDirectUrl(driveUrl);
-        const userContentUrl = getDriveUserContentUrl(driveUrl);
-
-        const extraParams = {};
-        if (title) extraParams.title = title;
-
-        // Try file_url with standard drive download URL first
-        try {
-            const data = await metaPost(`/${META_AD_ACCOUNT_ID}/advideos`, { file_url: directUrl, ...extraParams });
-            if (data.id) return data.id;
-        } catch (e) {
-            // If that fails, try usercontent URL
-            console.log('file_url with drive.google.com failed, trying usercontent URL:', e.message);
+        const resp = await fetch('/api/upload-video', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ driveUrl, title }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.success) {
+            throw new Error(data.error || 'Video upload failed');
         }
-
-        // Fallback: try usercontent URL
-        try {
-            const data = await metaPost(`/${META_AD_ACCOUNT_ID}/advideos`, { file_url: userContentUrl, ...extraParams });
-            if (data.id) return data.id;
-        } catch (e2) {
-            throw new Error(`Video upload failed with both URLs. Last error: ${e2.message}`);
-        }
-
-        throw new Error('No video ID returned from Meta API');
+        if (!data.videoId) throw new Error('No video ID returned from Meta API');
+        return data.videoId;
     }
 
     // Upload video file directly from browser (chunked upload)
@@ -1376,8 +1346,9 @@
     async function writeResultToSheet(rowIndex, data, tabName) {
         try {
             const payload = {
-                row: rowIndex + 1,
+                row: rowIndex,
                 tab: tabName || 'Sheet1',
+                campaign_id: data.campaign_id || '',
                 adset_id: data.adset_id || '',
                 ad_id: data.ad_id || '',
                 upload_status: data.upload_status || '',
@@ -1683,7 +1654,15 @@
                 const obj = {};
                 (row.c || []).forEach((cell, idx) => {
                     const key = cols[idx] || `col_${idx}`;
-                    obj[key] = cell ? (cell.v !== undefined ? cell.v : (cell.f || null)) : null;
+                    if (!cell) { obj[key] = null; return; }
+                    // For large numbers (IDs), prefer formatted string to avoid precision loss
+                    const v = cell.v;
+                    const f = cell.f;
+                    if (typeof v === 'number' && f && /^\d{10,}$/.test(f.replace(/,/g, ''))) {
+                        obj[key] = f.replace(/,/g, ''); // use formatted string, strip commas
+                    } else {
+                        obj[key] = v !== undefined ? v : (f || null);
+                    }
                 });
                 return obj;
             });
@@ -1692,7 +1671,21 @@
             if (sheetRows.length > 0) {
                 sheetHeaders = Object.keys(sheetRows[0]);
                 renderSheetTable();
-                $('sheetStatus').textContent = `Loaded ${sheetRows.length} row(s).`;
+                $('sheetStatus').textContent = `Loaded ${sheetRows.length} row(s). Auto-fetching details from Meta...`;
+                console.log('[SHEET] Headers:', sheetHeaders);
+                console.log('[SHEET] First row:', JSON.stringify(sheetRows[0]));
+                // Auto-enrich rows that have adset_id or campaign_id
+                try {
+                    await enrichSheetRowsFromMeta();
+                    const enrichedCount = sheetRows.filter(r => r._enriched).length;
+                    console.log(`[ENRICH] Done. ${enrichedCount}/${sheetRows.length} rows enriched.`);
+                    console.log('[ENRICH] Row 1 after enrich:', JSON.stringify(sheetRows[0]));
+                    renderSheetTable();
+                    $('sheetStatus').textContent = `Loaded ${sheetRows.length} row(s). ${enrichedCount} enriched from Meta.`;
+                } catch (enrichErr) {
+                    console.error('[ENRICH] Fatal error:', enrichErr);
+                    $('sheetStatus').textContent = `Loaded ${sheetRows.length} row(s). Enrich failed: ${enrichErr.message}`;
+                }
             } else {
                 $('sheetStatus').textContent = 'No rows found.';
             }
@@ -1701,6 +1694,178 @@
         }
     };
 
+    // =========================================================================
+    // AUTO-ENRICH: fetch Meta details and fill empty sheet cells
+    // =========================================================================
+    function findHeader(keys) {
+        for (const k of keys) {
+            for (const h of sheetHeaders) {
+                if (h.toLowerCase().replace(/[\s_-]/g, '') === k.toLowerCase().replace(/[\s_-]/g, '')) return h;
+            }
+        }
+        return null;
+    }
+
+    function getRowVal(row, keys) {
+        const h = findHeader(keys);
+        return h && row[h] !== undefined && row[h] !== null && row[h] !== '' ? String(row[h]) : '';
+    }
+
+    function setRowVal(row, keys, val) {
+        if (!val && val !== 0) return;
+        let h = findHeader(keys);
+        if (!h) {
+            // Column doesn't exist in sheet — add it dynamically
+            h = keys[keys.length - 1]; // use the most readable key name (last one, e.g. 'campaign_id')
+            sheetHeaders.push(h);
+            // Initialize this column as empty for all existing rows
+            sheetRows.forEach(r => { if (!(h in r)) r[h] = ''; });
+        }
+        row[h] = String(val);
+    }
+
+    async function enrichSheetRowsFromMeta() {
+        // Save originals so we can highlight auto-filled cells
+        sheetRows.forEach(row => {
+            row._originals = {};
+            sheetHeaders.forEach(h => {
+                if (row[h] !== undefined && row[h] !== null && row[h] !== '') {
+                    row._originals[h] = row[h];
+                }
+            });
+        });
+
+        const promises = sheetRows.map(async (row, idx) => {
+            try {
+                // Check for adset_id first (gives us more data)
+                let adsetId = getRowVal(row, ['existingadsetid', 'existing_adset_id', 'adset_id', 'adsetid']).trim();
+                const campIdCheck = getRowVal(row, ['campaignid', 'campaign_id']).trim();
+                console.log(`[ENRICH] Row ${idx + 1}: adsetId="${adsetId}", campId="${campIdCheck}"`);
+                if (adsetId && /^\d{5,}$/.test(adsetId)) {
+                    const resp = await fetch(`/api/adset-details/${adsetId}`);
+                    const data = await resp.json();
+                    if (data.success && data.adset) {
+                        const a = data.adset;
+
+                        // Fill campaign_id from adset
+                        if (a.campaign_id) setRowVal(row, ['campaignid', 'campaign_id'], a.campaign_id);
+
+                        // Adset-level fields
+                        setRowVal(row, ['adsetname', 'adset_name'], a.name);
+                        setRowVal(row, ['adsetstatus', 'adset_status'], a.status);
+                        setRowVal(row, ['optimizationgoal', 'optimization_goal'], a.optimization_goal);
+                        setRowVal(row, ['billingevent', 'billing_event'], a.billing_event);
+                        setRowVal(row, ['bidstrategy', 'bid_strategy'], a.bid_strategy);
+                        if (a.bid_amount) setRowVal(row, ['bidamount', 'bid_amount'], (parseInt(a.bid_amount) / 100).toString());
+                        if (a.daily_budget) {
+                            setRowVal(row, ['budget', 'dailybudget', 'daily_budget'], (parseInt(a.daily_budget) / 100).toString());
+                            setRowVal(row, ['budgettype', 'budget_type'], 'daily');
+                        } else if (a.lifetime_budget) {
+                            setRowVal(row, ['budget', 'lifetimebudget', 'lifetime_budget'], (parseInt(a.lifetime_budget) / 100).toString());
+                            setRowVal(row, ['budgettype', 'budget_type'], 'lifetime');
+                        }
+
+                        // Targeting
+                        if (a.targeting) {
+                            const t = a.targeting;
+                            setRowVal(row, ['agemin', 'age_min'], t.age_min);
+                            setRowVal(row, ['agemax', 'age_max'], t.age_max);
+                            if (t.genders && t.genders.length) setRowVal(row, ['genders', 'gender'], t.genders.join(','));
+                            if (t.geo_locations && t.geo_locations.countries) {
+                                setRowVal(row, ['countries', 'geocountries', 'geo_countries'], t.geo_locations.countries.join(','));
+                            }
+                            if (t.device_platforms) setRowVal(row, ['deviceplatforms', 'device_platforms'], t.device_platforms.join('|'));
+                            if (t.publisher_platforms) setRowVal(row, ['publisherplatforms', 'publisher_platforms'], t.publisher_platforms.join('|'));
+                            if (t.facebook_positions) setRowVal(row, ['facebookpositions', 'facebook_positions'], t.facebook_positions.join('|'));
+                            if (t.instagram_positions) setRowVal(row, ['instagrampositions', 'instagram_positions'], t.instagram_positions.join('|'));
+                            if (t.user_os) {
+                                const osVal = Array.isArray(t.user_os) ? t.user_os[0] : t.user_os;
+                                setRowVal(row, ['os', 'operatingsystem', 'os_target'], osVal);
+                            }
+                            // Excluded geo
+                            if (t.excluded_geo_locations) {
+                                const ex = t.excluded_geo_locations;
+                                if (ex.countries && ex.countries.length) {
+                                    setRowVal(row, ['excludedcountries', 'excluded_countries'], ex.countries.join(','));
+                                }
+                                if (ex.regions && ex.regions.length) {
+                                    const regionKeys = ex.regions.map(r => r.key || r.name || r);
+                                    setRowVal(row, ['excludedregions', 'excluded_regions'], regionKeys.join(','));
+                                }
+                            }
+                            // Custom audiences
+                            if (t.custom_audiences && t.custom_audiences.length) {
+                                setRowVal(row, ['customaudiences', 'custom_audiences'], t.custom_audiences.map(a => a.id).join('|'));
+                            }
+                            if (t.excluded_custom_audiences && t.excluded_custom_audiences.length) {
+                                setRowVal(row, ['excludedaudiences', 'excluded_audiences'], t.excluded_custom_audiences.map(a => a.id).join('|'));
+                            }
+                        }
+
+                        // Promoted object
+                        if (a.promoted_object) {
+                            setRowVal(row, ['appid', 'application_id', 'app_id'], a.promoted_object.application_id);
+                            setRowVal(row, ['objectstoreurl', 'object_store_url', 'storeurl'], a.promoted_object.object_store_url);
+                            setRowVal(row, ['customeventtype', 'custom_event_type'], a.promoted_object.custom_event_type);
+                        }
+
+                        // Now fetch parent campaign details
+                        if (a.campaign_id) {
+                            const cResp = await fetch(`/api/campaign-details/${a.campaign_id}`);
+                            const cData = await cResp.json();
+                            if (cData.success && cData.campaign) {
+                                row._campaign = cData.campaign; // stash for display
+                            }
+                        }
+
+                        row._enriched = true;
+                        $('sheetStatus').textContent = `Enriched row ${idx + 1}...`;
+                    }
+                } else {
+                    // Try campaign_id only — fetch campaign and infer adset-level defaults
+                    const campId = getRowVal(row, ['campaignid', 'campaign_id']).trim();
+                    if (campId && /^\d{5,}$/.test(campId)) {
+                        const resp = await fetch(`/api/campaign-details/${campId}`);
+                        const data = await resp.json();
+                        if (data.success && data.campaign) {
+                            const c = data.campaign;
+                            row._campaign = c;
+
+                            // Set campaign-level fields into sheet row
+                            setRowVal(row, ['bidstrategy', 'bid_strategy'], c.bid_strategy);
+                            if (c.daily_budget) {
+                                setRowVal(row, ['budget', 'dailybudget', 'daily_budget'], (parseInt(c.daily_budget) / 100).toString());
+                                setRowVal(row, ['budgettype', 'budget_type'], 'daily');
+                            } else if (c.lifetime_budget) {
+                                setRowVal(row, ['budget', 'lifetimebudget', 'lifetime_budget'], (parseInt(c.lifetime_budget) / 100).toString());
+                                setRowVal(row, ['budgettype', 'budget_type'], 'lifetime');
+                            }
+                            setRowVal(row, ['status'], c.status);
+
+                            // Infer optimization_goal & billing_event from campaign objective
+                            const goalMap = {
+                                'OUTCOME_APP_PROMOTION': { goal: 'APP_INSTALLS', billing: 'IMPRESSIONS' },
+                                'OUTCOME_SALES': { goal: 'OFFSITE_CONVERSIONS', billing: 'IMPRESSIONS' },
+                                'OUTCOME_TRAFFIC': { goal: 'LINK_CLICKS', billing: 'IMPRESSIONS' },
+                                'OUTCOME_LEADS': { goal: 'LEAD_GENERATION', billing: 'IMPRESSIONS' },
+                                'OUTCOME_AWARENESS': { goal: 'REACH', billing: 'IMPRESSIONS' },
+                            };
+                            const mapping = goalMap[c.objective] || {};
+                            if (mapping.goal) setRowVal(row, ['optimizationgoal', 'optimization_goal'], mapping.goal);
+                            if (mapping.billing) setRowVal(row, ['billingevent', 'billing_event'], mapping.billing);
+
+                            row._enriched = true;
+                            $('sheetStatus').textContent = `Enriched row ${idx + 1} (campaign)...`;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn(`[ENRICH] Row ${idx + 1} failed:`, err.message);
+            }
+        });
+        await Promise.all(promises);
+    }
+
     function renderSheetTable() {
         const wrap = $('sheetTableWrap');
         wrap.classList.remove('hidden');
@@ -1708,8 +1873,16 @@
         const body = $('sheetBody');
         head.innerHTML = '<th><input type="checkbox" id="selectAllRows" onclick="toggleAllRows(this)"></th><th>#</th>' + sheetHeaders.map(h => `<th>${esc(h)}</th>`).join('') + '<th></th>';
         body.innerHTML = sheetRows.map((row, i) => {
-            const cells = sheetHeaders.map(h => `<td title="${esc(String(row[h] || ''))}">${esc(String(row[h] || ''))}</td>`).join('');
-            return `<tr><td><input type="checkbox" class="row-check" data-idx="${i}"></td><td>${i + 1}</td>${cells}<td><button class="btn btn-secondary" onclick="selectRow(${i})">Select</button></td></tr>`;
+            // Track which cells were originally empty in the sheet (filled by Meta)
+            const cells = sheetHeaders.map(h => {
+                const val = row[h] || '';
+                const display = esc(String(val));
+                const wasAutoFilled = row._enriched && row._originals && !(h in row._originals) && val;
+                const style = wasAutoFilled ? ' style="color:var(--green);font-style:italic;"' : '';
+                return `<td title="${display}"${style}>${display}</td>`;
+            }).join('');
+            const enrichBadge = row._enriched ? '<span style="color:var(--green);font-size:10px;" title="Auto-filled from Meta">&#9679;</span> ' : '';
+            return `<tr><td><input type="checkbox" class="row-check" data-idx="${i}"></td><td>${enrichBadge}${i + 1}</td>${cells}<td><button class="btn btn-secondary" onclick="selectRow(${i})">Select</button></td></tr>`;
         }).join('');
         // Show/hide bulk run button
         updateBulkButton();
@@ -1718,7 +1891,7 @@
     // =========================================================================
     // SELECT ROW (from sheet)
     // =========================================================================
-    window.selectRow = function (idx) {
+    window.selectRow = async function (idx) {
         const row = sheetRows[idx];
         if (!row) return;
         selectedSheetRowIndex = idx;
@@ -1743,8 +1916,14 @@
             const v = val(keys);
             if (v) {
                 const sel = $(id);
+                const normalizedValue = String(v).trim().toLowerCase().replace(/[\s-]+/g, '_');
                 for (const opt of sel.options) {
-                    if (opt.value === v || opt.textContent.includes(v)) { sel.value = opt.value; break; }
+                    const optValue = String(opt.value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+                    const optText = String(opt.textContent || '').trim().toLowerCase();
+                    if (optValue === normalizedValue || optText.includes(String(v).trim().toLowerCase())) {
+                        sel.value = opt.value;
+                        break;
+                    }
                 }
                 sel.dispatchEvent(new Event('change'));
             }
@@ -1779,7 +1958,10 @@
         console.log('[DEBUG] All headers:', sheetHeaders.join(', '));
         console.log('[DEBUG] Adset-related:', sheetHeaders.filter(h => h.toLowerCase().includes('adset')).map(h => `${h}="${row[h]}"`).join(', '));
         console.log('[DEBUG] existingAdsetId field =', $('existingAdsetId').value);
-        toggleExistingAdset();
+        // Toggle adset fields visibility (but don't trigger debounced fetch — we'll await it directly below)
+        const adsetIdVal = $('existingAdsetId').value.trim();
+        const wrapper = document.getElementById('adsetFieldsWrapper');
+        if (wrapper) wrapper.style.display = adsetIdVal ? 'none' : '';
 
         // Adset
         setVal('adsetName', ['adsetname', 'adset_name', 'adsetName']);
@@ -1818,6 +2000,31 @@
         setVal('assetHorizontal', ['horizontalasset', 'horizontal_asset', 'asset_horizontal', 'landscape', '169']);
         setVal('assetVertical', ['verticalasset', 'vertical_asset', 'asset_vertical', 'portrait', '916']);
         setVal('assetSquare', ['squareasset', 'square_asset', 'asset_square', 'square', '11']);
+
+        // Asset folder: single Drive folder URL that resolves to -H, -V, -S files
+        const folderUrl = val(['assetfolder', 'asset_folder', 'folder', 'folder_url', 'drive_folder', 'drivefolder']);
+        if (folderUrl) {
+            $('assetFolder').value = folderUrl;
+            // Resolve folder to individual file links via server API
+            try {
+                const resp = await fetch('/api/resolve-folder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ folderUrl }),
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    if (data.horizontal) $('assetHorizontal').value = data.horizontal;
+                    if (data.vertical) $('assetVertical').value = data.vertical;
+                    if (data.square) $('assetSquare').value = data.square;
+                    console.log('[FOLDER] Resolved:', data);
+                } else {
+                    console.warn('[FOLDER] Resolution failed:', data.error);
+                }
+            } catch (err) {
+                console.warn('[FOLDER] API error:', err.message);
+            }
+        }
         setVal('thumbHorizontal', ['thumbhorizontal', 'thumbnail_horizontal', 'thumb_horizontal']);
         setVal('thumbVertical', ['thumbvertical', 'thumbnail_vertical', 'thumb_vertical']);
         setVal('thumbSquare', ['thumbsquare', 'thumbnail_square', 'thumb_square']);
@@ -1872,14 +2079,17 @@
         const pageVal = val(['pageid', 'page_id', 'facebookpage', 'facebook_page']);
         if (pageVal) $('pageId').value = pageVal;
 
-        // Campaign
-        const campVal = val(['campaignid', 'campaign_id']);
-        if (campVal) {
-            const campSel = $('campaignId');
-            let found = false;
-            for (const opt of campSel.options) { if (opt.value === campVal) { found = true; break; } }
-            if (!found) { const opt = document.createElement('option'); opt.value = campVal; opt.textContent = 'Campaign ' + campVal; campSel.appendChild(opt); }
-            campSel.value = campVal;
+        // Auto-fetch from Meta — takes priority over sheet values
+        const adsetForFetch = $('existingAdsetId').value.trim();
+        if (adsetForFetch && /^\d{5,}$/.test(adsetForFetch)) {
+            $('sheetStatus').textContent = `Row ${idx + 1} loaded. Fetching adset details from Meta...`;
+            await fetchAndPopulateAdset(adsetForFetch);
+        } else {
+            // No adset ID — try campaign_id only
+            const campVal = val(['campaignid', 'campaign_id']);
+            if (campVal) {
+                await fetchAndPopulateCampaign(campVal);
+            }
         }
 
         $('sheetStatus').textContent = `Row ${idx + 1} loaded into form.`;
@@ -1896,13 +2106,167 @@
         $('toggleLabelManual').classList.toggle('active', isManualEntry);
     };
 
+    window._adsetFetchTimeout = null;
     window.toggleExistingAdset = function () {
         const id = $('existingAdsetId').value.trim();
         const wrapper = document.getElementById('adsetFieldsWrapper');
         if (wrapper) {
             wrapper.style.display = id ? 'none' : '';
         }
+        // Auto-fetch adset details when a valid ID is entered (debounced)
+        clearTimeout(window._adsetFetchTimeout);
+        if (id && /^\d{5,}$/.test(id)) {
+            window._adsetFetchTimeout = setTimeout(() => fetchAndPopulateAdset(id), 600);
+        }
     };
+
+    async function fetchAndPopulateAdset(adsetId) {
+        try {
+            const resp = await fetch(`/api/adset-details/${adsetId}`);
+            const data = await resp.json();
+            if (!data.success || !data.adset) {
+                console.warn('[AUTO-FETCH] Adset not found:', data.error);
+                return;
+            }
+            const a = data.adset;
+            console.log('[AUTO-FETCH] Adset details:', a);
+
+            // Always set from Meta API (auto-fetch takes priority over sheet)
+            function setField(id, val) { if (val !== undefined && val !== null && val !== '') $(id).value = val; }
+            function setSelectField(id, val) {
+                if (!val) return;
+                const sel = $(id);
+                for (const opt of sel.options) { if (opt.value === val) { sel.value = val; return; } }
+            }
+
+            // Show a brief notification
+            const status = $('sheetStatus');
+            if (status) status.textContent = `Fetched adset details for ${adsetId}`;
+
+            // Populate campaign dropdown
+            if (a.campaign_id) {
+                await fetchAndPopulateCampaign(a.campaign_id);
+            }
+
+            // Optimization goal & billing event
+            if (a.optimization_goal) setSelectField('optimizationGoal', a.optimization_goal);
+            if (a.billing_event) setSelectField('billingEvent', a.billing_event);
+
+            // Bid strategy
+            if (a.bid_strategy) {
+                $('bidStrategy').value = a.bid_strategy;
+                toggleBidAmount();
+            }
+            if (a.bid_amount) setField('bidAmount', (parseInt(a.bid_amount) / 100).toString());
+
+            // Budget
+            if (a.daily_budget) {
+                const radio = document.querySelector('input[name="budgetType"][value="daily"]');
+                if (radio) { radio.checked = true; toggleBudgetType(); }
+                $('budget').value = (parseInt(a.daily_budget) / 100).toString();
+            } else if (a.lifetime_budget) {
+                const radio = document.querySelector('input[name="budgetType"][value="lifetime"]');
+                if (radio) { radio.checked = true; toggleBudgetType(); }
+                $('budget').value = (parseInt(a.lifetime_budget) / 100).toString();
+            }
+
+            // Name & status
+            setField('adsetName', a.name);
+            if (a.status) {
+                const sel = $('adsetStatus');
+                for (const opt of sel.options) {
+                    if (opt.value === a.status) { sel.value = a.status; break; }
+                }
+            }
+
+            // Targeting
+            if (a.targeting) {
+                const t = a.targeting;
+                setField('ageMin', t.age_min);
+                setField('ageMax', t.age_max);
+                if (t.genders && t.genders.length) $('genders').value = t.genders[0];
+                if (t.geo_locations && t.geo_locations.countries) {
+                    $('geoCountries').value = t.geo_locations.countries.join(',');
+                }
+                if (t.device_platforms) {
+                    document.querySelectorAll('input[name="devicePlatform"]').forEach(cb => {
+                        cb.checked = t.device_platforms.includes(cb.value);
+                    });
+                }
+                if (t.publisher_platforms) {
+                    document.querySelectorAll('input[name="publisherPlatform"]').forEach(cb => {
+                        cb.checked = t.publisher_platforms.includes(cb.value);
+                    });
+                }
+                if (t.facebook_positions) {
+                    document.querySelectorAll('input[name="fbPosition"]').forEach(cb => {
+                        cb.checked = t.facebook_positions.includes(cb.value);
+                    });
+                }
+                if (t.instagram_positions) {
+                    document.querySelectorAll('input[name="igPosition"]').forEach(cb => {
+                        cb.checked = t.instagram_positions.includes(cb.value);
+                    });
+                }
+                if (t.user_os) {
+                    const osVal = Array.isArray(t.user_os) ? t.user_os[0] : t.user_os;
+                    if (osVal) setField('osTarget', osVal);
+                }
+            }
+
+            // Promoted object (app_id, custom_event_type)
+            if (a.promoted_object) {
+                setField('appId', a.promoted_object.application_id);
+                setField('objectStoreUrl', a.promoted_object.object_store_url);
+                setSelectField('customEventType', a.promoted_object.custom_event_type);
+            }
+
+            // Schedule
+            if (a.start_time) {
+                const d = new Date(a.start_time);
+                $('startTime').value = d.toISOString().slice(0, 16);
+            }
+            if (a.end_time) {
+                const d = new Date(a.end_time);
+                $('endTime').value = d.toISOString().slice(0, 16);
+            }
+
+        } catch (err) {
+            console.warn('[AUTO-FETCH] Error fetching adset:', err.message);
+        }
+    }
+
+    async function fetchAndPopulateCampaign(campaignId) {
+        try {
+            // Check if already in dropdown
+            const campSel = $('campaignId');
+            let found = false;
+            for (const opt of campSel.options) {
+                if (opt.value === campaignId) { campSel.value = campaignId; campSel.dispatchEvent(new Event('change')); found = true; break; }
+            }
+            if (found) return;
+
+            // Fetch from Meta
+            const resp = await fetch(`/api/campaign-details/${campaignId}`);
+            const data = await resp.json();
+            if (!data.success || !data.campaign) return;
+            const c = data.campaign;
+
+            // Add to dropdown and select
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = `${c.name} (${c.id})`;
+            opt.dataset.objective = c.objective || '';
+            opt.dataset.status = c.status || '';
+            opt.dataset.specialAdCategories = JSON.stringify(c.special_ad_categories || []);
+            opt.dataset.bidStrategy = c.bid_strategy || '';
+            campSel.appendChild(opt);
+            campSel.value = c.id;
+            campSel.dispatchEvent(new Event('change'));
+        } catch (err) {
+            console.warn('[AUTO-FETCH] Error fetching campaign:', err.message);
+        }
+    }
 
     window.toggleBudgetType = function () {
         const isDaily = qs('input[name="budgetType"]:checked').value === 'daily';
@@ -1969,6 +2333,7 @@
             link_url: $('linkUrl').value.trim(),
             url_tags: $('urlTags').value.trim(),
             creative_type: creativeType,
+            asset_folder: $('assetFolder') ? $('assetFolder').value.trim() : '',
             asset_horizontal: $('assetHorizontal').value.trim(),
             asset_vertical: $('assetVertical').value.trim(),
             asset_square: $('assetSquare').value.trim(),
@@ -1988,12 +2353,17 @@
         const required = [
             ['adName', 'Ad Name'],
             ['primaryText', 'Primary Text'],
-            ['linkUrl', 'Link URL'],
-            ['assetHorizontal', 'Horizontal Asset'],
-            ['assetVertical', 'Vertical Asset'],
-            ['assetSquare', 'Square Asset'],
             ['pageId', 'Facebook Page ID'],
         ];
+        const hasLandingTarget = !!($('linkUrl').value.trim() || $('objectStoreUrl').value.trim());
+        // Asset URLs required only if no folder URL provided
+        if (!($('assetFolder') && $('assetFolder').value.trim())) {
+            required.push(
+                ['assetHorizontal', 'Horizontal Asset'],
+                ['assetVertical', 'Vertical Asset'],
+                ['assetSquare', 'Square Asset'],
+            );
+        }
 
         if (!hasExistingAdset) {
             // Adset creation fields only required when not reusing an existing adset
@@ -2025,6 +2395,12 @@
                 el.classList.add('invalid');
                 missing.push(label);
             }
+        }
+
+        if (!hasLandingTarget) {
+            $('linkUrl').classList.add('invalid');
+            $('objectStoreUrl').classList.add('invalid');
+            missing.push('Link URL or Object Store URL');
         }
 
         if (missing.length) {
@@ -2076,6 +2452,7 @@
             item('Headline', d.headline),
             item('CTA', d.cta),
             divider(),
+            d.asset_folder ? item('Asset Folder', d.asset_folder) : '',
             item('Horizontal Asset', d.asset_horizontal),
             item('Vertical Asset', d.asset_vertical),
             item('Square Asset', d.asset_square),
@@ -2183,6 +2560,32 @@
             }
             if (config.start_time) config.start_time = parseGSheetsDate(config.start_time);
             if (config.end_time) config.end_time = parseGSheetsDate(config.end_time);
+
+            // ------------------------------------------------------------------
+            // Auto-resolve folder URL to individual asset links
+            // ------------------------------------------------------------------
+            const folderUrl = config.asset_folder || config.folder_url || null;
+            if (folderUrl && !config.asset_horizontal && !config.asset_vertical && !config.asset_square) {
+                const logId = addLogEntry('Resolving Drive folder to assets...', 'pending');
+                try {
+                    const resp = await fetch('/api/resolve-folder', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ folderUrl }),
+                    });
+                    const data = await resp.json();
+                    if (data.success) {
+                        if (data.horizontal) config.asset_horizontal = data.horizontal;
+                        if (data.vertical) config.asset_vertical = data.vertical;
+                        if (data.square) config.asset_square = data.square;
+                        updateLogEntry(logId, `Folder resolved: H=${!!data.horizontal} V=${!!data.vertical} S=${!!data.square}`, 'success');
+                    } else {
+                        updateLogEntry(logId, `Folder resolution failed: ${data.error}`, 'error');
+                    }
+                } catch (err) {
+                    updateLogEntry(logId, `Folder API error: ${err.message}`, 'error');
+                }
+            }
 
             // ------------------------------------------------------------------
             // Normalize field names (same as server)
@@ -2596,6 +2999,77 @@
             throw err;
         }
     }
+
+    // Override browser-side orchestration with a single server-side pipeline call.
+    // This avoids long-running asset-upload fetch chains in the browser.
+    executeSingleRow = async function (config, sheetRowIndex, sheetTabName, existingAdsetId) {
+        const payload = {
+            ...config,
+            existing_adset_id: existingAdsetId || config.existing_adset_id || config.adset_id || null,
+            _sheetRowIndex: sheetRowIndex,
+            _sheetTabName: sheetTabName,
+        };
+
+        const pendingId = addLogEntry('Running server-side upload pipeline...', 'pending');
+        addLogEntry('Video uploads can take 3-5 minutes while Meta processes all placements. Keep this tab open.', 'info');
+
+        try {
+            const resp = await fetch('/api/execute-full', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await resp.json();
+
+            updateLogEntry(
+                pendingId,
+                data.success ? 'Server pipeline completed' : `Server pipeline failed: ${data.error || 'Unknown error'}`,
+                data.success ? 'success' : 'error'
+            );
+
+            const stepLabels = {
+                upload_image_horizontal: 'Horizontal image uploaded',
+                upload_image_vertical: 'Vertical image uploaded',
+                upload_image_square: 'Square image uploaded',
+                upload_video_horizontal: 'Horizontal video uploaded',
+                upload_video_vertical: 'Vertical video uploaded',
+                upload_video_square: 'Square video uploaded',
+                poll_video_horizontal: 'Horizontal video ready',
+                poll_video_vertical: 'Vertical video ready',
+                poll_video_square: 'Square video ready',
+                upload_thumbnail_horizontal: 'Horizontal thumbnail uploaded',
+                upload_thumbnail_vertical: 'Vertical thumbnail uploaded',
+                upload_thumbnail_square: 'Square thumbnail uploaded',
+                reuse_adset: 'Reused adset',
+                create_adset: 'Created adset',
+                create_creative: 'Created creative',
+                create_ad: 'Created ad',
+            };
+
+            (data.steps || []).forEach(step => {
+                const label = stepLabels[step.step] || step.step.replace(/_/g, ' ');
+                const value = step.error || step.adId || step.adsetId || step.creativeId || step.videoId || step.imageHash || step.thumbHash || '';
+                addLogEntry(value ? `${label}: ${value}` : label, step.success ? 'success' : 'error');
+            });
+
+            if (!resp.ok || !data.success) {
+                addLogResult('Pipeline failed: ' + esc(data.error || 'Unknown error'), 'error');
+                throw new Error(data.error || 'Unknown error');
+            }
+
+            const acctNum = META_AD_ACCOUNT_ID.replace('act_', '');
+            const adsManagerUrl = `https://www.facebook.com/adsmanager/manage/ads?act=${acctNum}&selected_ad_ids=${data.adId}`;
+            addLogResult(
+                `Ad created successfully!<br>Adset ID: <strong>${esc(data.adsetId)}</strong><br>Creative ID: <strong>${esc(data.creativeId)}</strong><br>Ad ID: <strong>${esc(data.adId)}</strong><br><a href="${adsManagerUrl}" target="_blank">View in Ads Manager &#8594;</a>`,
+                'success'
+            );
+
+            return { adsetId: data.adsetId, creativeId: data.creativeId, adId: data.adId };
+        } catch (err) {
+            updateLogEntry(pendingId, `Server pipeline failed: ${err.message}`, 'error');
+            throw err;
+        }
+    };
 
     // =========================================================================
     // EXECUTE SINGLE (wrapper for UI)

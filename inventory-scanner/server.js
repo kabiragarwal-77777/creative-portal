@@ -4,12 +4,21 @@ const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
 const { getDb, isSeeded, markSeeded } = require('./database/db');
+const agents = require('./agents');
+const routes = require('./routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+  frameguard: false,
+  originAgentCluster: false
+}));
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -30,23 +39,23 @@ if (!isSeeded()) {
 }
 
 // Mount routes
-app.use('/api/inventories', require('./routes/inventories'));
-app.use('/api/discovery', require('./routes/discovery'));
-app.use('/api/competitors', require('./routes/competitors'));
-app.use('/api/onboarding', require('./routes/onboarding'));
-app.use('/api/insights', require('./routes/insights'));
-app.use('/api/pricing', require('./routes/pricing'));
-app.use('/api/budget', require('./routes/budget'));
-app.use('/api/formats', require('./routes/formats'));
-app.use('/api/meta', require('./routes/meta'));
-app.use('/api/google', require('./routes/google'));
-app.use('/api/synthesis', require('./routes/synthesis'));
+app.use('/api/inventories', routes.inventoriesRouter);
+app.use('/api/discovery', routes.discoveryRouter);
+app.use('/api/competitors', routes.competitorsRouter);
+app.use('/api/onboarding', routes.onboardingRouter);
+app.use('/api/insights', routes.insightsRouter);
+app.use('/api/pricing', routes.pricingRouter);
+app.use('/api/budget', routes.budgetRouter);
+app.use('/api/formats', routes.formatsRouter);
+app.use('/api/meta', routes.metaRouter);
+app.use('/api/google', routes.googleRouter);
+app.use('/api/synthesis', routes.synthesisRouter);
+app.use('/api/inventory', routes.inventoryEngineRouter);
 
 // Scheduler routes
-const schedulerAgent = require('./agents/schedulerAgent');
 app.get('/api/scheduler/status', (req, res) => {
   try {
-    const status = schedulerAgent.getStatus();
+    const status = agents.getSchedulerStatus();
     res.json({ success: true, data: status, error: null, timestamp: new Date().toISOString() });
   } catch (err) {
     res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() });
@@ -54,7 +63,7 @@ app.get('/api/scheduler/status', (req, res) => {
 });
 app.post('/api/scheduler/run/:jobName', async (req, res) => {
   try {
-    const result = await schedulerAgent.runJob(req.params.jobName);
+    const result = await agents.runSchedulerJob(req.params.jobName);
     res.json({ success: true, data: result, error: null, timestamp: new Date().toISOString() });
   } catch (err) {
     res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() });
@@ -69,7 +78,7 @@ app.get('/api/health', (req, res) => {
     const competitorCount = db.prepare('SELECT COUNT(*) as count FROM competitors').get().count;
     const insightCount = db.prepare('SELECT COUNT(*) as count FROM ai_insights').get().count;
     const lastDiscovery = db.prepare('SELECT run_date FROM discovery_log ORDER BY run_date DESC LIMIT 1').get();
-    const schedulerStatus = schedulerAgent.getStatus();
+    const schedulerStatus = agents.getSchedulerStatus();
 
     res.json({
       success: true,
@@ -114,7 +123,7 @@ app.listen(PORT, () => {
 
   // Start scheduler
   try {
-    schedulerAgent.startScheduler();
+    agents.startScheduler();
     console.log('[Server] Scheduler started');
   } catch (err) {
     console.error('[Server] Scheduler start error:', err.message);
@@ -125,8 +134,7 @@ app.listen(PORT, () => {
     const logCount = db.prepare('SELECT COUNT(*) as count FROM discovery_log').get().count;
     if (logCount === 0) {
       console.log('[Server] No discovery logs found — running initial discovery...');
-      const discoveryAgent = require('./agents/discoveryAgent');
-      discoveryAgent.runDiscovery().then(() => {
+      agents.runDiscovery().then(() => {
         console.log('[Server] Initial discovery complete');
       }).catch(err => {
         console.error('[Server] Initial discovery error:', err.message);
@@ -136,5 +144,13 @@ app.listen(PORT, () => {
     console.error('[Server] Discovery check error:', err.message);
   }
 });
+
+// Pre-warm inventory name cache on server start
+try {
+  const { warmInventoryNameCache } = require('../inventory-engine');
+  warmInventoryNameCache().then(() => console.log('[Server] Inventory names loaded')).catch(err => console.warn('[Server] Name cache warm failed:', err.message));
+} catch (e) {
+  console.warn('[Server] inventory-engine not available for pre-warming');
+}
 
 module.exports = app;

@@ -1,8 +1,11 @@
 uploader/node_modules/
 inventory-scanner/node_modules/
 inventory-scanner/database/scanner.db
+inventory-scanner/database/scanner.db-shm
+inventory-scanner/database/scanner.db-wal
 .env
 uploader/.env
 inventory-scanner/.env
 .claude/
 mb_*.json
+node_modules

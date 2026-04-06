@@ -8,6 +8,44 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    /* Winner badge system */
+    .winner-badge { position: absolute; top: 10px; right: 10px; padding: 3px 10px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .winner-badge.winner { background: rgba(240, 180, 41, 0.15); color: #f0b429; border: 1px solid rgba(240, 180, 41, 0.3); }
+    .winner-badge.potential { background: rgba(77, 171, 247, 0.15); color: #4dabf7; border: 1px solid rgba(77, 171, 247, 0.3); }
+    .winner-badge.avoid { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.3); }
+
+    /* Score bar */
+    .score-bar { height: 6px; background: #252630; border-radius: 3px; overflow: hidden; margin-top: 8px; position: relative; }
+    .score-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #ff6b6b, #f0b429, #38d9a9); }
+
+    /* D6 CAC metric row */
+    .metric-row { display: flex; gap: 12px; margin: 10px 0; padding: 10px 0; border-top: 1px solid #252630; }
+    .metric { flex: 1; }
+    .metric label { font-size: 10px; color: #7c7d8a; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 4px; }
+    .metric value { font-size: 16px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+    .metric .confidence { font-size: 9px; padding: 2px 6px; border-radius: 3px; margin-top: 4px; display: inline-block; }
+    .confidence.high { background: rgba(56, 217, 169, 0.15); color: #38d9a9; }
+    .confidence.medium { background: rgba(240, 180, 41, 0.15); color: #f0b429; }
+    .confidence.low { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
+
+    /* Budget plan output format */
+    .budget-plan-row { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border: 1px solid #252630; border-radius: 8px; margin-bottom: 8px; background: #13141a; }
+    .inventory-name { flex: 2; }
+    .inventory-name strong { font-size: 13px; display: block; }
+    .inventory-name small { font-size: 11px; color: #7c7d8a; }
+    .allocated-budget { font-family: 'IBM Plex Mono', monospace; font-weight: 700; color: #f0b429; font-size: 16px; flex: 1; }
+    .projected-outcomes { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: #7c7d8a; flex: 2; }
+    .projected-outcomes span strong { color: #e8e9f0; }
+    .confidence-tag { padding: 4px 10px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .confidence-tag.high { background: rgba(56, 217, 169, 0.15); color: #38d9a9; }
+    .confidence-tag.medium { background: rgba(240, 180, 41, 0.15); color: #f0b429; }
+    .confidence-tag.low { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
+
+    /* AI recommendation panel button */
+    .btn-gold { background: rgba(240, 180, 41, 0.15); color: #f0b429; border: 1px solid rgba(240, 180, 41, 0.3); cursor: pointer; padding: 8px 16px; border-radius: 6px; font-weight: 600; }
+    .btn-gold:hover { background: rgba(240, 180, 41, 0.25); }
+  </style>
 </head>
 <body>
 
@@ -257,6 +295,11 @@
             </div>
             <div id="budget-inventory-selector" class="budget-selector"></div>
           </div>
+          <div class="panel" id="ai-recommendation-panel" style="display:none; border: 1px solid rgba(240, 180, 41, 0.3); background: rgba(240, 180, 41, 0.05);">
+            <h2 class="panel-title">AI Recommended Allocation</h2>
+            <div id="ai-recommendation-content"></div>
+            <button class="btn btn-gold" id="btn-use-ai-split" onclick="useAISplit()">Use AI Split</button>
+          </div>
           <div class="panel">
             <h2 class="panel-title">Allocation Results</h2>
             <div id="budget-results"></div>
@@ -376,10 +419,161 @@
 <div id="toast-container" class="toast-container"></div>
 
 <script src="js/chart.min.js"></script>
-<script src="js/filters.js"></script>
-<script src="js/charts.js"></script>
-<script src="js/inventoryCard.js"></script>
-<script src="js/dashboard.js"></script>
-<script src="js/app.js"></script>
+<script src="js/app-bundle.js"></script>
+<script>
+(function() {
+  /* ── D6 CAC Benchmark Data ── */
+  let d6BenchmarkData = {};
+  let aiRecommendations = null;
+
+  async function fetchD6Benchmarks() {
+    try {
+      const res = await fetch('/api/inventory/benchmark/all');
+      if (!res.ok) return;
+      const payload = await res.json();
+      d6BenchmarkData = payload.data || payload;
+      applyD6MetricsToCards();
+      applyWinnerBadges();
+    } catch (e) {
+      console.warn('D6 benchmark fetch failed:', e);
+    }
+  }
+
+  function applyD6MetricsToCards() {
+    const cards = document.querySelectorAll('#inventory-list .inventory-card, #inventory-list .card');
+    cards.forEach(card => {
+      const id = card.dataset.id || card.dataset.inventoryId;
+      if (!id || card.querySelector('.metric-row')) return;
+      const bench = d6BenchmarkData[id] || d6BenchmarkData[String(id)];
+      if (!bench) return;
+
+      const d6Cac = bench.d6_cac != null ? '₹' + Number(bench.d6_cac).toLocaleString('en-IN') : '—';
+      const d6Roas = bench.d6_roas != null ? (Number(bench.d6_roas) / 100).toFixed(2) + 'x' : '—';
+      const conf = String(bench.confidence || bench.data_confidence || 'medium').toLowerCase();
+      const score = bench.composite_score != null ? Math.round(Number(bench.composite_score) * 10) : null;
+
+      const metricRow = document.createElement('div');
+      metricRow.className = 'metric-row';
+      metricRow.innerHTML =
+        '<div class="metric"><label>D6 CAC</label><value>' + d6Cac + '</value>' +
+        '<span class="confidence ' + conf + '">' + conf + '</span></div>' +
+        '<div class="metric"><label>D6 ROAS</label><value>' + d6Roas + '</value></div>';
+
+      if (score != null) {
+        const scoreBar = document.createElement('div');
+        scoreBar.className = 'score-bar';
+        scoreBar.innerHTML = '<div class="score-fill" style="width:' + score + '%"></div>';
+        metricRow.appendChild(scoreBar);
+      }
+
+      card.appendChild(metricRow);
+    });
+  }
+
+  function applyWinnerBadges() {
+    const cards = document.querySelectorAll('#inventory-list .inventory-card, #inventory-list .card');
+    cards.forEach(card => {
+      const id = card.dataset.id || card.dataset.inventoryId;
+      if (!id || card.querySelector('.winner-badge')) return;
+      const bench = d6BenchmarkData[id] || d6BenchmarkData[String(id)];
+      const badgeValue = String(bench && (bench.badge || bench.winner_tier || '')).toLowerCase();
+      if (!bench || !badgeValue) return;
+
+      card.style.position = 'relative';
+      const badge = document.createElement('span');
+      badge.className = 'winner-badge ' + badgeValue;
+      badge.textContent = badgeValue === 'winner' ? 'Winner' :
+                          badgeValue === 'potential' ? 'Potential' : 'Avoid';
+      card.appendChild(badge);
+    });
+  }
+
+  /* ── AI Recommendations ── */
+  async function fetchAIRecommendations() {
+    try {
+      const budget = document.getElementById('total-budget');
+      const totalBudget = budget ? budget.value : 1000000;
+      const res = await fetch('/api/inventory/recommendations?budget=' + totalBudget);
+      if (!res.ok) return;
+      aiRecommendations = await res.json();
+      renderAIRecommendationPanel();
+    } catch (e) {
+      console.warn('AI recommendations fetch failed:', e);
+    }
+  }
+
+  function renderAIRecommendationPanel() {
+    const panel = document.getElementById('ai-recommendation-panel');
+    const content = document.getElementById('ai-recommendation-content');
+    if (!panel || !content || !aiRecommendations) return;
+
+    const items = aiRecommendations.allocations || aiRecommendations.recommendations || aiRecommendations;
+    if (!Array.isArray(items) || items.length === 0) {
+      panel.style.display = 'none';
+      return;
+    }
+
+    panel.style.display = '';
+    let html = '';
+    items.forEach(function(item) {
+      const name = item.inventory_name || item.name || 'Unknown';
+      const alloc = item.allocated_budget || item.budget || 0;
+      const pct = item.percentage || item.pct || 0;
+      const reason = item.reason || item.rationale || '';
+      const conf = item.confidence || 'medium';
+
+      html += '<div class="budget-plan-row">' +
+        '<div class="inventory-name"><strong>' + name + '</strong>' +
+        '<small>' + reason + '</small></div>' +
+        '<div class="allocated-budget">₹' + Number(alloc).toLocaleString('en-IN') +
+        ' <small>(' + pct + '%)</small></div>' +
+        '<span class="confidence-tag ' + conf + '">' + conf + '</span>' +
+        '</div>';
+    });
+    content.innerHTML = html;
+  }
+
+  window.useAISplit = function() {
+    if (!aiRecommendations) return;
+    const items = aiRecommendations.allocations || aiRecommendations.recommendations || aiRecommendations;
+    if (!Array.isArray(items)) return;
+
+    items.forEach(function(item) {
+      const id = item.inventory_id || item.id;
+      if (!id) return;
+      // Try to find budget input for this inventory in the selector
+      const input = document.querySelector('[data-budget-id="' + id + '"], #budget-input-' + id);
+      if (input) {
+        input.value = item.allocated_budget || item.budget || 0;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+  };
+
+  /* ── Hook into allocate button ── */
+  const allocateBtn = document.getElementById('btn-allocate');
+  if (allocateBtn) {
+    allocateBtn.addEventListener('click', function() {
+      // Delay to let the main allocation run first
+      setTimeout(fetchAIRecommendations, 500);
+    });
+  }
+
+  /* ── Observer for dynamically rendered cards ── */
+  const inventoryList = document.getElementById('inventory-list');
+  if (inventoryList) {
+    const observer = new MutationObserver(function() {
+      if (Object.keys(d6BenchmarkData).length > 0) {
+        applyD6MetricsToCards();
+        applyWinnerBadges();
+      }
+    });
+    observer.observe(inventoryList, { childList: true, subtree: true });
+  }
+
+  /* ── Init on page load ── */
+  fetchD6Benchmarks();
+})();
+</script>
 </body>
 </html>

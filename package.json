@@ -3,15 +3,27 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "node uploader/server.js",
-    "install-deps": "cd uploader && npm install"
+    "start": "npm --prefix uploader start",
+    "start:intel": "npm --prefix intelligence start",
+    "start:scanner": "npm --prefix inventory-scanner start",
+    "start:all": "concurrently \"npm --prefix uploader start\" \"npm --prefix intelligence start\"",
+    "install-deps": "npm install",
+    "postinstall": "npm --prefix uploader install && npm --prefix intelligence install && npm --prefix inventory-scanner install && npm --prefix google-creative install"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "axios": "^1.7.0",
+    "better-sqlite3": "^12.8.0",
+    "cheerio": "^1.0.0",
+    "concurrently": "^9.2.1",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "form-data": "^4.0.2",
-    "dotenv": "^16.4.7"
+    "google-ads-api": "^23.0.0",
+    "node-cron": "^3.0.3",
+    "openai": "^4.78.0",
+    "rss-parser": "^3.13.0"
   }
 }
