@@ -170,15 +170,15 @@ module.exports = function (config) {
         // Scan existing Meta ad library data from competitor module
         try {
             const path = require('path');
-            const Database = require('better-sqlite3');
+            const createDb = require('../lib/duckdb-adapter').createDb;
 
             // Try competitor/meta ad data
             const ciDbPath = path.resolve(__dirname, '../../creative-intelligence/ci.db');
             let ciDb = null;
             try {
-                ciDb = new Database(ciDbPath, { readonly: true });
-                const recentAds = ciDb.prepare(
-                    `SELECT * FROM ci_competitor_ads WHERE created_at > datetime('now', '-7 days') ORDER BY created_at DESC LIMIT 50`
+                ciDb = await createDb(ciDbPath);
+                const recentAds = await ciDb.prepare(
+                    `SELECT * FROM ci_competitor_ads WHERE created_at > CURRENT_TIMESTAMP - INTERVAL 7 DAY ORDER BY created_at DESC LIMIT 50`
                 ).all();
 
                 for (const ad of recentAds) {
@@ -214,17 +214,14 @@ module.exports = function (config) {
                 }
             } catch (err) {
                 console.log('[FE:KnowledgeCrawler] Tier1 CI db scan skipped:', err.message);
-            } finally {
-                if (ciDb) ciDb.close();
             }
 
             // Try Google Ads transparency data
             const gcDbPath = path.resolve(__dirname, '../../google-creative/google-creative.db');
-            let gcDb = null;
             try {
-                gcDb = new Database(gcDbPath, { readonly: true });
-                const recentAds = gcDb.prepare(
-                    `SELECT * FROM gc_competitor_ads WHERE created_at > datetime('now', '-7 days') ORDER BY created_at DESC LIMIT 50`
+                const gcDb = await createDb(gcDbPath);
+                const recentAds = await gcDb.prepare(
+                    `SELECT * FROM gc_competitor_ads WHERE created_at > CURRENT_TIMESTAMP - INTERVAL 7 DAY ORDER BY created_at DESC LIMIT 50`
                 ).all();
 
                 for (const ad of recentAds) {
@@ -260,8 +257,6 @@ module.exports = function (config) {
                 }
             } catch (err) {
                 console.log('[FE:KnowledgeCrawler] Tier1 GC db scan skipped:', err.message);
-            } finally {
-                if (gcDb) gcDb.close();
             }
         } catch (err) {
             console.error('[FE:KnowledgeCrawler] Tier 1 crawl error:', err.message);
@@ -493,7 +488,7 @@ module.exports = function (config) {
                 params.push(filters.urgency);
             }
             if (filters.days) {
-                sql += ` AND ingested_at > datetime('now', '-${parseInt(filters.days)} days')`;
+                sql += ` AND ingested_at > CURRENT_TIMESTAMP - INTERVAL ${parseInt(filters.days)} DAY`;
             }
             if (filters.signal_type) {
                 sql += ' AND signal_type = ?';

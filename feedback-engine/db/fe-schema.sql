@@ -4,7 +4,7 @@
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS fe_prediction_accuracy (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     source TEXT NOT NULL CHECK(source IN ('meta','google')),
     simulation_id TEXT,
     ad_id TEXT,
@@ -20,11 +20,11 @@ CREATE TABLE IF NOT EXISTS fe_prediction_accuracy (
     error_d60 REAL,
     accuracy_tag TEXT CHECK(accuracy_tag IN ('overestimate','accurate','underestimate')),
     checked_at TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS fe_recommendation_tracking (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     source TEXT NOT NULL CHECK(source IN ('meta','google','competitor')),
     brief_id TEXT,
     brief_type TEXT,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS fe_recommendation_tracking (
 );
 
 CREATE TABLE IF NOT EXISTS fe_competitor_signal_accuracy (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     insight_id TEXT,
     opportunity_type TEXT,
     predicted_at TEXT,
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS fe_competitor_signal_accuracy (
 );
 
 CREATE TABLE IF NOT EXISTS fe_knowledge_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     source_type TEXT,
     source_url TEXT,
     source_name TEXT,
@@ -60,11 +60,11 @@ CREATE TABLE IF NOT EXISTS fe_knowledge_items (
     action_implication TEXT,
     urgency TEXT DEFAULT 'low' CHECK(urgency IN ('high','medium','low')),
     is_processed INTEGER DEFAULT 0,
-    ingested_at TEXT DEFAULT (datetime('now'))
+    ingested_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS fe_knowledge_sources (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     source_name TEXT NOT NULL,
     source_url TEXT NOT NULL,
     source_type TEXT,
@@ -72,11 +72,11 @@ CREATE TABLE IF NOT EXISTS fe_knowledge_sources (
     last_crawled_at TEXT,
     last_item_count INTEGER DEFAULT 0,
     is_active INTEGER DEFAULT 1,
-    added_at TEXT DEFAULT (datetime('now'))
+    added_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS fe_audit_reports (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     audit_date TEXT,
     meta_accuracy_pct REAL,
     google_accuracy_pct REAL,
@@ -85,22 +85,22 @@ CREATE TABLE IF NOT EXISTS fe_audit_reports (
     proposed_weights_json TEXT,
     backtest_improvement_pct REAL,
     proposals_generated INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS fe_hypotheses (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     hypothesis_text TEXT NOT NULL,
     type TEXT CHECK(type IN ('creative','timing','competitor')),
     test_method TEXT,
     success_metric TEXT,
     status TEXT DEFAULT 'pending' CHECK(status IN ('pending','testing','completed','rejected')),
-    generated_at TEXT DEFAULT (datetime('now')),
+    generated_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     tested_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS fe_hypothesis_tests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     hypothesis_id INTEGER REFERENCES fe_hypotheses(id),
     test_method TEXT,
     data_used_json TEXT,
@@ -108,11 +108,11 @@ CREATE TABLE IF NOT EXISTS fe_hypothesis_tests (
     confidence_pct REAL,
     effect_size REAL,
     evidence_summary TEXT,
-    completed_at TEXT DEFAULT (datetime('now'))
+    completed_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS fe_proposals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     proposal_type TEXT NOT NULL,
     title TEXT NOT NULL,
     description TEXT,
@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS fe_proposals (
     dependencies_json TEXT,
     status TEXT DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','applied','expired')),
     generated_by_agent TEXT,
-    generated_at TEXT DEFAULT (datetime('now')),
+    generated_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     reviewed_at TEXT,
     reviewed_by TEXT,
     applied_at TEXT,
@@ -134,21 +134,21 @@ CREATE TABLE IF NOT EXISTS fe_proposals (
 );
 
 CREATE TABLE IF NOT EXISTS fe_rollback_snapshots (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     proposal_id INTEGER REFERENCES fe_proposals(id),
     snapshot_type TEXT,
     snapshot_data_json TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS fe_change_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     proposal_id INTEGER REFERENCES fe_proposals(id),
     change_type TEXT,
     change_description TEXT,
     before_state_json TEXT,
     after_state_json TEXT,
-    applied_at TEXT DEFAULT (datetime('now')),
+    applied_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     verification_scheduled_at TEXT,
     verification_result TEXT,
     was_rolled_back INTEGER DEFAULT 0,
@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS fe_change_log (
 );
 
 CREATE TABLE IF NOT EXISTS fe_memory_episodic (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     event_date TEXT,
     context_type TEXT,
     market_condition TEXT,
@@ -164,35 +164,35 @@ CREATE TABLE IF NOT EXISTS fe_memory_episodic (
     confidence_pct REAL,
     supporting_evidence_json TEXT,
     supporting_ad_ids TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     last_validated TEXT
 );
 
 CREATE TABLE IF NOT EXISTS fe_memory_semantic (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     rule_text TEXT NOT NULL,
     category TEXT,
     confidence_pct REAL DEFAULT 50,
     evidence_count INTEGER DEFAULT 1,
     evidence_summary TEXT,
-    first_observed TEXT DEFAULT (datetime('now')),
+    first_observed TEXT DEFAULT (CURRENT_TIMESTAMP),
     last_validated TEXT,
     is_active INTEGER DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS fe_memory_procedural (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     change_type TEXT,
     description TEXT NOT NULL,
     outcome TEXT,
     metric_before REAL,
     metric_after REAL,
     improvement_pct REAL,
-    applied_at TEXT DEFAULT (datetime('now'))
+    applied_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS fe_anomalies (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     anomaly_type TEXT NOT NULL,
     severity TEXT DEFAULT 'info' CHECK(severity IN ('critical','warning','info')),
     title TEXT NOT NULL,
@@ -203,11 +203,11 @@ CREATE TABLE IF NOT EXISTS fe_anomalies (
     is_resolved INTEGER DEFAULT 0,
     resolved_at TEXT,
     proposal_id_generated INTEGER,
-    detected_at TEXT DEFAULT (datetime('now'))
+    detected_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS fe_data_quality_runs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     run_scope TEXT DEFAULT 'all',
     overall_status TEXT DEFAULT 'OK',
     summary_json TEXT,
@@ -216,14 +216,14 @@ CREATE TABLE IF NOT EXISTS fe_data_quality_runs (
     critical_count INTEGER DEFAULT 0,
     warning_count INTEGER DEFAULT 0,
     info_count INTEGER DEFAULT 0,
-    started_at TEXT DEFAULT (datetime('now')),
+    started_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     completed_at TEXT,
     duration_ms INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS fe_data_quality_findings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    run_id INTEGER REFERENCES fe_data_quality_runs(id) ON DELETE CASCADE,
+    id INTEGER PRIMARY KEY ,
+    run_id INTEGER REFERENCES fe_data_quality_runs(id),
     source TEXT NOT NULL,
     check_name TEXT NOT NULL,
     status TEXT DEFAULT 'OK',
@@ -233,13 +233,13 @@ CREATE TABLE IF NOT EXISTS fe_data_quality_findings (
     detected_value REAL,
     expected_value REAL,
     meta_json TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS fe_scheduler_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     job_name TEXT NOT NULL,
-    started_at TEXT DEFAULT (datetime('now')),
+    started_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     completed_at TEXT,
     duration_ms INTEGER,
     records_processed INTEGER DEFAULT 0,

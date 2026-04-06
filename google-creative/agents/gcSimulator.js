@@ -209,11 +209,11 @@ async function classifyWithAI(adType, contentDescription) {
 // ── Main module ──────────────────────────────────────────────────────────
 
 module.exports = function (config) {
-    const db = getGcDb();
 
     // Ensure gc_simulations table exists (schema should handle it, but be safe)
-    function ensureSimulationsTable() {
-        db.exec(`CREATE TABLE IF NOT EXISTS gc_simulations (
+    async function ensureSimulationsTable() {
+        const db = await getGcDb();
+        await db.exec(`CREATE TABLE IF NOT EXISTS gc_simulations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ad_type TEXT,
             creative_input_json TEXT,
@@ -229,11 +229,11 @@ module.exports = function (config) {
             budget_per_day REAL,
             status TEXT DEFAULT 'active',
             raw_response TEXT,
-            simulated_at TEXT DEFAULT (datetime('now'))
+            simulated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
         )`);
     }
 
-    ensureSimulationsTable();
+    ensureSimulationsTable().catch(e => console.error('[gcSimulator] Table init error:', e.message));
 
     /**
      * Classify a new creative into its signal vector
@@ -307,8 +307,9 @@ module.exports = function (config) {
     /**
      * Find top-N similar historical creatives by cosine similarity
      */
-    function findSimilarCreatives(newSignals, adType, topN = 10) {
-        const rows = db.prepare(`
+    async function findSimilarCreatives(newSignals, adType, topN = 10) {
+        const db = await getGcDb();
+        const rows = await db.prepare(`
             SELECT
                 c.id, c.ad_id, c.ad_type, c.creative_content_json,
                 c.asset_performance_label, c.adset_roas, c.adset_spend,
@@ -357,8 +358,9 @@ module.exports = function (config) {
     /**
      * Get current market sentiment score
      */
-    function getLatestMarketSignal() {
-        const row = db.prepare(`
+    async function getLatestMarketSignal() {
+        const db = await getGcDb();
+        const row = await db.prepare(`
             SELECT * FROM gc_market_signals ORDER BY date DESC LIMIT 1
         `).get();
 
@@ -457,7 +459,8 @@ Return ONLY valid JSON: {"day_7":{"roas":X,"low":X,"high":X},"day_30":{"roas":X,
     /**
      * Store simulation result in gc_simulations
      */
-    function storeSimulation(adType, creativeInputJson, signals, similarCreatives, predictions, rawResponse, campaignId, adgroupId, budget) {
+    async function storeSimulation(adType, creativeInputJson, signals, similarCreatives, predictions, rawResponse, campaignId, adgroupId, budget) {
+        const db = await getGcDb();
         const p = predictions;
         const d7 = p.day_7 || {};
         const d30 = p.day_30 || {};
@@ -477,7 +480,7 @@ Return ONLY valid JSON: {"day_7":{"roas":X,"low":X,"high":X},"day_30":{"roas":X,
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
         `);
 
-        const result = stmt.run(
+        const result = await stmt.run(
             adType,
             JSON.stringify(creativeInputJson),
             JSON.stringify(signals),
@@ -532,11 +535,11 @@ Return ONLY valid JSON: {"day_7":{"roas":X,"low":X,"high":X},"day_30":{"roas":X,
         console.log(`[gcSimulator] Classified signals:`, JSON.stringify(signals).substring(0, 200));
 
         // Step 2: Find similar historical creatives
-        const similarCreatives = findSimilarCreatives(signals, adType, 10);
+        const similarCreatives = await findSimilarCreatives(signals, adType, 10);
         console.log(`[gcSimulator] Found ${similarCreatives.length} similar historical creatives`);
 
         // Step 3: Get market signal
-        const marketSignal = getLatestMarketSignal();
+        const marketSignal = await getLatestMarketSignal();
         console.log(`[gcSimulator] Market sentiment: ${marketSignal.sentiment} (score: ${marketSignal.score})`);
 
         // Step 4: Predict via OpenAI
@@ -555,7 +558,7 @@ Return ONLY valid JSON: {"day_7":{"roas":X,"low":X,"high":X},"day_30":{"roas":X,
 
         // Step 5: Store in gc_simulations
         const creativeInputJson = buildCreativeInputJson(input);
-        const simulationId = storeSimulation(
+        const simulationId = await storeSimulation(
             adType, creativeInputJson, signals, similarCreatives,
             predictions, rawResponse, campaignId, adgroupId, budget
         );
@@ -624,7 +627,8 @@ Return ONLY valid JSON: {"day_7":{"roas":X,"low":X,"high":X},"day_30":{"roas":X,
      * Get all simulations by status
      */
     async function getSimulations(status = 'active') {
-        const rows = db.prepare(`
+        const db = await getGcDb();
+        const rows = await db.prepare(`
             SELECT
                 id, ad_type, creative_input_json, signals_json,
                 predicted_d7_roas, predicted_d7_low, predicted_d7_high,
@@ -669,10 +673,11 @@ Return ONLY valid JSON: {"day_7":{"roas":X,"low":X,"high":X},"day_30":{"roas":X,
      * Get timeseries data for a simulation (actual vs predicted over time)
      */
     async function getSimulationTimeseries(simId) {
-        const sim = db.prepare(`SELECT * FROM gc_simulations WHERE id = ?`).get(simId);
+        const db = await getGcDb();
+        const sim = await db.prepare(`SELECT * FROM gc_simulations WHERE id = ?`).get(simId);
         if (!sim) return null;
 
-        const timeseries = db.prepare(`
+        const timeseries = await db.prepare(`
             SELECT date, spend, conversions, conversion_value, actual_roas,
                    predicted_roas, prediction_version, day_number
             FROM gc_forecast_timeseries
@@ -680,7 +685,7 @@ Return ONLY valid JSON: {"day_7":{"roas":X,"low":X,"high":X},"day_30":{"roas":X,
             ORDER BY day_number ASC
         `).all(simId);
 
-        const alerts = db.prepare(`
+        const alerts = await db.prepare(`
             SELECT alert_type, message, severity, is_read, triggered_at
             FROM gc_forecast_alerts
             WHERE simulation_id = ?

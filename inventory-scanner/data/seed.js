@@ -4,10 +4,10 @@ const path = require('path');
 // Adjust require path for db module
 const { getDb, isSeeded, markSeeded } = require(path.join(__dirname, '..', 'database', 'db'));
 
-function runSeed() {
-  const db = getDb();
+async function runSeed() {
+  const db = await getDb();
 
-  if (isSeeded()) {
+  if (await isSeeded()) {
     console.log('Database already seeded. Skipping.');
     return;
   }
@@ -436,14 +436,14 @@ function runSeed() {
   // ─────────────────────────────────────────────
   // INSERT ALL DATA IN TRANSACTION
   // ─────────────────────────────────────────────
-  const insertAll = db.transaction(() => {
+  const insertAll = db.transaction(async () => {
     // Insert competitors
     const insertCompetitor = db.prepare(`
       INSERT INTO competitors (id, name, vertical, estimated_monthly_adspend, primary_channels)
       VALUES (?, ?, ?, ?, ?)
     `);
     for (const c of competitors) {
-      insertCompetitor.run(c.id, c.name, c.vertical, c.estimated_monthly_adspend, c.primary_channels);
+      await insertCompetitor.run(c.id, c.name, c.vertical, c.estimated_monthly_adspend, c.primary_channels);
     }
     console.log(`  Inserted ${competitors.length} competitors`);
 
@@ -453,7 +453,7 @@ function runSeed() {
       VALUES (?, ?, ?, ?, 'IN', ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     for (const inv of inventories) {
-      insertInventory.run(inv.id, inv.name, inv.category, inv.platform_parent, inv.min_cpm, inv.max_cpm, inv.pricing_model, inv.estimated_monthly_reach, inv.target_audience_fit, inv.fintech_friendly, '2026-03-15', inv.status);
+      await insertInventory.run(inv.id, inv.name, inv.category, inv.platform_parent, inv.min_cpm, inv.max_cpm, inv.pricing_model, inv.estimated_monthly_reach, inv.target_audience_fit, inv.fintech_friendly, '2026-03-15', inv.status);
     }
     console.log(`  Inserted ${inventories.length} inventories`);
 
@@ -463,7 +463,7 @@ function runSeed() {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     for (const ei of existingInventories) {
-      insertExisting.run(ei.id, ei.inventory_id, ei.current_monthly_spend, ei.current_cpm, ei.current_cpc, ei.current_ctr, ei.current_cpa, ei.notes);
+      await insertExisting.run(ei.id, ei.inventory_id, ei.current_monthly_spend, ei.current_cpm, ei.current_cpc, ei.current_ctr, ei.current_cpa, ei.notes);
     }
     console.log(`  Inserted ${existingInventories.length} existing inventories`);
 
@@ -474,7 +474,7 @@ function runSeed() {
     `);
     for (const cs of competitorSpends) {
       if (cs.inventory_id) {
-        insertSpend.run(cs.id, cs.competitor_id, cs.inventory_id, cs.estimated_monthly_spend, cs.confidence_level, cs.source);
+        await insertSpend.run(cs.id, cs.competitor_id, cs.inventory_id, cs.estimated_monthly_spend, cs.confidence_level, cs.source);
       }
     }
     console.log(`  Inserted ${competitorSpends.filter(cs => cs.inventory_id).length} competitor spends`);
@@ -485,7 +485,7 @@ function runSeed() {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     for (const br of budgetRecommendations) {
-      insertBudget.run(br.id, br.inventory_id, br.recommended_starting_budget, br.recommended_testing_budget, br.recommended_scale_budget, br.rationale, br.data_sources, br.confidence_score);
+      await insertBudget.run(br.id, br.inventory_id, br.recommended_starting_budget, br.recommended_testing_budget, br.recommended_scale_budget, br.rationale, br.data_sources, br.confidence_score);
     }
     console.log(`  Inserted ${budgetRecommendations.length} budget recommendations`);
 
@@ -495,7 +495,7 @@ function runSeed() {
       VALUES (?, ?, ?, ?, ?, ?)
     `);
     for (const af of adFormatScores) {
-      insertFormat.run(af.id, af.inventory_id, af.format, af.score, af.reason, af.best_size_spec);
+      await insertFormat.run(af.id, af.inventory_id, af.format, af.score, af.reason, af.best_size_spec);
     }
     console.log(`  Inserted ${adFormatScores.length} ad format scores`);
 
@@ -505,7 +505,7 @@ function runSeed() {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     for (const ai of aiInsights) {
-      insertInsight.run(ai.id, ai.inventory_id, ai.insight_type, ai.title, ai.body, ai.priority, ai.is_read);
+      await insertInsight.run(ai.id, ai.inventory_id, ai.insight_type, ai.title, ai.body, ai.priority, ai.is_read);
     }
     console.log(`  Inserted ${aiInsights.length} AI insights`);
 
@@ -515,7 +515,7 @@ function runSeed() {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     for (const og of onboardingGuides) {
-      insertGuide.run(og.id, og.inventory_id, og.step_number, og.step_title, og.step_description, og.estimated_time, og.contact_name, og.contact_email, og.contact_phone, og.contact_url, og.minimum_commitment, og.documents_required);
+      await insertGuide.run(og.id, og.inventory_id, og.step_number, og.step_title, og.step_description, og.estimated_time, og.contact_name, og.contact_email, og.contact_phone, og.contact_url, og.minimum_commitment, og.documents_required);
     }
     console.log(`  Inserted ${onboardingGuides.length} onboarding guide steps`);
 
@@ -524,20 +524,20 @@ function runSeed() {
       INSERT INTO discovery_log (id, inventories_found, new_inventories, updated_inventories, ai_model_used, summary)
       VALUES (?, ?, ?, ?, ?, ?)
     `);
-    insertLog.run(uuidv4(), inventories.length, inventories.length, 0, 'manual_seed', `Initial seed: ${inventories.length} inventories, ${competitors.length} competitors, ${competitorSpends.filter(cs => cs.inventory_id).length} competitor spend entries across all categories.`);
+    await insertLog.run(uuidv4(), inventories.length, inventories.length, 0, 'manual_seed', `Initial seed: ${inventories.length} inventories, ${competitors.length} competitors, ${competitorSpends.filter(cs => cs.inventory_id).length} competitor spend entries across all categories.`);
     console.log('  Inserted 1 discovery log entry');
 
-    markSeeded();
+    await markSeeded();
     console.log('  Marked database as seeded');
   });
 
-  insertAll();
+  await insertAll();
   console.log('Seeding complete!');
 }
 
 // Run if called directly
 if (require.main === module) {
-  runSeed();
+  runSeed().catch(err => { console.error('Seed failed:', err); process.exit(1); });
 }
 
 module.exports = { runSeed };

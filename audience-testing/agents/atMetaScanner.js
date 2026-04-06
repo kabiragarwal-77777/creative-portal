@@ -121,9 +121,9 @@ module.exports = function (config) {
 
     // --------------- aggregate from cache ---------------
 
-    function aggregateCampaigns(insightsRows, adsStatusRows) {
+    async function aggregateCampaigns(insightsRows, adsStatusRows) {
         log('Aggregating campaigns from insights cache...');
-        const db = getAtDb();
+        const db = await getAtDb();
 
         // Build campaign map from insights
         const campMap = new Map();
@@ -157,7 +157,7 @@ module.exports = function (config) {
             }
         }
 
-        const upsert = db.prepare(`
+        const upsert = await db.prepare(`
             INSERT OR REPLACE INTO at_meta_campaigns
                 (meta_campaign_id, name, objective, status, vertical,
                  daily_budget, lifetime_budget, start_time, stop_time,
@@ -165,7 +165,7 @@ module.exports = function (config) {
             VALUES
                 (@meta_campaign_id, @name, @objective, @status, @vertical,
                  @daily_budget, @lifetime_budget, @start_time, @stop_time,
-                 @total_spend, @total_impressions, @total_clicks, datetime('now'))
+                 @total_spend, @total_impressions, @total_clicks, CURRENT_TIMESTAMP)
         `);
 
         const rows = [];
@@ -187,18 +187,18 @@ module.exports = function (config) {
             });
         }
 
-        const insertMany = db.transaction((items) => {
-            for (const item of items) upsert.run(item);
+        const insertMany = db.transaction(async (items) => {
+            for (const item of items) await upsert.run(item);
         });
-        insertMany(rows);
+        await insertMany(rows);
 
         log(`Campaigns: ${rows.length} stored from cache.`);
         return rows.length;
     }
 
-    function aggregateAdsets(insightsRows, adsStatusRows) {
+    async function aggregateAdsets(insightsRows, adsStatusRows) {
         log('Aggregating adsets from insights cache...');
-        const db = getAtDb();
+        const db = await getAtDb();
 
         // Build adset map from insights
         const adsetMap = new Map();
@@ -249,7 +249,7 @@ module.exports = function (config) {
                  @facebook_positions_json, @instagram_positions_json,
                  @is_broad, @is_advantage_plus,
                  @total_spend, @impressions, @clicks, @reach, @frequency,
-                 @cpm, @cpc, @ctr, @cpp, @installs, datetime('now'))
+                 @cpm, @cpc, @ctr, @cpp, @installs, CURRENT_TIMESTAMP)
         `);
 
         const rows = [];
@@ -299,10 +299,10 @@ module.exports = function (config) {
             });
         }
 
-        const insertMany = db.transaction((items) => {
-            for (const item of items) upsert.run(item);
+        const insertMany = db.transaction(async (items) => {
+            for (const item of items) await upsert.run(item);
         });
-        insertMany(rows);
+        await insertMany(rows);
 
         log(`Adsets: ${rows.length} stored from cache.`);
         return rows.length;
@@ -313,9 +313,9 @@ module.exports = function (config) {
      * Funnel rows have: meta_campaign_id, ad_set_name (lowercase).
      * We aggregate funnel by campaign_id + ad_set_name, then match to adsets.
      */
-    function joinFunnelData(funnelRows) {
+    async function joinFunnelData(funnelRows) {
         log('Joining funnel data to adsets...');
-        const db = getAtDb();
+        const db = await getAtDb();
 
         // Aggregate funnel by campaign_id + normalized ad_set_name
         const funnelMap = new Map(); // key = campaignId + '||' + normalizedAdsetName
@@ -344,9 +344,9 @@ module.exports = function (config) {
         log(`  Funnel map has ${funnelMap.size} unique campaign+adset keys.`);
 
         // Load all adsets from DB
-        const adsets = db.prepare('SELECT meta_adset_id, meta_campaign_id, name, total_spend FROM at_meta_adsets').all();
+        const adsets = await db.prepare('SELECT meta_adset_id, meta_campaign_id, name, total_spend FROM at_meta_adsets').all();
 
-        const updateFunnel = db.prepare(`
+        const updateFunnel = await db.prepare(`
             UPDATE at_meta_adsets SET
                 signups = @signups,
                 d0_conversions = @d0_conversions,
@@ -359,15 +359,15 @@ module.exports = function (config) {
                 d6_cvr_pct = @d6_cvr_pct,
                 d30_conversions = @d30_conversions,
                 d30_revenue = @d30_revenue,
-                synced_at = datetime('now')
+                synced_at = CURRENT_TIMESTAMP
             WHERE meta_adset_id = @meta_adset_id
         `);
 
         let matched = 0;
         let unmatched = 0;
 
-        const updateMany = db.transaction((items) => {
-            for (const item of items) updateFunnel.run(item);
+        const updateMany = db.transaction(async (items) => {
+            for (const item of items) await updateFunnel.run(item);
         });
 
         const updates = [];
@@ -404,7 +404,7 @@ module.exports = function (config) {
         }
 
         if (updates.length > 0) {
-            updateMany(updates);
+            await updateMany(updates);
         }
 
         log(`Funnel join: ${matched} matched, ${unmatched} unmatched out of ${adsets.length} adsets.`);
@@ -420,10 +420,10 @@ module.exports = function (config) {
      */
     async function fetchTargetingFromUploader() {
         log('Fetching adset targeting from uploader API...');
-        const db = getAtDb();
+        const db = await getAtDb();
 
         // Only fetch targeting for adsets that have meaningful spend and no targeting yet
-        const adsets = db.prepare(`
+        const adsets = await db.prepare(`
             SELECT meta_adset_id FROM at_meta_adsets
             WHERE total_spend > 100
               AND interests_json = '[]'
@@ -439,7 +439,7 @@ module.exports = function (config) {
 
         log(`  Attempting targeting fetch for ${adsets.length} adsets via uploader API...`);
 
-        const updateTargeting = db.prepare(`
+        const updateTargeting = await db.prepare(`
             UPDATE at_meta_adsets SET
                 status = COALESCE(@status, status),
                 optimization_goal = COALESCE(@optimization_goal, optimization_goal),
@@ -461,7 +461,7 @@ module.exports = function (config) {
                 instagram_positions_json = @instagram_positions_json,
                 is_broad = @is_broad,
                 is_advantage_plus = @is_advantage_plus,
-                synced_at = datetime('now')
+                synced_at = CURRENT_TIMESTAMP
             WHERE meta_adset_id = @meta_adset_id
         `);
 
@@ -490,7 +490,7 @@ module.exports = function (config) {
                 const adsetData = body.adset;
                 const t = parseTargeting(adsetData.targeting);
 
-                updateTargeting.run({
+                await updateTargeting.run({
                     meta_adset_id: adset.meta_adset_id,
                     status: adsetData.status || null,
                     optimization_goal: adsetData.optimization_goal || null,
@@ -568,13 +568,13 @@ module.exports = function (config) {
             log(`  ${adsStatusRows.length} ad status rows loaded.`);
 
             // 2. Aggregate campaigns from insights
-            const campaignCount = aggregateCampaigns(insightsRows, adsStatusRows);
+            const campaignCount = await aggregateCampaigns(insightsRows, adsStatusRows);
 
             // 3. Aggregate adsets from insights
-            const adsetCount = aggregateAdsets(insightsRows, adsStatusRows);
+            const adsetCount = await aggregateAdsets(insightsRows, adsStatusRows);
 
             // 4. Join funnel data
-            const funnelResult = joinFunnelData(funnelRows);
+            const funnelResult = await joinFunnelData(funnelRows);
 
             // 5. Optionally fetch targeting from uploader API (graceful — skips if unavailable)
             let targetingFetched = 0;
@@ -607,13 +607,13 @@ module.exports = function (config) {
 
     // --------------- getScanStatus ---------------
 
-    function getScanStatus() {
-        const db = getAtDb();
-        const campaignCount = db.prepare('SELECT COUNT(*) as cnt FROM at_meta_campaigns').get().cnt;
-        const adsetCount = db.prepare('SELECT COUNT(*) as cnt FROM at_meta_adsets').get().cnt;
-        const adsetWithMetrics = db.prepare('SELECT COUNT(*) as cnt FROM at_meta_adsets WHERE total_spend > 0').get().cnt;
-        const adsetWithFunnel = db.prepare('SELECT COUNT(*) as cnt FROM at_meta_adsets WHERE d6_conversions > 0').get().cnt;
-        const lastSync = db.prepare('SELECT MAX(synced_at) as ts FROM at_meta_campaigns').get().ts;
+    async function getScanStatus() {
+        const db = await getAtDb();
+        const campaignCount = (await db.prepare('SELECT COUNT(*) as cnt FROM at_meta_campaigns').get()).cnt;
+        const adsetCount = (await db.prepare('SELECT COUNT(*) as cnt FROM at_meta_adsets').get()).cnt;
+        const adsetWithMetrics = (await db.prepare('SELECT COUNT(*) as cnt FROM at_meta_adsets WHERE total_spend > 0').get()).cnt;
+        const adsetWithFunnel = (await db.prepare('SELECT COUNT(*) as cnt FROM at_meta_adsets WHERE d6_conversions > 0').get()).cnt;
+        const lastSync = (await db.prepare('SELECT MAX(synced_at) as ts FROM at_meta_campaigns').get()).ts;
 
         // Check which cache files are available
         const insightsFile = findBestCacheFile('insights-cache-');

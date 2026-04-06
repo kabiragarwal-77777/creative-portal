@@ -6,7 +6,7 @@
 
 require('dotenv').config({ path: require('path').join(__dirname, '..', '..', '.env') });
 const OpenAI = require('openai');
-const { db, getAll, getOne, run, getRowCount } = require('../db');
+const { getIntelDb, getAll, getOne, run, getRowCount } = require('../db');
 
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -101,7 +101,7 @@ Analyze this creative and return the JSON object.`;
     const m = parsed.messaging_analysis || {};
     const p = parsed.performance_hypothesis || {};
 
-    run(`INSERT OR REPLACE INTO creative_signals (
+    await run(`INSERT OR REPLACE INTO creative_signals (
       creative_name, ad_id, format, color_temperature, dominant_colors,
       has_human_face, face_is_relatable, has_chart, text_density,
       hook_type, tone, primary_emotion, has_specific_number,
@@ -116,7 +116,7 @@ Analyze this creative and return the JSON object.`;
       ?, ?, ?,
       ?, ?, ?,
       ?, ?, ?,
-      ?, ?, datetime('now')
+      ?, ?, CURRENT_TIMESTAMP
     )`, [
       creative.creative_name,
       creative.ad_id,
@@ -160,7 +160,7 @@ async function analyzeNextBatch(batchSize = 20) {
   let errors = 0;
 
   // Get unanalyzed creatives (not in creative_signals) ordered by spend DESC
-  const unanalyzed = getAll(`
+  const unanalyzed = await getAll(`
     SELECT rc.*, cs.cps_score
     FROM raw_creatives rc
     LEFT JOIN creative_scores cs ON rc.ad_id = cs.ad_id
@@ -172,12 +172,12 @@ async function analyzeNextBatch(batchSize = 20) {
 
   // Get stale creatives (analyzed_at older than 7 days)
   const remaining = batchSize - unanalyzed.length;
-  const stale = remaining > 0 ? getAll(`
+  const stale = remaining > 0 ? await getAll(`
     SELECT rc.*, cs.cps_score
     FROM raw_creatives rc
     LEFT JOIN creative_scores cs ON rc.ad_id = cs.ad_id
     INNER JOIN creative_signals sig ON rc.ad_id = sig.ad_id
-    WHERE sig.analyzed_at < datetime('now', '-7 days')
+    WHERE sig.analyzed_at < CURRENT_TIMESTAMP - INTERVAL 7 DAY
       AND rc.ad_id IS NOT NULL
     ORDER BY rc.spend DESC
     LIMIT ?
@@ -206,9 +206,9 @@ async function analyzeNextBatch(batchSize = 20) {
 // 3. buildCreativePatternLibrary
 // ──────────────────────────────────────────────
 
-function buildCreativePatternLibrary() {
+async function buildCreativePatternLibrary() {
   // Query all signals joined with scores
-  const rows = getAll(`
+  const rows = await getAll(`
     SELECT
       sig.hook_type,
       sig.tone,
@@ -234,7 +234,7 @@ function buildCreativePatternLibrary() {
   }
 
   // Delete old patterns
-  run('DELETE FROM pattern_library');
+  await run('DELETE FROM pattern_library');
 
   let patternCount = 0;
 
@@ -258,10 +258,10 @@ function buildCreativePatternLibrary() {
     const patternName = `${hookType} + ${tone} + ${emotion}`;
     const signalCombination = JSON.stringify({ hook_type: hookType, tone, primary_emotion: emotion });
 
-    run(`INSERT INTO pattern_library (
+    await run(`INSERT INTO pattern_library (
       pattern_name, signal_combination, avg_cps, avg_d6_roas,
       sample_count, confidence, best_example_ad_id, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`, [
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`, [
       patternName,
       signalCombination,
       avgCps,
@@ -281,8 +281,8 @@ function buildCreativePatternLibrary() {
 // 4. getSignals
 // ──────────────────────────────────────────────
 
-function getSignals(adId) {
-  const row = getOne('SELECT * FROM creative_signals WHERE ad_id = ?', [adId]);
+async function getSignals(adId) {
+  const row = await getOne('SELECT * FROM creative_signals WHERE ad_id = ?', [adId]);
   return row || null;
 }
 
@@ -290,8 +290,8 @@ function getSignals(adId) {
 // 5. getPatterns
 // ──────────────────────────────────────────────
 
-function getPatterns() {
-  return getAll('SELECT * FROM pattern_library ORDER BY avg_d6_roas DESC');
+async function getPatterns() {
+  return await getAll('SELECT * FROM pattern_library ORDER BY avg_d6_roas DESC');
 }
 
 module.exports = {

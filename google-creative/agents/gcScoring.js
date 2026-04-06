@@ -194,10 +194,10 @@ module.exports = function(config) {
      * Score all creatives: normalize, score, store, correlate.
      */
     async function scoreAll() {
-        const db = getGcDb();
+        const db = await getGcDb();
 
         // 1. Get all creatives with their signals
-        const creatives = db.prepare(`
+        const creatives = await db.prepare(`
             SELECT c.*, cs.signals_json
             FROM gc_creatives c
             LEFT JOIN gc_creative_signals cs ON cs.creative_id = c.id
@@ -244,9 +244,9 @@ module.exports = function(config) {
         const correlationReport = await runCorrelationAnalysis(scored);
         const correlationJson = correlationReport ? JSON.stringify(correlationReport) : null;
 
-        const upsertMany = db.transaction((items) => {
+        const upsertMany = db.transaction(async (items) => {
             for (const s of items) {
-                upsert.run({
+                await upsert.run({
                     creative_id: s.creative_id,
                     ad_id: s.ad_id,
                     ad_type: s.ad_type,
@@ -260,7 +260,7 @@ module.exports = function(config) {
                 });
             }
         });
-        upsertMany(scored);
+        await upsertMany(scored);
 
         console.log(`[gcScoring] Scored ${scored.length} creatives. Correlation: ${correlationReport ? 'generated' : 'skipped'}`);
         return { scored: scored.length, correlation: correlationReport };
@@ -270,10 +270,10 @@ module.exports = function(config) {
      * Return latest correlation report + score distribution stats.
      */
     async function getLearningReport() {
-        const db = getGcDb();
+        const db = await getGcDb();
 
         // Get latest correlation report
-        const latestCorrelation = db.prepare(`
+        const latestCorrelation = await db.prepare(`
             SELECT correlation_report_json
             FROM gc_creative_scores
             WHERE correlation_report_json IS NOT NULL
@@ -287,7 +287,7 @@ module.exports = function(config) {
         }
 
         // Score distribution stats per ad_type
-        const stats = db.prepare(`
+        const stats = await db.prepare(`
             SELECT
                 ad_type,
                 COUNT(*) as count,
@@ -303,7 +303,7 @@ module.exports = function(config) {
         `).all();
 
         // Overall distribution buckets
-        const buckets = db.prepare(`
+        const buckets = await db.prepare(`
             SELECT
                 CASE
                     WHEN gcps_score >= 0.8 THEN 'elite'

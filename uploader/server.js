@@ -5155,7 +5155,7 @@ app.post('/api/ci/simulate-all', async (req, res) => {
             return res.status(500).json({ success: false, error: 'OpenAI not configured' });
         }
 
-        const db = getCiDb();
+        const db = await getCiDb();
         const batchId = new Date().toISOString().replace(/[:.]/g, '-');
         console.log(`[ci/simulate-all] Starting batch ${batchId}...`);
 
@@ -5469,7 +5469,7 @@ Return JSON:
                     const rec = parsed.recommendation || {};
 
                     // Insert into DB
-                    const info = insertSim.run(
+                    const info = await insertSim.run(
                         creative.ad_id, creative.ad_name, creative.campaign_name, creative.adset_name, creative.type,
                         creative.spend, creative.impressions, creative.clicks, creative.installs, creative.cpi, creative.ctr,
                         creative.signups, creative.signup_cost,
@@ -5510,9 +5510,9 @@ Return JSON:
 });
 
 // Route 8: Get all simulations from DB (with optional filters)
-app.get('/api/ci/simulations', (req, res) => {
+app.get('/api/ci/simulations', async (req, res) => {
     try {
-        const db = getCiDb();
+        const db = await getCiDb();
         const { ad_name, batch_id, live_only, limit: lim } = req.query;
         let sql = 'SELECT * FROM simulations';
         const conditions = [];
@@ -5526,7 +5526,7 @@ app.get('/api/ci/simulations', (req, res) => {
         sql += ' ORDER BY simulated_at DESC';
         if (lim) sql += ' LIMIT ' + parseInt(lim);
 
-        const rows = db.prepare(sql).all(...params);
+        const rows = await db.prepare(sql).all(...params);
         // Parse JSON fields
         for (const row of rows) {
             try { row.risk_factors = JSON.parse(row.risk_factors || '[]'); } catch(e) { row.risk_factors = []; }
@@ -5541,10 +5541,10 @@ app.get('/api/ci/simulations', (req, res) => {
 });
 
 // Route 9: Get latest simulation for each ad (deduplicated — one row per ad_name)
-app.get('/api/ci/simulations/latest', (req, res) => {
+app.get('/api/ci/simulations/latest', async (req, res) => {
     try {
-        const db = getCiDb();
-        const rows = db.prepare(`
+        const db = await getCiDb();
+        const rows = await db.prepare(`
             SELECT s.* FROM simulations s
             INNER JOIN (SELECT ad_name, MAX(id) AS max_id FROM simulations GROUP BY ad_name) latest
             ON s.id = latest.max_id
@@ -5564,10 +5564,10 @@ app.get('/api/ci/simulations/latest', (req, res) => {
 });
 
 // Route 10: Get simulation history for a specific ad (all runs over time)
-app.get('/api/ci/simulations/history/:adName', (req, res) => {
+app.get('/api/ci/simulations/history/:adName', async (req, res) => {
     try {
-        const db = getCiDb();
-        const rows = db.prepare('SELECT * FROM simulations WHERE ad_name = ? ORDER BY simulated_at DESC').all(req.params.adName);
+        const db = await getCiDb();
+        const rows = await db.prepare('SELECT * FROM simulations WHERE ad_name = ? ORDER BY simulated_at DESC').all(req.params.adName);
 
         for (const row of rows) {
             try { row.risk_factors = JSON.parse(row.risk_factors || '[]'); } catch(e) { row.risk_factors = []; }
@@ -5584,10 +5584,10 @@ app.get('/api/ci/simulations/history/:adName', (req, res) => {
 // Route 11: Update actual ROAS for a simulation (for accuracy tracking)
 app.post('/api/ci/simulations/update-actuals', async (req, res) => {
     try {
-        const db = getCiDb();
+        const db = await getCiDb();
 
         // Fetch current actual ROAS from Meta + Metabase for all simulated ads
-        const latestSims = db.prepare(`
+        const latestSims = await db.prepare(`
             SELECT s.* FROM simulations s
             INNER JOIN (SELECT ad_name, MAX(id) AS max_id FROM simulations GROUP BY ad_name) latest
             ON s.id = latest.max_id
@@ -5628,16 +5628,14 @@ app.post('/api/ci/simulations/update-actuals', async (req, res) => {
             spendMap[row.ad_name] = (spendMap[row.ad_name] || 0) + parseFloat(row.spend || 0);
         }
 
-        const insertActual = db.prepare(`
-            INSERT INTO simulation_actuals (simulation_id, ad_name, actual_overall_roas, actual_spend, recorded_at)
-            VALUES (?, ?, ?, ?, datetime('now'))
-        `);
-
         let updated = 0;
         for (const sim of latestSims) {
             const currentSpend = spendMap[sim.ad_name];
             if (currentSpend !== undefined) {
-                insertActual.run(sim.id, sim.ad_name, sim.overall_roas, currentSpend);
+                await db.prepare(`
+                    INSERT INTO simulation_actuals (simulation_id, ad_name, actual_overall_roas, actual_spend, recorded_at)
+                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                `).run(sim.id, sim.ad_name, sim.overall_roas, currentSpend);
                 updated++;
             }
         }
@@ -5650,16 +5648,19 @@ app.post('/api/ci/simulations/update-actuals', async (req, res) => {
 });
 
 // Route 12: Get simulation stats/summary
-app.get('/api/ci/simulations/stats', (req, res) => {
+app.get('/api/ci/simulations/stats', async (req, res) => {
     try {
-        const db = getCiDb();
+        const db = await getCiDb();
+        const totalRow = await db.prepare('SELECT COUNT(*) as c FROM simulations').get();
+        const uniqueRow = await db.prepare('SELECT COUNT(DISTINCT ad_name) as c FROM simulations').get();
+        const batchRow = await db.prepare('SELECT COUNT(DISTINCT batch_id) as c FROM simulations').get();
         const stats = {
-            total_simulations: db.prepare('SELECT COUNT(*) as c FROM simulations').get().c,
-            unique_ads: db.prepare('SELECT COUNT(DISTINCT ad_name) as c FROM simulations').get().c,
-            total_batches: db.prepare('SELECT COUNT(DISTINCT batch_id) as c FROM simulations').get().c,
-            latest_batch: db.prepare('SELECT batch_id, simulated_at, COUNT(*) as ads_count FROM simulations GROUP BY batch_id ORDER BY simulated_at DESC LIMIT 1').get(),
-            action_breakdown: db.prepare("SELECT action, COUNT(*) as count FROM simulations WHERE id IN (SELECT MAX(id) FROM simulations GROUP BY ad_name) GROUP BY action").all(),
-            avg_predicted_d6: db.prepare("SELECT AVG(predicted_d6_roas) as avg FROM simulations WHERE id IN (SELECT MAX(id) FROM simulations GROUP BY ad_name)").get().avg,
+            total_simulations: totalRow ? totalRow.c : 0,
+            unique_ads: uniqueRow ? uniqueRow.c : 0,
+            total_batches: batchRow ? batchRow.c : 0,
+            latest_batch: await db.prepare('SELECT batch_id, simulated_at, COUNT(*) as ads_count FROM simulations GROUP BY batch_id ORDER BY simulated_at DESC LIMIT 1').get(),
+            action_breakdown: await db.prepare("SELECT action, COUNT(*) as count FROM simulations WHERE id IN (SELECT MAX(id) FROM simulations GROUP BY ad_name) GROUP BY action").all(),
+            avg_predicted_d6: ((await db.prepare("SELECT AVG(predicted_d6_roas) as avg FROM simulations WHERE id IN (SELECT MAX(id) FROM simulations GROUP BY ad_name)").get()) || {}).avg,
         };
         res.json({ success: true, data: stats });
     } catch (err) {
@@ -5678,15 +5679,19 @@ try {
     const { getDb: getScannerDb, isSeeded: isScannerSeeded } = require('../inventory-scanner/database/db');
 
     // Initialize scanner DB and seed if needed
-    getScannerDb();
-    if (!isScannerSeeded()) {
-        console.log('[Scanner] First run — seeding database...');
+    (async () => {
         try {
-            const { runSeed } = require('../inventory-scanner/data/seed');
-            runSeed();
-            console.log('[Scanner] Database seeded');
-        } catch (e) { console.error('[Scanner] Seed error:', e.message); }
-    }
+            await getScannerDb();
+            if (!(await isScannerSeeded())) {
+                console.log('[Scanner] First run — seeding database...');
+                try {
+                    const { runSeed } = require('../inventory-scanner/data/seed');
+                    await runSeed();
+                    console.log('[Scanner] Database seeded');
+                } catch (e) { console.error('[Scanner] Seed error:', e.message); }
+            }
+        } catch (e) { console.error('[Scanner] DB init error:', e.message); }
+    })();
 
     // Mount all scanner API routes
     app.use('/api/inventories', scannerRoutes.inventoriesRouter);

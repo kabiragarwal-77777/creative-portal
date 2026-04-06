@@ -16,10 +16,10 @@ const GC_DB_PATH = path.resolve(__dirname, '../../google-creative/google-creativ
 module.exports = function (config) {
 
     // ── Open external DB read-only, return null if missing ──
-    function openExternalDb(dbPath) {
+    async function openExternalDb(dbPath) {
         try {
-            const Database = require('better-sqlite3');
-            return new Database(dbPath, { readonly: true });
+            const createDb = require('../lib/duckdb-adapter').createDb;
+            return await createDb(dbPath);
         } catch (err) {
             console.log(`[FE:Watcher] Cannot open ${dbPath}: ${err.message}`);
             return null;
@@ -72,7 +72,7 @@ module.exports = function (config) {
     // Reads from CI `predictions` table (has predicted + actual ROAS columns)
     async function refreshMetaPredictions() {
         console.log('[FE:Watcher] Refreshing Meta prediction accuracy...');
-        const ciDb = openExternalDb(CI_DB_PATH);
+        const ciDb = await openExternalDb(CI_DB_PATH);
         if (!ciDb) return { processed: 0, skipped: 0 };
 
         let processed = 0;
@@ -82,7 +82,7 @@ module.exports = function (config) {
             // Read from predictions table — it has both predicted and actual columns
             let predictions = [];
             try {
-                predictions = ciDb.prepare(
+                predictions = await ciDb.prepare(
                     `SELECT id, ad_id, ad_name, predicted_d6_roas, predicted_d30_roas, predicted_d60_roas,
                             actual_d6_roas, actual_d30_roas, actual_d60_roas,
                             d6_accuracy_pct, d30_accuracy_pct, predicted_at
@@ -92,14 +92,13 @@ module.exports = function (config) {
                 ).all();
             } catch (err) {
                 console.log('[FE:Watcher] predictions table error:', err.message);
-                ciDb.close();
                 return { processed: 0, skipped: 0 };
             }
 
             for (const pred of predictions) {
                 try {
                     // Check if already tracked
-                    const existing = query(
+                    const existing = await query(
                         `SELECT id FROM fe_prediction_accuracy WHERE source = 'meta' AND simulation_id = ?`,
                         [String(pred.id)]
                     );
@@ -119,7 +118,7 @@ module.exports = function (config) {
                     const primaryError = errorD7 !== null ? errorD7 : (errorD30 !== null ? errorD30 : errorD60);
                     const tag = tagAccuracy(primaryError);
 
-                    insert('fe_prediction_accuracy', {
+                    await insert('fe_prediction_accuracy', {
                         source: 'meta',
                         simulation_id: String(pred.id),
                         ad_id: String(pred.ad_id),
@@ -142,8 +141,8 @@ module.exports = function (config) {
                     skipped++;
                 }
             }
-        } finally {
-            ciDb.close();
+        } catch (err) {
+            console.error('[FE:Watcher] Meta predictions error:', err.message);
         }
 
         console.log(`[FE:Watcher] Meta predictions: ${processed} processed, ${skipped} skipped`);
@@ -154,7 +153,7 @@ module.exports = function (config) {
     // Reads from gc_simulations + gc_forecast_timeseries for actuals
     async function refreshGooglePredictions() {
         console.log('[FE:Watcher] Refreshing Google prediction accuracy...');
-        const gcDb = openExternalDb(GC_DB_PATH);
+        const gcDb = await openExternalDb(GC_DB_PATH);
         if (!gcDb) return { processed: 0, skipped: 0 };
 
         let processed = 0;
@@ -163,7 +162,7 @@ module.exports = function (config) {
         try {
             let sims = [];
             try {
-                sims = gcDb.prepare(
+                sims = await gcDb.prepare(
                     `SELECT id, ad_type, predicted_d7_roas, predicted_d30_roas, predicted_d60_roas,
                             campaign_id, adgroup_id, simulated_at
                      FROM gc_simulations
@@ -172,13 +171,12 @@ module.exports = function (config) {
                 ).all();
             } catch (err) {
                 console.log('[FE:Watcher] gc_simulations query error:', err.message);
-                gcDb.close();
                 return { processed: 0, skipped: 0 };
             }
 
             for (const sim of sims) {
                 try {
-                    const existing = query(
+                    const existing = await query(
                         `SELECT id FROM fe_prediction_accuracy WHERE source = 'google' AND simulation_id = ?`,
                         [String(sim.id)]
                     );
@@ -187,7 +185,7 @@ module.exports = function (config) {
                     // Try to get actuals from gc_forecast_timeseries
                     let actualD7 = null, actualD30 = null, actualD60 = null;
                     try {
-                        const forecasts = gcDb.prepare(
+                        const forecasts = await gcDb.prepare(
                             `SELECT day_number, actual_roas FROM gc_forecast_timeseries
                              WHERE simulation_id = ? AND actual_roas IS NOT NULL
                              ORDER BY day_number`
@@ -205,7 +203,7 @@ module.exports = function (config) {
                     const primaryError = errorD7 !== null ? errorD7 : (errorD30 !== null ? errorD30 : errorD60);
                     const tag = tagAccuracy(primaryError);
 
-                    insert('fe_prediction_accuracy', {
+                    await insert('fe_prediction_accuracy', {
                         source: 'google',
                         simulation_id: String(sim.id),
                         ad_id: sim.campaign_id ? `gc-${sim.campaign_id}-${sim.id}` : `gc-${sim.id}`,
@@ -228,8 +226,8 @@ module.exports = function (config) {
                     skipped++;
                 }
             }
-        } finally {
-            gcDb.close();
+        } catch (err) {
+            console.error('[FE:Watcher] Google predictions error:', err.message);
         }
 
         console.log(`[FE:Watcher] Google predictions: ${processed} processed, ${skipped} skipped`);
@@ -242,19 +240,19 @@ module.exports = function (config) {
         let processed = 0;
 
         // -- Meta recommendations --
-        const ciDb = openExternalDb(CI_DB_PATH);
+        const ciDb = await openExternalDb(CI_DB_PATH);
         if (ciDb) {
             try {
                 let recs = [];
                 try {
-                    recs = ciDb.prepare(`SELECT * FROM ci_recommendations WHERE created_at IS NOT NULL`).all();
+                    recs = await ciDb.prepare(`SELECT * FROM ci_recommendations WHERE created_at IS NOT NULL`).all();
                 } catch (err) {
                     console.log('[FE:Watcher] ci_recommendations not found:', err.message);
                 }
 
                 for (const rec of recs) {
                     try {
-                        const existing = query(
+                        const existing = await query(
                             `SELECT id FROM fe_recommendation_tracking WHERE source = 'meta' AND brief_id = ?`,
                             [String(rec.id)]
                         );
@@ -287,7 +285,7 @@ module.exports = function (config) {
                             }
                         }
 
-                        insert('fe_recommendation_tracking', {
+                        await insert('fe_recommendation_tracking', {
                             source: 'meta',
                             brief_id: String(rec.id),
                             brief_type: rec.type || rec.brief_type || 'creative',
@@ -302,25 +300,25 @@ module.exports = function (config) {
                         console.error(`[FE:Watcher] Error tracking Meta rec ${rec.id}:`, err.message);
                     }
                 }
-            } finally {
-                ciDb.close();
+            } catch (err) {
+                console.error('[FE:Watcher] Meta recommendations error:', err.message);
             }
         }
 
         // -- Google recommendations --
-        const gcDb = openExternalDb(GC_DB_PATH);
+        const gcDb = await openExternalDb(GC_DB_PATH);
         if (gcDb) {
             try {
                 let recs = [];
                 try {
-                    recs = gcDb.prepare(`SELECT * FROM gc_recommendations WHERE generated_at IS NOT NULL`).all();
+                    recs = await gcDb.prepare(`SELECT * FROM gc_recommendations WHERE generated_at IS NOT NULL`).all();
                 } catch (err) {
                     console.log('[FE:Watcher] gc_recommendations not found:', err.message);
                 }
 
                 for (const rec of recs) {
                     try {
-                        const existing = query(
+                        const existing = await query(
                             `SELECT id FROM fe_recommendation_tracking WHERE source = 'google' AND brief_id = ?`,
                             [String(rec.id)]
                         );
@@ -341,7 +339,7 @@ module.exports = function (config) {
                             }
                         }
 
-                        insert('fe_recommendation_tracking', {
+                        await insert('fe_recommendation_tracking', {
                             source: 'google',
                             brief_id: String(rec.id),
                             brief_type: rec.brief_type || 'creative',
@@ -356,8 +354,8 @@ module.exports = function (config) {
                         console.error(`[FE:Watcher] Error tracking Google rec ${rec.id}:`, err.message);
                     }
                 }
-            } finally {
-                gcDb.close();
+            } catch (err) {
+                console.error('[FE:Watcher] Google recommendations error:', err.message);
             }
         }
 
@@ -398,7 +396,7 @@ module.exports = function (config) {
         for (const insight of insights) {
             try {
                 const insightId = insight.id || insight.title || String(Date.now());
-                const existing = query(
+                const existing = await query(
                     `SELECT id FROM fe_competitor_signal_accuracy WHERE insight_id = ?`,
                     [String(insightId)]
                 );
@@ -434,7 +432,7 @@ module.exports = function (config) {
                     }
                 }
 
-                insert('fe_competitor_signal_accuracy', {
+                await insert('fe_competitor_signal_accuracy', {
                     insight_id: String(insightId),
                     opportunity_type: insight.vertical || insight.type || 'general',
                     predicted_at: insight.predicted_at || insight.date || new Date().toISOString(),
@@ -457,7 +455,7 @@ module.exports = function (config) {
     // ── 5. Get Summary ──
     async function getSummary() {
         try {
-            const total = count('fe_prediction_accuracy');
+            const total = await count('fe_prediction_accuracy');
             if (total === 0) {
                 return {
                     total: 0,
@@ -468,19 +466,19 @@ module.exports = function (config) {
                 };
             }
 
-            const accurateCount = count('fe_prediction_accuracy', { accuracy_tag: 'accurate' });
-            const overCount = count('fe_prediction_accuracy', { accuracy_tag: 'overestimate' });
-            const underCount = count('fe_prediction_accuracy', { accuracy_tag: 'underestimate' });
+            const accurateCount = await count('fe_prediction_accuracy', { accuracy_tag: 'accurate' });
+            const overCount = await count('fe_prediction_accuracy', { accuracy_tag: 'overestimate' });
+            const underCount = await count('fe_prediction_accuracy', { accuracy_tag: 'underestimate' });
 
             // Per-source breakdown
             const sourceBreakdown = {};
             for (const source of ['meta', 'google']) {
-                const sTotal = count('fe_prediction_accuracy', { source });
+                const sTotal = await count('fe_prediction_accuracy', { source });
                 if (sTotal === 0) {
                     sourceBreakdown[source] = { total: 0, accurate_pct: 0, overestimate_pct: 0, underestimate_pct: 0 };
                     continue;
                 }
-                const sRows = query(
+                const sRows = await query(
                     `SELECT accuracy_tag, COUNT(*) as cnt FROM fe_prediction_accuracy WHERE source = ? AND accuracy_tag IS NOT NULL GROUP BY accuracy_tag`,
                     [source]
                 );
@@ -513,7 +511,7 @@ module.exports = function (config) {
             const where = {};
             if (filters.source) where.source = filters.source;
             if (filters.accuracy_tag) where.accuracy_tag = filters.accuracy_tag;
-            return getAll('fe_prediction_accuracy', where, 'checked_at DESC', filters.limit || 500);
+            return await getAll('fe_prediction_accuracy', where, 'checked_at DESC', filters.limit || 500);
         } catch (err) {
             console.error('[FE:Watcher] getPredictions error:', err.message);
             return [];
@@ -522,7 +520,7 @@ module.exports = function (config) {
 
     // ── 7. Refresh All ──
     async function refresh() {
-        const logId = logSchedulerStart('feWatcher.refresh');
+        const logId = await logSchedulerStart('feWatcher.refresh');
         let totalProcessed = 0;
         let errors = [];
 
@@ -540,7 +538,7 @@ module.exports = function (config) {
             totalProcessed += compResult.processed;
 
             console.log(`[FE:Watcher] Full refresh complete: ${totalProcessed} records processed`);
-            logSchedulerEnd(logId, totalProcessed, errors.length > 0 ? errors.join('; ') : null);
+            await logSchedulerEnd(logId, totalProcessed, errors.length > 0 ? errors.join('; ') : null);
         } catch (err) {
             console.error('[FE:Watcher] refresh() failed:', err.message);
             errors.push(err.message);

@@ -130,7 +130,7 @@ module.exports = function (config) {
         console.log(`[gc/dataFetcher] Got ${rows.length} adset-level rows from Metabase`);
 
         // Store into gc_adset_performance
-        const db = getGcDb();
+        const db = await getGcDb();
         const upsert = db.prepare(`
             INSERT INTO gc_adset_performance
                 (campaign_id, campaign_name, adgroup_id, adgroup_name, date,
@@ -139,9 +139,9 @@ module.exports = function (config) {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
-        const insertMany = db.transaction((items) => {
+        const insertMany = db.transaction(async (items) => {
             for (const r of items) {
-                upsert.run(
+                await upsert.run(
                     r.campaign_id, r.campaign_name, r.adgroup_id, r.adgroup_name, r.date,
                     r.spend || 0, r.impressions || 0, r.clicks || 0,
                     r.conversions || 0, r.conversion_value || 0,
@@ -149,7 +149,7 @@ module.exports = function (config) {
                 );
             }
         });
-        insertMany(rows);
+        await insertMany(rows);
 
         console.log(`[gc/dataFetcher] Stored ${rows.length} rows into gc_adset_performance`);
         return rows;
@@ -264,7 +264,7 @@ module.exports = function (config) {
         }
 
         // --- Store RSAs into gc_ads_raw ---
-        const db = getGcDb();
+        const db = await getGcDb();
         const upsertAd = db.prepare(`
             INSERT INTO gc_ads_raw
                 (ad_id, campaign_id, adgroup_id, ad_type,
@@ -287,9 +287,9 @@ module.exports = function (config) {
                 final_url = excluded.final_url
         `);
 
-        const insertRSAs = db.transaction((ads) => {
+        const insertRSAs = db.transaction(async (ads) => {
             for (const ad of ads) {
-                upsertAd.run(
+                await upsertAd.run(
                     ad.ad_id, ad.campaign_id, ad.adgroup_id, ad.ad_type,
                     JSON.stringify(ad.headlines), JSON.stringify(ad.descriptions),
                     null, // image_url — RSAs don't have images
@@ -299,12 +299,12 @@ module.exports = function (config) {
                 );
             }
         });
-        insertRSAs(rsaAds);
+        await insertRSAs(rsaAds);
 
         // --- Store Assets into gc_ads_raw ---
-        const insertAssets = db.transaction((items) => {
+        const insertAssets = db.transaction(async (items) => {
             for (const a of items) {
-                upsertAd.run(
+                await upsertAd.run(
                     a.ad_id, a.campaign_id, a.adgroup_id, a.ad_type,
                     a.text_content ? JSON.stringify([a.text_content]) : null, // headlines_json for text
                     null, // descriptions_json
@@ -316,7 +316,7 @@ module.exports = function (config) {
                 );
             }
         });
-        insertAssets(assets);
+        await insertAssets(assets);
 
         console.log(`[gc/dataFetcher] Upserted ${rsaAds.length} RSA ads + ${assets.length} assets into gc_ads_raw`);
         return { rsaAds, assets };
@@ -379,19 +379,19 @@ module.exports = function (config) {
         }
 
         // Update gc_ads_raw with video titles and thumbnails
-        const db = getGcDb();
+        const db = await getGcDb();
         const updateStmt = db.prepare(`
             UPDATE gc_ads_raw
             SET video_title = ?, video_thumbnail_url = ?
             WHERE youtube_video_id = ?
         `);
 
-        const updateAll = db.transaction((items) => {
+        const updateAll = db.transaction(async (items) => {
             for (const v of items) {
-                updateStmt.run(v.title, v.thumbnail, v.videoId);
+                await updateStmt.run(v.title, v.thumbnail, v.videoId);
             }
         });
-        updateAll(results);
+        await updateAll(results);
 
         console.log(`[gc/dataFetcher] Updated ${results.length} video titles/thumbnails in gc_ads_raw`);
         return results;
@@ -409,17 +409,17 @@ module.exports = function (config) {
     async function mergeData() {
         console.log('[gc/dataFetcher] Merging ad-level and adset-level data into gc_creatives...');
 
-        const db = getGcDb();
+        const db = await getGcDb();
 
         // Get all ads from gc_ads_raw
-        const ads = db.prepare('SELECT * FROM gc_ads_raw').all();
+        const ads = await db.prepare('SELECT * FROM gc_ads_raw').all();
         if (ads.length === 0) {
             console.log('[gc/dataFetcher] No ads in gc_ads_raw — nothing to merge');
             return [];
         }
 
         // Aggregate adset performance per campaign_id + adgroup_id
-        const adsetAgg = db.prepare(`
+        const adsetAgg = await db.prepare(`
             SELECT
                 campaign_id, campaign_name, adgroup_id, adgroup_name,
                 SUM(spend) AS total_spend,
@@ -430,6 +430,7 @@ module.exports = function (config) {
             GROUP BY campaign_id, adgroup_id
         `).all();
 
+
         // Build lookup map: "campaign_id|adgroup_id" -> aggregated metrics
         const adsetMap = {};
         for (const ag of adsetAgg) {
@@ -438,7 +439,7 @@ module.exports = function (config) {
         }
 
         // Clear old gc_creatives and re-insert fresh merged data
-        db.prepare('DELETE FROM gc_creatives').run();
+        await db.prepare('DELETE FROM gc_creatives').run();
 
         const insertCreative = db.prepare(`
             INSERT INTO gc_creatives
@@ -449,7 +450,7 @@ module.exports = function (config) {
         `);
 
         const merged = [];
-        const insertAll = db.transaction((adsList) => {
+        const insertAll = db.transaction(async (adsList) => {
             for (const ad of adsList) {
                 const key = `${ad.campaign_id}|${ad.adgroup_id}`;
                 const perf = adsetMap[key] || {};
@@ -474,7 +475,7 @@ module.exports = function (config) {
                 const campaignName = perf.campaign_name || '';
                 const adgroupName = perf.adgroup_name || '';
 
-                insertCreative.run(
+                await insertCreative.run(
                     ad.ad_id,
                     ad.campaign_id, campaignName,
                     ad.adgroup_id, adgroupName,
@@ -496,7 +497,7 @@ module.exports = function (config) {
                 });
             }
         });
-        insertAll(ads);
+        await insertAll(ads);
 
         console.log(`[gc/dataFetcher] Merged ${merged.length} creatives into gc_creatives`);
         return merged;
@@ -514,7 +515,7 @@ module.exports = function (config) {
      *   4. Merge into gc_creatives
      */
     async function runFullFetch(days = 90) {
-        const runId = logPipelineRun('gc_data_fetch', JSON.stringify({ days }));
+        const runId = await logPipelineRun('gc_data_fetch', JSON.stringify({ days }));
         const summary = { adsetRows: 0, rsaAds: 0, assets: 0, videos: 0, merged: 0 };
 
         try {
@@ -537,8 +538,8 @@ module.exports = function (config) {
                 if (a.youtube_video_id) videoIds.push(a.youtube_video_id);
             }
             // Also check gc_ads_raw for any existing video IDs missing titles
-            const db = getGcDb();
-            const missingTitles = db.prepare(
+            const db = await getGcDb();
+            const missingTitles = await db.prepare(
                 `SELECT youtube_video_id FROM gc_ads_raw
                  WHERE youtube_video_id IS NOT NULL AND youtube_video_id != ''
                    AND (video_title IS NULL OR video_title = '')`
@@ -560,13 +561,13 @@ module.exports = function (config) {
             const merged = await mergeData();
             summary.merged = merged.length;
 
-            updatePipelineRun(runId, 'success', JSON.stringify(summary));
+            await updatePipelineRun(runId, 'success', JSON.stringify(summary));
             console.log(`[gc/dataFetcher] Full fetch complete:`, summary);
             return summary;
 
         } catch (err) {
             console.error('[gc/dataFetcher] Pipeline error:', err.message);
-            updatePipelineRun(runId, 'error', JSON.stringify({
+            await updatePipelineRun(runId, 'error', JSON.stringify({
                 error: err.message,
                 ...summary,
             }));

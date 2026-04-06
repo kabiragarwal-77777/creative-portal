@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS at_meta_campaigns (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     meta_campaign_id TEXT UNIQUE NOT NULL,
     name TEXT,
     objective TEXT,
@@ -12,11 +12,11 @@ CREATE TABLE IF NOT EXISTS at_meta_campaigns (
     total_spend REAL DEFAULT 0,
     total_impressions INTEGER DEFAULT 0,
     total_clicks INTEGER DEFAULT 0,
-    synced_at TEXT DEFAULT (datetime('now'))
+    synced_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS at_meta_adsets (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     meta_adset_id TEXT UNIQUE NOT NULL,
     meta_campaign_id TEXT,
     name TEXT,
@@ -62,11 +62,11 @@ CREATE TABLE IF NOT EXISTS at_meta_adsets (
     d6_cvr_pct REAL,
     d30_conversions INTEGER DEFAULT 0,
     d30_revenue REAL DEFAULT 0,
-    synced_at TEXT DEFAULT (datetime('now'))
+    synced_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS at_meta_breakdowns (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     adset_id TEXT NOT NULL,
     breakdown_type TEXT NOT NULL,
     breakdown_value TEXT,
@@ -76,11 +76,11 @@ CREATE TABLE IF NOT EXISTS at_meta_breakdowns (
     ctr REAL DEFAULT 0,
     cpm REAL DEFAULT 0,
     conversions INTEGER DEFAULT 0,
-    synced_at TEXT DEFAULT (datetime('now'))
+    synced_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS at_google_campaigns (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     google_campaign_id TEXT UNIQUE NOT NULL,
     name TEXT,
     status TEXT,
@@ -94,11 +94,11 @@ CREATE TABLE IF NOT EXISTS at_google_campaigns (
     clicks INTEGER DEFAULT 0,
     conversions REAL DEFAULT 0,
     conversion_value REAL DEFAULT 0,
-    synced_at TEXT DEFAULT (datetime('now'))
+    synced_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS at_google_adgroups (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     google_adgroup_id TEXT UNIQUE NOT NULL,
     google_campaign_id TEXT,
     name TEXT,
@@ -119,11 +119,11 @@ CREATE TABLE IF NOT EXISTS at_google_adgroups (
     d6_conversions INTEGER DEFAULT 0,
     d6_revenue REAL DEFAULT 0,
     metabase_signups INTEGER DEFAULT 0,
-    synced_at TEXT DEFAULT (datetime('now'))
+    synced_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS at_google_audiences (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     adgroup_id TEXT NOT NULL,
     criterion_type TEXT,
     audience_name TEXT,
@@ -136,11 +136,11 @@ CREATE TABLE IF NOT EXISTS at_google_audiences (
     impressions INTEGER DEFAULT 0,
     clicks INTEGER DEFAULT 0,
     conversions REAL DEFAULT 0,
-    synced_at TEXT DEFAULT (datetime('now'))
+    synced_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS at_google_breakdowns (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     adgroup_id TEXT NOT NULL,
     breakdown_type TEXT NOT NULL,
     breakdown_value TEXT,
@@ -149,11 +149,11 @@ CREATE TABLE IF NOT EXISTS at_google_breakdowns (
     clicks INTEGER DEFAULT 0,
     conversions REAL DEFAULT 0,
     ctr REAL DEFAULT 0,
-    synced_at TEXT DEFAULT (datetime('now'))
+    synced_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS at_meta_patterns (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     pattern_type TEXT,
     pattern_key TEXT,
     pattern_value_json TEXT,
@@ -165,11 +165,11 @@ CREATE TABLE IF NOT EXISTS at_meta_patterns (
     sample_conversions INTEGER DEFAULT 0,
     confidence TEXT DEFAULT 'LOW',
     synthesized_insight TEXT,
-    generated_at TEXT DEFAULT (datetime('now'))
+    generated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS at_google_patterns (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     pattern_type TEXT,
     pattern_key TEXT,
     pattern_value_json TEXT,
@@ -181,11 +181,11 @@ CREATE TABLE IF NOT EXISTS at_google_patterns (
     sample_conversions INTEGER DEFAULT 0,
     confidence TEXT DEFAULT 'LOW',
     synthesized_insight TEXT,
-    generated_at TEXT DEFAULT (datetime('now'))
+    generated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS at_recommendations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     platform TEXT NOT NULL,
     rec_type TEXT NOT NULL,
     vertical TEXT,
@@ -201,7 +201,7 @@ CREATE TABLE IF NOT EXISTS at_recommendations (
     priority TEXT DEFAULT 'medium',
     urgency TEXT DEFAULT 'this_week',
     status TEXT DEFAULT 'pending',
-    generated_at TEXT DEFAULT (datetime('now')),
+    generated_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     implemented_at TEXT,
     dismissed_reason TEXT,
     adset_id TEXT,
@@ -211,7 +211,7 @@ CREATE TABLE IF NOT EXISTS at_recommendations (
 );
 
 CREATE TABLE IF NOT EXISTS at_live_flags (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     platform TEXT,
     adset_id TEXT,
     adset_name TEXT,
@@ -222,14 +222,14 @@ CREATE TABLE IF NOT EXISTS at_live_flags (
     threshold_value REAL,
     is_resolved INTEGER DEFAULT 0,
     resolved_at TEXT,
-    detected_at TEXT DEFAULT (datetime('now'))
+    detected_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS at_scheduler_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     job_type TEXT,
     status TEXT DEFAULT 'running',
-    started_at TEXT DEFAULT (datetime('now')),
+    started_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     completed_at TEXT,
     details TEXT,
     error TEXT

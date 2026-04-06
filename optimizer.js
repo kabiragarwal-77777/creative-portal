@@ -22,7 +22,7 @@ window.OPTIMIZER_CHAT = window.OPTIMIZER_CHAT || [];
 window.OPTIMIZER_USER_PROMPT = window.OPTIMIZER_USER_PROMPT || '';
 try { window.OPTIMIZER_LAST_MATCH_RATE_PCT = Number(localStorage.getItem('optimizer_last_match_rate_pct') || 0); } catch (e) { window.OPTIMIZER_LAST_MATCH_RATE_PCT = 0; }
 
-var SERVER = 'http://localhost:3000';
+var SERVER = window.location.origin;
 
 // â”€â”€ Helpers â”€â”€
 

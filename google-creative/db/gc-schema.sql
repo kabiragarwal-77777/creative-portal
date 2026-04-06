@@ -2,7 +2,7 @@
 -- All tables prefixed gc_ to avoid collision with ci- Meta layer
 
 CREATE TABLE IF NOT EXISTS gc_adset_performance (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     campaign_id TEXT,
     campaign_name TEXT,
     adgroup_id TEXT,
@@ -17,11 +17,11 @@ CREATE TABLE IF NOT EXISTS gc_adset_performance (
     ctr REAL DEFAULT 0,
     cpc REAL DEFAULT 0,
     cpa REAL DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS gc_ads_raw (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     ad_id TEXT UNIQUE,
     campaign_id TEXT,
     adgroup_id TEXT,
@@ -35,11 +35,11 @@ CREATE TABLE IF NOT EXISTS gc_ads_raw (
     asset_performance_label TEXT, -- BEST, GOOD, LOW, LEARNING
     ad_status TEXT,
     final_url TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS gc_creatives (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     ad_id TEXT,
     campaign_id TEXT,
     campaign_name TEXT,
@@ -52,21 +52,21 @@ CREATE TABLE IF NOT EXISTS gc_creatives (
     adset_spend REAL DEFAULT 0,
     adset_conversions REAL DEFAULT 0,
     adset_ctr REAL DEFAULT 0,
-    merged_at TEXT DEFAULT (datetime('now'))
+    merged_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS gc_creative_signals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     creative_id INTEGER,
     ad_id TEXT,
     ad_type TEXT,
     signals_json TEXT,
-    classified_at TEXT DEFAULT (datetime('now')),
+    classified_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     FOREIGN KEY (creative_id) REFERENCES gc_creatives(id)
 );
 
 CREATE TABLE IF NOT EXISTS gc_creative_scores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     creative_id INTEGER,
     ad_id TEXT,
     ad_type TEXT,
@@ -77,12 +77,12 @@ CREATE TABLE IF NOT EXISTS gc_creative_scores (
     cpa_efficiency REAL DEFAULT 0,
     score_breakdown_json TEXT,
     correlation_report_json TEXT,
-    scored_at TEXT DEFAULT (datetime('now')),
+    scored_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     FOREIGN KEY (creative_id) REFERENCES gc_creatives(id)
 );
 
 CREATE TABLE IF NOT EXISTS gc_market_signals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     date TEXT,
     nifty_50 REAL,
     vix REAL,
@@ -90,11 +90,11 @@ CREATE TABLE IF NOT EXISTS gc_market_signals (
     market_sentiment TEXT,
     google_roas_correlation REAL,
     signals_json TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS gc_simulations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     ad_type TEXT,
     creative_input_json TEXT,
     signals_json TEXT,
@@ -109,11 +109,11 @@ CREATE TABLE IF NOT EXISTS gc_simulations (
     budget_per_day REAL,
     status TEXT DEFAULT 'active',
     raw_response TEXT,
-    simulated_at TEXT DEFAULT (datetime('now'))
+    simulated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS gc_forecast_timeseries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     simulation_id INTEGER,
     date TEXT,
     spend REAL DEFAULT 0,
@@ -123,33 +123,33 @@ CREATE TABLE IF NOT EXISTS gc_forecast_timeseries (
     predicted_roas REAL DEFAULT 0,
     prediction_version INTEGER DEFAULT 1,
     day_number INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT (datetime('now')),
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     FOREIGN KEY (simulation_id) REFERENCES gc_simulations(id)
 );
 
 CREATE TABLE IF NOT EXISTS gc_forecast_alerts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     simulation_id INTEGER,
     alert_type TEXT,
     message TEXT,
     severity TEXT,
     is_read INTEGER DEFAULT 0,
-    triggered_at TEXT DEFAULT (datetime('now')),
+    triggered_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     FOREIGN KEY (simulation_id) REFERENCES gc_simulations(id)
 );
 
 CREATE TABLE IF NOT EXISTS gc_recommendations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     brief_type TEXT, -- rsa, video, pmax
     briefs_json TEXT,
-    generated_at TEXT DEFAULT (datetime('now'))
+    generated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS gc_pipeline_runs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     run_type TEXT,
     status TEXT DEFAULT 'running',
-    started_at TEXT DEFAULT (datetime('now')),
+    started_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     completed_at TEXT,
     details TEXT
 );

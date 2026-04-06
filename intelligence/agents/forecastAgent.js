@@ -5,7 +5,7 @@
 
 require('dotenv').config({ path: require('path').join(__dirname, '..', '..', '.env') });
 const OpenAI = require('openai');
-const { db, getAll, getOne, run, getRowCount } = require('../db');
+const { getIntelDb, getAll, getOne, run, getRowCount } = require('../db');
 
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -31,8 +31,8 @@ const normalize = (s) => s?.toLowerCase().trim().replace(/\s+/g, '_') || '';
 // ---------------------------------------------------------------------------
 // 1. buildLTVCohorts
 // ---------------------------------------------------------------------------
-function buildLTVCohorts() {
-  const rows = getAll(`
+async function buildLTVCohorts() {
+  const rows = await getAll(`
     SELECT
       campaign_name,
       adset_name,
@@ -50,7 +50,7 @@ function buildLTVCohorts() {
   // Join through raw_meta_dump which has campaign_id — the reliable key.
   // Key: campaign_id + normalized adset_name → spend/installs
   const spendMap = {};
-  const spendRows = getAll(`
+  const spendRows = await getAll(`
     SELECT d.campaign_id,
            c.adset_name,
            SUM(COALESCE(c.spend, 0)) AS total_spend,
@@ -71,7 +71,7 @@ function buildLTVCohorts() {
 
   // Build a campaign_name → campaign_id lookup from raw_meta_dump
   const campaignIdMap = {};
-  const cidRows = getAll(`
+  const cidRows = await getAll(`
     SELECT DISTINCT campaign_name, campaign_id
     FROM raw_meta_dump
     WHERE campaign_id IS NOT NULL AND campaign_name IS NOT NULL
@@ -81,18 +81,19 @@ function buildLTVCohorts() {
   }
 
   // Clear existing cohorts
-  run('DELETE FROM ltv_cohorts');
+  await run('DELETE FROM ltv_cohorts');
 
+  const db = await getIntelDb();
   const insert = db.prepare(`
     INSERT INTO ltv_cohorts
       (campaign_name, adset_name, period_start, period_end,
        total_spend, installs, signups, d0_trial, d6_conversions,
        d6_rate, d6_roas, implied_ltv_30d, implied_ltv_90d, calculated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `);
 
-  const insertMany = db.transaction((cohorts) => {
-    for (const c of cohorts) insert.run(...c);
+  const insertMany = db.transaction(async (cohorts) => {
+    for (const c of cohorts) await insert.run(...c);
   });
 
   const cohorts = rows.map((r) => {
@@ -129,7 +130,7 @@ function buildLTVCohorts() {
     ];
   });
 
-  insertMany(cohorts);
+  await insertMany(cohorts);
   return cohorts.length;
 }
 
@@ -137,16 +138,16 @@ function buildLTVCohorts() {
 // 2. forecastCreativeROAS
 // ---------------------------------------------------------------------------
 async function forecastCreativeROAS(adId) {
-  const creative = getOne('SELECT * FROM raw_creatives WHERE ad_id = ?', [adId]);
+  const creative = await getOne('SELECT * FROM raw_creatives WHERE ad_id = ?', [adId]);
   if (!creative) throw new Error(`Creative not found for ad_id=${adId}`);
 
-  const score = getOne('SELECT * FROM creative_scores WHERE ad_id = ?', [adId]);
-  const signals = getOne('SELECT * FROM creative_signals WHERE ad_id = ?', [adId]);
+  const score = await getOne('SELECT * FROM creative_scores WHERE ad_id = ?', [adId]);
+  const signals = await getOne('SELECT * FROM creative_signals WHERE ad_id = ?', [adId]);
 
   // Find benchmark data from similar archetype/pattern
   let benchmarks = [];
   if (signals && signals.hook_type) {
-    benchmarks = getAll(`
+    benchmarks = await getAll(`
       SELECT avg_cps, avg_d6_roas, sample_count, confidence, pattern_name
       FROM pattern_library
       WHERE signal_combination LIKE ?
@@ -155,7 +156,7 @@ async function forecastCreativeROAS(adId) {
     `, [`%${signals.hook_type}%`]);
   }
   if (benchmarks.length === 0) {
-    benchmarks = getAll(`
+    benchmarks = await getAll(`
       SELECT avg_cps, avg_d6_roas, sample_count, confidence, pattern_name
       FROM pattern_library
       ORDER BY confidence DESC
@@ -291,8 +292,8 @@ Predict the following and return ONLY valid JSON (no markdown):
   }
 
   // Persist prediction (delete existing then insert for upsert behavior)
-  run('DELETE FROM ltv_predictions WHERE ad_id = ?', [adId]);
-  run(`
+  await run('DELETE FROM ltv_predictions WHERE ad_id = ?', [adId]);
+  await run(`
     INSERT INTO ltv_predictions
       (creative_name, ad_id, days_live_at_prediction,
        predicted_roas_30d, predicted_roas_60d, predicted_roas_90d, predicted_roas_365d,
@@ -301,7 +302,7 @@ Predict the following and return ONLY valid JSON (no markdown):
        recommended_action, recommended_budget,
        reasoning_30d, reasoning_60d, reasoning_90d,
        archetype_used, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
   `, [
     creative.creative_name, adId, daysLive,
     prediction.roas_30d, prediction.roas_60d, prediction.roas_90d, prediction.roas_365d,
@@ -319,7 +320,7 @@ Predict the following and return ONLY valid JSON (no markdown):
 // 3. runForecasts
 // ---------------------------------------------------------------------------
 async function runForecasts() {
-  const creatives = getAll(`
+  const creatives = await getAll(`
     SELECT ad_id FROM raw_creatives
     WHERE live_status = 'Live' OR spend > 0
   `);
@@ -343,9 +344,9 @@ async function runForecasts() {
 // ---------------------------------------------------------------------------
 // 4. updateActualROAS
 // ---------------------------------------------------------------------------
-function updateActualROAS() {
+async function updateActualROAS() {
   // Find predictions old enough to have actuals (30+ days since prediction)
-  const stale = getAll(`
+  const stale = await getAll(`
     SELECT p.id, p.ad_id, p.created_at,
            julianday('now') - julianday(p.created_at) AS days_since
     FROM ltv_predictions p
@@ -355,7 +356,7 @@ function updateActualROAS() {
   let updated = 0;
 
   for (const pred of stale) {
-    const creative = getOne('SELECT * FROM raw_creatives WHERE ad_id = ?', [pred.ad_id]);
+    const creative = await getOne('SELECT * FROM raw_creatives WHERE ad_id = ?', [pred.ad_id]);
     if (!creative || !creative.spend || creative.spend === 0) continue;
 
     const revenue = creative.d6 ? creative.d6 * SUBSCRIPTION_PRICE : 0;
@@ -377,7 +378,7 @@ function updateActualROAS() {
 
     const setClauses = Object.entries(updates).map(([k, v]) => `${k} = ${v}`).join(', ');
     if (setClauses) {
-      run(`UPDATE ltv_predictions SET ${setClauses}, updated_at = datetime('now') WHERE id = ?`, [pred.id]);
+      await run(`UPDATE ltv_predictions SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [pred.id]);
       updated++;
     }
   }
@@ -388,9 +389,9 @@ function updateActualROAS() {
 // ---------------------------------------------------------------------------
 // 5. getForecasts
 // ---------------------------------------------------------------------------
-function getForecasts(adId = null) {
+async function getForecasts(adId = null) {
   if (adId) {
-    return getOne(`
+    return await getOne(`
       SELECT p.*, c.spend, c.installs, c.signups, c.d0_trial, c.d6,
              c.d6_roas, c.cpi, c.live_status, c.creative_type, c.platform,
              c.date_from, c.date_to
@@ -399,7 +400,7 @@ function getForecasts(adId = null) {
       WHERE p.ad_id = ?
     `, [adId]);
   }
-  return getAll(`
+  return await getAll(`
     SELECT p.*, c.spend, c.installs, c.signups, c.d0_trial, c.d6,
            c.d6_roas, c.cpi, c.live_status, c.creative_type, c.platform,
            c.date_from, c.date_to
@@ -412,8 +413,8 @@ function getForecasts(adId = null) {
 // ---------------------------------------------------------------------------
 // 6. getCohorts
 // ---------------------------------------------------------------------------
-function getCohorts() {
-  return getAll('SELECT * FROM ltv_cohorts ORDER BY d6_roas DESC');
+async function getCohorts() {
+  return await getAll('SELECT * FROM ltv_cohorts ORDER BY d6_roas DESC');
 }
 
 // ---------------------------------------------------------------------------

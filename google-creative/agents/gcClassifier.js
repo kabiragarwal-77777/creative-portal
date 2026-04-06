@@ -314,18 +314,18 @@ module.exports = function (config = {}) {
      * options.incrementalOnly = true (default): skip creatives that already have signals.
      */
     async function classifyAll(options = { incrementalOnly: true }) {
-        const db = getGcDb();
+        const db = await getGcDb();
 
         // Get creatives, optionally filtering out already-classified ones
         let creatives;
         if (options.incrementalOnly) {
-            creatives = db.prepare(`
+            creatives = await db.prepare(`
                 SELECT c.* FROM gc_creatives c
                 LEFT JOIN gc_creative_signals s ON s.creative_id = c.id
                 WHERE s.id IS NULL
             `).all();
         } else {
-            creatives = db.prepare(`SELECT * FROM gc_creatives`).all();
+            creatives = await db.prepare(`SELECT * FROM gc_creatives`).all();
         }
 
         if (creatives.length === 0) {
@@ -342,10 +342,10 @@ module.exports = function (config = {}) {
         const existsStmt = db.prepare(`SELECT id FROM gc_creative_signals WHERE creative_id = ?`);
         const insertStmt = db.prepare(`
             INSERT INTO gc_creative_signals (creative_id, ad_id, ad_type, signals_json, classified_at)
-            VALUES (?, ?, ?, ?, datetime('now'))
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
         `);
         const updateStmt = db.prepare(`
-            UPDATE gc_creative_signals SET signals_json = ?, classified_at = datetime('now')
+            UPDATE gc_creative_signals SET signals_json = ?, classified_at = CURRENT_TIMESTAMP
             WHERE creative_id = ?
         `);
 
@@ -374,11 +374,11 @@ module.exports = function (config = {}) {
                 const signalsJson = JSON.stringify(signals);
 
                 try {
-                    const existing = existsStmt.get(creative.id);
+                    const existing = await existsStmt.get(creative.id);
                     if (existing) {
-                        updateStmt.run(signalsJson, creative.id);
+                        await updateStmt.run(signalsJson, creative.id);
                     } else {
-                        insertStmt.run(creative.id, creative.ad_id, creative.ad_type, signalsJson);
+                        await insertStmt.run(creative.id, creative.ad_id, creative.ad_type, signalsJson);
                     }
                     classified++;
                 } catch (dbErr) {
@@ -401,8 +401,8 @@ module.exports = function (config = {}) {
      * Get stored signals for a specific creative by id.
      */
     async function getSignals(creativeId) {
-        const db = getGcDb();
-        const row = db.prepare(`SELECT * FROM gc_creative_signals WHERE creative_id = ?`).get(creativeId);
+        const db = await getGcDb();
+        const row = await db.prepare(`SELECT * FROM gc_creative_signals WHERE creative_id = ?`).get(creativeId);
         if (!row) return null;
         return {
             ...row,

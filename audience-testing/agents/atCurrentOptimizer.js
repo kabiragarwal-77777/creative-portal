@@ -69,10 +69,10 @@ module.exports = function(config) {
 
     async function fetchLiveGoogleAdgroups() {
         log('Fetching live ENABLED Google adgroups from local DB (last 7 days)...');
-        const db = getAtDb();
+        const db = await getAtDb();
 
         // Pull enabled adgroups with recent spend from our synced data
-        const rows = db.prepare(`
+        const rows = await db.prepare(`
             SELECT ag.google_adgroup_id, ag.name, ag.status, ag.google_campaign_id,
                    ag.total_spend, ag.impressions, ag.clicks, ag.conversions,
                    ag.cost_per_conversion, ag.d6_cac, ag.d6_roas, ag.d6_conversions,
@@ -90,7 +90,7 @@ module.exports = function(config) {
 
     async function checkHealth() {
         log('=== Starting health check ===');
-        const db = getAtDb();
+        const db = await getAtDb();
         const flags = [];
 
         // Fetch live data
@@ -115,7 +115,7 @@ module.exports = function(config) {
             const adsetName = adset.name || '';
 
             // Look up historical data
-            const historical = db.prepare(
+            const historical = await db.prepare(
                 'SELECT * FROM at_meta_adsets WHERE meta_adset_id = ?'
             ).get(adsetId);
 
@@ -129,7 +129,7 @@ module.exports = function(config) {
             const budgetUtilization = dailyBudget > 0 ? (spend7d / (dailyBudget * 7)) * 100 : 100;
 
             // Get historical average CAC for comparison
-            const avgCacRow = db.prepare(`
+            const avgCacRow = await db.prepare(`
                 SELECT AVG(d6_cac) AS avg_cac FROM at_meta_adsets
                 WHERE d6_cac IS NOT NULL AND d6_cac > 0 AND meta_campaign_id = ?
             `).get(historical.meta_campaign_id);
@@ -215,7 +215,7 @@ module.exports = function(config) {
             const currentCac = ag.d6_cac || ag.cost_per_conversion || 0;
 
             // Get historical average CAC for the campaign
-            const avgCacRow = db.prepare(`
+            const avgCacRow = await db.prepare(`
                 SELECT AVG(d6_cac) AS avg_cac FROM at_google_adgroups
                 WHERE d6_cac IS NOT NULL AND d6_cac > 0 AND google_campaign_id = ?
             `).get(ag.google_campaign_id);
@@ -280,14 +280,14 @@ module.exports = function(config) {
         }
 
         // --- Clear old unresolved flags older than 7 days ---
-        db.prepare(`
-            UPDATE at_live_flags SET is_resolved = 1, resolved_at = datetime('now')
-            WHERE is_resolved = 0 AND detected_at < datetime('now', '-7 days')
+        await db.prepare(`
+            UPDATE at_live_flags SET is_resolved = 1, resolved_at = CURRENT_TIMESTAMP
+            WHERE is_resolved = 0 AND detected_at < CURRENT_TIMESTAMP - INTERVAL 7 DAY
         `).run();
 
         // --- Mark all existing unresolved flags as resolved before inserting fresh ones ---
-        db.prepare(`
-            UPDATE at_live_flags SET is_resolved = 1, resolved_at = datetime('now')
+        await db.prepare(`
+            UPDATE at_live_flags SET is_resolved = 1, resolved_at = CURRENT_TIMESTAMP
             WHERE is_resolved = 0
         `).run();
 
@@ -297,14 +297,14 @@ module.exports = function(config) {
             VALUES (@platform, @adset_id, @adset_name, @flag_type, @severity, @message, @metric_value, @threshold_value)
         `);
 
-        const insertAll = db.transaction((items) => {
+        const insertAll = db.transaction(async (items) => {
             for (const item of items) {
-                insertFlag.run(item);
+                await insertFlag.run(item);
             }
         });
 
         if (flags.length > 0) {
-            insertAll(flags);
+            await insertAll(flags);
         }
 
         log(`Health check complete: ${flags.length} flags generated`);
@@ -313,8 +313,8 @@ module.exports = function(config) {
 
     // --------------- getFlags ---------------
 
-    function getFlags(filters) {
-        const db = getAtDb();
+    async function getFlags(filters) {
+        const db = await getAtDb();
         const conditions = ['1=1'];
         const params = [];
 
@@ -350,7 +350,7 @@ module.exports = function(config) {
                 ELSE 5
             END, detected_at DESC`;
 
-        return db.prepare(sql).all(...params);
+        return await db.prepare(sql).all(...params);
     }
 
     // --------------- refreshFlags ---------------

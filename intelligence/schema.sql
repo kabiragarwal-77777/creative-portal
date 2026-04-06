@@ -6,7 +6,7 @@
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS raw_creatives (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     creative_name TEXT,
     ad_id TEXT,
     campaign_name TEXT,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS raw_creatives (
 );
 
 CREATE TABLE IF NOT EXISTS raw_meta_dump (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     campaign_name TEXT,
     adset_name TEXT,
     ad_name TEXT,
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS raw_meta_dump (
 );
 
 CREATE TABLE IF NOT EXISTS raw_metabase (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     campaign_name TEXT,
     adset_name TEXT,
     ad_name TEXT,
@@ -66,13 +66,13 @@ CREATE TABLE IF NOT EXISTS raw_metabase (
 );
 
 CREATE TABLE IF NOT EXISTS data_fetch_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     fetch_type TEXT,
     rows_fetched INTEGER,
     rows_changed INTEGER,
     status TEXT,
     error_message TEXT,
-    fetched_at TEXT DEFAULT (datetime('now'))
+    fetched_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 -- ============================================================
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS data_fetch_log (
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS ai_insights (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     insight_type TEXT,
     category TEXT,
     finding TEXT,
@@ -89,11 +89,11 @@ CREATE TABLE IF NOT EXISTS ai_insights (
     action TEXT,
     impact TEXT,
     is_read INTEGER DEFAULT 0,
-    generated_at TEXT DEFAULT (datetime('now'))
+    generated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS creative_scores (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     creative_name TEXT,
     ad_id TEXT,
     cps_score REAL,
@@ -102,11 +102,11 @@ CREATE TABLE IF NOT EXISTS creative_scores (
     signup_component REAL,
     cpi_component REAL,
     percentile_rank REAL,
-    calculated_at TEXT DEFAULT (datetime('now'))
+    calculated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS creative_signals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     creative_name TEXT,
     ad_id TEXT,
     format TEXT,
@@ -131,11 +131,11 @@ CREATE TABLE IF NOT EXISTS creative_signals (
     strongest_element TEXT,
     weakest_element TEXT,
     improvement_priority TEXT,
-    analyzed_at TEXT DEFAULT (datetime('now'))
+    analyzed_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS pattern_library (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     pattern_name TEXT,
     signal_combination TEXT,
     avg_cps REAL,
@@ -143,11 +143,11 @@ CREATE TABLE IF NOT EXISTS pattern_library (
     sample_count INTEGER,
     confidence REAL,
     best_example_ad_id TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS ltv_predictions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     creative_name TEXT,
     ad_id TEXT,
     days_live_at_prediction INTEGER,
@@ -168,12 +168,12 @@ CREATE TABLE IF NOT EXISTS ltv_predictions (
     reasoning_60d TEXT,
     reasoning_90d TEXT,
     archetype_used TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
+    created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
     updated_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS ltv_cohorts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     campaign_name TEXT,
     adset_name TEXT,
     period_start TEXT,
@@ -187,11 +187,11 @@ CREATE TABLE IF NOT EXISTS ltv_cohorts (
     d6_roas REAL,
     implied_ltv_30d REAL,
     implied_ltv_90d REAL,
-    calculated_at TEXT DEFAULT (datetime('now'))
+    calculated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS creative_briefs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     title TEXT,
     format TEXT,
     archetype TEXT,
@@ -207,11 +207,11 @@ CREATE TABLE IF NOT EXISTS creative_briefs (
     success_threshold TEXT,
     data_basis TEXT,
     is_actioned INTEGER DEFAULT 0,
-    generated_at TEXT DEFAULT (datetime('now'))
+    generated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS revamp_suggestions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     ad_id TEXT,
     creative_name TEXT,
     option_number INTEGER,
@@ -221,11 +221,11 @@ CREATE TABLE IF NOT EXISTS revamp_suggestions (
     rationale TEXT,
     predicted_improvement TEXT,
     is_actioned INTEGER DEFAULT 0,
-    generated_at TEXT DEFAULT (datetime('now'))
+    generated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS scheduler_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY ,
     job_name TEXT,
     status TEXT,
     started_at TEXT,

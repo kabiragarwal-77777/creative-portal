@@ -131,12 +131,12 @@ module.exports = function (config) {
      * Find top-N similar historical ads by cosine similarity of signal vectors.
      * Only considers mature ads (days_live >= 14) with valid ROAS.
      */
-    function findSimilarHistoricalAds(newSignals, cohort, topN) {
+    async function findSimilarHistoricalAds(newSignals, cohort, topN) {
         topN = topN || 10;
-        const d = db.getCiDb();
+        const d = await db.getCiDb();
 
         // Get mature ads with valid ROAS
-        const rows = d.prepare(`
+        const rows = await d.prepare(`
             SELECT s.* FROM snapshots s
             INNER JOIN (
                 SELECT ad_id, MAX(snapshot_date) as max_date
@@ -199,16 +199,12 @@ module.exports = function (config) {
      * Fetch market signals from the Google Creative DB (gc_market_signals table).
      * Falls back to neutral values if unavailable.
      */
-    function getMarketSignals() {
+    async function getMarketSignals() {
         try {
-            let Database;
-            try { Database = require('better-sqlite3'); }
-            catch (e) { Database = require('../inventory-scanner/node_modules/better-sqlite3'); }
-
+            const createDb = require('../lib/duckdb-adapter').createDb;
             const gcDbPath = path.join(__dirname, '..', 'google-creative', 'google-creative.db');
-            const gcDb = new Database(gcDbPath, { readonly: true, fileMustExist: true });
-            const row = gcDb.prepare('SELECT * FROM gc_market_signals ORDER BY date DESC LIMIT 1').get();
-            gcDb.close();
+            const gcDb = await createDb(gcDbPath);
+            const row = await gcDb.prepare('SELECT * FROM gc_market_signals ORDER BY date DESC LIMIT 1').get();
 
             if (!row) return { sentiment: 'neutral', nifty_50: null, vix: null, dxy: null };
             return {
@@ -381,21 +377,21 @@ Return ONLY valid JSON:
     // buildCohortBenchmarks
     // =========================================================================
 
-    function buildCohortBenchmarks() {
-        const d = db.getCiDb();
+    async function buildCohortBenchmarks() {
+        const d = await db.getCiDb();
 
         // 1. Query ads with enough data (days_live >= 3, or use all if too few)
-        let rows = d.prepare(`
+        let rows = await d.prepare(`
             SELECT * FROM snapshots
             WHERE days_live >= 14
             ORDER BY ad_id, snapshot_date DESC
         `).all();
         // Fallback: if too few mature ads, lower threshold progressively
         if (rows.length < 5) {
-            rows = d.prepare(`SELECT * FROM snapshots WHERE days_live >= 3 ORDER BY ad_id, snapshot_date DESC`).all();
+            rows = await d.prepare(`SELECT * FROM snapshots WHERE days_live >= 3 ORDER BY ad_id, snapshot_date DESC`).all();
         }
         if (rows.length < 3) {
-            rows = d.prepare(`SELECT * FROM snapshots ORDER BY ad_id, snapshot_date DESC`).all();
+            rows = await d.prepare(`SELECT * FROM snapshots ORDER BY ad_id, snapshot_date DESC`).all();
         }
 
         // Deduplicate: keep only the latest snapshot per ad_id
@@ -478,7 +474,7 @@ Return ONLY valid JSON:
 
         // 4. Save to DB
         if (benchmarks.length) {
-            db.saveCohortBenchmarks(benchmarks);
+            await db.saveCohortBenchmarks(benchmarks);
         }
 
         return { cohortsBuilt: benchmarks.length };
@@ -497,9 +493,9 @@ Return ONLY valid JSON:
         const typeKey = `${creativeType}::ALL`;
         const globalKey = 'ALL::ALL';
 
-        let cohort = db.getCohortBenchmarks(specificKey);
-        if (!cohort) cohort = db.getCohortBenchmarks(typeKey);
-        if (!cohort) cohort = db.getCohortBenchmarks(globalKey);
+        let cohort = await db.getCohortBenchmarks(specificKey);
+        if (!cohort) cohort = await db.getCohortBenchmarks(typeKey);
+        if (!cohort) cohort = await db.getCohortBenchmarks(globalKey);
 
         const daysLive = adSnapshot.days_live || 0;
 
@@ -544,8 +540,8 @@ Return ONLY valid JSON:
 
         // 2. Extract signals and find similar historical ads
         const metaSignals = extractMetaSignals(adSnapshot, cohort);
-        const similarAds = findSimilarHistoricalAds(metaSignals, cohort, 10);
-        const marketSignals = getMarketSignals();
+        const similarAds = await findSimilarHistoricalAds(metaSignals, cohort, 10);
+        const marketSignals = await getMarketSignals();
 
         // 3. Score early signals (still needed for confidence + trajectory)
         const signals = {};
@@ -751,7 +747,7 @@ Return ONLY valid JSON:
 
     async function detectAndPredictNewAds() {
         // 1. Get latest snapshots
-        const snapshots = db.getLatestSnapshots();
+        const snapshots = await db.getLatestSnapshots();
 
         // 2. Filter to early-stage ads (days_live <= 7)
         const earlyAds = snapshots.filter(s => (s.days_live || 0) <= 7);
@@ -761,7 +757,7 @@ Return ONLY valid JSON:
 
         for (const ad of earlyAds) {
             // 3. Check if a recent prediction already exists
-            const existing = db.getPrediction(ad.ad_id);
+            const existing = await db.getPrediction(ad.ad_id);
             if (existing) {
                 const predAge = Date.now() - new Date(existing.predicted_at + 'Z').getTime();
                 const oneDayMs = 24 * 60 * 60 * 1000;
@@ -772,10 +768,10 @@ Return ONLY valid JSON:
             const prediction = await predictNewAd(ad);
 
             // 5. Mark old predictions as not latest
-            db.markOldPredictions(ad.ad_id);
+            await db.markOldPredictions(ad.ad_id);
 
             // 6. Insert new prediction
-            db.savePrediction(prediction);
+            await db.savePrediction(prediction);
 
             predictions.push(prediction);
             predicted++;
@@ -788,13 +784,13 @@ Return ONLY valid JSON:
     // trackPredictionAccuracy
     // =========================================================================
 
-    function trackPredictionAccuracy() {
-        const unverified = db.getUnverifiedPredictions();
+    async function trackPredictionAccuracy() {
+        const unverified = await db.getUnverifiedPredictions();
         let tracked = 0;
 
         for (const pred of unverified) {
             // Get latest snapshot for this ad
-            const snapshots = db.getSnapshotHistory(pred.ad_id, 180);
+            const snapshots = await db.getSnapshotHistory(pred.ad_id, 180);
             if (!snapshots.length) continue;
 
             const latest = snapshots[snapshots.length - 1]; // most recent
@@ -827,7 +823,7 @@ Return ONLY valid JSON:
             }
 
             if (hasUpdate) {
-                db.updatePredictionActuals(pred.id, actuals);
+                await db.updatePredictionActuals(pred.id, actuals);
                 tracked++;
             }
         }
@@ -842,7 +838,7 @@ Return ONLY valid JSON:
     async function enhanceWithGpt(prediction, adSnapshot) {
         if (!OPENAI_API_KEY) return prediction;
 
-        const cohort = prediction.cohort_key ? db.getCohortBenchmarks(prediction.cohort_key) : null;
+        const cohort = prediction.cohort_key ? await db.getCohortBenchmarks(prediction.cohort_key) : null;
 
         const prompt = `You are an expert performance marketing analyst. Analyze this ad prediction and provide qualitative insights.
 

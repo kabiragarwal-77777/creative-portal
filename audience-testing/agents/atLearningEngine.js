@@ -130,9 +130,9 @@ module.exports = function(config) {
 
     async function runMetaAnalysis() {
         log('Starting Meta pattern analysis...');
-        const db = getAtDb();
+        const db = await getAtDb();
 
-        const adsets = db.prepare(`
+        const adsets = await db.prepare(`
             SELECT * FROM at_meta_adsets
             WHERE d6_cac IS NOT NULL AND d6_cac > 0 AND total_spend > 5000
             ORDER BY d6_cac ASC
@@ -146,7 +146,7 @@ module.exports = function(config) {
         }
 
         // Build campaign lookup for verticals
-        const campaigns = db.prepare('SELECT meta_campaign_id, vertical FROM at_meta_campaigns').all();
+        const campaigns = await db.prepare('SELECT meta_campaign_id, vertical FROM at_meta_campaigns').all();
         const campaignMap = {};
         for (const c of campaigns) { campaignMap[c.meta_campaign_id] = c; }
 
@@ -201,18 +201,18 @@ module.exports = function(config) {
         log(`Found ${comboList.length} top combinations.`);
 
         // Clear old patterns
-        db.prepare('DELETE FROM at_meta_patterns').run();
+        await db.prepare('DELETE FROM at_meta_patterns').run();
 
         // Store dimension-level patterns
-        const insertPattern = db.prepare(`
+        const insertPattern = await db.prepare(`
             INSERT INTO at_meta_patterns
                 (pattern_type, pattern_key, pattern_value_json, avg_d6_cac, avg_d6_roas, total_spend,
                  sample_adsets, sample_conversions, confidence, generated_at)
             VALUES (@pattern_type, @pattern_key, @pattern_value_json, @avg_d6_cac, @avg_d6_roas,
-                    @total_spend, @sample_adsets, @sample_conversions, @confidence, datetime('now'))
+                    @total_spend, @sample_adsets, @sample_conversions, @confidence, CURRENT_TIMESTAMP)
         `);
 
-        const storeDimensionPatterns = db.transaction((dimName, groups) => {
+        const storeDimensionPatterns = db.transaction(async (dimName, groups) => {
             for (const g of groups) {
                 insertPattern.run({
                     pattern_type: dimName,
@@ -228,15 +228,15 @@ module.exports = function(config) {
             }
         });
 
-        storeDimensionPatterns('age_bucket', ageBuckets);
-        storeDimensionPatterns('gender', genderGroups);
-        storeDimensionPatterns('audience_type', audienceTypeGroups);
-        storeDimensionPatterns('vertical', verticalGroups);
-        storeDimensionPatterns('placement', placementGroups);
-        storeDimensionPatterns('device', deviceGroups);
+        await storeDimensionPatterns('age_bucket', ageBuckets);
+        await storeDimensionPatterns('gender', genderGroups);
+        await storeDimensionPatterns('audience_type', audienceTypeGroups);
+        await storeDimensionPatterns('vertical', verticalGroups);
+        await storeDimensionPatterns('placement', placementGroups);
+        await storeDimensionPatterns('device', deviceGroups);
 
         // Store top combos
-        const storeComboPatterns = db.transaction((combos) => {
+        const storeComboPatterns = db.transaction(async (combos) => {
             for (const c of combos) {
                 insertPattern.run({
                     pattern_type: 'top_combo',
@@ -251,7 +251,7 @@ module.exports = function(config) {
                 });
             }
         });
-        storeComboPatterns(comboList);
+        await storeComboPatterns(comboList);
 
         let patternCount = db.prepare('SELECT COUNT(*) as cnt FROM at_meta_patterns').get().cnt;
         log(`Stored ${patternCount} Meta patterns.`);
@@ -285,17 +285,17 @@ Return JSON with these keys:
         const synthesis = await callClaudeAPI(synthesisPrompt, 4000);
 
         if (synthesis) {
-            db.prepare(`
+            await db.prepare(`
                 INSERT INTO at_meta_patterns
                     (pattern_type, pattern_key, pattern_value_json, synthesized_insight, generated_at)
-                VALUES ('ai_synthesis', 'full_synthesis', ?, ?, datetime('now'))
+                VALUES ('ai_synthesis', 'full_synthesis', ?, ?, CURRENT_TIMESTAMP)
             `).run(JSON.stringify(synthesis), JSON.stringify(synthesis));
             log('Meta AI synthesis stored successfully.');
         } else {
             log('Meta AI synthesis failed or returned null.');
         }
 
-        patternCount = db.prepare('SELECT COUNT(*) as cnt FROM at_meta_patterns').get().cnt;
+        patternCount = await db.prepare('SELECT COUNT(*) as cnt FROM at_meta_patterns').get().cnt;
         log(`Meta analysis complete. Total patterns stored: ${patternCount}`);
         return { patterns: patternCount, synthesis: !!synthesis };
     }
@@ -304,9 +304,9 @@ Return JSON with these keys:
 
     async function runGoogleAnalysis() {
         log('Starting Google pattern analysis...');
-        const db = getAtDb();
+        const db = await getAtDb();
 
-        const adgroups = db.prepare(`
+        const adgroups = await db.prepare(`
             SELECT ag.*, gc.vertical, gc.name as campaign_name
             FROM at_google_adgroups ag
             LEFT JOIN at_google_campaigns gc ON ag.google_campaign_id = gc.google_campaign_id
@@ -322,7 +322,7 @@ Return JSON with these keys:
         }
 
         // Fetch audience data for each adgroup
-        const audienceStmt = db.prepare('SELECT * FROM at_google_audiences WHERE adgroup_id = ?');
+        const audienceStmt = await db.prepare('SELECT * FROM at_google_audiences WHERE adgroup_id = ?');
 
         // Build enriched adgroup records with audience info
         const enriched = adgroups.map(ag => {
@@ -458,18 +458,18 @@ Return JSON with these keys:
         log(`Found ${comboList.length} top Google combinations.`);
 
         // Clear old Google patterns
-        db.prepare('DELETE FROM at_google_patterns').run();
+        await db.prepare('DELETE FROM at_google_patterns').run();
 
         // Store patterns
-        const insertPattern = db.prepare(`
+        const insertPattern = await db.prepare(`
             INSERT INTO at_google_patterns
                 (pattern_type, pattern_key, pattern_value_json, avg_d6_cac, avg_d6_roas, total_spend,
                  sample_adsets, sample_conversions, confidence, generated_at)
             VALUES (@pattern_type, @pattern_key, @pattern_value_json, @avg_d6_cac, @avg_d6_roas,
-                    @total_spend, @sample_adsets, @sample_conversions, @confidence, datetime('now'))
+                    @total_spend, @sample_adsets, @sample_conversions, @confidence, CURRENT_TIMESTAMP)
         `);
 
-        const storeDimensionPatterns = db.transaction((dimName, groups) => {
+        const storeDimensionPatterns = db.transaction(async (dimName, groups) => {
             for (const g of groups) {
                 insertPattern.run({
                     pattern_type: dimName,
@@ -485,13 +485,13 @@ Return JSON with these keys:
             }
         });
 
-        storeDimensionPatterns('age_range', ageBuckets);
-        storeDimensionPatterns('gender', genderResults);
-        storeDimensionPatterns('audience_type', audienceTypeResults);
-        storeDimensionPatterns('vertical', verticalResults);
-        storeDimensionPatterns('device', deviceResults);
+        await storeDimensionPatterns('age_range', ageBuckets);
+        await storeDimensionPatterns('gender', genderResults);
+        await storeDimensionPatterns('audience_type', audienceTypeResults);
+        await storeDimensionPatterns('vertical', verticalResults);
+        await storeDimensionPatterns('device', deviceResults);
 
-        const storeComboPatterns = db.transaction((combos) => {
+        const storeComboPatterns = db.transaction(async (combos) => {
             for (const c of combos) {
                 insertPattern.run({
                     pattern_type: 'top_combo',
@@ -506,7 +506,7 @@ Return JSON with these keys:
                 });
             }
         });
-        storeComboPatterns(comboList);
+        await storeComboPatterns(comboList);
 
         let patternCount = db.prepare('SELECT COUNT(*) as cnt FROM at_google_patterns').get().cnt;
         log(`Stored ${patternCount} Google patterns.`);
@@ -539,27 +539,27 @@ Return JSON with these keys:
         const synthesis = await callClaudeAPI(synthesisPrompt, 4000);
 
         if (synthesis) {
-            db.prepare(`
+            await db.prepare(`
                 INSERT INTO at_google_patterns
                     (pattern_type, pattern_key, pattern_value_json, synthesized_insight, generated_at)
-                VALUES ('ai_synthesis', 'full_synthesis', ?, ?, datetime('now'))
+                VALUES ('ai_synthesis', 'full_synthesis', ?, ?, CURRENT_TIMESTAMP)
             `).run(JSON.stringify(synthesis), JSON.stringify(synthesis));
             log('Google AI synthesis stored successfully.');
         } else {
             log('Google AI synthesis failed or returned null.');
         }
 
-        patternCount = db.prepare('SELECT COUNT(*) as cnt FROM at_google_patterns').get().cnt;
+        patternCount = await db.prepare('SELECT COUNT(*) as cnt FROM at_google_patterns').get().cnt;
         log(`Google analysis complete. Total patterns stored: ${patternCount}`);
         return { patterns: patternCount, synthesis: !!synthesis };
     }
 
     // --------------- getPatterns ---------------
 
-    function getPatterns(platform) {
-        const db = getAtDb();
+    async function getPatterns(platform) {
+        const db = await getAtDb();
         const table = platform === 'google' ? 'at_google_patterns' : 'at_meta_patterns';
-        const rows = db.prepare(`SELECT * FROM ${table} ORDER BY pattern_type, avg_d6_cac ASC`).all();
+        const rows = await db.prepare(`SELECT * FROM ${table} ORDER BY pattern_type, avg_d6_cac ASC`).all();
         log(`Retrieved ${rows.length} patterns for ${platform}.`);
 
         return rows.map(r => ({

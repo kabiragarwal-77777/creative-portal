@@ -75,24 +75,24 @@ const DEFAULT_FORMAT_SCORES = {
   }
 };
 
-function getFormatRecommendations(inventoryId) {
-  const db = getDb();
-  let scores = db.prepare(`
+async function getFormatRecommendations(inventoryId) {
+  const db = await getDb();
+  let scores = await db.prepare(`
     SELECT * FROM ad_format_scores
     WHERE inventory_id = ?
     ORDER BY score DESC
   `).all(inventoryId);
 
   if (scores.length === 0) {
-    generateFormatScores(inventoryId);
-    scores = db.prepare(`
+    await generateFormatScores(inventoryId);
+    scores = await db.prepare(`
       SELECT * FROM ad_format_scores
       WHERE inventory_id = ?
       ORDER BY score DESC
     `).all(inventoryId);
   }
 
-  const inventory = db.prepare('SELECT name, category FROM inventories WHERE id = ?').get(inventoryId);
+  const inventory = await db.prepare('SELECT name, category FROM inventories WHERE id = ?').get(inventoryId);
 
   return {
     inventory_id: inventoryId,
@@ -105,8 +105,8 @@ function getFormatRecommendations(inventoryId) {
 }
 
 async function generateFormatScores(inventoryId) {
-  const db = getDb();
-  const inventory = db.prepare('SELECT * FROM inventories WHERE id = ?').get(inventoryId);
+  const db = await getDb();
+  const inventory = await db.prepare('SELECT * FROM inventories WHERE id = ?').get(inventoryId);
   if (!inventory) throw new Error(`Inventory not found: ${inventoryId}`);
 
   let formatScores = [];
@@ -156,7 +156,7 @@ Return ONLY the JSON array.`
     }));
   }
 
-  db.prepare('DELETE FROM ad_format_scores WHERE inventory_id = ?').run(inventoryId);
+  await db.prepare('DELETE FROM ad_format_scores WHERE inventory_id = ?').run(inventoryId);
 
   for (const fs of formatScores) {
     const specJson = JSON.stringify({
@@ -165,9 +165,9 @@ Return ONLY the JSON array.`
       compliance_notes: fs.compliance_notes || ''
     });
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO ad_format_scores (id, inventory_id, format, score, reason, best_size_spec, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).run(uuidv4(), inventoryId, fs.format, fs.score, fs.reason, specJson);
   }
 
@@ -176,12 +176,12 @@ Return ONLY the JSON array.`
 
 // ==================== AD SYNTHESIS AGENT ====================
 
-function buildCompetitorAdProfile(competitorId) {
-  const db = getDb();
-  const competitor = db.prepare('SELECT * FROM competitors WHERE id = ?').get(competitorId);
+async function buildCompetitorAdProfile(competitorId) {
+  const db = await getDb();
+  const competitor = await db.prepare('SELECT * FROM competitors WHERE id = ?').get(competitorId);
   if (!competitor) return null;
 
-  const metaAds = db.prepare('SELECT * FROM meta_ads WHERE competitor_id = ?').all(competitorId);
+  const metaAds = await db.prepare('SELECT * FROM meta_ads WHERE competitor_id = ?').all(competitorId);
   const activeMetaAds = metaAds.filter(a => a.is_active === 1);
   const metaSpendMin = metaAds.reduce((s, a) => s + (a.spend_min || 0), 0);
   const metaSpendMax = metaAds.reduce((s, a) => s + (a.spend_max || 0), 0);
@@ -200,9 +200,9 @@ function buildCompetitorAdProfile(competitorId) {
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
   const newMetaAdsThisWeek = metaAds.filter(a => a.created_at && new Date(a.created_at) >= oneWeekAgo).length;
 
-  const googleAds = db.prepare('SELECT * FROM google_ads WHERE competitor_id = ?').all(competitorId);
-  const youtubeAds = db.prepare('SELECT * FROM youtube_ads WHERE competitor_id = ?').all(competitorId);
-  const searchAds = db.prepare('SELECT * FROM search_ads WHERE competitor_id = ?').all(competitorId);
+  const googleAds = await db.prepare('SELECT * FROM google_ads WHERE competitor_id = ?').all(competitorId);
+  const youtubeAds = await db.prepare('SELECT * FROM youtube_ads WHERE competitor_id = ?').all(competitorId);
+  const searchAds = await db.prepare('SELECT * FROM search_ads WHERE competitor_id = ?').all(competitorId);
 
   const searchKeywords = [...new Set(searchAds.map(a => a.keyword))];
   const topSearchKeywords = searchKeywords.slice(0, 10);
@@ -263,17 +263,17 @@ function buildCompetitorAdProfile(competitorId) {
 }
 
 async function detectCampaignPatterns() {
-  const db = getDb();
+  const db = await getDb();
 
-  const metaAds = db.prepare(`
+  const metaAds = await db.prepare(`
     SELECT ma.*, c.name as competitor_name
     FROM meta_ads ma JOIN competitors c ON ma.competitor_id = c.id
   `).all();
-  const googleAds = db.prepare(`
+  const googleAds = await db.prepare(`
     SELECT ga.*, c.name as competitor_name
     FROM google_ads ga JOIN competitors c ON ga.competitor_id = c.id
   `).all();
-  const youtubeAds = db.prepare(`
+  const youtubeAds = await db.prepare(`
     SELECT ya.*, c.name as competitor_name
     FROM youtube_ads ya JOIN competitors c ON ya.competitor_id = c.id
   `).all();
@@ -358,15 +358,15 @@ Return ONLY the JSON object.`
   return patterns;
 }
 
-function generateCompetitiveAlerts() {
-  const db = getDb();
+async function generateCompetitiveAlerts() {
+  const db = await getDb();
   const alerts = [];
 
   const twoDaysAgo = new Date();
   twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
   const twoDaysAgoStr = twoDaysAgo.toISOString();
 
-  const blitzCompetitors = db.prepare(`
+  const blitzCompetitors = await db.prepare(`
     SELECT c.name, COUNT(*) as new_ad_count
     FROM meta_ads ma
     JOIN competitors c ON ma.competitor_id = c.id
@@ -388,16 +388,16 @@ function generateCompetitiveAlerts() {
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const competitors = db.prepare('SELECT id, name FROM competitors').all();
+  const competitors = await db.prepare('SELECT id, name FROM competitors').all();
 
   for (const comp of competitors) {
-    const recentAds = db.prepare(`
+    const recentAds = await db.prepare(`
       SELECT COUNT(*) as cnt FROM meta_ads
       WHERE competitor_id = ? AND created_at >= ?
     `).get(comp.id, sevenDaysAgo.toISOString());
 
     if (recentAds.cnt === 0) {
-      const totalAds = db.prepare('SELECT COUNT(*) as cnt FROM meta_ads WHERE competitor_id = ?').get(comp.id);
+      const totalAds = await db.prepare('SELECT COUNT(*) as cnt FROM meta_ads WHERE competitor_id = ?').get(comp.id);
       if (totalAds.cnt > 0) {
         alerts.push({
           type: 'silence',
@@ -411,7 +411,7 @@ function generateCompetitiveAlerts() {
     }
   }
 
-  const recentSearchAds = db.prepare(`
+  const recentSearchAds = await db.prepare(`
     SELECT sa.keyword, c.name as competitor_name
     FROM search_ads sa
     JOIN competitors c ON sa.competitor_id = c.id
@@ -422,7 +422,7 @@ function generateCompetitiveAlerts() {
   for (const sa of recentSearchAds) {
     const key = `${sa.competitor_name}__${sa.keyword}`;
     if (!keywordEntrants[key]) {
-      const older = db.prepare(`
+      const older = await db.prepare(`
         SELECT COUNT(*) as cnt FROM search_ads sa
         JOIN competitors c ON sa.competitor_id = c.id
         WHERE LOWER(c.name) = LOWER(?) AND sa.keyword = ? AND sa.created_at < ?
@@ -445,7 +445,7 @@ function generateCompetitiveAlerts() {
     });
   }
 
-  const recentMetaAds = db.prepare(`
+  const recentMetaAds = await db.prepare(`
     SELECT ma.media_type, c.name as competitor_name, c.id as competitor_id
     FROM meta_ads ma
     JOIN competitors c ON ma.competitor_id = c.id
@@ -453,7 +453,7 @@ function generateCompetitiveAlerts() {
   `).all(sevenDaysAgo.toISOString());
 
   for (const ad of recentMetaAds) {
-    const olderWithFormat = db.prepare(`
+    const olderWithFormat = await db.prepare(`
       SELECT COUNT(*) as cnt FROM meta_ads
       WHERE competitor_id = ? AND media_type = ? AND created_at < ?
     `).get(ad.competitor_id, ad.media_type, sevenDaysAgo.toISOString());
@@ -476,10 +476,10 @@ function generateCompetitiveAlerts() {
   return alerts;
 }
 
-function buildUnivestGapReport() {
-  const db = getDb();
+async function buildUnivestGapReport() {
+  const db = await getDb();
 
-  const competitorChannels = db.prepare(`
+  const competitorChannels = await db.prepare(`
     SELECT DISTINCT i.category, i.name as inventory_name, COUNT(DISTINCT cs.competitor_id) as competitor_count
     FROM competitor_spends cs
     JOIN inventories i ON cs.inventory_id = i.id
@@ -487,7 +487,7 @@ function buildUnivestGapReport() {
     ORDER BY competitor_count DESC
   `).all();
 
-  const univestInventories = db.prepare(`
+  const univestInventories = await db.prepare(`
     SELECT i.category, i.name
     FROM existing_inventories ei
     JOIN inventories i ON ei.inventory_id = i.id
@@ -504,7 +504,7 @@ function buildUnivestGapReport() {
       priority: ch.competitor_count >= 3 ? 'high' : 'medium'
     }));
 
-  const competitorThemes = db.prepare(`
+  const competitorThemes = await db.prepare(`
     SELECT theme_tag, COUNT(*) as usage_count
     FROM meta_ads WHERE theme_tag IS NOT NULL
     GROUP BY theme_tag ORDER BY usage_count DESC
@@ -520,7 +520,7 @@ function buildUnivestGapReport() {
       recommendation: `Consider testing "${t.theme_tag}" theme - ${t.usage_count} competitor ads use it`
     }));
 
-  const searchKeywords = db.prepare(`
+  const searchKeywords = await db.prepare(`
     SELECT DISTINCT keyword, COUNT(DISTINCT competitor_id) as competitor_count
     FROM search_ads GROUP BY keyword ORDER BY competitor_count DESC
   `).all();
@@ -532,12 +532,12 @@ function buildUnivestGapReport() {
     priority: kw.competitor_count >= 3 ? 'high' : 'medium'
   }));
 
-  const competitorFormats = db.prepare(`
+  const competitorFormats = await db.prepare(`
     SELECT media_type as format, COUNT(*) as usage_count
     FROM meta_ads GROUP BY media_type ORDER BY usage_count DESC
   `).all();
 
-  const googleFormatsData = db.prepare(`
+  const googleFormatsData = await db.prepare(`
     SELECT format, COUNT(*) as usage_count
     FROM google_ads GROUP BY format ORDER BY usage_count DESC
   `).all();
@@ -576,13 +576,13 @@ function buildUnivestGapReport() {
 }
 
 async function runSynthesis() {
-  const db = getDb();
-  const competitorsList = db.prepare('SELECT id, name FROM competitors').all();
+  const db = await getDb();
+  const competitorsList = await db.prepare('SELECT id, name FROM competitors').all();
 
   const profiles = [];
   for (const comp of competitorsList) {
     try {
-      const profile = buildCompetitorAdProfile(comp.id);
+      const profile = await buildCompetitorAdProfile(comp.id);
       if (profile) profiles.push(profile);
     } catch (err) {
       console.error(`[AdSynthesis] Error building profile for ${comp.name}:`, err.message);
@@ -599,7 +599,7 @@ async function runSynthesis() {
 
   let alertsList;
   try {
-    alertsList = generateCompetitiveAlerts();
+    alertsList = await generateCompetitiveAlerts();
   } catch (err) {
     console.error('[AdSynthesis] Alert generation error:', err.message);
     alertsList = [];
@@ -607,7 +607,7 @@ async function runSynthesis() {
 
   let gapReport;
   try {
-    gapReport = buildUnivestGapReport();
+    gapReport = await buildUnivestGapReport();
   } catch (err) {
     console.error('[AdSynthesis] Gap report error:', err.message);
     gapReport = { error: 'Gap report failed' };
@@ -652,13 +652,13 @@ const FALLBACK_INSIGHTS = [
 ];
 
 async function generateInsights() {
-  const db = getDb();
+  const db = await getDb();
   let insights = [];
 
   try {
-    const inventories = db.prepare('SELECT name, category, min_cpm, max_cpm, status, target_audience_fit FROM inventories LIMIT 50').all();
-    const competitorsData = db.prepare('SELECT name, estimated_monthly_adspend, primary_channels FROM competitors').all();
-    const competitorSpends = db.prepare(`
+    const inventories = await db.prepare('SELECT name, category, min_cpm, max_cpm, status, target_audience_fit FROM inventories LIMIT 50').all();
+    const competitorsData = await db.prepare('SELECT name, estimated_monthly_adspend, primary_channels FROM competitors').all();
+    const competitorSpends = await db.prepare(`
       SELECT c.name as competitor, i.name as inventory, cs.estimated_monthly_spend
       FROM competitor_spends cs
       JOIN competitors c ON cs.competitor_id = c.id
@@ -704,9 +704,9 @@ Return ONLY the JSON array.`
 
   let insertedCount = 0;
   for (const insight of insights) {
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO ai_insights (id, inventory_id, insight_type, title, body, priority, is_read, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
     `).run(
       uuidv4(),
       insight.inventory_id || null,
@@ -722,7 +722,7 @@ Return ONLY the JSON array.`
 }
 
 async function newsSweep() {
-  const db = getDb();
+  const db = await getDb();
   let newsInsights = [];
 
   try {
@@ -767,9 +767,9 @@ Return ONLY the JSON array.`
 
   let insertedCount = 0;
   for (const insight of newsInsights) {
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO ai_insights (id, inventory_id, insight_type, title, body, priority, is_read, created_at)
-      VALUES (?, NULL, ?, ?, ?, ?, 0, datetime('now'))
+      VALUES (?, NULL, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
     `).run(uuidv4(), insight.insight_type || 'trend', insight.title, insight.body, insight.priority || 'high');
     insertedCount++;
   }
@@ -777,23 +777,23 @@ Return ONLY the JSON array.`
   return { generated: insertedCount };
 }
 
-function getInsights(onlyUnread) {
-  const db = getDb();
+async function getInsights(onlyUnread) {
+  const db = await getDb();
   if (onlyUnread) {
-    return db.prepare('SELECT * FROM ai_insights WHERE is_read = 0 ORDER BY created_at DESC').all();
+    return await db.prepare('SELECT * FROM ai_insights WHERE is_read = 0 ORDER BY created_at DESC').all();
   }
-  return db.prepare('SELECT * FROM ai_insights ORDER BY created_at DESC').all();
+  return await db.prepare('SELECT * FROM ai_insights ORDER BY created_at DESC').all();
 }
 
-function markAsRead(insightId) {
-  const db = getDb();
-  const result = db.prepare('UPDATE ai_insights SET is_read = 1 WHERE id = ?').run(insightId);
+async function markAsRead(insightId) {
+  const db = await getDb();
+  const result = await db.prepare('UPDATE ai_insights SET is_read = 1 WHERE id = ?').run(insightId);
   return { updated: result.changes > 0 };
 }
 
-function getInsightsForInventory(inventoryId) {
-  const db = getDb();
-  return db.prepare('SELECT * FROM ai_insights WHERE inventory_id = ? ORDER BY created_at DESC').all(inventoryId);
+async function getInsightsForInventory(inventoryId) {
+  const db = await getDb();
+  return await db.prepare('SELECT * FROM ai_insights WHERE inventory_id = ? ORDER BY created_at DESC').all(inventoryId);
 }
 
 // ==================== BUDGET AGENT ====================
@@ -836,14 +836,14 @@ function calculateFallbackBudget(inventory) {
   };
 }
 
-function getBudgetRecommendation(inventoryId) {
-  const db = getDb();
-  const existing = db.prepare(`
+async function getBudgetRecommendation(inventoryId) {
+  const db = await getDb();
+  const existing = await db.prepare(`
     SELECT * FROM budget_recommendations WHERE inventory_id = ? ORDER BY created_at DESC LIMIT 1
   `).get(inventoryId);
 
   if (existing) {
-    const inventory = db.prepare('SELECT name, category, min_cpm, max_cpm FROM inventories WHERE id = ?').get(inventoryId);
+    const inventory = await db.prepare('SELECT name, category, min_cpm, max_cpm FROM inventories WHERE id = ?').get(inventoryId);
     return {
       ...existing,
       inventory_name: inventory ? inventory.name : 'Unknown',
@@ -853,12 +853,12 @@ function getBudgetRecommendation(inventoryId) {
     };
   }
 
-  return generateBudgetRecommendation(inventoryId);
+  return await generateBudgetRecommendation(inventoryId);
 }
 
 async function generateBudgetRecommendation(inventoryId) {
-  const db = getDb();
-  const inventory = db.prepare('SELECT * FROM inventories WHERE id = ?').get(inventoryId);
+  const db = await getDb();
+  const inventory = await db.prepare('SELECT * FROM inventories WHERE id = ?').get(inventoryId);
   if (!inventory) throw new Error(`Inventory not found: ${inventoryId}`);
 
   let budgetData;
@@ -914,10 +914,10 @@ Return ONLY the JSON object.`
   }
 
   const id = uuidv4();
-  db.prepare(`
+  await db.prepare(`
     INSERT INTO budget_recommendations (id, inventory_id, recommended_testing_budget, recommended_starting_budget,
       recommended_scale_budget, rationale, data_sources, confidence_score, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `).run(
     id, inventoryId,
     budgetData.test_budget,
@@ -937,14 +937,14 @@ Return ONLY the JSON object.`
   };
 }
 
-function compareBudgets(inventoryIds) {
-  const db = getDb();
+async function compareBudgets(inventoryIds) {
+  const db = await getDb();
   if (!inventoryIds || inventoryIds.length === 0) return [];
 
   const results = [];
   for (const invId of inventoryIds) {
     try {
-      const rec = getBudgetRecommendation(invId);
+      const rec = await getBudgetRecommendation(invId);
       results.push(rec);
     } catch (err) {
       console.error(`[BudgetAgent] Error getting budget for ${invId}:`, err.message);
@@ -977,9 +977,9 @@ const FALLBACK_COMPETITOR_DATA = [
   { competitor: 'Paytm Money', inventory: 'Google Search UAC', spend: 2000000, confidence: 'medium' }
 ];
 
-function getCompetitorSpends(inventoryId) {
-  const db = getDb();
-  return db.prepare(`
+async function getCompetitorSpends(inventoryId) {
+  const db = await getDb();
+  return await db.prepare(`
     SELECT cs.*, c.name as competitor_name, c.vertical, c.estimated_monthly_adspend,
            i.name as inventory_name, i.category
     FROM competitor_spends cs
@@ -990,12 +990,12 @@ function getCompetitorSpends(inventoryId) {
   `).all(inventoryId);
 }
 
-function getCompetitorProfile(competitorId) {
-  const db = getDb();
-  const competitor = db.prepare('SELECT * FROM competitors WHERE id = ?').get(competitorId);
+async function getCompetitorProfile(competitorId) {
+  const db = await getDb();
+  const competitor = await db.prepare('SELECT * FROM competitors WHERE id = ?').get(competitorId);
   if (!competitor) return null;
 
-  const spends = db.prepare(`
+  const spends = await db.prepare(`
     SELECT cs.*, i.name as inventory_name, i.category, i.platform_parent
     FROM competitor_spends cs
     JOIN inventories i ON cs.inventory_id = i.id
@@ -1018,13 +1018,13 @@ function getCompetitorProfile(competitorId) {
 }
 
 async function refreshCompetitorData() {
-  const db = getDb();
+  const db = await getDb();
   let updates = [];
   let aiModelUsed = 'fallback';
 
   try {
-    const competitorsData = db.prepare('SELECT id, name, vertical FROM competitors').all();
-    const inventories = db.prepare('SELECT id, name, category FROM inventories').all();
+    const competitorsData = await db.prepare('SELECT id, name, vertical FROM competitors').all();
+    const inventories = await db.prepare('SELECT id, name, category FROM inventories').all();
 
     const response = await openai.chat.completions.create({
       model: 'gpt-5.4',
@@ -1064,17 +1064,17 @@ Only include pairs where you have reasonable evidence the competitor is advertis
 
   let insertedCount = 0;
   for (const update of updates) {
-    const competitor = db.prepare('SELECT id FROM competitors WHERE LOWER(name) = LOWER(?)').get(update.competitor);
-    const inventory = db.prepare('SELECT id FROM inventories WHERE LOWER(name) = LOWER(?)').get(update.inventory);
+    const competitor = await db.prepare('SELECT id FROM competitors WHERE LOWER(name) = LOWER(?)').get(update.competitor);
+    const inventory = await db.prepare('SELECT id FROM inventories WHERE LOWER(name) = LOWER(?)').get(update.inventory);
 
     if (!competitor || !inventory) continue;
 
-    db.prepare('DELETE FROM competitor_spends WHERE competitor_id = ? AND inventory_id = ?')
+    await db.prepare('DELETE FROM competitor_spends WHERE competitor_id = ? AND inventory_id = ?')
       .run(competitor.id, inventory.id);
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO competitor_spends (id, competitor_id, inventory_id, estimated_monthly_spend, confidence_level, source, last_updated)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).run(uuidv4(), competitor.id, inventory.id, update.spend, update.confidence, aiModelUsed);
     insertedCount++;
   }
@@ -1082,9 +1082,9 @@ Only include pairs where you have reasonable evidence the competitor is advertis
   return { updated: insertedCount, total: updates.length, ai_model_used: aiModelUsed };
 }
 
-function getWhitespace() {
-  const db = getDb();
-  const whitespace = db.prepare(`
+async function getWhitespace() {
+  const db = await getDb();
+  const whitespace = await db.prepare(`
     SELECT i.* FROM inventories i
     WHERE i.target_audience_fit > 5
       AND i.id NOT IN (SELECT DISTINCT inventory_id FROM competitor_spends)
@@ -1103,12 +1103,12 @@ function getWhitespace() {
   }));
 }
 
-function getAdvantagesDisadvantages(inventoryId) {
-  const db = getDb();
-  const inventory = db.prepare('SELECT * FROM inventories WHERE id = ?').get(inventoryId);
+async function getAdvantagesDisadvantages(inventoryId) {
+  const db = await getDb();
+  const inventory = await db.prepare('SELECT * FROM inventories WHERE id = ?').get(inventoryId);
   if (!inventory) return null;
 
-  const competitorSpendsData = db.prepare(`
+  const competitorSpendsData = await db.prepare(`
     SELECT cs.*, c.name as competitor_name
     FROM competitor_spends cs
     JOIN competitors c ON cs.competitor_id = c.id
@@ -1156,9 +1156,9 @@ function getAdvantagesDisadvantages(inventoryId) {
   };
 }
 
-function getAllCompetitors() {
-  const db = getDb();
-  return db.prepare('SELECT * FROM competitors ORDER BY name').all();
+async function getAllCompetitors() {
+  const db = await getDb();
+  return await db.prepare('SELECT * FROM competitors ORDER BY name').all();
 }
 
 // ==================== DISCOVERY AGENT ====================
@@ -1177,7 +1177,7 @@ const FALLBACK_DISCOVERIES = [
 ];
 
 async function runDiscovery() {
-  const db = getDb();
+  const db = await getDb();
   let discoveries = [];
   let aiModelUsed = 'fallback';
 
@@ -1234,28 +1234,28 @@ Return ONLY the JSON array, no markdown.`
   let updatedCount = 0;
 
   for (const disc of discoveries) {
-    const existing = db.prepare(
+    const existing = await db.prepare(
       `SELECT id, name FROM inventories WHERE LOWER(name) = LOWER(?) OR name LIKE ?`
     ).get(disc.name, `%${disc.name.split(' ')[0]}%${disc.name.split(' ').slice(-1)[0]}%`);
 
     if (existing) {
-      db.prepare(`
+      await db.prepare(`
         UPDATE inventories SET
           min_cpm = COALESCE(?, min_cpm),
           max_cpm = COALESCE(?, max_cpm),
           estimated_monthly_reach = COALESCE(?, estimated_monthly_reach),
-          last_verified_date = datetime('now'),
-          updated_at = datetime('now')
+          last_verified_date = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).run(disc.min_cpm, disc.max_cpm, disc.estimated_monthly_reach, existing.id);
       updatedCount++;
     } else {
       const id = uuidv4();
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO inventories (id, name, category, platform_parent, country, min_cpm, max_cpm,
           pricing_model, estimated_monthly_reach, target_audience_fit, fintech_friendly,
           last_verified_date, source_url, status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, 'IN', ?, ?, ?, ?, ?, ?, datetime('now'), ?, 'new', datetime('now'), datetime('now'))
+        VALUES (?, ?, ?, ?, 'IN', ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, 'new', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       `).run(
         id, disc.name, disc.category, disc.platform_parent,
         disc.min_cpm, disc.max_cpm, disc.pricing_model,
@@ -1268,9 +1268,9 @@ Return ONLY the JSON array, no markdown.`
   }
 
   const logId = uuidv4();
-  db.prepare(`
+  await db.prepare(`
     INSERT INTO discovery_log (id, run_date, inventories_found, new_inventories, updated_inventories, ai_model_used, summary)
-    VALUES (?, datetime('now'), ?, ?, ?, ?, ?)
+    VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?)
   `).run(
     logId,
     discoveries.length,
@@ -1289,37 +1289,37 @@ Return ONLY the JSON array, no markdown.`
   };
 }
 
-function getDiscoveryLog() {
-  const db = getDb();
-  return db.prepare('SELECT * FROM discovery_log ORDER BY run_date DESC').all();
+async function getDiscoveryLog() {
+  const db = await getDb();
+  return await db.prepare('SELECT * FROM discovery_log ORDER BY run_date DESC').all();
 }
 
-function getNewInventories() {
-  const db = getDb();
-  return db.prepare(`
+async function getNewInventories() {
+  const db = await getDb();
+  return await db.prepare(`
     SELECT * FROM inventories
     WHERE status = 'new'
-      AND created_at >= datetime('now', '-7 days')
+      AND created_at >= CURRENT_TIMESTAMP - INTERVAL 7 DAY
     ORDER BY created_at DESC
   `).all();
 }
 
-function autoUpdateStatus() {
-  const db = getDb();
-  const result = db.prepare(`
+async function autoUpdateStatus() {
+  const db = await getDb();
+  const result = await db.prepare(`
     UPDATE inventories
-    SET status = 'active', updated_at = datetime('now')
+    SET status = 'active', updated_at = CURRENT_TIMESTAMP
     WHERE status = 'new'
-      AND created_at < datetime('now', '-7 days')
+      AND created_at < CURRENT_TIMESTAMP - INTERVAL 7 DAY
   `).run();
   return { updated: result.changes };
 }
 
 // ==================== EXISTING INVENTORY AGENT ====================
 
-function getExistingInventories() {
-  const db = getDb();
-  return db.prepare(`
+async function getExistingInventories() {
+  const db = await getDb();
+  return await db.prepare(`
     SELECT ei.*, i.name, i.category, i.platform_parent, i.min_cpm as benchmark_min_cpm,
            i.max_cpm as benchmark_max_cpm, i.pricing_model, i.estimated_monthly_reach
     FROM existing_inventories ei
@@ -1327,9 +1327,9 @@ function getExistingInventories() {
   `).all();
 }
 
-function compareWithBenchmark(inventoryId) {
-  const db = getDb();
-  const existing = db.prepare(`
+async function compareWithBenchmark(inventoryId) {
+  const db = await getDb();
+  const existing = await db.prepare(`
     SELECT ei.*, i.name, i.min_cpm as benchmark_min_cpm, i.max_cpm as benchmark_max_cpm
     FROM existing_inventories ei
     JOIN inventories i ON ei.inventory_id = i.id
@@ -1350,9 +1350,9 @@ function compareWithBenchmark(inventoryId) {
   };
 }
 
-function getAllBenchmarks() {
-  const db = getDb();
-  const existing = db.prepare(`
+async function getAllBenchmarks() {
+  const db = await getDb();
+  const existing = await db.prepare(`
     SELECT ei.*, i.name, i.category, i.min_cpm as benchmark_min_cpm, i.max_cpm as benchmark_max_cpm
     FROM existing_inventories ei
     JOIN inventories i ON ei.inventory_id = i.id
@@ -1484,16 +1484,16 @@ const MOCK_GOOGLE_DISPLAY_ADS = {
   'Paytm Money': [{ format: 'display_banner', platform: 'google_display', creative_url: 'https://paytmmoney.com/ads/display1.jpg', theme_tag: 'App Install', first_shown: '2026-01-10', last_shown: '2026-03-15' }]
 };
 
-function searchAdvertiser(name) {
-  const db = getDb();
-  let record = db.prepare('SELECT * FROM google_advertiser_ids WHERE LOWER(competitor_name) = LOWER(?)').get(name);
+async function searchAdvertiser(name) {
+  const db = await getDb();
+  let record = await db.prepare('SELECT * FROM google_advertiser_ids WHERE LOWER(competitor_name) = LOWER(?)').get(name);
 
   if (!record) {
     const mockId = MOCK_ADVERTISER_IDS[name] || `AR_${name.toUpperCase().replace(/\s+/g, '_')}_${Date.now().toString().slice(-4)}`;
     const id = uuidv4();
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO google_advertiser_ids (id, competitor_name, advertiser_id, verified, last_checked)
-      VALUES (?, ?, ?, 0, datetime('now'))
+      VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP)
     `).run(id, name, mockId);
     record = { id, competitor_name: name, advertiser_id: mockId, verified: 0, last_checked: new Date().toISOString() };
   }
@@ -1502,12 +1502,12 @@ function searchAdvertiser(name) {
 }
 
 async function fetchGoogleAds(competitorName) {
-  const db = getDb();
+  const db = await getDb();
   let ads = [];
 
   try {
     const axios = require('axios');
-    const advertiserId = searchAdvertiser(competitorName).advertiser_id;
+    const advertiserId = (await searchAdvertiser(competitorName)).advertiser_id;
 
     if (process.env.GOOGLE_ADS_TRANSPARENCY_KEY) {
       const response = await axios.get(`https://adstransparency.google.com/anji/advertiser/${advertiserId}/creative`, {
@@ -1541,22 +1541,22 @@ async function fetchGoogleAds(competitorName) {
     }));
   }
 
-  let competitor = db.prepare('SELECT id FROM competitors WHERE LOWER(name) = LOWER(?)').get(competitorName);
+  let competitor = await db.prepare('SELECT id FROM competitors WHERE LOWER(name) = LOWER(?)').get(competitorName);
   if (!competitor) {
     const compId = uuidv4();
-    db.prepare('INSERT INTO competitors (id, name, vertical, created_at) VALUES (?, ?, ?, datetime(\'now\'))').run(compId, competitorName, 'fintech');
+    await db.prepare('INSERT INTO competitors (id, name, vertical, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)').run(compId, competitorName, 'fintech');
     competitor = { id: compId };
   }
 
   for (const ad of ads) {
-    const existing = db.prepare('SELECT id FROM google_ads WHERE google_ad_id = ?').get(ad.google_ad_id);
+    const existing = await db.prepare('SELECT id FROM google_ads WHERE google_ad_id = ?').get(ad.google_ad_id);
     if (existing) {
-      db.prepare('UPDATE google_ads SET last_shown = ?, theme_tag = ? WHERE id = ?')
+      await db.prepare('UPDATE google_ads SET last_shown = ?, theme_tag = ? WHERE id = ?')
         .run(ad.last_shown, ad.theme_tag, existing.id);
     } else {
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO google_ads (id, competitor_id, google_ad_id, format, platform, first_shown, last_shown, creative_url, theme_tag, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `).run(uuidv4(), competitor.id, ad.google_ad_id, ad.format, ad.platform, ad.first_shown, ad.last_shown, ad.creative_url, ad.theme_tag);
     }
   }
@@ -1565,7 +1565,7 @@ async function fetchGoogleAds(competitorName) {
 }
 
 async function fetchCompetitorYouTubeAds(competitorName) {
-  const db = getDb();
+  const db = await getDb();
   let ytAds = [];
 
   try {
@@ -1603,22 +1603,22 @@ async function fetchCompetitorYouTubeAds(competitorName) {
     });
   }
 
-  let competitor = db.prepare('SELECT id FROM competitors WHERE LOWER(name) = LOWER(?)').get(competitorName);
+  let competitor = await db.prepare('SELECT id FROM competitors WHERE LOWER(name) = LOWER(?)').get(competitorName);
   if (!competitor) {
     const compId = uuidv4();
-    db.prepare('INSERT INTO competitors (id, name, vertical, created_at) VALUES (?, ?, ?, datetime(\'now\'))').run(compId, competitorName, 'fintech');
+    await db.prepare('INSERT INTO competitors (id, name, vertical, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)').run(compId, competitorName, 'fintech');
     competitor = { id: compId };
   }
 
   for (const ad of ytAds) {
-    const existing = db.prepare('SELECT id FROM youtube_ads WHERE video_id = ?').get(ad.video_id);
+    const existing = await db.prepare('SELECT id FROM youtube_ads WHERE video_id = ?').get(ad.video_id);
     if (existing) {
-      db.prepare('UPDATE youtube_ads SET view_count = ?, theme_tag = ? WHERE id = ?').run(ad.view_count, ad.theme_tag, existing.id);
+      await db.prepare('UPDATE youtube_ads SET view_count = ?, theme_tag = ? WHERE id = ?').run(ad.view_count, ad.theme_tag, existing.id);
     } else {
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO youtube_ads (id, competitor_id, video_id, title, description, duration_seconds,
           view_count, publish_date, ad_format_guess, theme_tag, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `).run(uuidv4(), competitor.id, ad.video_id, ad.title, ad.description, ad.duration_seconds,
         ad.view_count, ad.publish_date, ad.ad_format_guess, ad.theme_tag);
     }
@@ -1628,7 +1628,7 @@ async function fetchCompetitorYouTubeAds(competitorName) {
 }
 
 async function fetchSearchAds(keyword) {
-  const db = getDb();
+  const db = await getDb();
   let searchResults = [];
 
   try {
@@ -1652,17 +1652,17 @@ async function fetchSearchAds(keyword) {
   }
 
   for (const ad of searchResults) {
-    let competitor = db.prepare('SELECT id FROM competitors WHERE LOWER(name) = LOWER(?)').get(ad.competitor);
+    let competitor = await db.prepare('SELECT id FROM competitors WHERE LOWER(name) = LOWER(?)').get(ad.competitor);
     if (!competitor) {
       const compId = uuidv4();
-      db.prepare('INSERT INTO competitors (id, name, vertical, created_at) VALUES (?, ?, ?, datetime(\'now\'))').run(compId, ad.competitor, 'fintech');
+      await db.prepare('INSERT INTO competitors (id, name, vertical, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)').run(compId, ad.competitor, 'fintech');
       competitor = { id: compId };
     }
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO search_ads (id, competitor_id, keyword, headline1, headline2, headline3,
         description1, description2, display_url, position, captured_date, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `).run(uuidv4(), competitor.id, keyword, ad.headline1, ad.headline2 || '', ad.headline3 || '',
       ad.description1, ad.description2 || '', ad.display_url, ad.position);
   }
@@ -1671,8 +1671,8 @@ async function fetchSearchAds(keyword) {
 }
 
 async function refreshAllGoogleCompetitors() {
-  const db = getDb();
-  const competitorsList = db.prepare('SELECT name FROM competitors').all();
+  const db = await getDb();
+  const competitorsList = await db.prepare('SELECT name FROM competitors').all();
   const results = { google_display: [], youtube: [], search: [] };
 
   for (const comp of competitorsList) {
@@ -1687,10 +1687,10 @@ async function refreshAllGoogleCompetitors() {
   return { competitors_processed: competitorsList.length, keywords_searched: MOCK_SEARCH_KEYWORDS.length, results };
 }
 
-function getKeywordGaps() {
-  const db = getDb();
+async function getKeywordGaps() {
+  const db = await getDb();
 
-  const competitorKeywords = db.prepare(`
+  const competitorKeywords = await db.prepare(`
     SELECT DISTINCT sa.keyword, c.name as competitor_name, sa.position
     FROM search_ads sa
     JOIN competitors c ON sa.competitor_id = c.id
@@ -1797,7 +1797,7 @@ const THEME_KEYWORDS = {
 };
 
 async function fetchMetaAds(competitorName, limit = 10) {
-  const db = getDb();
+  const db = await getDb();
   let ads = [];
 
   try {
@@ -1846,28 +1846,28 @@ async function fetchMetaAds(competitorName, limit = 10) {
     });
   }
 
-  let competitor = db.prepare('SELECT id FROM competitors WHERE LOWER(name) = LOWER(?)').get(competitorName);
+  let competitor = await db.prepare('SELECT id FROM competitors WHERE LOWER(name) = LOWER(?)').get(competitorName);
   if (!competitor) {
     const compId = uuidv4();
-    db.prepare('INSERT INTO competitors (id, name, vertical, created_at) VALUES (?, ?, ?, datetime(\'now\'))').run(compId, competitorName, 'fintech');
+    await db.prepare('INSERT INTO competitors (id, name, vertical, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)').run(compId, competitorName, 'fintech');
     competitor = { id: compId };
   }
 
   for (const ad of ads) {
     if (!ad.theme_tag) ad.theme_tag = await classifyAdTheme(`${ad.headline} ${ad.body}`);
 
-    const existing = db.prepare('SELECT id FROM meta_ads WHERE meta_ad_id = ?').get(ad.meta_ad_id);
+    const existing = await db.prepare('SELECT id FROM meta_ads WHERE meta_ad_id = ?').get(ad.meta_ad_id);
     if (existing) {
-      db.prepare(`
+      await db.prepare(`
         UPDATE meta_ads SET is_active = ?, spend_min = ?, spend_max = ?, run_days = ?,
           end_date = ?, theme_tag = ? WHERE id = ?
       `).run(ad.is_active, ad.spend_min, ad.spend_max, ad.run_days, ad.end_date, ad.theme_tag, existing.id);
     } else {
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO meta_ads (id, competitor_id, meta_ad_id, headline, body, platform_list, media_type,
           spend_min, spend_max, impressions_min, impressions_max, start_date, end_date, is_active,
           run_days, theme_tag, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, ?, datetime('now'))
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `).run(
         uuidv4(), competitor.id, ad.meta_ad_id, ad.headline, ad.body, ad.platform_list,
         ad.media_type, ad.spend_min, ad.spend_max, ad.start_date, ad.end_date,
@@ -1910,9 +1910,9 @@ async function classifyAdTheme(adText) {
   }
 }
 
-function detectLongRunningAds() {
-  const db = getDb();
-  return db.prepare(`
+async function detectLongRunningAds() {
+  const db = await getDb();
+  return await db.prepare(`
     SELECT ma.*, c.name as competitor_name
     FROM meta_ads ma
     JOIN competitors c ON ma.competitor_id = c.id
@@ -1921,9 +1921,9 @@ function detectLongRunningAds() {
   `).all();
 }
 
-function extractSpendSignals() {
-  const db = getDb();
-  const signals = db.prepare(`
+async function extractSpendSignals() {
+  const db = await getDb();
+  const signals = await db.prepare(`
     SELECT c.name as competitor_name,
            COUNT(*) as total_ads,
            SUM(CASE WHEN ma.is_active = 1 THEN 1 ELSE 0 END) as active_ads,
@@ -1946,8 +1946,8 @@ function extractSpendSignals() {
 }
 
 async function refreshAllMetaCompetitors() {
-  const db = getDb();
-  const competitorsList = db.prepare('SELECT name FROM competitors').all();
+  const db = await getDb();
+  const competitorsList = await db.prepare('SELECT name FROM competitors').all();
   const results = [];
 
   for (const comp of competitorsList) {
@@ -1963,9 +1963,9 @@ async function refreshAllMetaCompetitors() {
   return { competitors_processed: results.length, results };
 }
 
-function getAdsByCompetitor(competitorName) {
-  const db = getDb();
-  return db.prepare(`
+async function getAdsByCompetitor(competitorName) {
+  const db = await getDb();
+  return await db.prepare(`
     SELECT ma.*, c.name as competitor_name
     FROM meta_ads ma
     JOIN competitors c ON ma.competitor_id = c.id
@@ -1974,9 +1974,9 @@ function getAdsByCompetitor(competitorName) {
   `).all(competitorName);
 }
 
-function getTrends() {
-  const db = getDb();
-  const themeCounts = db.prepare(`
+async function getTrends() {
+  const db = await getDb();
+  const themeCounts = await db.prepare(`
     SELECT theme_tag, COUNT(*) as count,
            SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_count,
            ROUND(AVG(run_days), 1) as avg_run_days,
@@ -1984,8 +1984,8 @@ function getTrends() {
     FROM meta_ads WHERE theme_tag IS NOT NULL GROUP BY theme_tag ORDER BY count DESC
   `).all();
 
-  const platformCounts = db.prepare('SELECT platform_list, COUNT(*) as count FROM meta_ads GROUP BY platform_list ORDER BY count DESC').all();
-  const mediaTypeCounts = db.prepare('SELECT media_type, COUNT(*) as count, ROUND(AVG(run_days), 1) as avg_run_days FROM meta_ads GROUP BY media_type ORDER BY count DESC').all();
+  const platformCounts = await db.prepare('SELECT platform_list, COUNT(*) as count FROM meta_ads GROUP BY platform_list ORDER BY count DESC').all();
+  const mediaTypeCounts = await db.prepare('SELECT media_type, COUNT(*) as count, ROUND(AVG(run_days), 1) as avg_run_days FROM meta_ads GROUP BY media_type ORDER BY count DESC').all();
 
   return {
     theme_distribution: themeCounts, platform_distribution: platformCounts, media_type_distribution: mediaTypeCounts,
@@ -1995,7 +1995,7 @@ function getTrends() {
   };
 }
 
-function getSpendSignals() { return extractSpendSignals(); }
+async function getSpendSignals() { return await extractSpendSignals(); }
 
 // ==================== ONBOARDING AGENT ====================
 
@@ -2008,16 +2008,16 @@ const FALLBACK_GUIDE_STEPS = [
   { step_number: 6, step_title: 'Launch & Initial Monitoring', step_description: 'Submit ads for review (allow 24-48h for fintech category). Once approved, launch campaign in learning phase. Monitor closely for first 72 hours.', estimated_time: '1-3 days (+ 7 days learning)', contact_name: 'Campaign Manager', contact_email: null, contact_phone: null, contact_url: null, minimum_commitment: null, documents_required: 'Launch checklist, Monitoring dashboard access, Alert configuration' }
 ];
 
-function getOnboardingGuide(inventoryId) {
-  const db = getDb();
-  let steps = db.prepare('SELECT * FROM onboarding_guides WHERE inventory_id = ? ORDER BY step_number ASC').all(inventoryId);
+async function getOnboardingGuide(inventoryId) {
+  const db = await getDb();
+  let steps = await db.prepare('SELECT * FROM onboarding_guides WHERE inventory_id = ? ORDER BY step_number ASC').all(inventoryId);
 
   if (steps.length === 0) {
-    generateGuide(inventoryId);
-    steps = db.prepare('SELECT * FROM onboarding_guides WHERE inventory_id = ? ORDER BY step_number ASC').all(inventoryId);
+    await generateGuide(inventoryId);
+    steps = await db.prepare('SELECT * FROM onboarding_guides WHERE inventory_id = ? ORDER BY step_number ASC').all(inventoryId);
   }
 
-  const inventory = db.prepare('SELECT name, category, platform_parent FROM inventories WHERE id = ?').get(inventoryId);
+  const inventory = await db.prepare('SELECT name, category, platform_parent FROM inventories WHERE id = ?').get(inventoryId);
 
   return {
     inventory_id: inventoryId,
@@ -2031,8 +2031,8 @@ function getOnboardingGuide(inventoryId) {
 }
 
 async function generateGuide(inventoryId) {
-  const db = getDb();
-  const inventory = db.prepare('SELECT * FROM inventories WHERE id = ?').get(inventoryId);
+  const db = await getDb();
+  const inventory = await db.prepare('SELECT * FROM inventories WHERE id = ?').get(inventoryId);
   if (!inventory) throw new Error(`Inventory not found: ${inventoryId}`);
 
   let guideSteps = [];
@@ -2066,11 +2066,11 @@ Return ONLY the JSON array.`
   }
 
   for (const step of guideSteps) {
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO onboarding_guides (id, inventory_id, step_number, step_title, step_description,
         estimated_time, contact_name, contact_email, contact_phone, contact_url,
         minimum_commitment, documents_required, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).run(
       uuidv4(), inventoryId, step.step_number, step.step_title, step.step_description,
       step.estimated_time, step.contact_name || null, step.contact_email || null,
@@ -2083,8 +2083,8 @@ Return ONLY the JSON array.`
 }
 
 async function regenerateGuide(inventoryId) {
-  const db = getDb();
-  db.prepare('DELETE FROM onboarding_guides WHERE inventory_id = ?').run(inventoryId);
+  const db = await getDb();
+  await db.prepare('DELETE FROM onboarding_guides WHERE inventory_id = ?').run(inventoryId);
   return await generateGuide(inventoryId);
 }
 
@@ -2122,20 +2122,20 @@ function computePricingFields(inv) {
   };
 }
 
-function getPricingData(inventoryId) {
-  const db = getDb();
-  const inv = db.prepare('SELECT id, name, category, platform_parent, min_cpm, max_cpm, pricing_model, estimated_monthly_reach, status FROM inventories WHERE id = ?').get(inventoryId);
+async function getPricingData(inventoryId) {
+  const db = await getDb();
+  const inv = await db.prepare('SELECT id, name, category, platform_parent, min_cpm, max_cpm, pricing_model, estimated_monthly_reach, status FROM inventories WHERE id = ?').get(inventoryId);
   if (!inv) return null;
   return computePricingFields(inv);
 }
 
 async function updatePricing() {
-  const db = getDb();
+  const db = await getDb();
   let updates = [];
   let aiModelUsed = 'fallback';
 
   try {
-    const inventories = db.prepare('SELECT id, name, category, min_cpm, max_cpm, pricing_model FROM inventories').all();
+    const inventories = await db.prepare('SELECT id, name, category, min_cpm, max_cpm, pricing_model FROM inventories').all();
     const inventoryNames = inventories.map(i => `${i.name} (current: ₹${i.min_cpm}-₹${i.max_cpm} ${i.pricing_model})`).join('\n');
 
     const response = await openai.chat.completions.create({
@@ -2169,9 +2169,9 @@ Return ONLY the JSON array, no markdown.`
 
   let updatedCount = 0;
   for (const update of updates) {
-    const result = db.prepare(`
+    const result = await db.prepare(`
       UPDATE inventories SET min_cpm = ?, max_cpm = ?, pricing_model = COALESCE(?, pricing_model),
-        last_verified_date = datetime('now'), updated_at = datetime('now')
+        last_verified_date = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
       WHERE LOWER(name) = LOWER(?)
     `).run(update.min_cpm, update.max_cpm, update.pricing_model, update.name);
     if (result.changes > 0) updatedCount++;
@@ -2180,12 +2180,12 @@ Return ONLY the JSON array, no markdown.`
   return { updated: updatedCount, total: updates.length, ai_model_used: aiModelUsed };
 }
 
-function comparePricing(inventoryIds) {
-  const db = getDb();
+async function comparePricing(inventoryIds) {
+  const db = await getDb();
   if (!inventoryIds || inventoryIds.length === 0) return [];
 
   const placeholders = inventoryIds.map(() => '?').join(',');
-  const inventories = db.prepare(`
+  const inventories = await db.prepare(`
     SELECT id, name, category, platform_parent, min_cpm, max_cpm, pricing_model, estimated_monthly_reach
     FROM inventories WHERE id IN (${placeholders})
   `).all(...inventoryIds);
@@ -2193,9 +2193,9 @@ function comparePricing(inventoryIds) {
   return inventories.map(inv => computePricingFields(inv));
 }
 
-function getAllPricing() {
-  const db = getDb();
-  const inventories = db.prepare('SELECT id, name, category, platform_parent, min_cpm, max_cpm, pricing_model, estimated_monthly_reach, status FROM inventories ORDER BY name').all();
+async function getAllPricing() {
+  const db = await getDb();
+  const inventories = await db.prepare('SELECT id, name, category, platform_parent, min_cpm, max_cpm, pricing_model, estimated_monthly_reach, status FROM inventories ORDER BY name').all();
   return inventories.map(inv => computePricingFields(inv));
 }
 
@@ -2206,7 +2206,7 @@ const cron = require('node-cron');
 const jobs = {};
 const lastRuns = {};
 
-function startScheduler() {
+async function startScheduler() {
   jobs.discovery = cron.schedule('0 6 * * *', async () => { lastRuns.discovery = new Date().toISOString(); try { await runDiscovery(); } catch(e) { console.error('Discovery cron error:', e.message); } });
   jobs.pricing = cron.schedule('0 7 * * *', async () => { lastRuns.pricing = new Date().toISOString(); try { await updatePricing(); } catch(e) { console.error('Pricing cron error:', e.message); } });
   jobs.competitor = cron.schedule('0 8 * * *', async () => { lastRuns.competitor = new Date().toISOString(); try { await refreshCompetitorData(); } catch(e) { console.error('Competitor cron error:', e.message); } });
@@ -2214,7 +2214,7 @@ function startScheduler() {
   jobs.newsSweep = cron.schedule('*/30 * * * *', async () => { lastRuns.newsSweep = new Date().toISOString(); try { await newsSweep(); } catch(e) { console.error('News sweep error:', e.message); } });
   jobs.metaRefresh = cron.schedule('0 10 * * *', async () => { lastRuns.metaRefresh = new Date().toISOString(); });
   jobs.googleRefresh = cron.schedule('0 11 * * *', async () => { lastRuns.googleRefresh = new Date().toISOString(); });
-  jobs.statusUpdate = cron.schedule('0 0 * * *', () => { try { autoUpdateStatus(); } catch(e) { console.error('Status update error:', e.message); } });
+  jobs.statusUpdate = cron.schedule('0 0 * * *', async () => { try { await autoUpdateStatus(); } catch(e) { console.error('Status update error:', e.message); } });
   console.log('[Scheduler] All cron jobs started');
 }
 

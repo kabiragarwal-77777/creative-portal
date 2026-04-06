@@ -13,8 +13,8 @@ CREATE TABLE IF NOT EXISTS inventories (
   last_verified_date TEXT,
   source_url TEXT,
   status TEXT DEFAULT 'active',
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
+  updated_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS existing_inventories (
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS existing_inventories (
   current_ctr REAL,
   current_cpa REAL,
   notes TEXT,
-  last_updated TEXT DEFAULT (datetime('now')),
+  last_updated TEXT DEFAULT (CURRENT_TIMESTAMP),
   FOREIGN KEY (inventory_id) REFERENCES inventories(id)
 );
 
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS competitors (
   vertical TEXT,
   estimated_monthly_adspend REAL,
   primary_channels TEXT,
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT (CURRENT_TIMESTAMP)
 );
 
 CREATE TABLE IF NOT EXISTS competitor_spends (
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS competitor_spends (
   estimated_monthly_spend REAL,
   confidence_level TEXT DEFAULT 'medium',
   source TEXT,
-  last_updated TEXT DEFAULT (datetime('now')),
+  last_updated TEXT DEFAULT (CURRENT_TIMESTAMP),
   FOREIGN KEY (competitor_id) REFERENCES competitors(id),
   FOREIGN KEY (inventory_id) REFERENCES inventories(id)
 );
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS onboarding_guides (
   contact_url TEXT,
   minimum_commitment TEXT,
   documents_required TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
+  created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
   FOREIGN KEY (inventory_id) REFERENCES inventories(id)
 );
 
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS budget_recommendations (
   rationale TEXT,
   data_sources TEXT,
   confidence_score REAL,
-  created_at TEXT DEFAULT (datetime('now')),
+  created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
   FOREIGN KEY (inventory_id) REFERENCES inventories(id)
 );
 
@@ -88,13 +88,13 @@ CREATE TABLE IF NOT EXISTS ad_format_scores (
   score INTEGER,
   reason TEXT,
   best_size_spec TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
+  created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
   FOREIGN KEY (inventory_id) REFERENCES inventories(id)
 );
 
 CREATE TABLE IF NOT EXISTS discovery_log (
   id TEXT PRIMARY KEY,
-  run_date TEXT DEFAULT (datetime('now')),
+  run_date TEXT DEFAULT (CURRENT_TIMESTAMP),
   inventories_found INTEGER DEFAULT 0,
   new_inventories INTEGER DEFAULT 0,
   updated_inventories INTEGER DEFAULT 0,
@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS ai_insights (
   body TEXT,
   priority TEXT DEFAULT 'medium',
   is_read INTEGER DEFAULT 0,
-  created_at TEXT DEFAULT (datetime('now')),
+  created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
   FOREIGN KEY (inventory_id) REFERENCES inventories(id)
 );
 
@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS meta_ads (
   is_active INTEGER DEFAULT 1,
   run_days INTEGER,
   theme_tag TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
+  created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
   FOREIGN KEY (competitor_id) REFERENCES competitors(id)
 );
 
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS google_ads (
   last_shown TEXT,
   creative_url TEXT,
   theme_tag TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
+  created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
   FOREIGN KEY (competitor_id) REFERENCES competitors(id)
 );
 
@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS youtube_ads (
   publish_date TEXT,
   ad_format_guess TEXT,
   theme_tag TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
+  created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
   FOREIGN KEY (competitor_id) REFERENCES competitors(id)
 );
 
@@ -185,8 +185,8 @@ CREATE TABLE IF NOT EXISTS search_ads (
   description2 TEXT,
   display_url TEXT,
   position INTEGER,
-  captured_date TEXT DEFAULT (datetime('now')),
-  created_at TEXT DEFAULT (datetime('now')),
+  captured_date TEXT DEFAULT (CURRENT_TIMESTAMP),
+  created_at TEXT DEFAULT (CURRENT_TIMESTAMP),
   FOREIGN KEY (competitor_id) REFERENCES competitors(id)
 );
 

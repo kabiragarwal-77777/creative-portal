@@ -1,6 +1,6 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '..', '.env') });
 const OpenAI = require('openai');
-const { db, getAll, getOne, run, getRowCount } = require('../db');
+const { getIntelDb, getAll, getOne, run, getRowCount } = require('../db');
 
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -13,20 +13,20 @@ const openai = process.env.OPENAI_API_KEY
 async function analyzeCreativePerformance() {
   try {
     // Check cache – return existing insights if generated < 24 hours ago
-    const cached = getOne(
+    const cached = await getOne(
       `SELECT generated_at FROM ai_insights ORDER BY generated_at DESC LIMIT 1`
     );
     if (cached && cached.generated_at) {
       const age = Date.now() - new Date(cached.generated_at + 'Z').getTime();
       if (age < 24 * 60 * 60 * 1000) {
-        const insights = getAll(`SELECT * FROM ai_insights ORDER BY id`);
+        const insights = await getAll(`SELECT * FROM ai_insights ORDER BY id`);
         console.log('[insightAgent] Returning cached insights (age: ' + Math.round(age / 3600000) + 'h)');
         return { cached: true, insights };
       }
     }
 
     // Fetch top 50 creatives by spend
-    const creatives = getAll(
+    const creatives = await getAll(
       `SELECT creative_name, ad_id, spend, cpi, d6_roas, d6_cac, signups, d0_trial, d6,
               live_status, creative_type
        FROM raw_creatives
@@ -111,15 +111,16 @@ Return ONLY valid JSON, no markdown fences.`;
     }
 
     // Clear old insights and insert new ones
-    run(`DELETE FROM ai_insights`);
+    await run(`DELETE FROM ai_insights`);
 
+    const db = await getIntelDb();
     const insertStmt = db.prepare(
       `INSERT INTO ai_insights (insight_type, category, finding, evidence, confidence, action, impact, generated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
     );
 
-    const insertInsight = (type, category, item) => {
-      insertStmt.run(
+    const insertInsight = async (type, category, item) => {
+      await insertStmt.run(
         type,
         category,
         item.finding || item.name || '',
@@ -133,56 +134,56 @@ Return ONLY valid JSON, no markdown fences.`;
     // Top performers
     if (Array.isArray(parsed.top_performers)) {
       for (const item of parsed.top_performers) {
-        insertInsight('top_performer', 'performance', item);
+        await insertInsight('top_performer', 'performance', item);
       }
     }
 
     // Bottom performers
     if (Array.isArray(parsed.bottom_performers)) {
       for (const item of parsed.bottom_performers) {
-        insertInsight('bottom_performer', 'performance', item);
+        await insertInsight('bottom_performer', 'performance', item);
       }
     }
 
     // Patterns
     if (Array.isArray(parsed.patterns)) {
       for (const item of parsed.patterns) {
-        insertInsight('pattern', 'statistical', item);
+        await insertInsight('pattern', 'statistical', item);
       }
     }
 
     // Winning formula
     if (parsed.winning_formula) {
-      insertInsight('winning_formula', 'strategy', parsed.winning_formula);
+      await insertInsight('winning_formula', 'strategy', parsed.winning_formula);
     }
 
     // Budget efficiency
     if (parsed.budget_efficiency) {
-      insertInsight('budget_efficiency', 'budget', parsed.budget_efficiency);
+      await insertInsight('budget_efficiency', 'budget', parsed.budget_efficiency);
     }
 
     // Fatigue signals
     if (Array.isArray(parsed.fatigue_signals)) {
       for (const item of parsed.fatigue_signals) {
-        insertInsight('fatigue_signal', 'health', item);
+        await insertInsight('fatigue_signal', 'health', item);
       }
     }
 
     // Quick wins
     if (Array.isArray(parsed.quick_wins)) {
       for (const item of parsed.quick_wins) {
-        insertInsight('quick_win', 'action', item);
+        await insertInsight('quick_win', 'action', item);
       }
     }
 
     // Anomalies
     if (Array.isArray(parsed.anomalies)) {
       for (const item of parsed.anomalies) {
-        insertInsight('anomaly', 'anomaly', item);
+        await insertInsight('anomaly', 'anomaly', item);
       }
     }
 
-    const insights = getAll(`SELECT * FROM ai_insights ORDER BY id`);
+    const insights = await getAll(`SELECT * FROM ai_insights ORDER BY id`);
     console.log('[insightAgent] Generated ' + insights.length + ' insights');
     return { cached: false, insights };
   } catch (err) {
@@ -202,10 +203,10 @@ function validateROAS(spend, revenue, window) {
   return revenue / spend;
 }
 
-function scoreCreative(creativeData) {
+async function scoreCreative(creativeData) {
   try {
     // Get benchmarks from all creatives — cap max_d6_roas to exclude outliers from matching errors
-    const benchmarks = getOne(
+    const benchmarks = await getOne(
       `SELECT
          MAX(CASE WHEN d6_roas <= 5000 THEN d6_roas END) as max_d6_roas,
          MIN(CASE WHEN cpi > 0 THEN cpi END) as min_cpi,
@@ -256,9 +257,9 @@ function scoreCreative(creativeData) {
     const cpsScore = Math.round((roasComponent + d6Component + signupComponent + cpiComponent) * 100) / 100;
 
     // Store in creative_scores table
-    run(
+    await run(
       `INSERT OR REPLACE INTO creative_scores (creative_name, ad_id, cps_score, roas_component, d6_component, signup_component, cpi_component, calculated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
       [
         creativeData.creative_name || '',
         creativeData.ad_id || '',
@@ -289,9 +290,9 @@ function scoreCreative(creativeData) {
 // 3. scoreAllCreatives
 // ============================================================
 
-function scoreAllCreatives() {
+async function scoreAllCreatives() {
   try {
-    const creatives = getAll(
+    const creatives = await getAll(
       `SELECT creative_name, ad_id, spend, cpi, d6_roas, d6_cac, signups, d0_trial, d6, installs, live_status, creative_type
        FROM raw_creatives
        WHERE spend > 0`
@@ -304,22 +305,23 @@ function scoreAllCreatives() {
 
     // Score each creative
     for (const c of creatives) {
-      scoreCreative(c);
+      await scoreCreative(c);
     }
 
     // Calculate percentile ranks
-    const scored = getAll(
+    const scored = await getAll(
       `SELECT id, ad_id, cps_score FROM creative_scores ORDER BY cps_score ASC`
     );
 
     const total = scored.length;
     if (total > 0) {
+      const db = await getIntelDb();
       const updateStmt = db.prepare(
         `UPDATE creative_scores SET percentile_rank = ? WHERE id = ?`
       );
       for (let i = 0; i < total; i++) {
         const percentile = Math.round(((i + 1) / total) * 100 * 100) / 100;
-        updateStmt.run(percentile, scored[i].id);
+        await updateStmt.run(percentile, scored[i].id);
       }
     }
 
@@ -335,7 +337,7 @@ function scoreAllCreatives() {
 // 4. getInsights
 // ============================================================
 
-function getInsights(filters = {}) {
+async function getInsights(filters = {}) {
   try {
     const { category, impact, limit } = filters;
     let sql = `SELECT * FROM ai_insights WHERE 1=1`;
@@ -357,7 +359,7 @@ function getInsights(filters = {}) {
       params.push(limit);
     }
 
-    return getAll(sql, params);
+    return await getAll(sql, params);
   } catch (err) {
     console.error('[insightAgent] getInsights error:', err.message);
     return [];
@@ -368,14 +370,14 @@ function getInsights(filters = {}) {
 // 5. getScores
 // ============================================================
 
-function getScores(sortBy = 'cps_score', order = 'DESC') {
+async function getScores(sortBy = 'cps_score', order = 'DESC') {
   try {
     // Whitelist sort columns to prevent injection
     const allowedSort = ['cps_score', 'roas_component', 'd6_component', 'signup_component', 'cpi_component', 'percentile_rank', 'calculated_at'];
     const safeSort = allowedSort.includes(sortBy) ? sortBy : 'cps_score';
     const safeOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
-    return getAll(
+    return await getAll(
       `SELECT cs.*, rc.spend, rc.cpi, rc.d6_roas, rc.d6_cac, rc.signups, rc.d0_trial, rc.d6,
               rc.installs, rc.live_status, rc.creative_type, rc.campaign_name, rc.adset_name,
               rc.impressions, rc.clicks, rc.ctr, rc.cpc

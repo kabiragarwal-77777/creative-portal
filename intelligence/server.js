@@ -3,7 +3,7 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
-const { db, getAll, getOne, run, getRowCount } = require('./db');
+const { getIntelDb, getAll, getOne, run, getRowCount } = require('./db');
 
 const dataAgent = require('./agents/dataAgent');
 const insightAgent = require('./agents/insightAgent');
@@ -276,22 +276,33 @@ app.post('/api/intel/scheduler/:job', async (req, res) => {
 
 app.get('/api/intel/health', async (req, res) => {
   try {
+    const [
+      raw_creatives, raw_meta_dump, raw_metabase,
+      creative_scores, creative_signals, ltv_predictions,
+      ltv_cohorts, ai_insights, creative_briefs,
+      revamp_suggestions, scheduler_log
+    ] = await Promise.all([
+      getRowCount('raw_creatives'),
+      getRowCount('raw_meta_dump'),
+      getRowCount('raw_metabase'),
+      getRowCount('creative_scores'),
+      getRowCount('creative_signals'),
+      getRowCount('ltv_predictions'),
+      getRowCount('ltv_cohorts'),
+      getRowCount('ai_insights'),
+      getRowCount('creative_briefs'),
+      getRowCount('revamp_suggestions'),
+      getRowCount('scheduler_log')
+    ]);
     const status = {
       status: 'ok',
       db: {
-        raw_creatives: getRowCount('raw_creatives'),
-        raw_meta_dump: getRowCount('raw_meta_dump'),
-        raw_metabase: getRowCount('raw_metabase'),
-        creative_scores: getRowCount('creative_scores'),
-        creative_signals: getRowCount('creative_signals'),
-        ltv_predictions: getRowCount('ltv_predictions'),
-        ltv_cohorts: getRowCount('ltv_cohorts'),
-        ai_insights: getRowCount('ai_insights'),
-        creative_briefs: getRowCount('creative_briefs'),
-        revamp_suggestions: getRowCount('revamp_suggestions'),
-        scheduler_log: getRowCount('scheduler_log')
+        raw_creatives, raw_meta_dump, raw_metabase,
+        creative_scores, creative_signals, ltv_predictions,
+        ltv_cohorts, ai_insights, creative_briefs,
+        revamp_suggestions, scheduler_log
       },
-      scheduler: schedulerAgent.getStatus(),
+      scheduler: await schedulerAgent.getStatus(),
       openai: !!process.env.OPENAI_API_KEY,
       uptime: process.uptime()
     };

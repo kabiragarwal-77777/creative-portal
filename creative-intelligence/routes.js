@@ -34,7 +34,7 @@ module.exports = function (config) {
 
     // Start campaign sync scheduler (validates Meta ads exist, marks ghosts)
     const { startSyncScheduler, getSyncStatus, validateCampaignSync, ensureGhostColumns } = require('./campaignSync');
-    ensureGhostColumns(); // ensure columns exist before any queries run
+    ensureGhostColumns().catch(err => console.error('[CI] ensureGhostColumns error:', err.message)); // async now
     const syncIntervalHours = parseInt(process.env.CI_SYNC_HOURS || '24');
     startSyncScheduler(config, syncIntervalHours);
 
@@ -45,7 +45,6 @@ module.exports = function (config) {
         try {
             const dateFrom = req.body.dateFrom || new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
             const dateTo = req.body.dateTo || new Date().toISOString().slice(0, 10);
-            // Don't await — run in background
             const runPromise = engine.runFullPipeline({ dateFrom, dateTo, stages: req.body.stages });
             runPromise.catch(err => console.error('[CI Pipeline] Error:', err.message));
             res.json(ok({ status: 'started', dateFrom, dateTo }));
@@ -56,11 +55,11 @@ module.exports = function (config) {
     });
 
     // GET /pipeline/status — Get pipeline status
-    router.get('/pipeline/status', (req, res) => {
+    router.get('/pipeline/status', async (req, res) => {
         try {
-            const db = getCiDb();
+            const db = await getCiDb();
             const schedulerStatus = engine.getSchedulerStatus ? engine.getSchedulerStatus() : { running: false, lastRun: null, nextRun: null };
-            const lastPipeline = db.prepare(`
+            const lastPipeline = await db.prepare(`
                 SELECT run_type, status, started_at, completed_at, details
                 FROM pipeline_runs ORDER BY started_at DESC LIMIT 1
             `).get() || null;
@@ -75,12 +74,12 @@ module.exports = function (config) {
     // ==================== DASHBOARD ====================
 
     // GET /dashboard — Main dashboard data (fast, all from DB)
-    router.get('/dashboard', (req, res) => {
+    router.get('/dashboard', async (req, res) => {
         try {
-            const db = getCiDb();
+            const db = await getCiDb();
 
             // 1. Latest snapshots sorted by spend desc (exclude ghosts)
-            const snapshots = db.prepare(`
+            const snapshots = await db.prepare(`
                 SELECT * FROM snapshots
                 WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM snapshots)
                   AND (is_ghost != 1 OR is_ghost IS NULL)
@@ -88,9 +87,10 @@ module.exports = function (config) {
             `).all();
 
             // 2. Active actions grouped by type (exclude ghosts)
-            const actions = db.prepare(`
+            const actionsRaw = await db.prepare(`
                 SELECT * FROM actions WHERE is_active = 1 AND (is_ghost != 1 OR is_ghost IS NULL) ORDER BY created_at DESC
-            `).all().map(a => ({
+            `).all();
+            const actions = actionsRaw.map(a => ({
                 ...a,
                 reasons: safeJson(a.reasons),
                 metrics_snapshot: safeJson(a.metrics_snapshot)
@@ -102,13 +102,14 @@ module.exports = function (config) {
             }
 
             // 3. Action counts (exclude ghosts)
-            const actionCounts = db.prepare(`
+            const actionCountsRaw = await db.prepare(`
                 SELECT action_type, COUNT(*) as count FROM actions
                 WHERE is_active = 1 AND (is_ghost != 1 OR is_ghost IS NULL) GROUP BY action_type
-            `).all().reduce((acc, r) => { acc[r.action_type] = r.count; return acc; }, {});
+            `).all();
+            const actionCounts = actionCountsRaw.reduce((acc, r) => { acc[r.action_type] = r.count; return acc; }, {});
 
             // 4. Top 10 performers by d6_roas (spend > 500, exclude ghosts)
-            const topPerformers = db.prepare(`
+            const topPerformers = await db.prepare(`
                 SELECT * FROM snapshots
                 WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM snapshots) AND spend > 500
                   AND (is_ghost != 1 OR is_ghost IS NULL)
@@ -116,7 +117,7 @@ module.exports = function (config) {
             `).all();
 
             // 5. Bottom 10 performers by d6_roas (spend > 500, exclude ghosts)
-            const bottomPerformers = db.prepare(`
+            const bottomPerformers = await db.prepare(`
                 SELECT * FROM snapshots
                 WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM snapshots) AND spend > 500
                   AND (is_ghost != 1 OR is_ghost IS NULL)
@@ -124,7 +125,7 @@ module.exports = function (config) {
             `).all();
 
             // 6. Trend alerts: declining d6_roas with pct_change < -15 (exclude ghosts)
-            const trendAlerts = db.prepare(`
+            const trendAlerts = await db.prepare(`
                 SELECT * FROM trends
                 WHERE metric_name = 'd6_roas' AND period = '7d' AND direction = 'declining' AND pct_change < -15
                   AND (is_ghost != 1 OR is_ghost IS NULL)
@@ -132,17 +133,17 @@ module.exports = function (config) {
             `).all();
 
             // 7. Latest analysis summary
-            const latestAnalysis = db.prepare(`
+            const latestAnalysis = await db.prepare(`
                 SELECT * FROM analyses ORDER BY analyzed_at DESC LIMIT 1
             `).get() || null;
             if (latestAnalysis && latestAnalysis.result) latestAnalysis.result = safeJson(latestAnalysis.result);
 
             // 8. Pipeline status
-            const lastCollection = db.prepare(`
+            const lastCollection = await db.prepare(`
                 SELECT started_at FROM pipeline_runs WHERE run_type = 'collect' AND status = 'success'
                 ORDER BY started_at DESC LIMIT 1
             `).get();
-            const lastAnalysisRun = db.prepare(`
+            const lastAnalysisRun = await db.prepare(`
                 SELECT started_at FROM pipeline_runs WHERE run_type = 'analyze' AND status = 'success'
                 ORDER BY started_at DESC LIMIT 1
             `).get();
@@ -158,22 +159,23 @@ module.exports = function (config) {
             let predictions = [];
             let predictionAccuracy = null;
             try {
-                predictions = db.prepare(`
+                const predsRaw = await db.prepare(`
                     SELECT * FROM predictions WHERE is_latest = 1 ORDER BY predicted_at DESC LIMIT 20
-                `).all().map(p => ({ ...p, gpt_qualitative: safeJson(p.gpt_qualitative) }));
+                `).all();
+                predictions = predsRaw.map(p => ({ ...p, gpt_qualitative: safeJson(p.gpt_qualitative) }));
 
                 // 11. Prediction accuracy summary
-                predictionAccuracy = db.prepare(`
+                predictionAccuracy = await db.prepare(`
                     SELECT COUNT(*) as total, COUNT(actual_d6_roas) as verified,
                         CASE WHEN COUNT(actual_d6_roas) > 0 THEN ROUND(AVG(d6_accuracy_pct), 1) ELSE NULL END as avg_error
                     FROM predictions WHERE is_latest = 1
                 `).get();
             } catch (predErr) {
-                // predictions table may not exist yet — that's fine
+                // predictions table may not exist yet
             }
 
             // 12. Portfolio totals (exclude ghosts)
-            const totals = db.prepare(`
+            const totals = await db.prepare(`
                 SELECT
                     SUM(spend) as total_spend,
                     SUM(installs) as total_installs,
@@ -218,9 +220,9 @@ module.exports = function (config) {
     // ==================== ACTIONS ====================
 
     // GET /actions — Active actions with optional filters
-    router.get('/actions', (req, res) => {
+    router.get('/actions', async (req, res) => {
         try {
-            const db = getCiDb();
+            const db = await getCiDb();
             let query = `SELECT * FROM actions WHERE (is_ghost != 1 OR is_ghost IS NULL)`;
             const params = [];
 
@@ -230,7 +232,8 @@ module.exports = function (config) {
 
             query += ` ORDER BY created_at DESC`;
 
-            const actions = db.prepare(query).all(...params).map(a => ({
+            const actionsRaw = await db.prepare(query).all(...params);
+            const actions = actionsRaw.map(a => ({
                 ...a,
                 reasons: safeJson(a.reasons),
                 metrics_snapshot: safeJson(a.metrics_snapshot)
@@ -243,10 +246,10 @@ module.exports = function (config) {
     });
 
     // POST /actions/:id/acknowledge — Mark action as seen
-    router.post('/actions/:id/acknowledge', (req, res) => {
+    router.post('/actions/:id/acknowledge', async (req, res) => {
         try {
-            const db = getCiDb();
-            const result = db.prepare(`UPDATE actions SET acknowledged = 1 WHERE id = ?`).run(req.params.id);
+            const db = await getCiDb();
+            const result = await db.prepare(`UPDATE actions SET acknowledged = 1 WHERE id = ?`).run(req.params.id);
             if (result.changes === 0) return res.status(404).json(fail({ message: 'Action not found' }));
             res.json(ok({ id: parseInt(req.params.id), acknowledged: 1 }));
         } catch (err) {
@@ -258,16 +261,16 @@ module.exports = function (config) {
     // ==================== SNAPSHOTS ====================
 
     // GET /snapshots — List snapshots with filters
-    router.get('/snapshots', (req, res) => {
+    router.get('/snapshots', async (req, res) => {
         try {
-            const db = getCiDb();
+            const db = await getCiDb();
             const limit = parseInt(req.query.limit) || 100;
 
             let snapshots;
             if (req.query.date) {
-                snapshots = db.prepare(`SELECT * FROM snapshots WHERE snapshot_date = ? AND (is_ghost != 1 OR is_ghost IS NULL) ORDER BY spend DESC LIMIT ?`).all(req.query.date, limit);
+                snapshots = await db.prepare(`SELECT * FROM snapshots WHERE snapshot_date = ? AND (is_ghost != 1 OR is_ghost IS NULL) ORDER BY spend DESC LIMIT ?`).all(req.query.date, limit);
             } else {
-                snapshots = db.prepare(`
+                snapshots = await db.prepare(`
                     SELECT * FROM snapshots
                     WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM snapshots)
                       AND (is_ghost != 1 OR is_ghost IS NULL)
@@ -282,14 +285,14 @@ module.exports = function (config) {
     });
 
     // GET /snapshots/:adId/history — Time-series for specific ad
-    router.get('/snapshots/:adId/history', (req, res) => {
+    router.get('/snapshots/:adId/history', async (req, res) => {
         try {
-            const db = getCiDb();
-            const snapshots = db.prepare(`
+            const db = await getCiDb();
+            const snapshots = await db.prepare(`
                 SELECT * FROM snapshots WHERE ad_id = ? ORDER BY snapshot_date ASC
             `).all(req.params.adId);
 
-            const trends = db.prepare(`
+            const trends = await db.prepare(`
                 SELECT * FROM trends WHERE ad_id = ? ORDER BY computed_at DESC
             `).all(req.params.adId);
 
@@ -303,9 +306,9 @@ module.exports = function (config) {
     // ==================== TRENDS ====================
 
     // GET /trends — Current trends (exclude ghosts)
-    router.get('/trends', (req, res) => {
+    router.get('/trends', async (req, res) => {
         try {
-            const db = getCiDb();
+            const db = await getCiDb();
             let query = `SELECT * FROM trends WHERE (is_ghost != 1 OR is_ghost IS NULL)`;
             const params = [];
 
@@ -314,7 +317,7 @@ module.exports = function (config) {
 
             query += ` ORDER BY computed_at DESC`;
 
-            const trends = db.prepare(query).all(...params);
+            const trends = await db.prepare(query).all(...params);
 
             // Group by ad
             const grouped = {};
@@ -333,10 +336,10 @@ module.exports = function (config) {
     // ==================== ANALYSES ====================
 
     // GET /analyses/latest — Most recent stored analysis
-    router.get('/analyses/latest', (req, res) => {
+    router.get('/analyses/latest', async (req, res) => {
         try {
-            const db = getCiDb();
-            const analysis = db.prepare(`SELECT * FROM analyses ORDER BY analyzed_at DESC LIMIT 1`).get() || null;
+            const db = await getCiDb();
+            const analysis = await db.prepare(`SELECT * FROM analyses ORDER BY analyzed_at DESC LIMIT 1`).get() || null;
             if (analysis && analysis.result) analysis.result = safeJson(analysis.result);
             res.json(ok(analysis));
         } catch (err) {
@@ -362,11 +365,10 @@ module.exports = function (config) {
     // ==================== PREDICTIONS ====================
 
     // GET /predictions/accuracy — Accuracy report (must be before :adId)
-    router.get('/predictions/accuracy', (req, res) => {
+    router.get('/predictions/accuracy', async (req, res) => {
         try {
-            const db = getCiDb();
-            // Overall accuracy stats
-            const stats = db.prepare(`
+            const db = await getCiDb();
+            const stats = await db.prepare(`
                 SELECT
                     COUNT(*) as total_predictions,
                     COUNT(actual_d6_roas) as verified_d6,
@@ -376,8 +378,7 @@ module.exports = function (config) {
                 FROM predictions WHERE is_latest = 1
             `).get();
 
-            // Per-cohort accuracy
-            const byCohort = db.prepare(`
+            const byCohort = await db.prepare(`
                 SELECT cohort_key, COUNT(*) as count,
                     AVG(d6_accuracy_pct) as avg_d6_error,
                     AVG(confidence_score) as avg_confidence
@@ -385,8 +386,7 @@ module.exports = function (config) {
                 GROUP BY cohort_key
             `).all();
 
-            // Recent predictions with actuals
-            const recent = db.prepare(`
+            const recent = await db.prepare(`
                 SELECT ad_name, predicted_d6_roas, actual_d6_roas, d6_accuracy_pct,
                        predicted_d30_roas, actual_d30_roas, trajectory, cohort_key
                 FROM predictions WHERE is_latest = 1 AND actual_d6_roas IS NOT NULL
@@ -401,15 +401,16 @@ module.exports = function (config) {
     });
 
     // GET /predictions — List latest predictions
-    router.get('/predictions', (req, res) => {
+    router.get('/predictions', async (req, res) => {
         try {
-            const db = getCiDb();
+            const db = await getCiDb();
             let query = 'SELECT * FROM predictions WHERE is_latest = 1';
             const params = [];
             if (req.query.trajectory) { query += ' AND trajectory = ?'; params.push(req.query.trajectory); }
             if (req.query.cohort) { query += ' AND cohort_key = ?'; params.push(req.query.cohort); }
             query += ' ORDER BY predicted_at DESC';
-            const predictions = db.prepare(query).all(...params).map(p => ({
+            const predictionsRaw = await db.prepare(query).all(...params);
+            const predictions = predictionsRaw.map(p => ({
                 ...p,
                 gpt_qualitative: safeJson(p.gpt_qualitative)
             }));
@@ -421,10 +422,10 @@ module.exports = function (config) {
     });
 
     // GET /predictions/:adId — Get prediction for specific ad
-    router.get('/predictions/:adId', (req, res) => {
+    router.get('/predictions/:adId', async (req, res) => {
         try {
-            const db = getCiDb();
-            const predictions = db.prepare('SELECT * FROM predictions WHERE ad_id = ? ORDER BY predicted_at DESC').all(req.params.adId);
+            const db = await getCiDb();
+            const predictions = await db.prepare('SELECT * FROM predictions WHERE ad_id = ? ORDER BY predicted_at DESC').all(req.params.adId);
             predictions.forEach(p => { p.gpt_qualitative = safeJson(p.gpt_qualitative); });
             const latest = predictions.find(p => p.is_latest === 1) || predictions[0] || null;
             res.json(ok({ latest, history: predictions }));
@@ -437,8 +438,7 @@ module.exports = function (config) {
     // POST /predictions/run — Manually trigger predictions
     router.post('/predictions/run', async (req, res) => {
         try {
-            // First rebuild cohorts, then predict
-            const cohortResult = engine.buildCohortBenchmarks();
+            const cohortResult = await engine.buildCohortBenchmarks();
             const predResult = await engine.detectAndPredictNewAds();
             res.json(ok({ cohorts: cohortResult, predictions: predResult }));
         } catch (err) {
@@ -448,10 +448,10 @@ module.exports = function (config) {
     });
 
     // GET /cohorts — List cohort benchmarks
-    router.get('/cohorts', (req, res) => {
+    router.get('/cohorts', async (req, res) => {
         try {
-            const db = getCiDb();
-            const cohorts = db.prepare('SELECT * FROM cohort_benchmarks ORDER BY sample_size DESC').all();
+            const db = await getCiDb();
+            const cohorts = await db.prepare('SELECT * FROM cohort_benchmarks ORDER BY sample_size DESC').all();
             res.json(ok(cohorts));
         } catch (err) {
             console.error('[CI] cohorts error:', err.message);
@@ -460,9 +460,9 @@ module.exports = function (config) {
     });
 
     // POST /cohorts/rebuild — Rebuild cohort benchmarks
-    router.post('/cohorts/rebuild', (req, res) => {
+    router.post('/cohorts/rebuild', async (req, res) => {
         try {
-            const result = engine.buildCohortBenchmarks();
+            const result = await engine.buildCohortBenchmarks();
             res.json(ok(result));
         } catch (err) {
             console.error('[CI] cohorts/rebuild error:', err.message);
@@ -481,15 +481,14 @@ module.exports = function (config) {
     roasSimulatorV2.startScheduler(roasSimulatorMinutes);
 
     // GET /roas-tracker/dashboard — main data for the frontend
-    router.get('/roas-tracker/dashboard', (req, res) => {
+    router.get('/roas-tracker/dashboard', async (req, res) => {
         try {
-            const db = getCiDb();
             const {
                 getRoasTrackerAds, getRoasTrackerStats,
             } = require('./db');
 
-            const stats = getRoasTrackerStats();
-            const ads = getRoasTrackerAds();
+            const stats = await getRoasTrackerStats();
+            const ads = await getRoasTrackerAds();
 
             // Enrich with live/paused status from ads-status disk cache
             try {
@@ -514,10 +513,10 @@ module.exports = function (config) {
     });
 
     // GET /roas-tracker/trendline/:adId — daily time-series for one ad
-    router.get('/roas-tracker/trendline/:adId', (req, res) => {
+    router.get('/roas-tracker/trendline/:adId', async (req, res) => {
         try {
             const { getRoasTrackerTrendline } = require('./db');
-            const data = getRoasTrackerTrendline(req.params.adId);
+            const data = await getRoasTrackerTrendline(req.params.adId);
             if (!data) return res.status(404).json(fail({ message: 'Ad not found in tracker' }));
             res.json(ok(data));
         } catch (err) {
@@ -529,7 +528,7 @@ module.exports = function (config) {
     // POST /roas-tracker/refresh — manually trigger snapshot + predict
     router.post('/roas-tracker/refresh', async (req, res) => {
         try {
-            const result = await engine.snapshotAndTrackLiveAds(true); // forceRefresh = bypass cache
+            const result = await engine.snapshotAndTrackLiveAds(true);
             res.json(ok(result));
         } catch (err) {
             console.error('[CI] roas-tracker/refresh error:', err.message);
@@ -539,9 +538,9 @@ module.exports = function (config) {
 
     // ==================== ROAS SIMULATOR V2 ====================
 
-    router.get('/roas-simulator/dashboard', (req, res) => {
+    router.get('/roas-simulator/dashboard', async (req, res) => {
         try {
-            const data = roasSimulatorV2.getDashboardData();
+            const data = await roasSimulatorV2.getDashboardData();
 
             try {
                 const fs = require('fs');
@@ -566,9 +565,9 @@ module.exports = function (config) {
         }
     });
 
-    router.get('/roas-simulator/trendline/:adId', (req, res) => {
+    router.get('/roas-simulator/trendline/:adId', async (req, res) => {
         try {
-            const data = roasSimulatorV2.getTrendlineData(req.params.adId);
+            const data = await roasSimulatorV2.getTrendlineData(req.params.adId);
             if (!data) return res.status(404).json(fail({ message: 'Ad not found in simulator' }));
             res.json(ok(data));
         } catch (err) {
@@ -591,9 +590,9 @@ module.exports = function (config) {
     // ==================== SYNC VALIDATOR ====================
 
     // GET /sync/issues — Returns sync status, ghost counts, history
-    router.get('/sync/issues', (req, res) => {
+    router.get('/sync/issues', async (req, res) => {
         try {
-            const status = getSyncStatus();
+            const status = await getSyncStatus();
             res.json(ok(status));
         } catch (err) {
             console.error('[CI] sync/issues error:', err.message);

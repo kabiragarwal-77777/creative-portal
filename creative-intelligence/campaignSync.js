@@ -1,6 +1,6 @@
 // ============================================================
 // CAMPAIGN SYNC VALIDATOR — creative-intelligence/campaignSync.js
-// Validates that ads stored in SQLite still exist in Meta API,
+// Validates that ads stored in DB still exist in Meta API,
 // marks ghost entries, and provides sync status reporting.
 // ============================================================
 
@@ -9,38 +9,42 @@ const { getCiDb } = require('./db');
 // =========================================================================
 // Schema migration: add is_ghost + ghost_reason columns to relevant tables
 // =========================================================================
-function ensureGhostColumns() {
-    const db = getCiDb();
+async function ensureGhostColumns() {
+    const db = await getCiDb();
 
     const tables = ['snapshots', 'roas_tracker', 'actions', 'simulations', 'trends'];
 
     for (const table of tables) {
-        // Check if is_ghost column already exists
-        const columns = db.prepare(`PRAGMA table_info(${table})`).all();
-        const hasGhost = columns.some(c => c.name === 'is_ghost');
-        const hasGhostReason = columns.some(c => c.name === 'ghost_reason');
-        const hasMetaCampaignId = columns.some(c => c.name === 'meta_campaign_id');
+        try {
+            const columns = await db.prepare(
+                `SELECT column_name FROM information_schema.columns WHERE table_name = ?`
+            ).all(table.toLowerCase());
+            const colNames = columns.map(c => c.column_name);
 
-        if (!hasGhost) {
-            db.exec(`ALTER TABLE ${table} ADD COLUMN is_ghost INTEGER DEFAULT 0`);
-            console.log(`[CampaignSync] Added is_ghost column to ${table}`);
-        }
-        if (!hasGhostReason) {
-            db.exec(`ALTER TABLE ${table} ADD COLUMN ghost_reason TEXT`);
-            console.log(`[CampaignSync] Added ghost_reason column to ${table}`);
-        }
-        if (!hasMetaCampaignId && (table === 'snapshots' || table === 'roas_tracker')) {
-            // snapshots and roas_tracker get meta_campaign_id for cross-referencing
-            db.exec(`ALTER TABLE ${table} ADD COLUMN meta_campaign_id TEXT`);
-            console.log(`[CampaignSync] Added meta_campaign_id column to ${table}`);
+            if (!colNames.includes('is_ghost')) {
+                await db.exec(`ALTER TABLE ${table} ADD COLUMN is_ghost INTEGER DEFAULT 0`);
+                console.log(`[CampaignSync] Added is_ghost column to ${table}`);
+            }
+            if (!colNames.includes('ghost_reason')) {
+                await db.exec(`ALTER TABLE ${table} ADD COLUMN ghost_reason TEXT`);
+                console.log(`[CampaignSync] Added ghost_reason column to ${table}`);
+            }
+            if (!colNames.includes('meta_campaign_id') && (table === 'snapshots' || table === 'roas_tracker')) {
+                await db.exec(`ALTER TABLE ${table} ADD COLUMN meta_campaign_id TEXT`);
+                console.log(`[CampaignSync] Added meta_campaign_id column to ${table}`);
+            }
+        } catch (e) {
+            if (!e.message.includes('already exists')) {
+                console.warn(`[CampaignSync] ensureGhostColumns warning for ${table}:`, e.message);
+            }
         }
     }
 
     // Create sync_log table for tracking sync runs
-    db.exec(`
+    await db.exec(`
         CREATE TABLE IF NOT EXISTS sync_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            run_at TEXT DEFAULT (datetime('now')),
+            id INTEGER PRIMARY KEY,
+            run_at TEXT DEFAULT CURRENT_TIMESTAMP,
             total_stored_ads INTEGER DEFAULT 0,
             total_meta_ads INTEGER DEFAULT 0,
             ghosts_found INTEGER DEFAULT 0,
@@ -66,13 +70,12 @@ async function fetchAllMetaAdIds(config) {
 
     if (!META_ACCESS_TOKEN) {
         console.warn('[CampaignSync] No Meta access token configured — skipping API fetch');
-        return null; // null means "could not fetch" (different from empty array)
+        return null;
     }
 
     const allAdIds = new Set();
-    const campaignIdMap = {}; // ad_id -> campaign_id
+    const campaignIdMap = {};
 
-    // Fetch ads with their campaign IDs
     const params = new URLSearchParams({
         access_token: META_ACCESS_TOKEN,
         appsecret_proof: META_APP_SECRET_PROOF,
@@ -83,7 +86,7 @@ async function fetchAllMetaAdIds(config) {
     let nextUrl = `${META_API_BASE}/${META_AD_ACCOUNT_ID}/ads?${params.toString()}`;
     let pages = 0;
 
-    while (nextUrl && pages < 50) { // safety limit
+    while (nextUrl && pages < 50) {
         pages++;
         try {
             const response = await fetch(nextUrl);
@@ -121,16 +124,15 @@ async function fetchAllMetaAdIds(config) {
 // deduplicateGhostCampaigns — Core sync logic
 // =========================================================================
 async function deduplicateGhostCampaigns(config) {
-    const db = getCiDb();
+    const db = await getCiDb();
 
     console.log('[CampaignSync] Starting ghost campaign deduplication...');
 
-    // 1. Pull all ad IDs from Meta API
     const metaResult = await fetchAllMetaAdIds(config);
 
     if (!metaResult) {
         console.warn('[CampaignSync] Could not fetch Meta ad IDs — skipping dedup');
-        db.prepare(`
+        await db.prepare(`
             INSERT INTO sync_log (total_stored_ads, total_meta_ads, ghosts_found, status, error)
             VALUES (0, 0, 0, 'skipped', 'No Meta access token or API error')
         `).run();
@@ -139,25 +141,21 @@ async function deduplicateGhostCampaigns(config) {
 
     const { adIds: metaAdIds, campaignIdMap } = metaResult;
 
-    // 2. Pull all ad_ids stored in snapshots (non-ghost)
-    const storedAds = db.prepare(`
+    const storedAds = await db.prepare(`
         SELECT DISTINCT ad_id FROM snapshots
         WHERE (is_ghost != 1 OR is_ghost IS NULL) AND ad_id IS NOT NULL AND ad_id != ''
     `).all();
 
-    // 3. Pull all ad_ids from roas_tracker (non-ghost)
-    const trackerAds = db.prepare(`
+    const trackerAds = await db.prepare(`
         SELECT DISTINCT ad_id FROM roas_tracker
         WHERE (is_ghost != 1 OR is_ghost IS NULL) AND ad_id IS NOT NULL AND ad_id != ''
     `).all();
 
-    // 4. Combine all unique stored ad IDs
     const allStoredIds = new Set([
         ...storedAds.map(r => r.ad_id),
         ...trackerAds.map(r => r.ad_id),
     ]);
 
-    // 5. Find ghosts — stored but not in Meta API
     const ghostAdIds = [];
     for (const adId of allStoredIds) {
         if (!metaAdIds.has(adId)) {
@@ -165,8 +163,7 @@ async function deduplicateGhostCampaigns(config) {
         }
     }
 
-    // 6. Find resurrected — previously marked ghost but now found in Meta
-    const previousGhosts = db.prepare(`
+    const previousGhosts = await db.prepare(`
         SELECT DISTINCT ad_id FROM snapshots WHERE is_ghost = 1
     `).all();
     const restoredAdIds = [];
@@ -176,82 +173,37 @@ async function deduplicateGhostCampaigns(config) {
         }
     }
 
-    // 7. Mark ghosts (don't delete — soft flag)
+    // Mark ghosts
     let ghostsMarked = 0;
-    if (ghostAdIds.length > 0) {
-        const markGhostSnapshot = db.prepare(
-            'UPDATE snapshots SET is_ghost = 1, ghost_reason = ? WHERE ad_id = ? AND (is_ghost != 1 OR is_ghost IS NULL)'
-        );
-        const markGhostTracker = db.prepare(
-            'UPDATE roas_tracker SET is_ghost = 1, ghost_reason = ? WHERE ad_id = ? AND (is_ghost != 1 OR is_ghost IS NULL)'
-        );
-        const markGhostActions = db.prepare(
-            'UPDATE actions SET is_ghost = 1, ghost_reason = ? WHERE ad_id = ? AND (is_ghost != 1 OR is_ghost IS NULL)'
-        );
-        const markGhostTrends = db.prepare(
-            'UPDATE trends SET is_ghost = 1, ghost_reason = ? WHERE ad_id = ? AND (is_ghost != 1 OR is_ghost IS NULL)'
-        );
-
-        const markTransaction = db.transaction((ids) => {
-            for (const adId of ids) {
-                const reason = 'not_found_in_meta_api';
-                markGhostSnapshot.run(reason, adId);
-                markGhostTracker.run(reason, adId);
-                markGhostActions.run(reason, adId);
-                markGhostTrends.run(reason, adId);
-                ghostsMarked++;
-            }
-        });
-        markTransaction(ghostAdIds);
+    for (const adId of ghostAdIds) {
+        const reason = 'not_found_in_meta_api';
+        await db.prepare('UPDATE snapshots SET is_ghost = 1, ghost_reason = ? WHERE ad_id = ? AND (is_ghost != 1 OR is_ghost IS NULL)').run(reason, adId);
+        await db.prepare('UPDATE roas_tracker SET is_ghost = 1, ghost_reason = ? WHERE ad_id = ? AND (is_ghost != 1 OR is_ghost IS NULL)').run(reason, adId);
+        await db.prepare('UPDATE actions SET is_ghost = 1, ghost_reason = ? WHERE ad_id = ? AND (is_ghost != 1 OR is_ghost IS NULL)').run(reason, adId);
+        await db.prepare('UPDATE trends SET is_ghost = 1, ghost_reason = ? WHERE ad_id = ? AND (is_ghost != 1 OR is_ghost IS NULL)').run(reason, adId);
+        ghostsMarked++;
     }
 
-    // 8. Restore previously ghosted ads that are back in Meta
+    // Restore previously ghosted ads that are back in Meta
     let ghostsRestored = 0;
-    if (restoredAdIds.length > 0) {
-        const restoreSnapshot = db.prepare(
-            'UPDATE snapshots SET is_ghost = 0, ghost_reason = NULL WHERE ad_id = ?'
-        );
-        const restoreTracker = db.prepare(
-            'UPDATE roas_tracker SET is_ghost = 0, ghost_reason = NULL WHERE ad_id = ?'
-        );
-        const restoreActions = db.prepare(
-            'UPDATE actions SET is_ghost = 0, ghost_reason = NULL WHERE ad_id = ?'
-        );
-        const restoreTrends = db.prepare(
-            'UPDATE trends SET is_ghost = 0, ghost_reason = NULL WHERE ad_id = ?'
-        );
-
-        const restoreTransaction = db.transaction((ids) => {
-            for (const adId of ids) {
-                restoreSnapshot.run(adId);
-                restoreTracker.run(adId);
-                restoreActions.run(adId);
-                restoreTrends.run(adId);
-                ghostsRestored++;
-            }
-        });
-        restoreTransaction(restoredAdIds);
+    for (const adId of restoredAdIds) {
+        await db.prepare('UPDATE snapshots SET is_ghost = 0, ghost_reason = NULL WHERE ad_id = ?').run(adId);
+        await db.prepare('UPDATE roas_tracker SET is_ghost = 0, ghost_reason = NULL WHERE ad_id = ?').run(adId);
+        await db.prepare('UPDATE actions SET is_ghost = 0, ghost_reason = NULL WHERE ad_id = ?').run(adId);
+        await db.prepare('UPDATE trends SET is_ghost = 0, ghost_reason = NULL WHERE ad_id = ?').run(adId);
+        ghostsRestored++;
     }
 
-    // 9. Backfill meta_campaign_id where possible
-    const backfillSnapshot = db.prepare(
-        'UPDATE snapshots SET meta_campaign_id = ? WHERE ad_id = ? AND (meta_campaign_id IS NULL OR meta_campaign_id = "")'
-    );
-    const backfillTracker = db.prepare(
-        'UPDATE roas_tracker SET meta_campaign_id = ? WHERE ad_id = ? AND (meta_campaign_id IS NULL OR meta_campaign_id = "")'
-    );
-    const backfillTransaction = db.transaction(() => {
-        for (const [adId, campaignId] of Object.entries(campaignIdMap)) {
-            if (campaignId) {
-                backfillSnapshot.run(campaignId, adId);
-                backfillTracker.run(campaignId, adId);
-            }
+    // Backfill meta_campaign_id where possible
+    for (const [adId, campaignId] of Object.entries(campaignIdMap)) {
+        if (campaignId) {
+            await db.prepare('UPDATE snapshots SET meta_campaign_id = ? WHERE ad_id = ? AND (meta_campaign_id IS NULL OR meta_campaign_id = \'\')').run(campaignId, adId);
+            await db.prepare('UPDATE roas_tracker SET meta_campaign_id = ? WHERE ad_id = ? AND (meta_campaign_id IS NULL OR meta_campaign_id = \'\')').run(campaignId, adId);
         }
-    });
-    backfillTransaction();
+    }
 
-    // 10. Log sync run
-    db.prepare(`
+    // Log sync run
+    await db.prepare(`
         INSERT INTO sync_log (total_stored_ads, total_meta_ads, ghosts_found, ghosts_restored, details, status)
         VALUES (?, ?, ?, ?, ?, 'success')
     `).run(
@@ -260,7 +212,7 @@ async function deduplicateGhostCampaigns(config) {
         ghostsMarked,
         ghostsRestored,
         JSON.stringify({
-            ghostAdIds: ghostAdIds.slice(0, 50), // store first 50 for debugging
+            ghostAdIds: ghostAdIds.slice(0, 50),
             restoredAdIds: restoredAdIds.slice(0, 50),
         })
     );
@@ -280,14 +232,13 @@ async function deduplicateGhostCampaigns(config) {
 // validateCampaignSync — Ongoing validation (lightweight check)
 // =========================================================================
 async function validateCampaignSync(config) {
-    const db = getCiDb();
+    const db = await getCiDb();
 
     try {
         console.log('[CampaignSync] Running scheduled sync validation...');
         const result = await deduplicateGhostCampaigns(config);
 
-        // Additional check: find duplicate ad entries across snapshots
-        const duplicates = db.prepare(`
+        const duplicates = await db.prepare(`
             SELECT ad_id, snapshot_date, COUNT(*) as cnt
             FROM snapshots
             WHERE is_ghost != 1 OR is_ghost IS NULL
@@ -305,7 +256,7 @@ async function validateCampaignSync(config) {
         };
     } catch (err) {
         console.error('[CampaignSync] Validation error:', err.message);
-        db.prepare(`
+        await db.prepare(`
             INSERT INTO sync_log (status, error) VALUES ('error', ?)
         `).run(err.message);
         return { status: 'error', error: err.message };
@@ -315,46 +266,41 @@ async function validateCampaignSync(config) {
 // =========================================================================
 // getSyncStatus — Returns current sync state for API endpoint
 // =========================================================================
-function getSyncStatus() {
-    const db = getCiDb();
+async function getSyncStatus() {
+    const db = await getCiDb();
 
-    // Latest sync run
-    const lastSync = db.prepare(`
+    const lastSync = await db.prepare(`
         SELECT * FROM sync_log ORDER BY run_at DESC LIMIT 1
     `).get() || null;
 
-    // Ghost counts per table
-    const snapshotGhosts = db.prepare(`
+    const snapshotGhosts = (await db.prepare(`
         SELECT COUNT(DISTINCT ad_id) as count FROM snapshots WHERE is_ghost = 1
-    `).get().count;
+    `).get()).count;
 
-    const trackerGhosts = db.prepare(`
+    const trackerGhosts = (await db.prepare(`
         SELECT COUNT(DISTINCT ad_id) as count FROM roas_tracker WHERE is_ghost = 1
-    `).get().count;
+    `).get()).count;
 
-    const actionGhosts = db.prepare(`
+    const actionGhosts = (await db.prepare(`
         SELECT COUNT(*) as count FROM actions WHERE is_ghost = 1
-    `).get().count;
+    `).get()).count;
 
-    // Total active (non-ghost) counts
-    const activeSnapshots = db.prepare(`
+    const activeSnapshots = (await db.prepare(`
         SELECT COUNT(DISTINCT ad_id) as count FROM snapshots
         WHERE is_ghost != 1 OR is_ghost IS NULL
-    `).get().count;
+    `).get()).count;
 
-    const activeTracker = db.prepare(`
+    const activeTracker = (await db.prepare(`
         SELECT COUNT(*) as count FROM roas_tracker
         WHERE is_ghost != 1 OR is_ghost IS NULL
-    `).get().count;
+    `).get()).count;
 
-    // Recent sync history (last 10 runs)
-    const syncHistory = db.prepare(`
+    const syncHistory = await db.prepare(`
         SELECT id, run_at, total_stored_ads, total_meta_ads, ghosts_found, ghosts_restored, status, error
         FROM sync_log ORDER BY run_at DESC LIMIT 10
     `).all();
 
-    // Ghost ad details (latest 20)
-    const ghostDetails = db.prepare(`
+    const ghostDetails = await db.prepare(`
         SELECT DISTINCT s.ad_id, s.ad_name, s.campaign_name, s.ghost_reason,
             MAX(s.snapshot_date) as last_snapshot_date, MAX(s.spend) as max_spend
         FROM snapshots s
@@ -401,16 +347,16 @@ function startSyncScheduler(config, intervalHours = 24) {
     console.log(`[CampaignSync] Scheduler starting (every ${intervalHours}h)`);
 
     // Ensure schema columns exist
-    ensureGhostColumns();
+    ensureGhostColumns().catch(err => console.error('[CampaignSync] ensureGhostColumns error:', err.message));
 
-    // Run initial sync after a short delay (let other startup complete)
+    // Run initial sync after a short delay
     setTimeout(async () => {
         try {
             await validateCampaignSync(config);
         } catch (err) {
             console.error('[CampaignSync] Initial sync error:', err.message);
         }
-    }, 30000); // 30 second delay on startup
+    }, 30000);
 
     // Schedule recurring sync
     syncInterval = setInterval(async () => {

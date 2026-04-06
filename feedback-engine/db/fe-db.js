@@ -1,9 +1,9 @@
 // =============================================================================
-// Feedback Engine — SQLite Database Helper
-// Separate DB file: feedback-engine.db (never touches existing DBs)
+// Feedback Engine — DuckDB Database Helper
+// Separate DB file: feedback-engine.duckdb (never touches existing DBs)
 // =============================================================================
 
-const Database = require('better-sqlite3');
+const { createDb } = require('../../lib/duckdb-adapter');
 const fs = require('fs');
 const path = require('path');
 
@@ -11,47 +11,54 @@ const DB_PATH = path.join(__dirname, '..', 'feedback-engine.db');
 const SCHEMA_PATH = path.join(__dirname, 'fe-schema.sql');
 
 let db = null;
+let initPromise = null;
 
-function getFeDb() {
-    if (!db) {
-        db = new Database(DB_PATH);
-        db.pragma('journal_mode = WAL');
-        db.pragma('foreign_keys = ON');
-        initSchema();
+async function getFeDb() {
+    if (db) return db;
+    if (!initPromise) {
+        initPromise = (async () => {
+            db = await createDb(DB_PATH);
+            await initSchema();
+            return db;
+        })();
     }
-    return db;
+    return initPromise;
 }
 
-function initSchema() {
+async function initSchema() {
     const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
-    db.exec(schema);
+    await db.exec(schema);
     console.log('[FeedbackEngine] Database initialized at', DB_PATH);
 }
 
 // ── Helper: insert row and return lastInsertRowid ──
-function insert(table, data) {
+async function insert(table, data) {
+    const d = await getFeDb();
     const keys = Object.keys(data);
     const placeholders = keys.map(() => '?').join(', ');
-    const stmt = getFeDb().prepare(
+    const result = await d.prepare(
         `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders})`
-    );
-    return stmt.run(...keys.map(k => data[k])).lastInsertRowid;
+    ).run(...keys.map(k => data[k]));
+    return result.lastInsertRowid;
 }
 
 // ── Helper: update row by id ──
-function update(table, id, data) {
+async function update(table, id, data) {
+    const d = await getFeDb();
     const sets = Object.keys(data).map(k => `${k} = ?`).join(', ');
-    const stmt = getFeDb().prepare(`UPDATE ${table} SET ${sets} WHERE id = ?`);
-    return stmt.run(...Object.values(data), id).changes;
+    const result = await d.prepare(`UPDATE ${table} SET ${sets} WHERE id = ?`).run(...Object.values(data), id);
+    return result.changes;
 }
 
 // ── Helper: get single row ──
-function getOne(table, id) {
-    return getFeDb().prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
+async function getOne(table, id) {
+    const d = await getFeDb();
+    return d.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
 }
 
 // ── Helper: get all rows with optional where ──
-function getAll(table, where = {}, orderBy = 'id DESC', limit = 500) {
+async function getAll(table, where = {}, orderBy = 'id DESC', limit = 500) {
+    const d = await getFeDb();
     const keys = Object.keys(where);
     let sql = `SELECT * FROM ${table}`;
     if (keys.length) {
@@ -59,33 +66,37 @@ function getAll(table, where = {}, orderBy = 'id DESC', limit = 500) {
     }
     sql += ` ORDER BY ${orderBy} LIMIT ${limit}`;
     return keys.length
-        ? getFeDb().prepare(sql).all(...keys.map(k => where[k]))
-        : getFeDb().prepare(sql).all();
+        ? d.prepare(sql).all(...keys.map(k => where[k]))
+        : d.prepare(sql).all();
 }
 
 // ── Helper: count rows ──
-function count(table, where = {}) {
+async function count(table, where = {}) {
+    const d = await getFeDb();
     const keys = Object.keys(where);
     let sql = `SELECT COUNT(*) as cnt FROM ${table}`;
     if (keys.length) {
         sql += ' WHERE ' + keys.map(k => `${k} = ?`).join(' AND ');
     }
-    return keys.length
-        ? getFeDb().prepare(sql).get(...keys.map(k => where[k])).cnt
-        : getFeDb().prepare(sql).get().cnt;
+    const row = keys.length
+        ? await d.prepare(sql).get(...keys.map(k => where[k]))
+        : await d.prepare(sql).get();
+    return row ? row.cnt : 0;
 }
 
 // ── Helper: raw query ──
-function query(sql, params = []) {
-    return getFeDb().prepare(sql).all(...params);
+async function query(sql, params = []) {
+    const d = await getFeDb();
+    return d.prepare(sql).all(...params);
 }
 
-function run(sql, params = []) {
-    return getFeDb().prepare(sql).run(...params);
+async function run(sql, params = []) {
+    const d = await getFeDb();
+    return d.prepare(sql).run(...params);
 }
 
 // ── Scheduler log helpers ──
-function logSchedulerStart(jobName) {
+async function logSchedulerStart(jobName) {
     return insert('fe_scheduler_log', {
         job_name: jobName,
         started_at: new Date().toISOString(),
@@ -93,11 +104,11 @@ function logSchedulerStart(jobName) {
     });
 }
 
-function logSchedulerEnd(logId, recordsProcessed, errors = null) {
-    const startRow = getOne('fe_scheduler_log', logId);
+async function logSchedulerEnd(logId, recordsProcessed, errors = null) {
+    const startRow = await getOne('fe_scheduler_log', logId);
     const startTime = startRow ? new Date(startRow.started_at).getTime() : Date.now();
     const duration = Date.now() - startTime;
-    update('fe_scheduler_log', logId, {
+    await update('fe_scheduler_log', logId, {
         completed_at: new Date().toISOString(),
         duration_ms: duration,
         records_processed: recordsProcessed,

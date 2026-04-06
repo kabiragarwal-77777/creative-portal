@@ -219,9 +219,9 @@ module.exports = function(config) {
 
     // --------------- generateSpec ---------------
 
-    function generateSpec(id) {
-        const db = getAtDb();
-        const rec = db.prepare('SELECT * FROM at_recommendations WHERE id = ?').get(id);
+    async function generateSpec(id) {
+        const db = await getAtDb();
+        const rec = await db.prepare('SELECT * FROM at_recommendations WHERE id = ?').get(id);
 
         if (!rec) {
             log(`Recommendation ${id} not found.`);
@@ -262,9 +262,9 @@ module.exports = function(config) {
 
     // --------------- getAllSpecs ---------------
 
-    function getAllSpecs(platform) {
-        const db = getAtDb();
-        const rows = db.prepare(`
+    async function getAllSpecs(platform) {
+        const db = await getAtDb();
+        const rows = await db.prepare(`
             SELECT * FROM at_recommendations
             WHERE rec_type = 'test' AND platform = ? AND status = 'pending'
             ORDER BY

@@ -46,7 +46,7 @@ module.exports = function (config) {
 
     async function enrichMeta() {
         console.log('[AT Metabase Enricher] Starting Meta enrichment...');
-        const db = getAtDb();
+        const db = await getAtDb();
 
         const sql = `
             WITH attributed AS (
@@ -121,7 +121,7 @@ module.exports = function (config) {
         }
 
         // Load all adsets from local DB
-        const adsets = db.prepare('SELECT id, name, total_spend FROM at_meta_adsets').all();
+        const adsets = await db.prepare('SELECT id, name, total_spend FROM at_meta_adsets').all();
         console.log(`[AT Metabase Enricher] Matching against ${adsets.length} local Meta adsets`);
 
         const updateStmt = db.prepare(`
@@ -143,7 +143,7 @@ module.exports = function (config) {
         let matched = 0;
         let skipped = 0;
 
-        const updateAll = db.transaction(() => {
+        const updateAll = db.transaction(async () => {
             for (const adset of adsets) {
                 const key = (adset.name || '').trim().toLowerCase();
                 const mb = mbLookup.get(key);
@@ -183,7 +183,7 @@ module.exports = function (config) {
                     d6CvrPct = Math.round((mb.d6_conversions / mb.total_signups) * 10000) / 100;
                 }
 
-                updateStmt.run(
+                await updateStmt.run(
                     mb.total_signups,
                     mb.d0_conversions,
                     Math.round(mb.d0_revenue * 100) / 100,
@@ -201,7 +201,7 @@ module.exports = function (config) {
             }
         });
 
-        updateAll();
+        await updateAll();
         console.log(`[AT Metabase Enricher] Meta enrichment complete: ${matched} matched, ${skipped} unmatched`);
 
         return { matched, skipped, total: adsets.length, metabaseRows: metabaseRows.length };
@@ -211,7 +211,7 @@ module.exports = function (config) {
 
     async function enrichGoogle() {
         console.log('[AT Metabase Enricher] Starting Google enrichment...');
-        const db = getAtDb();
+        const db = await getAtDb();
 
         const sql = `
             WITH attributed AS (
@@ -282,7 +282,7 @@ module.exports = function (config) {
         }
 
         // Load all adgroups from local DB
-        const adgroups = db.prepare('SELECT id, name, total_spend FROM at_google_adgroups').all();
+        const adgroups = await db.prepare('SELECT id, name, total_spend FROM at_google_adgroups').all();
         console.log(`[AT Metabase Enricher] Matching against ${adgroups.length} local Google ad groups`);
 
         const updateStmt = db.prepare(`
@@ -298,7 +298,7 @@ module.exports = function (config) {
         let matched = 0;
         let skipped = 0;
 
-        const updateAll = db.transaction(() => {
+        const updateAll = db.transaction(async () => {
             for (const ag of adgroups) {
                 const key = (ag.name || '').trim().toLowerCase();
                 const mb = mbLookup.get(key);
@@ -327,7 +327,7 @@ module.exports = function (config) {
                     }
                 }
 
-                updateStmt.run(
+                await updateStmt.run(
                     mb.total_signups,
                     mb.d6_conversions,
                     Math.round(mb.d6_revenue * 100) / 100,
@@ -339,7 +339,7 @@ module.exports = function (config) {
             }
         });
 
-        updateAll();
+        await updateAll();
         console.log(`[AT Metabase Enricher] Google enrichment complete: ${matched} matched, ${skipped} unmatched`);
 
         return { matched, skipped, total: adgroups.length, metabaseRows: metabaseRows.length };
@@ -347,16 +347,16 @@ module.exports = function (config) {
 
     // ── Enrichment status ───────────────────────────────────────────────
 
-    function getEnrichmentStatus() {
-        const db = getAtDb();
+    async function getEnrichmentStatus() {
+        const db = await getAtDb();
 
-        const metaTotal = db.prepare('SELECT COUNT(*) AS cnt FROM at_meta_adsets').get().cnt;
-        const metaEnriched = db.prepare('SELECT COUNT(*) AS cnt FROM at_meta_adsets WHERE metabase_signups > 0').get().cnt;
-        const metaWithCac = db.prepare('SELECT COUNT(*) AS cnt FROM at_meta_adsets WHERE d6_cac IS NOT NULL').get().cnt;
+        const metaTotal = (await db.prepare('SELECT COUNT(*) AS cnt FROM at_meta_adsets').get()).cnt;
+        const metaEnriched = (await db.prepare('SELECT COUNT(*) AS cnt FROM at_meta_adsets WHERE metabase_signups > 0').get()).cnt;
+        const metaWithCac = (await db.prepare('SELECT COUNT(*) AS cnt FROM at_meta_adsets WHERE d6_cac IS NOT NULL').get()).cnt;
 
-        const googleTotal = db.prepare('SELECT COUNT(*) AS cnt FROM at_google_adgroups').get().cnt;
-        const googleEnriched = db.prepare('SELECT COUNT(*) AS cnt FROM at_google_adgroups WHERE metabase_signups > 0').get().cnt;
-        const googleWithCac = db.prepare('SELECT COUNT(*) AS cnt FROM at_google_adgroups WHERE d6_cac IS NOT NULL').get().cnt;
+        const googleTotal = (await db.prepare('SELECT COUNT(*) AS cnt FROM at_google_adgroups').get()).cnt;
+        const googleEnriched = (await db.prepare('SELECT COUNT(*) AS cnt FROM at_google_adgroups WHERE metabase_signups > 0').get()).cnt;
+        const googleWithCac = (await db.prepare('SELECT COUNT(*) AS cnt FROM at_google_adgroups WHERE d6_cac IS NOT NULL').get()).cnt;
 
         return {
             meta: {

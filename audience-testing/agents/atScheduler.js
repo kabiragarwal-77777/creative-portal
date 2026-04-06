@@ -15,14 +15,14 @@ async function runJob(name, fn) {
         return;
     }
     running[name] = true;
-    const runId = logSchedulerRun(name, 'Starting...');
+    const runId = await logSchedulerRun(name, 'Starting...');
     console.log(`[AT Scheduler] Starting ${name}...`);
     try {
         const result = await fn();
-        updateSchedulerRun(runId, 'completed', JSON.stringify(result || {}));
+        await updateSchedulerRun(runId, 'completed', JSON.stringify(result || {}));
         console.log(`[AT Scheduler] ${name} completed`);
     } catch (err) {
-        updateSchedulerRun(runId, 'error', null, err.message);
+        await updateSchedulerRun(runId, 'error', null, err.message);
         console.error(`[AT Scheduler] ${name} error:`, err.message);
     } finally {
         running[name] = false;
@@ -95,9 +95,9 @@ cron.schedule('0 1 * * 0', () => {
 
 setTimeout(async () => {
     try {
-        const db = getAtDb();
-        const metaCount = db.prepare('SELECT COUNT(*) as cnt FROM at_meta_adsets').get();
-        const googleCount = db.prepare('SELECT COUNT(*) as cnt FROM at_google_adgroups').get();
+        const db = await getAtDb();
+        const metaCount = await db.prepare('SELECT COUNT(*) as cnt FROM at_meta_adsets').get();
+        const googleCount = await db.prepare('SELECT COUNT(*) as cnt FROM at_google_adgroups').get();
         console.log(`[AT Scheduler] Bootstrap: ${metaCount?.cnt || 0} meta adsets, ${googleCount?.cnt || 0} google adgroups in DB`);
         if ((metaCount?.cnt || 0) > 0) {
             console.log('[AT Scheduler] Running initial optimizer health check...');
@@ -112,10 +112,10 @@ setTimeout(async () => {
 
 // --------------- Exports ---------------
 
-function getSchedulerStatus() {
-    const db = getAtDb();
+async function getSchedulerStatus() {
+    const db = await getAtDb();
 
-    const recentRuns = db.prepare(`
+    const recentRuns = await db.prepare(`
         SELECT id, job_type, status, started_at, completed_at, details, error
         FROM at_scheduler_log
         ORDER BY id DESC

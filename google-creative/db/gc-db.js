@@ -1,40 +1,36 @@
-let Database;
-try {
-    Database = require('better-sqlite3');
-} catch (e) {
-    Database = require('../../inventory-scanner/node_modules/better-sqlite3');
-}
+const { createDb } = require('../../lib/duckdb-adapter');
 const path = require('path');
 const fs = require('fs');
 
 const DB_PATH = path.join(__dirname, '..', 'google-creative.db');
 let db;
+let initPromise;
 
-function getGcDb() {
-    if (!db) {
-        db = new Database(DB_PATH);
-        db.pragma('journal_mode = WAL');
-        initSchema();
+async function getGcDb() {
+    if (db) return db;
+    if (!initPromise) {
+        initPromise = (async () => {
+            db = await createDb(DB_PATH);
+            const schemaSQL = fs.readFileSync(path.join(__dirname, 'gc-schema.sql'), 'utf8');
+            await db.exec(schemaSQL);
+            return db;
+        })();
     }
-    return db;
+    return initPromise;
 }
 
-function initSchema() {
-    const schemaSQL = fs.readFileSync(path.join(__dirname, 'gc-schema.sql'), 'utf8');
-    db.exec(schemaSQL);
-}
-
-function logPipelineRun(runType, details) {
-    const stmt = getGcDb().prepare(
+async function logPipelineRun(runType, details) {
+    const d = await getGcDb();
+    const result = await d.prepare(
         `INSERT INTO gc_pipeline_runs (run_type, details) VALUES (?, ?)`
-    );
-    const result = stmt.run(runType, typeof details === 'string' ? details : JSON.stringify(details));
+    ).run(runType, typeof details === 'string' ? details : JSON.stringify(details));
     return result.lastInsertRowid;
 }
 
-function updatePipelineRun(id, status, details) {
-    getGcDb().prepare(
-        `UPDATE gc_pipeline_runs SET status = ?, completed_at = datetime('now'), details = ? WHERE id = ?`
+async function updatePipelineRun(id, status, details) {
+    const d = await getGcDb();
+    await d.prepare(
+        `UPDATE gc_pipeline_runs SET status = ?, completed_at = CURRENT_TIMESTAMP, details = ? WHERE id = ?`
     ).run(status, typeof details === 'string' ? details : JSON.stringify(details), id);
 }
 

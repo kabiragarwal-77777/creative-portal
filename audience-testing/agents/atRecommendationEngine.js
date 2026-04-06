@@ -48,11 +48,11 @@ module.exports = function(config) {
 
     async function generateFutureTests(platform, vertical) {
         log(`Generating future test recommendations for ${platform} / ${vertical}...`);
-        const db = getAtDb();
+        const db = await getAtDb();
 
         // Get top patterns for this platform
         const patternTable = platform === 'google' ? 'at_google_patterns' : 'at_meta_patterns';
-        const patterns = db.prepare(`
+        const patterns = await db.prepare(`
             SELECT * FROM ${patternTable}
             WHERE confidence IN ('HIGH', 'MEDIUM')
             ORDER BY avg_d6_cac ASC
@@ -62,7 +62,7 @@ module.exports = function(config) {
         // Get live adsets for context
         let liveAdsets;
         if (platform === 'meta') {
-            liveAdsets = db.prepare(`
+            liveAdsets = await db.prepare(`
                 SELECT a.*, c.vertical FROM at_meta_adsets a
                 LEFT JOIN at_meta_campaigns c ON a.meta_campaign_id = c.meta_campaign_id
                 WHERE a.status IN ('ACTIVE', 'PAUSED') AND (c.vertical = ? OR ? = 'All')
@@ -70,7 +70,7 @@ module.exports = function(config) {
                 LIMIT 50
             `).all(vertical, vertical);
         } else {
-            liveAdsets = db.prepare(`
+            liveAdsets = await db.prepare(`
                 SELECT ag.*, gc.vertical FROM at_google_adgroups ag
                 LEFT JOIN at_google_campaigns gc ON ag.google_campaign_id = gc.google_campaign_id
                 WHERE ag.status IN ('ENABLED', 'PAUSED') AND (gc.vertical = ? OR ? = 'All')
@@ -141,17 +141,17 @@ Return JSON array of tests:
             return 0;
         }
 
-        const insertRec = db.prepare(`
+        const insertRec = await db.prepare(`
             INSERT INTO at_recommendations
                 (platform, rec_type, vertical, title, hypothesis, targeting_spec_json,
                  expected_d6_cac, priority, urgency, status, generated_at)
             VALUES (@platform, 'test', @vertical, @title, @hypothesis, @targeting_spec_json,
-                    @expected_d6_cac, @priority, 'this_week', 'pending', datetime('now'))
+                    @expected_d6_cac, @priority, 'this_week', 'pending', CURRENT_TIMESTAMP)
         `);
 
-        const insertAll = db.transaction((items) => {
+        const insertAll = db.transaction(async (items) => {
             for (const item of items) {
-                insertRec.run(item);
+                await insertRec.run(item);
             }
         });
 
@@ -172,7 +172,7 @@ Return JSON array of tests:
             priority: t.priority || 'medium'
         }));
 
-        insertAll(rows);
+        await insertAll(rows);
         log(`Stored ${rows.length} test recommendations for ${platform}/${vertical}.`);
         return rows.length;
     }
@@ -181,11 +181,11 @@ Return JSON array of tests:
 
     async function generateCurrentOptimizations(platform) {
         log(`Generating optimization recommendations for ${platform}...`);
-        const db = getAtDb();
+        const db = await getAtDb();
 
         // Get patterns
         const patternTable = platform === 'google' ? 'at_google_patterns' : 'at_meta_patterns';
-        const patterns = db.prepare(`
+        const patterns = await db.prepare(`
             SELECT * FROM ${patternTable}
             ORDER BY avg_d6_cac ASC
         `).all();
@@ -193,14 +193,14 @@ Return JSON array of tests:
         // Get live adsets
         let liveAdsets;
         if (platform === 'meta') {
-            liveAdsets = db.prepare(`
+            liveAdsets = await db.prepare(`
                 SELECT a.*, c.vertical, c.name as campaign_name FROM at_meta_adsets a
                 LEFT JOIN at_meta_campaigns c ON a.meta_campaign_id = c.meta_campaign_id
                 WHERE a.status = 'ACTIVE' AND a.total_spend > 0
                 ORDER BY a.total_spend DESC
             `).all();
         } else {
-            liveAdsets = db.prepare(`
+            liveAdsets = await db.prepare(`
                 SELECT ag.*, gc.vertical, gc.name as campaign_name FROM at_google_adgroups ag
                 LEFT JOIN at_google_campaigns gc ON ag.google_campaign_id = gc.google_campaign_id
                 WHERE ag.status = 'ENABLED' AND ag.total_spend > 0
@@ -285,14 +285,14 @@ Return JSON array:
             return 0;
         }
 
-        const insertRec = db.prepare(`
+        const insertRec = await db.prepare(`
             INSERT INTO at_recommendations
                 (platform, rec_type, vertical, title, action_type, rationale, specific_change,
                  expected_impact, priority, urgency, status, adset_id, adset_name,
                  current_d6_cac, current_d6_roas, generated_at)
             VALUES (@platform, 'optimization', @vertical, @title, @action_type, @rationale,
                     @specific_change, @expected_impact, @priority, @urgency, 'pending',
-                    @adset_id, @adset_name, @current_d6_cac, @current_d6_roas, datetime('now'))
+                    @adset_id, @adset_name, @current_d6_cac, @current_d6_roas, CURRENT_TIMESTAMP)
         `);
 
         // Build a vertical lookup from live adsets
@@ -302,9 +302,9 @@ Return JSON array:
             verticalLookup[id] = a.vertical || 'Unknown';
         }
 
-        const insertAll = db.transaction((items) => {
+        const insertAll = db.transaction(async (items) => {
             for (const item of items) {
-                insertRec.run(item);
+                await insertRec.run(item);
             }
         });
 
@@ -324,7 +324,7 @@ Return JSON array:
             current_d6_roas: o.current_d6_roas || null
         }));
 
-        insertAll(rows);
+        await insertAll(rows);
         log(`Stored ${rows.length} optimization recommendations for ${platform}.`);
         return rows.length;
     }
@@ -333,11 +333,11 @@ Return JSON array:
 
     async function generateAll() {
         log('=== Generating all recommendations ===');
-        const db = getAtDb();
+        const db = await getAtDb();
         const startTime = Date.now();
 
         // Clear old pending recommendations
-        const deleted = db.prepare("DELETE FROM at_recommendations WHERE status = 'pending'").run();
+        const deleted = await db.prepare("DELETE FROM at_recommendations WHERE status = 'pending'").run();
         log(`Cleared ${deleted.changes} old pending recommendations.`);
 
         let totalTests = 0;
@@ -373,8 +373,8 @@ Return JSON array:
 
     // --------------- getRecommendations ---------------
 
-    function getRecommendations(filters) {
-        const db = getAtDb();
+    async function getRecommendations(filters) {
+        const db = await getAtDb();
         const conditions = [];
         const params = {};
 
@@ -409,7 +409,7 @@ Return JSON array:
             CASE urgency WHEN 'immediate' THEN 1 WHEN 'this_week' THEN 2 WHEN 'next_week' THEN 3 ELSE 4 END,
             generated_at DESC`;
 
-        const rows = db.prepare(sql).all(params);
+        const rows = await db.prepare(sql).all(params);
         log(`Retrieved ${rows.length} recommendations with filters: ${JSON.stringify(filters || {})}`);
 
         return rows.map(r => ({
@@ -420,11 +420,11 @@ Return JSON array:
 
     // --------------- markImplemented ---------------
 
-    function markImplemented(id) {
-        const db = getAtDb();
-        const result = db.prepare(`
+    async function markImplemented(id) {
+        const db = await getAtDb();
+        const result = await db.prepare(`
             UPDATE at_recommendations
-            SET status = 'implemented', implemented_at = datetime('now')
+            SET status = 'implemented', implemented_at = CURRENT_TIMESTAMP
             WHERE id = ?
         `).run(id);
         log(`Marked recommendation ${id} as implemented. Changes: ${result.changes}`);
@@ -433,9 +433,9 @@ Return JSON array:
 
     // --------------- dismiss ---------------
 
-    function dismiss(id, reason) {
-        const db = getAtDb();
-        const result = db.prepare(`
+    async function dismiss(id, reason) {
+        const db = await getAtDb();
+        const result = await db.prepare(`
             UPDATE at_recommendations
             SET status = 'dismissed', dismissed_reason = ?
             WHERE id = ?

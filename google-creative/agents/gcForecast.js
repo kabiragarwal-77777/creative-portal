@@ -10,11 +10,11 @@ const { getGcDb } = require('../db/gc-db');
 // Helpers
 // ---------------------------------------------------------------------------
 
-function pullActuals(simulation) {
-    const db = getGcDb();
+async function pullActuals(simulation) {
+    const db = await getGcDb();
     const startDate = (simulation.simulated_at || simulation.created_at || '').slice(0, 10);
     if (!startDate) return [];
-    const rows = db.prepare(`
+    const rows = await db.prepare(`
         SELECT date, SUM(spend) as spend, SUM(conversions) as conversions,
                SUM(conversion_value) as conversion_value
         FROM gc_adset_performance
@@ -116,10 +116,10 @@ module.exports = function (config) {
      * persist to gc_forecast_timeseries, and fire divergence alerts.
      */
     async function updateForecasts() {
-        const db = getGcDb();
+        const db = await getGcDb();
 
         // 1. Get all active simulations
-        const simulations = db.prepare(
+        const simulations = await db.prepare(
             `SELECT * FROM gc_simulations WHERE status = 'active'`
         ).all() || [];
 
@@ -143,7 +143,7 @@ module.exports = function (config) {
         const insertAlert = db.prepare(`
             INSERT INTO gc_forecast_alerts
                 (simulation_id, alert_type, message, severity, is_read, triggered_at)
-            VALUES (?, ?, ?, ?, 0, datetime('now'))
+            VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
         `);
 
         // Avoid duplicate alerts: check if same alert_type already exists unread
@@ -156,10 +156,10 @@ module.exports = function (config) {
         let totalUpdated = 0;
         let totalAlerts = 0;
 
-        const runAll = db.transaction(() => {
+        const runAll = db.transaction(async () => {
             for (const sim of simulations) {
                 // 2. Pull actuals
-                const rawRows = pullActuals(sim);
+                const rawRows = await pullActuals(sim);
                 if (rawRows.length === 0) continue;
 
                 // 3. Compute rolling ROAS
@@ -172,7 +172,7 @@ module.exports = function (config) {
                 });
 
                 for (const row of enriched) {
-                    upsertTs.run(
+                    await upsertTs.run(
                         sim.id,
                         row.date,
                         row.spend,
@@ -189,16 +189,16 @@ module.exports = function (config) {
                 // 5. Check divergence
                 const alert = checkDivergence(enriched, sim);
                 if (alert) {
-                    const dup = existingAlert.get(sim.id, alert.alert_type);
+                    const dup = await existingAlert.get(sim.id, alert.alert_type);
                     if (!dup) {
-                        insertAlert.run(sim.id, alert.alert_type, alert.message, alert.severity);
+                        await insertAlert.run(sim.id, alert.alert_type, alert.message, alert.severity);
                         totalAlerts++;
                     }
                 }
             }
         });
 
-        runAll();
+        await runAll();
 
         return { updated: totalUpdated, alerts: totalAlerts, simulations: simulations.length };
     }
@@ -207,19 +207,19 @@ module.exports = function (config) {
      * Retrieve forecast alerts, optionally only unread ones.
      */
     async function getAlerts(unreadOnly = false) {
-        const db = getGcDb();
+        const db = await getGcDb();
         const sql = unreadOnly
             ? `SELECT * FROM gc_forecast_alerts WHERE is_read = 0 ORDER BY triggered_at DESC`
             : `SELECT * FROM gc_forecast_alerts ORDER BY triggered_at DESC`;
-        return db.prepare(sql).all() || [];
+        return await db.prepare(sql).all() || [];
     }
 
     /**
      * Mark a single alert as read.
      */
     async function markAlertRead(alertId) {
-        const db = getGcDb();
-        const result = db.prepare(
+        const db = await getGcDb();
+        const result = await db.prepare(
             `UPDATE gc_forecast_alerts SET is_read = 1 WHERE id = ?`
         ).run(alertId);
         return { changed: result.changes };
@@ -230,18 +230,18 @@ module.exports = function (config) {
      * underperforming, or overperforming.
      */
     async function getForecastSummary() {
-        const db = getGcDb();
+        const db = await getGcDb();
 
-        const active = db.prepare(
+        const active = await db.prepare(
             `SELECT COUNT(*) as cnt FROM gc_simulations WHERE status = 'active'`
         ).get();
 
-        const underperforming = db.prepare(`
+        const underperforming = await db.prepare(`
             SELECT COUNT(DISTINCT simulation_id) as cnt FROM gc_forecast_alerts
             WHERE alert_type = 'underperforming' AND is_read = 0
         `).get();
 
-        const overperforming = db.prepare(`
+        const overperforming = await db.prepare(`
             SELECT COUNT(DISTINCT simulation_id) as cnt FROM gc_forecast_alerts
             WHERE alert_type = 'overperforming' AND is_read = 0
         `).get();

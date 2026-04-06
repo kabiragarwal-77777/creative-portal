@@ -359,7 +359,7 @@ module.exports = function(config) {
     try {
       const limit = Math.max(1, Math.min(50, Number(req.query.limit) || 10));
       const { query } = require('./db/fe-db');
-      const rows = query(
+      const rows = await query(
         `SELECT started_at, completed_at, duration_ms, records_processed, errors, status
          FROM fe_scheduler_log
          WHERE job_name = ?

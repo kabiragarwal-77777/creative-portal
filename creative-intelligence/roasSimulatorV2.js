@@ -92,9 +92,9 @@ module.exports = function(config) {
         };
     }
 
-    function getLatestSnapshots() {
-        const d = getCiDb();
-        return d.prepare(`
+    async function getLatestSnapshots() {
+        const d = await getCiDb();
+        return await d.prepare(`
             SELECT s.*
             FROM snapshots s
             INNER JOIN (
@@ -110,9 +110,9 @@ module.exports = function(config) {
         `).all(SIMULATOR_START_DATE, IMMATURE_MAX_DAYS);
     }
 
-    function getSnapshotHistory(adId) {
-        const d = getCiDb();
-        return d.prepare(`
+    async function getSnapshotHistory(adId) {
+        const d = await getCiDb();
+        return await d.prepare(`
             SELECT *
             FROM snapshots
             WHERE ad_id = ?
@@ -120,17 +120,17 @@ module.exports = function(config) {
         `).all(adId);
     }
 
-    function getCheckpointRuns(adId) {
-        const d = getCiDb();
+    async function getCheckpointRuns(adId) {
+        const d = await getCiDb();
         if (adId) {
-            return d.prepare(`
+            return await d.prepare(`
                 SELECT *
                 FROM simulator_checkpoint_runs
                 WHERE ad_id = ?
                 ORDER BY checkpoint_day ASC
             `).all(adId);
         }
-        return d.prepare(`
+        return await d.prepare(`
             SELECT *
             FROM simulator_checkpoint_runs
             ORDER BY checkpoint_day ASC, created_at ASC
@@ -194,10 +194,10 @@ module.exports = function(config) {
     }
 
     async function ensureCheckpointRuns() {
-        predictor.buildCohortBenchmarks();
+        await predictor.buildCohortBenchmarks();
 
-        const d = getCiDb();
-        const latestSnapshots = getLatestSnapshots();
+        const d = await getCiDb();
+        const latestSnapshots = await getLatestSnapshots();
         const insertRun = d.prepare(`
             INSERT OR IGNORE INTO simulator_checkpoint_runs (
                 ad_id, ad_name, campaign_name, adset_name, creative_type, go_live_date,
@@ -231,13 +231,13 @@ module.exports = function(config) {
         let skipped = 0;
 
         for (const latest of latestSnapshots) {
-            const history = getSnapshotHistory(latest.ad_id);
+            const history = await getSnapshotHistory(latest.ad_id);
             if (!history.length) {
                 skipped++;
                 continue;
             }
 
-            const existingSet = new Set(getCheckpointRuns(latest.ad_id).map(row => row.checkpoint_code));
+            const existingSet = new Set((await getCheckpointRuns(latest.ad_id)).map(row => row.checkpoint_code));
 
             for (const checkpoint of CHECKPOINTS) {
                 if (existingSet.has(checkpoint.code)) {
@@ -262,7 +262,7 @@ module.exports = function(config) {
                     continue;
                 }
 
-                var insertResult = insertRun.run({
+                var insertResult = await insertRun.run({
                     ad_id: checkpointSnapshot.ad_id,
                     ad_name: checkpointSnapshot.ad_name,
                     campaign_name: checkpointSnapshot.campaign_name || null,
@@ -318,9 +318,9 @@ module.exports = function(config) {
         return { adsEvaluated: latestSnapshots.length, created, existing, skipped };
     }
 
-    function getDashboardData() {
-        const latestSnapshots = getLatestSnapshots();
-        const checkpointRows = getCheckpointRuns();
+    async function getDashboardData() {
+        const latestSnapshots = await getLatestSnapshots();
+        const checkpointRows = await getCheckpointRuns();
         const checkpointMap = {};
         const accuracySummary = {};
 
@@ -404,12 +404,12 @@ module.exports = function(config) {
         };
     }
 
-    function getTrendlineData(adId) {
-        const latest = getLatestSnapshots().find(row => row.ad_id === adId);
+    async function getTrendlineData(adId) {
+        const latest = (await getLatestSnapshots()).find(row => row.ad_id === adId);
         if (!latest) return null;
 
-        const history = getSnapshotHistory(adId);
-        const checkpointRuns = getCheckpointRuns(adId);
+        const history = await getSnapshotHistory(adId);
+        const checkpointRuns = await getCheckpointRuns(adId);
         const horizons = HORIZONS.map(horizon => ({
             label: horizon.label,
             day: horizon.day,

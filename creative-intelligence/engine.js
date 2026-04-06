@@ -41,7 +41,7 @@ module.exports = function (config) {
     // collectSnapshots
     // =========================================================================
     async function collectSnapshots(dateFrom, dateTo) {
-        const runId = logPipelineRun('collect', JSON.stringify({ dateFrom, dateTo }));
+        const runId = await logPipelineRun('collect', JSON.stringify({ dateFrom, dateTo }));
         const batchId = `batch_${Date.now()}`;
 
         try {
@@ -445,15 +445,15 @@ ORDER BY SUM(sm.total_signup) DESC`;
             console.log(`[ci/engine] ${combinedCreatives.length} combined creatives built.`);
 
             // ----- 6. Store as snapshots -----
-            saveSnapshots(combinedCreatives, batchId);
+            await saveSnapshots(combinedCreatives, batchId);
             console.log(`[ci/engine] Saved ${combinedCreatives.length} snapshots with batch ${batchId}.`);
 
-            updatePipelineRun(runId, 'completed', JSON.stringify({ snapshotCount: combinedCreatives.length, batchId }));
+            await updatePipelineRun(runId, 'completed', JSON.stringify({ snapshotCount: combinedCreatives.length, batchId }));
             return { snapshotCount: combinedCreatives.length, batchId };
 
         } catch (err) {
             console.error('[ci/engine] collectSnapshots error:', err);
-            updatePipelineRun(runId, 'failed', null, err.message);
+            await updatePipelineRun(runId, 'failed', null, err.message);
             throw err;
         }
     }
@@ -461,12 +461,12 @@ ORDER BY SUM(sm.total_signup) DESC`;
     // =========================================================================
     // computeTrends
     // =========================================================================
-    function computeTrends() {
-        const latestSnapshots = getLatestSnapshots();
+    async function computeTrends() {
+        const latestSnapshots = await getLatestSnapshots();
         if (latestSnapshots.length === 0) return { trendsComputed: 0 };
 
         const latestDate = latestSnapshots[0].snapshot_date;
-        const d = getCiDb();
+        const d = await getCiDb();
 
         // Metrics where LOWER is better (reverse direction logic)
         const lowerIsBetter = new Set(['cpi', 'signup_cost', 'd6_cac']);
@@ -486,7 +486,7 @@ ORDER BY SUM(sm.total_signup) DESC`;
 
                 for (const period of periods) {
                     const prevDateStr = new Date(new Date(latestDate).getTime() - period.days * 86400000).toISOString().slice(0, 10);
-                    const prevSnap = d.prepare(`
+                    const prevSnap = await d.prepare(`
                         SELECT ${metric} FROM snapshots
                         WHERE ad_id = ? AND snapshot_date = ?
                     `).get(snap.ad_id, prevDateStr);
@@ -526,7 +526,7 @@ ORDER BY SUM(sm.total_signup) DESC`;
             }
         }
 
-        saveTrends(trendRows);
+        await saveTrends(trendRows);
         console.log(`[ci/engine] Computed ${trendRows.length} trend rows for ${latestSnapshots.length} ads.`);
         return { trendsComputed: trendRows.length };
     }
@@ -534,11 +534,11 @@ ORDER BY SUM(sm.total_signup) DESC`;
     // =========================================================================
     // generateActions
     // =========================================================================
-    function generateActions() {
-        const latestSnapshots = getLatestSnapshots();
+    async function generateActions() {
+        const latestSnapshots = await getLatestSnapshots();
         if (latestSnapshots.length === 0) return { actionsGenerated: 0, actions: [] };
 
-        const allTrends = getTrends();
+        const allTrends = await getTrends();
         // Build trend lookup: { ad_id: { metric_period: trendRow } }
         const trendLookup = {};
         for (const t of allTrends) {
@@ -669,7 +669,7 @@ ORDER BY SUM(sm.total_signup) DESC`;
             }
         }
 
-        saveActions(actionRows);
+        await saveActions(actionRows);
         console.log(`[ci/engine] Generated ${actionRows.length} actions.`);
         return { actionsGenerated: actionRows.length, actions: actionRows };
     }
@@ -678,15 +678,15 @@ ORDER BY SUM(sm.total_signup) DESC`;
     // runGptAnalysis
     // =========================================================================
     async function runGptAnalysis(dateFrom, dateTo) {
-        const runId = logPipelineRun('gpt_analysis', JSON.stringify({ dateFrom, dateTo }));
+        const runId = await logPipelineRun('gpt_analysis', JSON.stringify({ dateFrom, dateTo }));
 
         try {
-            const snapshots = getLatestSnapshots();
-            const allTrends = getTrends();
-            const actions = getActiveActions();
+            const snapshots = await getLatestSnapshots();
+            const allTrends = await getTrends();
+            const actions = await getActiveActions();
 
             if (snapshots.length === 0) {
-                updatePipelineRun(runId, 'completed', 'No snapshots to analyze');
+                await updatePipelineRun(runId, 'completed', 'No snapshots to analyze');
                 return { analysis: null, message: 'No snapshots available' };
             }
 
@@ -768,15 +768,15 @@ Provide a comprehensive analysis in JSON format:
             let parsed;
             try { parsed = JSON.parse(analysisText); } catch { parsed = { raw: analysisText }; }
 
-            saveAnalysis('full_pipeline', dateFrom, dateTo, snapshots.length, analysisText, 'gpt-5.4');
-            updatePipelineRun(runId, 'completed', JSON.stringify({ creativesAnalyzed: snapshots.length }));
+            await saveAnalysis('full_pipeline', dateFrom, dateTo, snapshots.length, analysisText, 'gpt-5.4');
+            await updatePipelineRun(runId, 'completed', JSON.stringify({ creativesAnalyzed: snapshots.length }));
 
             console.log(`[ci/engine] GPT analysis complete for ${snapshots.length} creatives.`);
             return { analysis: parsed };
 
         } catch (err) {
             console.error('[ci/engine] runGptAnalysis error:', err);
-            updatePipelineRun(runId, 'failed', null, err.message);
+            await updatePipelineRun(runId, 'failed', null, err.message);
             throw err;
         }
     }
@@ -790,17 +790,17 @@ Provide a comprehensive analysis in JSON format:
         const skipGpt = options.skipGpt || false;
 
         console.log(`[ci/engine] Running full pipeline: ${dateFrom} to ${dateTo}`);
-        const runId = logPipelineRun('full_pipeline', JSON.stringify({ dateFrom, dateTo, skipGpt }));
+        const runId = await logPipelineRun('full_pipeline', JSON.stringify({ dateFrom, dateTo, skipGpt }));
 
         try {
             // Step 1: Collect snapshots
             const collectResult = await collectSnapshots(dateFrom, dateTo);
 
             // Step 2: Compute trends
-            const trendResult = computeTrends();
+            const trendResult = await computeTrends();
 
             // Step 3: Generate actions
-            const actionResult = generateActions();
+            const actionResult = await generateActions();
 
             // Step 4: GPT analysis (optional)
             let analysisResult = null;
@@ -810,7 +810,7 @@ Provide a comprehensive analysis in JSON format:
 
             // Stage 5: Build/update cohort benchmarks
             console.log('[ci/engine] Building cohort benchmarks...');
-            const cohortResult = predictor.buildCohortBenchmarks();
+            const cohortResult = await predictor.buildCohortBenchmarks();
             console.log(`[ci/engine] Built ${cohortResult.cohortsBuilt} cohort benchmarks.`);
 
             // Stage 6: Detect new ads and generate predictions
@@ -820,7 +820,7 @@ Provide a comprehensive analysis in JSON format:
 
             // Stage 7: Track prediction accuracy for past predictions
             console.log('[ci/engine] Tracking prediction accuracy...');
-            const accuracyResult = predictor.trackPredictionAccuracy();
+            const accuracyResult = await predictor.trackPredictionAccuracy();
             console.log(`[ci/engine] Updated accuracy for ${accuracyResult.tracked} predictions.`);
 
             const result = {
@@ -833,14 +833,14 @@ Provide a comprehensive analysis in JSON format:
                 accuracy: accuracyResult,
             };
 
-            updatePipelineRun(runId, 'completed', JSON.stringify(result));
+            await updatePipelineRun(runId, 'completed', JSON.stringify(result));
             lastRunTime = new Date();
             console.log(`[ci/engine] Full pipeline complete.`);
             return result;
 
         } catch (err) {
             console.error('[ci/engine] Full pipeline error:', err);
-            updatePipelineRun(runId, 'failed', null, err.message);
+            await updatePipelineRun(runId, 'failed', null, err.message);
             throw err;
         }
     }
@@ -892,8 +892,8 @@ Provide a comprehensive analysis in JSON format:
     // =========================================================================
     // Pattern Detection
     // =========================================================================
-    function getWinnerLoserPatterns() {
-        const snapshots = getLatestSnapshots();
+    async function getWinnerLoserPatterns() {
+        const snapshots = await getLatestSnapshots();
         if (snapshots.length < 4) return { winnerPatterns: [], loserPatterns: [] };
 
         // Sort by d6_roas descending
@@ -1270,12 +1270,12 @@ Provide a comprehensive analysis in JSON format:
             console.log(`[roas-tracker] ${combinedCreatives.length} creatives since ${ROAS_TRACKER_START_DATE} (${matched} with funnel data).`);
 
             // 7. Save snapshots to DB
-            saveSnapshots(combinedCreatives, batchId);
+            await saveSnapshots(combinedCreatives, batchId);
             const snapResult = { snapshotCount: combinedCreatives.length, batchId };
 
             // 2. Get latest snapshot per ad, filter to ads with go_live_date >= start
-            const db = getCiDb();
-            const latestSnapshots = db.prepare(`
+            const db = await getCiDb();
+            const latestSnapshots = await db.prepare(`
                 SELECT s.* FROM snapshots s
                 INNER JOIN (
                     SELECT ad_id, MAX(snapshot_date) as max_date
@@ -1294,7 +1294,7 @@ Provide a comprehensive analysis in JSON format:
             const needsPrediction = [];
 
             for (const snap of latestSnapshots) {
-                const result = upsertRoasTracker({
+                const result = await upsertRoasTracker({
                     ad_id: snap.ad_id,
                     ad_name: snap.ad_name,
                     campaign_name: snap.campaign_name,
@@ -1328,7 +1328,7 @@ Provide a comprehensive analysis in JSON format:
             // 4. Build cohort benchmarks first (needed for predictions)
             if (needsPrediction.length > 0) {
                 try {
-                    predictor.buildCohortBenchmarks();
+                    await predictor.buildCohortBenchmarks();
                 } catch (e) {
                     console.warn('[roas-tracker] Cohort benchmark build warning:', e.message);
                 }
@@ -1355,7 +1355,7 @@ Provide a comprehensive analysis in JSON format:
                         }
 
                         // Save prediction to predictions table
-                        const predId = require('./db').savePrediction({
+                        const predId = await require('./db').savePrediction({
                             ...prediction,
                             ad_id: snap.ad_id,
                             ad_name: snap.ad_name,
@@ -1366,7 +1366,7 @@ Provide a comprehensive analysis in JSON format:
                         });
 
                         // Update roas_tracker with prediction
-                        updateRoasTrackerPrediction(snap.ad_id, {
+                        await updateRoasTrackerPrediction(snap.ad_id, {
                             id: predId,
                             predicted_d6_roas: prediction.predicted_d6_roas,
                             predicted_d6_low: prediction.predicted_d6_low,
@@ -1388,16 +1388,16 @@ Provide a comprehensive analysis in JSON format:
 
             // 6. Track prediction accuracy for all ads
             try {
-                predictor.trackPredictionAccuracy();
+                await predictor.trackPredictionAccuracy();
 
                 // Also update roas_tracker accuracy from predictions table
-                const verifiedPreds = db.prepare(`
+                const verifiedPreds = await db.prepare(`
                     SELECT ad_id, d6_accuracy_pct, d30_accuracy_pct
                     FROM predictions
                     WHERE is_latest = 1 AND d6_accuracy_pct IS NOT NULL
                 `).all();
                 for (const vp of verifiedPreds) {
-                    updateRoasTrackerAccuracy(vp.ad_id, vp.d6_accuracy_pct, vp.d30_accuracy_pct);
+                    await updateRoasTrackerAccuracy(vp.ad_id, vp.d6_accuracy_pct, vp.d30_accuracy_pct);
                 }
             } catch (accErr) {
                 console.warn('[roas-tracker] Accuracy tracking warning:', accErr.message);

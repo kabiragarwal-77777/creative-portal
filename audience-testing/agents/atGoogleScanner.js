@@ -121,8 +121,8 @@ module.exports = function (config) {
      *   { date_start, campaign_name, campaign_id, campaign_type,
      *     adset_name, adset_id, spend, impressions, clicks, conversions, conversion_value }
      */
-    function ingestInsightsCache(rows) {
-        const db = getAtDb();
+    async function ingestInsightsCache(rows) {
+        const db = await getAtDb();
 
         // ---------- aggregate by campaign ----------
         const campaignMap = new Map();
@@ -146,11 +146,11 @@ module.exports = function (config) {
             c.conversionValue += r.conversion_value || 0;
         }
 
-        const upsertCampaign = db.prepare(`
+        const upsertCampaign = await db.prepare(`
             INSERT INTO at_google_campaigns
                 (google_campaign_id, name, status, channel_type, vertical, bidding_strategy,
                  total_spend, impressions, clicks, conversions, conversion_value, synced_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(google_campaign_id) DO UPDATE SET
                 name = excluded.name,
                 status = excluded.status,
@@ -161,18 +161,18 @@ module.exports = function (config) {
                 clicks = excluded.clicks,
                 conversions = excluded.conversions,
                 conversion_value = excluded.conversion_value,
-                synced_at = datetime('now')
+                synced_at = CURRENT_TIMESTAMP
         `);
 
-        const insertCampaigns = db.transaction(() => {
+        const insertCampaigns = db.transaction(async () => {
             for (const c of campaignMap.values()) {
                 const vertical = inferVertical(c.name);
                 // Caches come from ENABLED campaigns only (the API query filters campaign.status = 'ENABLED')
-                upsertCampaign.run(c.id, c.name, 'ENABLED', c.channelType, vertical, '',
+                await upsertCampaign.run(c.id, c.name, 'ENABLED', c.channelType, vertical, '',
                     c.spend, c.impressions, c.clicks, c.conversions, c.conversionValue);
             }
         });
-        insertCampaigns();
+        await insertCampaigns();
         log(`Stored ${campaignMap.size} campaigns from insights cache`);
 
         // ---------- aggregate by adgroup ----------
@@ -202,7 +202,7 @@ module.exports = function (config) {
                 (google_adgroup_id, google_campaign_id, name, status, adgroup_type,
                  cpc_bid, target_cpa, total_spend, impressions, clicks, conversions,
                  conversion_value, ctr, avg_cpc, cost_per_conversion, synced_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(google_adgroup_id) DO UPDATE SET
                 google_campaign_id = excluded.google_campaign_id,
                 name = excluded.name,
@@ -215,20 +215,20 @@ module.exports = function (config) {
                 ctr = excluded.ctr,
                 avg_cpc = excluded.avg_cpc,
                 cost_per_conversion = excluded.cost_per_conversion,
-                synced_at = datetime('now')
+                synced_at = CURRENT_TIMESTAMP
         `);
 
-        const insertAdgroups = db.transaction(() => {
+        const insertAdgroups = db.transaction(async () => {
             for (const ag of adgroupMap.values()) {
                 const ctr = ag.impressions > 0 ? ag.clicks / ag.impressions : 0;
                 const avgCpc = ag.clicks > 0 ? ag.spend / ag.clicks : 0;
                 const costPerConv = ag.conversions > 0 ? ag.spend / ag.conversions : 0;
-                upsertAdgroup.run(ag.id, ag.campaignId, ag.name, 'ENABLED', '',
+                await upsertAdgroup.run(ag.id, ag.campaignId, ag.name, 'ENABLED', '',
                     0, 0, ag.spend, ag.impressions, ag.clicks, ag.conversions,
                     ag.conversionValue, ctr, avgCpc, costPerConv);
             }
         });
-        insertAdgroups();
+        await insertAdgroups();
         log(`Stored ${adgroupMap.size} adgroups from insights cache`);
 
         return { campaigns: campaignMap.size, adgroups: adgroupMap.size };
@@ -246,8 +246,8 @@ module.exports = function (config) {
      *     d6_overall_con, d6_overall_revenue, d15_overall_con, d15_overall_revenue,
      *     d30_overall_con, d30_overall_revenue, d60_overall_con, d60_overall_revenue }
      */
-    function ingestFunnelCache(rows) {
-        const db = getAtDb();
+    async function ingestFunnelCache(rows) {
+        const db = await getAtDb();
 
         // Aggregate funnel data by (campaign_name, ad_set_name)
         // Funnel rows are per-week, so we sum them up
@@ -270,25 +270,25 @@ module.exports = function (config) {
 
         // Build a lookup from lowercase adgroup name -> google_adgroup_id
         // The insights cache stores adset_name which maps to ad_group.name
-        const allAdgroups = db.prepare(`SELECT google_adgroup_id, name, total_spend FROM at_google_adgroups`).all();
+        const allAdgroups = await db.prepare(`SELECT google_adgroup_id, name, total_spend FROM at_google_adgroups`).all();
         const agByName = new Map();
         for (const ag of allAdgroups) {
             if (ag.name) agByName.set(ag.name.toLowerCase(), ag);
         }
 
-        const updateFunnel = db.prepare(`
+        const updateFunnel = await db.prepare(`
             UPDATE at_google_adgroups
             SET metabase_signups = ?,
                 d6_conversions = ?,
                 d6_revenue = ?,
                 d6_cac = ?,
                 d6_roas = ?,
-                synced_at = datetime('now')
+                synced_at = CURRENT_TIMESTAMP
             WHERE google_adgroup_id = ?
         `);
 
         let matched = 0;
-        const applyFunnel = db.transaction(() => {
+        const applyFunnel = db.transaction(async () => {
             for (const f of funnelMap.values()) {
                 const ag = agByName.get(f.ad_set_name.toLowerCase());
                 if (!ag) continue;
@@ -296,11 +296,11 @@ module.exports = function (config) {
                     ? ag.total_spend / f.d6_conversions : null;
                 const d6Roas = ag.total_spend > 0 && f.d6_revenue > 0
                     ? f.d6_revenue / ag.total_spend : null;
-                updateFunnel.run(f.signups, f.d6_conversions, f.d6_revenue, d6Cac, d6Roas, ag.google_adgroup_id);
+                await updateFunnel.run(f.signups, f.d6_conversions, f.d6_revenue, d6Cac, d6Roas, ag.google_adgroup_id);
                 matched++;
             }
         });
-        applyFunnel();
+        await applyFunnel();
         log(`Enriched ${matched}/${funnelMap.size} adgroups with funnel data`);
 
         return { funnelRows: funnelMap.size, matched };
@@ -348,13 +348,13 @@ module.exports = function (config) {
         `);
 
         log(`Fetched ${rows.length} campaigns from Google Ads`);
-        const db = getAtDb();
+        const db = await getAtDb();
 
         const upsert = db.prepare(`
             INSERT INTO at_google_campaigns
                 (google_campaign_id, name, status, channel_type, vertical, bidding_strategy,
                  total_spend, impressions, clicks, conversions, conversion_value, synced_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(google_campaign_id) DO UPDATE SET
                 name = excluded.name,
                 status = excluded.status,
@@ -366,10 +366,10 @@ module.exports = function (config) {
                 clicks = excluded.clicks,
                 conversions = excluded.conversions,
                 conversion_value = excluded.conversion_value,
-                synced_at = datetime('now')
+                synced_at = CURRENT_TIMESTAMP
         `);
 
-        const insertMany = db.transaction((items) => {
+        const insertMany = db.transaction(async (items) => {
             for (const r of items) {
                 const cid = String(r.campaign.id);
                 const name = r.campaign.name || '';
@@ -386,11 +386,11 @@ module.exports = function (config) {
                 const conversions = r.metrics.conversions || 0;
                 const conversionValue = r.metrics.all_conversions_value || 0;
                 const vertical = inferVertical(name);
-                upsert.run(cid, name, status, channelType, vertical, biddingStrategy,
+                await upsert.run(cid, name, status, channelType, vertical, biddingStrategy,
                     spend, impressions, clicks, conversions, conversionValue);
             }
         });
-        insertMany(rows);
+        await insertMany(rows);
         log(`Stored ${rows.length} campaigns via API`);
         return rows.length;
     }
@@ -424,14 +424,14 @@ module.exports = function (config) {
         `);
 
         log(`Fetched ${rows.length} adgroups from Google Ads`);
-        const db = getAtDb();
+        const db = await getAtDb();
 
         const upsert = db.prepare(`
             INSERT INTO at_google_adgroups
                 (google_adgroup_id, google_campaign_id, name, status, adgroup_type,
                  cpc_bid, target_cpa, total_spend, impressions, clicks, conversions,
                  conversion_value, ctr, avg_cpc, cost_per_conversion, synced_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(google_adgroup_id) DO UPDATE SET
                 google_campaign_id = excluded.google_campaign_id,
                 name = excluded.name,
@@ -447,10 +447,10 @@ module.exports = function (config) {
                 ctr = excluded.ctr,
                 avg_cpc = excluded.avg_cpc,
                 cost_per_conversion = excluded.cost_per_conversion,
-                synced_at = datetime('now')
+                synced_at = CURRENT_TIMESTAMP
         `);
 
-        const insertMany = db.transaction((items) => {
+        const insertMany = db.transaction(async (items) => {
             for (const r of items) {
                 const agId = String(r.ad_group.id);
                 const cId = String(r.campaign.id);
@@ -468,12 +468,12 @@ module.exports = function (config) {
                 const ctr = r.metrics.ctr || 0;
                 const avgCpc = micros(r.metrics.average_cpc);
                 const costPerConversion = micros(r.metrics.cost_per_conversion);
-                upsert.run(agId, cId, name, status, agType, cpcBid, targetCpa,
+                await upsert.run(agId, cId, name, status, agType, cpcBid, targetCpa,
                     spend, impressions, clicks, conversions, conversionValue,
                     ctr, avgCpc, costPerConversion);
             }
         });
-        insertMany(rows);
+        await insertMany(rows);
         log(`Stored ${rows.length} adgroups via API`);
         return rows.length;
     }
@@ -500,17 +500,17 @@ module.exports = function (config) {
         `);
 
         log(`Fetched ${rows.length} audience criteria from Google Ads`);
-        const db = getAtDb();
-        db.prepare(`DELETE FROM at_google_audiences`).run();
+        const db = await getAtDb();
+        await db.prepare(`DELETE FROM at_google_audiences`).run();
 
-        const insert = db.prepare(`
+        const insert = await db.prepare(`
             INSERT INTO at_google_audiences
                 (adgroup_id, criterion_type, audience_name, audience_id, bid_modifier,
                  age_range, gender, synced_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         `);
 
-        const insertMany = db.transaction((items) => {
+        const insertMany = db.transaction(async (items) => {
             for (const r of items) {
                 const agId = String(r.ad_group.id);
                 const criterion = r.ad_group_criterion || {};
@@ -537,11 +537,11 @@ module.exports = function (config) {
                     audienceName = `Gender: ${gender}`;
                 }
 
-                insert.run(agId, criterionType, audienceName, criterionId,
+                await insert.run(agId, criterionType, audienceName, criterionId,
                     bidModifier, ageRange, gender);
             }
         });
-        insertMany(rows);
+        await insertMany(rows);
         log(`Stored ${rows.length} audience criteria via API`);
         return rows.length;
     }
@@ -566,17 +566,17 @@ module.exports = function (config) {
         `);
 
         log(`Fetched ${rows.length} breakdown rows from Google Ads`);
-        const db = getAtDb();
-        db.prepare(`DELETE FROM at_google_breakdowns`).run();
+        const db = await getAtDb();
+        await db.prepare(`DELETE FROM at_google_breakdowns`).run();
 
-        const insert = db.prepare(`
+        const insert = await db.prepare(`
             INSERT INTO at_google_breakdowns
                 (adgroup_id, breakdown_type, breakdown_value, spend, impressions,
                  clicks, conversions, ctr, synced_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         `);
 
-        const insertMany = db.transaction((items) => {
+        const insertMany = db.transaction(async (items) => {
             for (const r of items) {
                 const agId = String(r.ad_group.id);
                 const spend = micros(r.metrics.cost_micros);
@@ -587,14 +587,14 @@ module.exports = function (config) {
 
                 const device = r.segments.device;
                 const deviceStr = typeof device === 'number' ? String(device) : (device || 'UNKNOWN');
-                insert.run(agId, 'device', deviceStr, spend, impressions, clicks, conversions, ctr);
+                await insert.run(agId, 'device', deviceStr, spend, impressions, clicks, conversions, ctr);
 
                 const network = r.segments.ad_network_type;
                 const networkStr = typeof network === 'number' ? String(network) : (network || 'UNKNOWN');
-                insert.run(agId, 'network', networkStr, spend, impressions, clicks, conversions, ctr);
+                await insert.run(agId, 'network', networkStr, spend, impressions, clicks, conversions, ctr);
             }
         });
-        insertMany(rows);
+        await insertMany(rows);
         log(`Stored ${rows.length * 2} breakdown rows via API`);
         return rows.length;
     }
@@ -625,7 +625,7 @@ module.exports = function (config) {
             log(`Found insights cache with ${insightsCache.data.length} rows — using cache path`);
 
             try {
-                const counts = ingestInsightsCache(insightsCache.data);
+                const counts = await ingestInsightsCache(insightsCache.data);
                 result.campaigns = counts.campaigns;
                 result.adgroups = counts.adgroups;
             } catch (err) {
@@ -637,7 +637,7 @@ module.exports = function (config) {
             const funnelCache = findBestCache('gc-funnel-cache-');
             if (funnelCache) {
                 try {
-                    const funnelResult = ingestFunnelCache(funnelCache.data);
+                    const funnelResult = await ingestFunnelCache(funnelCache.data);
                     result.funnelMatched = funnelResult.matched;
                 } catch (err) {
                     logErr('Error ingesting funnel cache:', err.message);
@@ -720,15 +720,15 @@ module.exports = function (config) {
     // Status
     // -----------------------------------------------------------------------
 
-    function getScanStatus() {
-        const db = getAtDb();
+    async function getScanStatus() {
+        const db = await getAtDb();
 
-        const campaigns = db.prepare(`SELECT COUNT(*) as count, MAX(synced_at) as last_sync FROM at_google_campaigns`).get();
-        const adgroups = db.prepare(`SELECT COUNT(*) as count, MAX(synced_at) as last_sync FROM at_google_adgroups`).get();
-        const audiences = db.prepare(`SELECT COUNT(*) as count, MAX(synced_at) as last_sync FROM at_google_audiences`).get();
-        const breakdowns = db.prepare(`SELECT COUNT(*) as count, MAX(synced_at) as last_sync FROM at_google_breakdowns`).get();
+        const campaigns = await db.prepare(`SELECT COUNT(*) as count, MAX(synced_at) as last_sync FROM at_google_campaigns`).get();
+        const adgroups = await db.prepare(`SELECT COUNT(*) as count, MAX(synced_at) as last_sync FROM at_google_adgroups`).get();
+        const audiences = await db.prepare(`SELECT COUNT(*) as count, MAX(synced_at) as last_sync FROM at_google_audiences`).get();
+        const breakdowns = await db.prepare(`SELECT COUNT(*) as count, MAX(synced_at) as last_sync FROM at_google_breakdowns`).get();
 
-        const topCampaigns = db.prepare(`
+        const topCampaigns = await db.prepare(`
             SELECT google_campaign_id, name, status, channel_type, vertical,
                    total_spend, impressions, clicks, conversions
             FROM at_google_campaigns

@@ -20,10 +20,10 @@ module.exports = function(config) {
     // ==================== CREATIVES ====================
 
     // GET /creatives — List all creatives with filters
-    router.get('/creatives', (req, res) => {
+    router.get('/creatives', async (req, res) => {
         try {
             const { getGcDb } = require('./db/gc-db');
-            const db = getGcDb();
+            const db = await getGcDb();
             const days = parseInt(req.query.days) || 90;
             const type = req.query.type || 'all';
             const performance = req.query.performance || 'all';
@@ -41,7 +41,7 @@ module.exports = function(config) {
 
             sql += ` ORDER BY s.gcps_score DESC NULLS LAST`;
 
-            const rows = db.prepare(sql).all(...params);
+            const rows = await db.prepare(sql).all(...params);
             res.json({ success: true, data: rows, total: rows.length });
         } catch(err) {
             console.error('[GC] /creatives error:', err.message);
@@ -50,10 +50,10 @@ module.exports = function(config) {
     });
 
     // GET /adsets — Adset performance
-    router.get('/adsets', (req, res) => {
+    router.get('/adsets', async (req, res) => {
         try {
             const { getGcDb } = require('./db/gc-db');
-            const db = getGcDb();
+            const db = await getGcDb();
             const days = parseInt(req.query.days) || 30;
             const campaignId = req.query.campaign_id || null;
 
@@ -76,7 +76,7 @@ module.exports = function(config) {
             sql += ` GROUP BY campaign_id, campaign_name, adgroup_id, adgroup_name
                      ORDER BY total_spend DESC`;
 
-            const rows = db.prepare(sql).all(...params);
+            const rows = await db.prepare(sql).all(...params);
             res.json({ success: true, data: rows, total: rows.length });
         } catch(err) {
             console.error('[GC] /adsets error:', err.message);
@@ -96,13 +96,13 @@ module.exports = function(config) {
     });
 
     // GET /signals/:creativeId — Creative signals
-    router.get('/signals/:creativeId', (req, res) => {
+    router.get('/signals/:creativeId', async (req, res) => {
         try {
             const { getGcDb } = require('./db/gc-db');
-            const db = getGcDb();
+            const db = await getGcDb();
             const creativeId = parseInt(req.params.creativeId);
 
-            const row = db.prepare(`
+            const row = await db.prepare(`
                 SELECT sig.*, c.ad_id, c.ad_type, c.campaign_name, c.adgroup_name,
                        c.asset_performance_label, c.adset_roas, c.adset_spend,
                        s.gcps_score, s.score_breakdown_json
@@ -200,16 +200,11 @@ module.exports = function(config) {
     });
 
     // GET /simulator/simulations
-    router.get('/simulator/simulations', (req, res) => {
+    router.get('/simulator/simulations', async (req, res) => {
         try {
             const status = req.query.status || 'active';
-            // getSimulations is async
-            simulator.getSimulations(status).then(rows => {
-                res.json({ success: true, data: rows, total: rows.length });
-            }).catch(err => {
-                console.error('[GC] /simulator/simulations error:', err.message);
-                res.status(500).json({ success: false, error: err.message });
-            });
+            const rows = await simulator.getSimulations(status);
+            res.json({ success: true, data: rows, total: rows.length });
         } catch(err) {
             console.error('[GC] /simulator/simulations error:', err.message);
             res.status(500).json({ success: false, error: err.message });
@@ -217,18 +212,14 @@ module.exports = function(config) {
     });
 
     // GET /simulator/:simId/timeseries
-    router.get('/simulator/:simId/timeseries', (req, res) => {
+    router.get('/simulator/:simId/timeseries', async (req, res) => {
         try {
             const simId = parseInt(req.params.simId);
-            simulator.getSimulationTimeseries(simId).then(result => {
-                if (!result) {
-                    return res.status(404).json({ success: false, error: 'Simulation not found' });
-                }
-                res.json({ success: true, data: result });
-            }).catch(err => {
-                console.error('[GC] /simulator/:simId/timeseries error:', err.message);
-                res.status(500).json({ success: false, error: err.message });
-            });
+            const result = await simulator.getSimulationTimeseries(simId);
+            if (!result) {
+                return res.status(404).json({ success: false, error: 'Simulation not found' });
+            }
+            res.json({ success: true, data: result });
         } catch(err) {
             console.error('[GC] /simulator/:simId/timeseries error:', err.message);
             res.status(500).json({ success: false, error: err.message });
@@ -289,24 +280,24 @@ module.exports = function(config) {
     // ==================== PIPELINE ====================
 
     // GET /pipeline/status
-    router.get('/pipeline/status', (req, res) => {
+    router.get('/pipeline/status', async (req, res) => {
         try {
             const { getGcDb } = require('./db/gc-db');
-            const db = getGcDb();
+            const db = await getGcDb();
             const limit = parseInt(req.query.limit) || 20;
 
-            const runs = db.prepare(`
+            const runs = await db.prepare(`
                 SELECT id, run_type, status, started_at, completed_at, details
                 FROM gc_pipeline_runs
                 ORDER BY id DESC
                 LIMIT ?
             `).all(limit);
 
-            const creativesCount = db.prepare(`SELECT COUNT(*) as cnt FROM gc_creatives`).get();
-            const scoresCount = db.prepare(`SELECT COUNT(*) as cnt FROM gc_creative_scores`).get();
-            const signalsCount = db.prepare(`SELECT COUNT(*) as cnt FROM gc_creative_signals`).get();
-            const simulationsCount = db.prepare(`SELECT COUNT(*) as cnt FROM gc_simulations WHERE status = 'active'`).get();
-            const alertsCount = db.prepare(`SELECT COUNT(*) as cnt FROM gc_forecast_alerts WHERE is_read = 0`).get();
+            const creativesCount = await db.prepare(`SELECT COUNT(*) as cnt FROM gc_creatives`).get();
+            const scoresCount = await db.prepare(`SELECT COUNT(*) as cnt FROM gc_creative_scores`).get();
+            const signalsCount = await db.prepare(`SELECT COUNT(*) as cnt FROM gc_creative_signals`).get();
+            const simulationsCount = await db.prepare(`SELECT COUNT(*) as cnt FROM gc_simulations WHERE status = 'active'`).get();
+            const alertsCount = await db.prepare(`SELECT COUNT(*) as cnt FROM gc_forecast_alerts WHERE is_read = 0`).get();
 
             const parsedRuns = runs.map(r => {
                 let details = null;

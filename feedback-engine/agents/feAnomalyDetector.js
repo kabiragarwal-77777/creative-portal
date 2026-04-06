@@ -14,12 +14,12 @@ const DB_FILE = path.join(__dirname, '..', 'feedback-engine.db');
 module.exports = function (config = {}) {
 
     // ── Helper: store anomaly and auto-generate proposal if critical ─────
-    function storeAnomaly(anomalyType, severity, title, description, detectedValue, expectedValue, threshold) {
+    async function storeAnomaly(anomalyType, severity, title, description, detectedValue, expectedValue, threshold) {
         // Check for duplicate: either unresolved OR resolved within last 24h (prevent re-alerting)
-        const existing = query(
+        const existing = await query(
             `SELECT id FROM fe_anomalies
              WHERE anomaly_type = ? AND title = ?
-             AND (is_resolved = 0 OR resolved_at >= datetime('now', '-24 hours'))
+             AND (is_resolved = 0 OR resolved_at >= CURRENT_TIMESTAMP - INTERVAL 24 HOUR)
              LIMIT 1`,
             [anomalyType, title]
         );
@@ -29,7 +29,7 @@ module.exports = function (config = {}) {
             return null;
         }
 
-        const anomalyId = insert('fe_anomalies', {
+        const anomalyId = await insert('fe_anomalies', {
             anomaly_type: anomalyType,
             severity: severity,
             title: title,
@@ -45,7 +45,7 @@ module.exports = function (config = {}) {
 
         // Auto-generate proposal for critical anomalies
         if (severity === 'critical') {
-            const proposalId = insert('fe_proposals', {
+            const proposalId = await insert('fe_proposals', {
                 proposal_type: 'anomaly_response',
                 title: `[AUTO] Respond to: ${title}`,
                 description: `Automatically generated proposal in response to critical anomaly: ${description}`,
@@ -60,7 +60,7 @@ module.exports = function (config = {}) {
                 expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
             });
 
-            update('fe_anomalies', anomalyId, { proposal_id_generated: proposalId });
+            await update('fe_anomalies', anomalyId, { proposal_id_generated: proposalId });
             console.log(`${PREFIX} Auto-generated proposal #${proposalId} for critical anomaly.`);
         }
 
@@ -103,14 +103,14 @@ module.exports = function (config = {}) {
             const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
             for (const source of ['meta', 'google']) {
-                const recent7d = query(
+                const recent7d = await query(
                     `SELECT AVG(ABS(error_d7)) as avg_error
                      FROM fe_prediction_accuracy
                      WHERE source = ? AND checked_at >= ?`,
                     [source, sevenDaysAgo]
                 );
 
-                const baseline30d = query(
+                const baseline30d = await query(
                     `SELECT AVG(ABS(error_d7)) as avg_error
                      FROM fe_prediction_accuracy
                      WHERE source = ? AND checked_at >= ?`,
@@ -128,7 +128,7 @@ module.exports = function (config = {}) {
                 const degradationPct = ((recentError - baselineError) / baselineError) * 100;
 
                 if (degradationPct > 15) {
-                    const id = storeAnomaly(
+                    const id = await storeAnomaly(
                         'MODEL_DRIFT',
                         'warning',
                         `Model drift detected for ${source} predictions`,
@@ -155,14 +155,14 @@ module.exports = function (config = {}) {
             const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
 
             // Check if any new knowledge items have been ingested in 48h
-            const recentItems = query(
+            const recentItems = await query(
                 `SELECT COUNT(*) as cnt FROM fe_knowledge_items
                  WHERE ingested_at >= ?`,
                 [fortyEightHoursAgo]
             );
 
             if (recentItems[0].cnt === 0) {
-                const id = storeAnomaly(
+                const id = await storeAnomaly(
                     'DATA_GAP',
                     'warning',
                     'No new knowledge items in 48 hours',
@@ -175,14 +175,14 @@ module.exports = function (config = {}) {
             }
 
             // Check if any new predictions in 48h
-            const recentPredictions = query(
+            const recentPredictions = await query(
                 `SELECT COUNT(*) as cnt FROM fe_prediction_accuracy
                  WHERE created_at >= ?`,
                 [fortyEightHoursAgo]
             );
 
             if (recentPredictions[0].cnt === 0) {
-                const id = storeAnomaly(
+                const id = await storeAnomaly(
                     'DATA_GAP',
                     'warning',
                     'No new predictions tracked in 48 hours',
@@ -195,7 +195,7 @@ module.exports = function (config = {}) {
             }
 
             // Check scheduler for missed runs (failed status)
-            const recentFailures = query(
+            const recentFailures = await query(
                 `SELECT * FROM fe_scheduler_log
                  WHERE status = 'failed' AND started_at >= ?
                  ORDER BY started_at DESC`,
@@ -204,7 +204,7 @@ module.exports = function (config = {}) {
 
             if (recentFailures.length > 0) {
                 const failedJobs = [...new Set(recentFailures.map(f => f.job_name))];
-                const id = storeAnomaly(
+                const id = await storeAnomaly(
                     'SCHEDULER_FAILURE',
                     'critical',
                     `Scheduler failures: ${failedJobs.join(', ')}`,
@@ -230,12 +230,12 @@ module.exports = function (config = {}) {
 
             // Check for missed consecutive scheduler runs
             // Get distinct job names and their last 3 runs
-            const jobNames = query(
+            const jobNames = await query(
                 `SELECT DISTINCT job_name FROM fe_scheduler_log ORDER BY job_name`
             );
 
             for (const row of jobNames) {
-                const lastRuns = query(
+                const lastRuns = await query(
                     `SELECT status FROM fe_scheduler_log
                      WHERE job_name = ?
                      ORDER BY started_at DESC
@@ -245,7 +245,7 @@ module.exports = function (config = {}) {
 
                 const consecutiveFails = lastRuns.filter(r => r.status === 'failed').length;
                 if (consecutiveFails > 2) {
-                    const id = storeAnomaly(
+                    const id = await storeAnomaly(
                         'SCHEDULER_CONSECUTIVE_FAILURE',
                         'critical',
                         `Job "${row.job_name}" failed ${consecutiveFails} consecutive runs`,
@@ -264,7 +264,7 @@ module.exports = function (config = {}) {
                 const sizeMB = stats.size / (1024 * 1024);
 
                 if (sizeMB > 500) {
-                    const id = storeAnomaly(
+                    const id = await storeAnomaly(
                         'DB_SIZE',
                         'warning',
                         `Database size exceeds 500MB (${sizeMB.toFixed(1)}MB)`,
@@ -293,7 +293,7 @@ module.exports = function (config = {}) {
             const anomalies = [];
 
             // Check if competitor signal accuracy table has data
-            const totalSignals = count('fe_competitor_signal_accuracy');
+            const totalSignals = await count('fe_competitor_signal_accuracy');
             if (totalSignals === 0) {
                 console.log(`${PREFIX} No competitor signal data available. Skipping competitor checks.`);
                 return anomalies;
@@ -303,13 +303,13 @@ module.exports = function (config = {}) {
             const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
             const thirtySevenDaysAgo = new Date(Date.now() - 37 * 24 * 60 * 60 * 1000).toISOString();
 
-            const recentVolume = query(
+            const recentVolume = await query(
                 `SELECT COUNT(*) as cnt FROM fe_competitor_signal_accuracy
                  WHERE predicted_at >= ?`,
                 [sevenDaysAgo]
             );
 
-            const priorVolume = query(
+            const priorVolume = await query(
                 `SELECT COUNT(*) as cnt FROM fe_competitor_signal_accuracy
                  WHERE predicted_at >= ? AND predicted_at < ?`,
                 [thirtySevenDaysAgo, sevenDaysAgo]
@@ -320,7 +320,7 @@ module.exports = function (config = {}) {
             const priorWeeklyAvg = priorVolume[0].cnt / 4.3;
 
             if (priorWeeklyAvg > 0 && recentCount > priorWeeklyAvg * 3) {
-                const id = storeAnomaly(
+                const id = await storeAnomaly(
                     'COMPETITOR_SURGE',
                     'info',
                     'Competitor signal volume spike (>3x)',
@@ -334,7 +334,7 @@ module.exports = function (config = {}) {
 
             // Check for competitor going dark (no signals in 14 days)
             const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-            const lastSignal = query(
+            const lastSignal = await query(
                 `SELECT MAX(predicted_at) as last_at FROM fe_competitor_signal_accuracy`
             );
 
@@ -342,7 +342,7 @@ module.exports = function (config = {}) {
                 const daysSilent = Math.floor(
                     (Date.now() - new Date(lastSignal[0].last_at).getTime()) / (24 * 60 * 60 * 1000)
                 );
-                const id = storeAnomaly(
+                const id = await storeAnomaly(
                     'COMPETITOR_DARK',
                     'info',
                     `Competitor signals silent for ${daysSilent} days`,
@@ -394,7 +394,7 @@ module.exports = function (config = {}) {
             }
             sql += ' ORDER BY detected_at DESC LIMIT 200';
 
-            return query(sql, params);
+            return await query(sql, params);
         } catch (err) {
             console.error(`${PREFIX} getAnomalies() error:`, err.message);
             throw err;
@@ -404,7 +404,7 @@ module.exports = function (config = {}) {
     // ── 7. getActive() — unresolved anomalies ───────────────────────────
     async function getActive() {
         try {
-            return query(
+            return await query(
                 `SELECT * FROM fe_anomalies
                  WHERE is_resolved = 0
                  ORDER BY
@@ -420,7 +420,7 @@ module.exports = function (config = {}) {
     // ── 8. resolve(id) — mark anomaly as resolved ───────────────────────
     async function resolve(id) {
         try {
-            const changes = update('fe_anomalies', id, {
+            const changes = await update('fe_anomalies', id, {
                 is_resolved: 1,
                 resolved_at: new Date().toISOString()
             });

@@ -10,18 +10,18 @@ const agents = require('./agents');
 // ==================== BUDGET ROUTES ====================
 const budgetRouter = express.Router();
 
-budgetRouter.get('/compare', (req, res) => {
+budgetRouter.get('/compare', async (req, res) => {
   try {
     const ids = req.query.ids ? req.query.ids.split(',') : [];
     if (ids.length === 0) return res.status(400).json({ success: false, data: null, error: 'Missing ids query parameter (comma-separated)', timestamp: new Date().toISOString() });
-    const comparison = agents.compareBudgets(ids);
+    const comparison = await agents.compareBudgets(ids);
     res.json({ success: true, data: comparison, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-budgetRouter.get('/:inventoryId', (req, res) => {
+budgetRouter.get('/:inventoryId', async (req, res) => {
   try {
-    const recommendation = agents.getBudgetRecommendation(req.params.inventoryId);
+    const recommendation = await agents.getBudgetRecommendation(req.params.inventoryId);
     res.json({ success: true, data: recommendation, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
@@ -29,37 +29,37 @@ budgetRouter.get('/:inventoryId', (req, res) => {
 // ==================== COMPETITOR ROUTES ====================
 const competitorsRouter = express.Router();
 
-competitorsRouter.get('/', (req, res) => {
+competitorsRouter.get('/', async (req, res) => {
   try {
-    const competitors = agents.getAllCompetitors();
+    const competitors = await agents.getAllCompetitors();
     res.json({ success: true, data: competitors, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-competitorsRouter.get('/whitespace', (req, res) => {
+competitorsRouter.get('/whitespace', async (req, res) => {
   try {
-    const whitespace = agents.getWhitespace();
+    const whitespace = await agents.getWhitespace();
     res.json({ success: true, data: whitespace, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-competitorsRouter.get('/inventory/:inventoryId', (req, res) => {
+competitorsRouter.get('/inventory/:inventoryId', async (req, res) => {
   try {
-    const spends = agents.getCompetitorSpends(req.params.inventoryId);
+    const spends = await agents.getCompetitorSpends(req.params.inventoryId);
     res.json({ success: true, data: spends, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-competitorsRouter.get('/:competitorId/spend', (req, res) => {
+competitorsRouter.get('/:competitorId/spend', async (req, res) => {
   try {
-    const profile = agents.getCompetitorProfile(req.params.competitorId);
+    const profile = await agents.getCompetitorProfile(req.params.competitorId);
     res.json({ success: true, data: profile, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-competitorsRouter.get('/:competitorId/advantages/:inventoryId', (req, res) => {
+competitorsRouter.get('/:competitorId/advantages/:inventoryId', async (req, res) => {
   try {
-    const advantages = agents.getAdvantagesDisadvantages(req.params.inventoryId);
+    const advantages = await agents.getAdvantagesDisadvantages(req.params.inventoryId);
     res.json({ success: true, data: advantages, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
@@ -81,16 +81,16 @@ discoveryRouter.post('/run', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-discoveryRouter.get('/log', (req, res) => {
+discoveryRouter.get('/log', async (req, res) => {
   try {
-    const logs = agents.getDiscoveryLog();
+    const logs = await agents.getDiscoveryLog();
     res.json({ success: true, data: logs, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-discoveryRouter.get('/new', (req, res) => {
+discoveryRouter.get('/new', async (req, res) => {
   try {
-    const newInventories = agents.getNewInventories();
+    const newInventories = await agents.getNewInventories();
     res.json({ success: true, data: newInventories, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
@@ -98,9 +98,9 @@ discoveryRouter.get('/new', (req, res) => {
 // ==================== FORMATS ROUTES ====================
 const formatsRouter = express.Router();
 
-formatsRouter.get('/:inventoryId', (req, res) => {
+formatsRouter.get('/:inventoryId', async (req, res) => {
   try {
-    const recommendations = agents.getFormatRecommendations(req.params.inventoryId);
+    const recommendations = await agents.getFormatRecommendations(req.params.inventoryId);
     res.json({ success: true, data: recommendations, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
@@ -108,10 +108,10 @@ formatsRouter.get('/:inventoryId', (req, res) => {
 // ==================== GOOGLE ROUTES ====================
 const googleRouter = express.Router();
 
-googleRouter.get('/ads/all', (req, res) => {
+googleRouter.get('/ads/all', async (req, res) => {
   try {
-    const db = getDb();
-    const ads = db.prepare(`
+    const db = await getDb();
+    const ads = await db.prepare(`
       SELECT ga.*, c.name as competitor_name
       FROM google_ads ga
       LEFT JOIN competitors c ON ga.competitor_id = c.id
@@ -135,10 +135,10 @@ googleRouter.get('/youtube/:competitorName', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-googleRouter.get('/search-ads', (req, res) => {
+googleRouter.get('/search-ads', async (req, res) => {
   try {
-    const db = getDb();
-    const ads = db.prepare(`
+    const db = await getDb();
+    const ads = await db.prepare(`
       SELECT sa.*, c.name as competitor_name
       FROM search_ads sa
       LEFT JOIN competitors c ON sa.competitor_id = c.id
@@ -148,9 +148,9 @@ googleRouter.get('/search-ads', (req, res) => {
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-googleRouter.get('/keyword-gaps', (req, res) => {
+googleRouter.get('/keyword-gaps', async (req, res) => {
   try {
-    const gaps = agents.getKeywordGaps();
+    const gaps = await agents.getKeywordGaps();
     res.json({ success: true, data: gaps, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
@@ -165,10 +165,10 @@ googleRouter.post('/refresh', async (req, res) => {
 // ==================== INSIGHTS ROUTES ====================
 const insightsRouter = express.Router();
 
-insightsRouter.get('/', (req, res) => {
+insightsRouter.get('/', async (req, res) => {
   try {
     const unreadOnly = req.query.unread === 'true';
-    const insights = agents.getInsights(unreadOnly);
+    const insights = await agents.getInsights(unreadOnly);
     res.json({ success: true, data: insights, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
@@ -180,16 +180,16 @@ insightsRouter.post('/generate', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-insightsRouter.put('/:id/read', (req, res) => {
+insightsRouter.put('/:id/read', async (req, res) => {
   try {
-    const result = agents.markAsRead(req.params.id);
+    const result = await agents.markAsRead(req.params.id);
     res.json({ success: true, data: result, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-insightsRouter.get('/inventory/:inventoryId', (req, res) => {
+insightsRouter.get('/inventory/:inventoryId', async (req, res) => {
   try {
-    const insights = agents.getInsightsForInventory(req.params.inventoryId);
+    const insights = await agents.getInsightsForInventory(req.params.inventoryId);
     res.json({ success: true, data: insights, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
@@ -197,9 +197,9 @@ insightsRouter.get('/inventory/:inventoryId', (req, res) => {
 // ==================== INVENTORIES ROUTES ====================
 const inventoriesRouter = express.Router();
 
-inventoriesRouter.get('/', (req, res) => {
+inventoriesRouter.get('/', async (req, res) => {
   try {
-    const db = getDb();
+    const db = await getDb();
     let query = 'SELECT * FROM inventories WHERE 1=1';
     const params = [];
 
@@ -213,45 +213,43 @@ inventoriesRouter.get('/', (req, res) => {
 
     query += ' ORDER BY target_audience_fit DESC, name ASC';
 
-    const inventories = db.prepare(query).all(...params);
+    const inventories = await db.prepare(query).all(...params);
 
-    const competitorCountStmt = db.prepare('SELECT COUNT(DISTINCT competitor_id) as count FROM competitor_spends WHERE inventory_id = ?');
-    const formatCountStmt = db.prepare('SELECT COUNT(*) as count FROM ad_format_scores WHERE inventory_id = ?');
-
-    const enriched = inventories.map(inv => ({
-      ...inv,
-      competitor_count: competitorCountStmt.get(inv.id)?.count || 0,
-      format_count: formatCountStmt.get(inv.id)?.count || 0
-    }));
+    const enriched = [];
+    for (const inv of inventories) {
+      const competitorCount = (await db.prepare('SELECT COUNT(DISTINCT competitor_id) as count FROM competitor_spends WHERE inventory_id = ?').get(inv.id))?.count || 0;
+      const formatCount = (await db.prepare('SELECT COUNT(*) as count FROM ad_format_scores WHERE inventory_id = ?').get(inv.id))?.count || 0;
+      enriched.push({ ...inv, competitor_count: competitorCount, format_count: formatCount });
+    }
 
     res.json({ success: true, data: enriched, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-inventoriesRouter.get('/existing', (req, res) => {
+inventoriesRouter.get('/existing', async (req, res) => {
   try {
-    const benchmarks = agents.getAllBenchmarks();
+    const benchmarks = await agents.getAllBenchmarks();
     res.json({ success: true, data: benchmarks, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-inventoriesRouter.get('/new', (req, res) => {
+inventoriesRouter.get('/new', async (req, res) => {
   try {
-    const db = getDb();
-    const newInvs = db.prepare("SELECT * FROM inventories WHERE status = 'new' AND created_at >= datetime('now', '-7 days') ORDER BY created_at DESC").all();
+    const db = await getDb();
+    const newInvs = await db.prepare("SELECT * FROM inventories WHERE status = 'new' AND created_at >= CURRENT_TIMESTAMP - INTERVAL 7 DAY ORDER BY created_at DESC").all();
     res.json({ success: true, data: newInvs, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-inventoriesRouter.get('/stats', (req, res) => {
+inventoriesRouter.get('/stats', async (req, res) => {
   try {
-    const db = getDb();
-    const total = db.prepare('SELECT COUNT(*) as count FROM inventories').get().count;
-    const active = db.prepare("SELECT COUNT(*) as count FROM inventories WHERE status = 'active'").get().count;
-    const newThisWeek = db.prepare("SELECT COUNT(*) as count FROM inventories WHERE created_at >= datetime('now', '-7 days')").get().count;
-    const avgCpm = db.prepare('SELECT AVG((min_cpm + max_cpm) / 2) as avg FROM inventories WHERE min_cpm IS NOT NULL').get().avg;
-    const competitorCount = db.prepare('SELECT COUNT(*) as count FROM competitors').get().count;
-    const categories = db.prepare('SELECT category, COUNT(*) as count FROM inventories GROUP BY category ORDER BY count DESC').all();
+    const db = await getDb();
+    const total = (await db.prepare('SELECT COUNT(*) as count FROM inventories').get()).count;
+    const active = (await db.prepare("SELECT COUNT(*) as count FROM inventories WHERE status = 'active'").get()).count;
+    const newThisWeek = (await db.prepare("SELECT COUNT(*) as count FROM inventories WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL 7 DAY").get()).count;
+    const avgCpm = (await db.prepare('SELECT AVG((min_cpm + max_cpm) / 2) as avg FROM inventories WHERE min_cpm IS NOT NULL').get()).avg;
+    const competitorCount = (await db.prepare('SELECT COUNT(*) as count FROM competitors').get()).count;
+    const categories = await db.prepare('SELECT category, COUNT(*) as count FROM inventories GROUP BY category ORDER BY count DESC').all();
 
     res.json({
       success: true,
@@ -261,21 +259,21 @@ inventoriesRouter.get('/stats', (req, res) => {
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-inventoriesRouter.get('/:id', (req, res) => {
+inventoriesRouter.get('/:id', async (req, res) => {
   try {
-    const db = getDb();
-    const inventory = db.prepare('SELECT * FROM inventories WHERE id = ?').get(req.params.id);
+    const db = await getDb();
+    const inventory = await db.prepare('SELECT * FROM inventories WHERE id = ?').get(req.params.id);
     if (!inventory) return res.status(404).json({ success: false, data: null, error: 'Inventory not found', timestamp: new Date().toISOString() });
 
-    const benchmark = agents.compareWithBenchmark(req.params.id);
-    const competitors = db.prepare(`
+    const benchmark = await agents.compareWithBenchmark(req.params.id);
+    const competitors = await db.prepare(`
       SELECT cs.*, c.name as competitor_name
       FROM competitor_spends cs
       JOIN competitors c ON cs.competitor_id = c.id
       WHERE cs.inventory_id = ?
     `).all(req.params.id);
-    const formats = db.prepare('SELECT * FROM ad_format_scores WHERE inventory_id = ? ORDER BY score DESC').all(req.params.id);
-    const insights = db.prepare('SELECT * FROM ai_insights WHERE inventory_id = ? ORDER BY created_at DESC').all(req.params.id);
+    const formats = await db.prepare('SELECT * FROM ad_format_scores WHERE inventory_id = ? ORDER BY score DESC').all(req.params.id);
+    const insights = await db.prepare('SELECT * FROM ai_insights WHERE inventory_id = ? ORDER BY created_at DESC').all(req.params.id);
 
     res.json({
       success: true,
@@ -288,10 +286,10 @@ inventoriesRouter.get('/:id', (req, res) => {
 // ==================== META ROUTES ====================
 const metaRouter = express.Router();
 
-metaRouter.get('/ads/all', (req, res) => {
+metaRouter.get('/ads/all', async (req, res) => {
   try {
-    const db = getDb();
-    const ads = db.prepare(`
+    const db = await getDb();
+    const ads = await db.prepare(`
       SELECT ma.*, c.name as competitor_name
       FROM meta_ads ma
       LEFT JOIN competitors c ON ma.competitor_id = c.id
@@ -303,28 +301,28 @@ metaRouter.get('/ads/all', (req, res) => {
 
 metaRouter.get('/ads/:competitorName', async (req, res) => {
   try {
-    const ads = agents.getAdsByCompetitor(req.params.competitorName);
+    const ads = await agents.getAdsByCompetitor(req.params.competitorName);
     res.json({ success: true, data: ads, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-metaRouter.get('/trends', (req, res) => {
+metaRouter.get('/trends', async (req, res) => {
   try {
-    const trends = agents.getTrends();
+    const trends = await agents.getTrends();
     res.json({ success: true, data: trends, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-metaRouter.get('/longrunning', (req, res) => {
+metaRouter.get('/longrunning', async (req, res) => {
   try {
-    const ads = agents.detectLongRunningAds();
+    const ads = await agents.detectLongRunningAds();
     res.json({ success: true, data: ads, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-metaRouter.get('/spend-signals', (req, res) => {
+metaRouter.get('/spend-signals', async (req, res) => {
   try {
-    const signals = agents.extractSpendSignals();
+    const signals = await agents.extractSpendSignals();
     res.json({ success: true, data: signals, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
@@ -356,25 +354,25 @@ onboardingRouter.post('/:inventoryId/regenerate', async (req, res) => {
 // ==================== PRICING ROUTES ====================
 const pricingRouter = express.Router();
 
-pricingRouter.get('/', (req, res) => {
+pricingRouter.get('/', async (req, res) => {
   try {
-    const pricing = agents.getAllPricing();
+    const pricing = await agents.getAllPricing();
     res.json({ success: true, data: pricing, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-pricingRouter.get('/compare', (req, res) => {
+pricingRouter.get('/compare', async (req, res) => {
   try {
     const ids = req.query.ids ? req.query.ids.split(',') : [];
     if (ids.length === 0) return res.status(400).json({ success: false, data: null, error: 'Missing ids query parameter (comma-separated)', timestamp: new Date().toISOString() });
-    const comparison = agents.comparePricing(ids);
+    const comparison = await agents.comparePricing(ids);
     res.json({ success: true, data: comparison, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-pricingRouter.get('/:inventoryId', (req, res) => {
+pricingRouter.get('/:inventoryId', async (req, res) => {
   try {
-    const pricing = agents.getPricingData(req.params.inventoryId);
+    const pricing = await agents.getPricingData(req.params.inventoryId);
     res.json({ success: true, data: pricing, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
@@ -396,23 +394,23 @@ synthesisRouter.get('/competitor/:competitorId', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-synthesisRouter.get('/patterns', (req, res) => {
+synthesisRouter.get('/patterns', async (req, res) => {
   try {
-    const patterns = agents.detectCampaignPatterns();
+    const patterns = await agents.detectCampaignPatterns();
     res.json({ success: true, data: patterns, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-synthesisRouter.get('/alerts', (req, res) => {
+synthesisRouter.get('/alerts', async (req, res) => {
   try {
-    const alerts = agents.generateCompetitiveAlerts();
+    const alerts = await agents.generateCompetitiveAlerts();
     res.json({ success: true, data: alerts, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
-synthesisRouter.get('/gap-report', (req, res) => {
+synthesisRouter.get('/gap-report', async (req, res) => {
   try {
-    const report = agents.buildUnivestGapReport();
+    const report = await agents.buildUnivestGapReport();
     res.json({ success: true, data: report, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });

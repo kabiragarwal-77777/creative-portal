@@ -493,7 +493,7 @@ module.exports = function feDataQualityMonitor(config = {}) {
         return findings;
     }
 
-    function persistRun(result) {
+    async function persistRun(result) {
         const startedAt = new Date(result.started_at);
         const completedAt = new Date(result.completed_at);
         const counts = {
@@ -502,7 +502,7 @@ module.exports = function feDataQualityMonitor(config = {}) {
             info: result.findings.filter(f => f.severity === 'info').length,
         };
 
-        const runId = insert('fe_data_quality_runs', {
+        const runId = await insert('fe_data_quality_runs', {
             run_scope: result.scope,
             overall_status: result.overall_status,
             summary_json: JSON.stringify(result.summary),
@@ -517,7 +517,7 @@ module.exports = function feDataQualityMonitor(config = {}) {
         });
 
         for (const finding of result.findings) {
-            insert('fe_data_quality_findings', {
+            await insert('fe_data_quality_findings', {
                 run_id: runId,
                 source: finding.source,
                 check_name: finding.check_name,
@@ -534,18 +534,18 @@ module.exports = function feDataQualityMonitor(config = {}) {
         return runId;
     }
 
-    function recordAnomaly(finding) {
+    async function recordAnomaly(finding) {
         if (finding.status === 'OK') return null;
         const scopedTitle = `[${finding.source}] ${finding.title}`;
-        const existing = query(
+        const existing = await query(
             `SELECT id FROM fe_anomalies
              WHERE anomaly_type = ? AND title = ?
-               AND (is_resolved = 0 OR resolved_at >= datetime('now', '-24 hours'))
+               AND (is_resolved = 0 OR resolved_at >= CURRENT_TIMESTAMP - INTERVAL 24 HOUR)
              LIMIT 1`,
             ['DATA_QUALITY', scopedTitle]
         );
         if (existing.length > 0) return existing[0].id;
-        return insert('fe_anomalies', {
+        return await insert('fe_anomalies', {
             anomaly_type: 'DATA_QUALITY',
             severity: finding.severity,
             title: scopedTitle,
@@ -558,10 +558,10 @@ module.exports = function feDataQualityMonitor(config = {}) {
         });
     }
 
-    function resolveStaleAnomalies(activeFindings) {
+    async function resolveStaleAnomalies(activeFindings) {
         const activeTitles = activeFindings.map(finding => `[${finding.source}] ${finding.title}`);
         if (activeTitles.length === 0) {
-            run(
+            await run(
                 `UPDATE fe_anomalies
                  SET is_resolved = 1, resolved_at = ?
                  WHERE anomaly_type = 'DATA_QUALITY'
@@ -572,7 +572,7 @@ module.exports = function feDataQualityMonitor(config = {}) {
         }
 
         const placeholders = activeTitles.map(() => '?').join(', ');
-        run(
+        await run(
             `UPDATE fe_anomalies
              SET is_resolved = 1, resolved_at = ?
              WHERE anomaly_type = 'DATA_QUALITY'
@@ -661,12 +661,13 @@ module.exports = function feDataQualityMonitor(config = {}) {
                 meta: integrityStatus,
             }));
 
-            const recentSchedulerFailures = query(
+            const recentSchedulerFailuresRows = await query(
                 `SELECT COUNT(*) AS cnt
                  FROM fe_scheduler_log
                  WHERE status = 'failed'
-                   AND started_at >= datetime('now', '-24 hours')`
-            )[0]?.cnt || 0;
+                   AND started_at >= CURRENT_TIMESTAMP - INTERVAL 24 HOUR`
+            );
+            const recentSchedulerFailures = recentSchedulerFailuresRows[0]?.cnt || 0;
             findings.push(makeFinding({
                 source: 'system',
                 checkName: 'scheduler-recent-failures',
@@ -723,10 +724,10 @@ module.exports = function feDataQualityMonitor(config = {}) {
                 count: findings.length,
             };
 
-            result.run_id = persistRun(result);
+            result.run_id = await persistRun(result);
             const activeFindings = findings.filter(f => f.status !== 'OK');
-            activeFindings.forEach(recordAnomaly);
-            resolveStaleAnomalies(activeFindings);
+            for (const af of activeFindings) { await recordAnomaly(af); }
+            await resolveStaleAnomalies(activeFindings);
             console.log(`${PREFIX} Audit complete. status=${result.overall_status} findings=${result.findings.length}`);
             return result;
         } catch (err) {
@@ -749,16 +750,17 @@ module.exports = function feDataQualityMonitor(config = {}) {
                 findings: [failureFinding],
                 count: 1,
             };
-            result.run_id = persistRun(result);
-            recordAnomaly(failureFinding);
+            result.run_id = await persistRun(result);
+            await recordAnomaly(failureFinding);
             return result;
         }
     }
 
     async function getLatestRun() {
-        const run = query(`SELECT * FROM fe_data_quality_runs ORDER BY started_at DESC LIMIT 1`)[0] || null;
+        const runs = await query(`SELECT * FROM fe_data_quality_runs ORDER BY started_at DESC LIMIT 1`);
+        const run = runs[0] || null;
         if (!run) return null;
-        const findings = query(
+        const findings = await query(
             `SELECT * FROM fe_data_quality_findings
              WHERE run_id = ?
              ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'warning' THEN 1 ELSE 2 END, id ASC`,
@@ -773,13 +775,14 @@ module.exports = function feDataQualityMonitor(config = {}) {
 
     async function getHistory(limit = 20) {
         const safeLimit = Math.max(1, Math.min(100, Number(limit) || 20));
-        return query(
+        const rows = await query(
             `SELECT id, run_scope, overall_status, checks_run, findings_count, critical_count,
                     warning_count, info_count, started_at, completed_at, duration_ms, summary_json
              FROM fe_data_quality_runs
              ORDER BY started_at DESC
              LIMIT ${safeLimit}`
-        ).map(row => ({ ...row, summary: row.summary_json ? JSON.parse(row.summary_json) : null }));
+        );
+        return rows.map(row => ({ ...row, summary: row.summary_json ? JSON.parse(row.summary_json) : null }));
     }
 
     return {

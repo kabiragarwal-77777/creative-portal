@@ -25,13 +25,13 @@ module.exports = function (config = {}) {
         }
     ];
 
-    function ensureBaselineSemanticRules() {
+    async function ensureBaselineSemanticRules() {
         try {
-            getFeDb();
+            await getFeDb();
             let insertedCount = 0;
 
             for (const rule of BASELINE_SEMANTIC_RULES) {
-                const existing = query(
+                const existing = await query(
                     `SELECT id, category, confidence_pct, evidence_count, evidence_summary
                      FROM fe_memory_semantic
                      WHERE rule_text = ? AND is_active = 1
@@ -41,7 +41,7 @@ module.exports = function (config = {}) {
                 );
 
                 if (!existing.length) {
-                    insert('fe_memory_semantic', {
+                    await insert('fe_memory_semantic', {
                         rule_text: rule.rule_text,
                         category: rule.category,
                         confidence_pct: rule.confidence_pct,
@@ -56,7 +56,7 @@ module.exports = function (config = {}) {
                 }
 
                 const current = existing[0];
-                update('fe_memory_semantic', current.id, {
+                await update('fe_memory_semantic', current.id, {
                     category: current.category || rule.category,
                     confidence_pct: Math.max(Number(current.confidence_pct) || 0, rule.confidence_pct),
                     evidence_count: Math.max(Number(current.evidence_count) || 1, 1),
@@ -73,7 +73,7 @@ module.exports = function (config = {}) {
         }
     }
 
-    ensureBaselineSemanticRules();
+    ensureBaselineSemanticRules().catch(err => console.error(`${PREFIX} ensureBaselineSemanticRules() bootstrap error:`, err.message));
 
     // ── 1. consolidate() — Nightly memory consolidation ──────────────────
     async function consolidate() {
@@ -83,7 +83,7 @@ module.exports = function (config = {}) {
             // Pull new hypothesis test results from last 24h
             const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-            const recentTests = query(
+            const recentTests = await query(
                 `SELECT ht.*, h.hypothesis_text, h.type
                  FROM fe_hypothesis_tests ht
                  LEFT JOIN fe_hypotheses h ON h.id = ht.hypothesis_id
@@ -93,7 +93,7 @@ module.exports = function (config = {}) {
             );
 
             // Pull recent accuracy audits
-            const recentAudits = query(
+            const recentAudits = await query(
                 `SELECT * FROM fe_audit_reports
                  WHERE created_at >= ?
                  ORDER BY created_at DESC`,
@@ -101,7 +101,7 @@ module.exports = function (config = {}) {
             );
 
             // Pull applied changes from change log
-            const recentChanges = query(
+            const recentChanges = await query(
                 `SELECT cl.*, p.title as proposal_title, p.proposal_type
                  FROM fe_change_log cl
                  LEFT JOIN fe_proposals p ON p.id = cl.proposal_id
@@ -117,11 +117,11 @@ module.exports = function (config = {}) {
             }
 
             // Build existing memory summary
-            const existingSemantic = getAll('fe_memory_semantic', { is_active: 1 }, 'confidence_pct DESC', 50);
-            const existingEpisodic = query(
+            const existingSemantic = await getAll('fe_memory_semantic', { is_active: 1 }, 'confidence_pct DESC', 50);
+            const existingEpisodic = await query(
                 `SELECT * FROM fe_memory_episodic ORDER BY event_date DESC LIMIT 20`
             );
-            const existingProcedural = query(
+            const existingProcedural = await query(
                 `SELECT * FROM fe_memory_procedural ORDER BY applied_at DESC LIMIT 20`
             );
 
@@ -199,7 +199,7 @@ Return valid JSON only, no markdown:
             // Store episodic memories
             if (parsed.episodic && Array.isArray(parsed.episodic)) {
                 for (const ep of parsed.episodic) {
-                    insert('fe_memory_episodic', {
+                    await insert('fe_memory_episodic', {
                         event_date: ep.event_date || new Date().toISOString(),
                         context_type: ep.context_type || 'general',
                         market_condition: ep.market_condition || null,
@@ -215,7 +215,7 @@ Return valid JSON only, no markdown:
             if (parsed.semantic_updates && Array.isArray(parsed.semantic_updates)) {
                 for (const su of parsed.semantic_updates) {
                     if (!su.id) continue;
-                    update('fe_memory_semantic', su.id, {
+                    await update('fe_memory_semantic', su.id, {
                         confidence_pct: su.confidence_pct,
                         evidence_count: su.evidence_count,
                         evidence_summary: su.evidence_summary,
@@ -228,7 +228,7 @@ Return valid JSON only, no markdown:
             // Store new semantic rules
             if (parsed.semantic_new && Array.isArray(parsed.semantic_new)) {
                 for (const sn of parsed.semantic_new) {
-                    insert('fe_memory_semantic', {
+                    await insert('fe_memory_semantic', {
                         rule_text: sn.rule_text,
                         category: sn.category || 'general',
                         confidence_pct: sn.confidence_pct || 50,
@@ -244,7 +244,7 @@ Return valid JSON only, no markdown:
             // Store procedural lessons
             if (parsed.procedural && Array.isArray(parsed.procedural)) {
                 for (const pr of parsed.procedural) {
-                    insert('fe_memory_procedural', {
+                    await insert('fe_memory_procedural', {
                         change_type: pr.change_type || 'unknown',
                         description: pr.description,
                         outcome: pr.outcome || null,
@@ -286,7 +286,7 @@ Return valid JSON only, no markdown:
             }
             sql += ' ORDER BY event_date DESC LIMIT 100';
 
-            return query(sql, params);
+            return await query(sql, params);
         } catch (err) {
             console.error(`${PREFIX} getEpisodic() error:`, err.message);
             throw err;
@@ -296,7 +296,7 @@ Return valid JSON only, no markdown:
     // ── 3. getSemantic() ─────────────────────────────────────────────────
     async function getSemantic() {
         try {
-            return getAll('fe_memory_semantic', { is_active: 1 }, 'confidence_pct DESC', 500);
+            return await getAll('fe_memory_semantic', { is_active: 1 }, 'confidence_pct DESC', 500);
         } catch (err) {
             console.error(`${PREFIX} getSemantic() error:`, err.message);
             throw err;
@@ -306,7 +306,7 @@ Return valid JSON only, no markdown:
     // ── 4. getProcedural() ───────────────────────────────────────────────
     async function getProcedural() {
         try {
-            return getAll('fe_memory_procedural', {}, 'applied_at DESC', 200);
+            return await getAll('fe_memory_procedural', {}, 'applied_at DESC', 200);
         } catch (err) {
             console.error(`${PREFIX} getProcedural() error:`, err.message);
             throw err;
@@ -322,21 +322,21 @@ Return valid JSON only, no markdown:
 
             const term = `%${searchQuery.trim()}%`;
 
-            const episodic = query(
+            const episodic = await query(
                 `SELECT *, 'episodic' as memory_type FROM fe_memory_episodic
                  WHERE observation LIKE ? OR context_type LIKE ? OR market_condition LIKE ?
                  ORDER BY event_date DESC LIMIT 50`,
                 [term, term, term]
             );
 
-            const semantic = query(
+            const semantic = await query(
                 `SELECT *, 'semantic' as memory_type FROM fe_memory_semantic
                  WHERE rule_text LIKE ? OR category LIKE ? OR evidence_summary LIKE ?
                  ORDER BY confidence_pct DESC LIMIT 50`,
                 [term, term, term]
             );
 
-            const procedural = query(
+            const procedural = await query(
                 `SELECT *, 'procedural' as memory_type FROM fe_memory_procedural
                  WHERE description LIKE ? OR outcome LIKE ? OR change_type LIKE ?
                  ORDER BY applied_at DESC LIMIT 50`,
@@ -353,11 +353,11 @@ Return valid JSON only, no markdown:
     // ── 6. getMemorySummary() — counts + top rules for Claude context ───
     async function getMemorySummary() {
         try {
-            const episodicCount = count('fe_memory_episodic');
-            const semanticCount = count('fe_memory_semantic', { is_active: 1 });
-            const proceduralCount = count('fe_memory_procedural');
+            const episodicCount = await count('fe_memory_episodic');
+            const semanticCount = await count('fe_memory_semantic', { is_active: 1 });
+            const proceduralCount = await count('fe_memory_procedural');
 
-            const topRules = query(
+            const topRules = await query(
                 `SELECT rule_text, category, confidence_pct, evidence_count
                  FROM fe_memory_semantic
                  WHERE is_active = 1
@@ -365,14 +365,14 @@ Return valid JSON only, no markdown:
                  LIMIT 10`
             );
 
-            const recentEpisodic = query(
+            const recentEpisodic = await query(
                 `SELECT event_date, observation, context_type
                  FROM fe_memory_episodic
                  ORDER BY event_date DESC
                  LIMIT 5`
             );
 
-            const recentProcedural = query(
+            const recentProcedural = await query(
                 `SELECT change_type, description, outcome, improvement_pct
                  FROM fe_memory_procedural
                  ORDER BY applied_at DESC

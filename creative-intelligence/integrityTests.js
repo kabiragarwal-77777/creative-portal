@@ -110,8 +110,8 @@ function buildTests(config) {
     }
 
     // Get CI database handle (lazy, same as engine uses)
-    function getCiDb() {
-        return require('./db').getCiDb();
+    async function getCiDb() {
+        return await require('./db').getCiDb();
     }
 
     // ---- The five integrity tests ----
@@ -209,17 +209,17 @@ function buildTests(config) {
             name: 'ROAS sanity check',
             test: async () => {
                 let db;
-                try { db = getCiDb(); } catch (e) {
+                try { db = await getCiDb(); } catch (e) {
                     return { pass: true, level: 'SKIP', message: 'CI database not available: ' + e.message };
                 }
 
                 // Pull all snapshots from last 24h (or latest batch if no recent)
                 let rows;
                 try {
-                    rows = db.prepare(`
+                    rows = await db.prepare(`
                         SELECT ad_name, d6_roas, d15_roas, d30_roas, d60_roas, overall_roas, spend
                         FROM snapshots
-                        WHERE collected_at >= datetime('now', '-24 hours')
+                        WHERE collected_at >= CURRENT_TIMESTAMP - INTERVAL 24 HOUR
                           AND spend > 0
                     `).all();
                 } catch (e) {
@@ -229,7 +229,7 @@ function buildTests(config) {
                 if (rows.length === 0) {
                     // Fall back to latest snapshot date
                     try {
-                        rows = db.prepare(`
+                        rows = await db.prepare(`
                             SELECT ad_name, d6_roas, d15_roas, d30_roas, d60_roas, overall_roas, spend
                             FROM snapshots
                             WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM snapshots)
@@ -288,7 +288,7 @@ function buildTests(config) {
 
                 let rows;
                 try {
-                    rows = db.prepare(`
+                    rows = await db.prepare(`
                         SELECT ad_name, ad_id, d6_revenue, d6_overall_revenue, d15_overall_revenue, d30_overall_revenue, d60_overall_revenue, overall_revenue, spend
                         FROM snapshots
                         WHERE snapshot_date = (SELECT MAX(snapshot_date) FROM snapshots)

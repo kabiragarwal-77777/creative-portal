@@ -1,6 +1,6 @@
 const axios = require('axios');
 const Papa = require('papaparse');
-const { db, getAll, getOne, run, getRowCount } = require('../db');
+const { getIntelDb, getAll, getOne, run, getRowCount } = require('../db');
 
 // ---------------------------------------------------------------------------
 // Config
@@ -81,7 +81,7 @@ function parseDate(val) {
   return null;
 }
 
-function nowISO() {
+async function nowISO() {
   return new Date().toISOString().replace('T', ' ').slice(0, 19);
 }
 
@@ -127,10 +127,11 @@ async function fetchSheet(sheetName) {
 // ---------------------------------------------------------------------------
 // Parse & Store: Creative Performance Tracker-Auto → raw_creatives
 // ---------------------------------------------------------------------------
-function parseAndStoreCreatives(rows) {
+async function parseAndStoreCreatives(rows) {
   const now = nowISO();
+  const db = await getIntelDb();
 
-  const upsert = db.prepare(`
+  const upsert = await db.prepare(`
     INSERT OR REPLACE INTO raw_creatives
       (creative_name, ad_id, campaign_name, adset_name,
        spend, impressions, clicks, installs, signups,
@@ -145,11 +146,11 @@ function parseAndStoreCreatives(rows) {
        @date_from, @date_to, @raw_json, @fetched_at, @updated_at)
   `);
 
-  const insertMany = db.transaction((items) => {
+  const insertMany = db.transaction(async (items) => {
     let count = 0;
     for (const item of items) {
       if (!item.creative_name) continue; // skip rows without a name
-      upsert.run(item);
+      await upsert.run(item);
       count++;
     }
     return count;
@@ -192,14 +193,15 @@ function parseAndStoreCreatives(rows) {
     updated_at:     now,
   }));
 
-  return insertMany(mapped);
+  return await insertMany(mapped);
 }
 
 // ---------------------------------------------------------------------------
 // Parse & Store: Meta Ads Dump → raw_meta_dump
 // ---------------------------------------------------------------------------
-function parseAndStoreMetaDump(rows) {
+async function parseAndStoreMetaDump(rows) {
   const now = nowISO();
+  const db = await getIntelDb();
 
   const insert = db.prepare(`
     INSERT INTO raw_meta_dump
@@ -210,11 +212,11 @@ function parseAndStoreMetaDump(rows) {
        @spend, @impressions, @clicks, @installs, @date, @raw_json, @fetched_at)
   `);
 
-  const replaceAll = db.transaction((items) => {
-    db.prepare('DELETE FROM raw_meta_dump').run();
+  const replaceAll = db.transaction(async (items) => {
+    await dawait b.prepare('DELETE FROM raw_meta_dump').run();
     let count = 0;
     for (const item of items) {
-      insert.run(item);
+      await insert.run(item);
       count++;
     }
     return count;
@@ -236,16 +238,17 @@ function parseAndStoreMetaDump(rows) {
     fetched_at:    now,
   }));
 
-  return replaceAll(mapped);
+  return await replaceAll(mapped);
 }
 
 // ---------------------------------------------------------------------------
 // Parse & Store: Metabase Meta Ad Level Import → raw_metabase
 // ---------------------------------------------------------------------------
-function parseAndStoreMetabase(rows) {
+async function parseAndStoreMetabase(rows) {
   const now = nowISO();
+  const db = await getIntelDb();
 
-  const insert = db.prepare(`
+  const insert = await db.prepare(`
     INSERT INTO raw_metabase
       (campaign_name, adset_name, ad_name,
        signups, d0_trial, d6, revenue, ltv_estimate,
@@ -256,11 +259,11 @@ function parseAndStoreMetabase(rows) {
        @date, @raw_json, @fetched_at)
   `);
 
-  const replaceAll = db.transaction((items) => {
-    db.prepare('DELETE FROM raw_metabase').run();
+  const replaceAll = db.transaction(async (items) => {
+    await dawait b.prepare('DELETE FROM raw_metabase').run();
     let count = 0;
     for (const item of items) {
-      insert.run(item);
+      await insert.run(item);
       count++;
     }
     return count;
@@ -280,7 +283,7 @@ function parseAndStoreMetabase(rows) {
     fetched_at:    now,
   }));
 
-  return replaceAll(mapped);
+  return await replaceAll(mapped);
 }
 
 // ---------------------------------------------------------------------------
@@ -300,31 +303,31 @@ async function fetchAndStoreAll() {
   // Parse and store each (sequentially – they share the same DB)
   if (mainRows) {
     try {
-      summary.main = parseAndStoreCreatives(mainRows);
-      logFetch('main_creatives', mainRows.length, summary.main, 'success', null);
+      summary.main = await parseAndStoreCreatives(mainRows);
+      await logFetch('main_creatives', mainRows.length, summary.main, 'success', null);
     } catch (err) {
       errors.push(`main store: ${err.message}`);
-      logFetch('main_creatives', mainRows.length, 0, 'error', err.message);
+      await logFetch('main_creatives', mainRows.length, 0, 'error', err.message);
     }
   }
 
   if (metaDumpRows) {
     try {
-      summary.metaDump = parseAndStoreMetaDump(metaDumpRows);
-      logFetch('meta_dump', metaDumpRows.length, summary.metaDump, 'success', null);
+      summary.metaDump = await parseAndStoreMetaDump(metaDumpRows);
+      await logFetch('meta_dump', metaDumpRows.length, summary.metaDump, 'success', null);
     } catch (err) {
       errors.push(`metaDump store: ${err.message}`);
-      logFetch('meta_dump', metaDumpRows.length, 0, 'error', err.message);
+      await logFetch('meta_dump', metaDumpRows.length, 0, 'error', err.message);
     }
   }
 
   if (metabaseRows) {
     try {
-      summary.metabase = parseAndStoreMetabase(metabaseRows);
-      logFetch('metabase', metabaseRows.length, summary.metabase, 'success', null);
+      summary.metabase = await parseAndStoreMetabase(metabaseRows);
+      await logFetch('metabase', metabaseRows.length, summary.metabase, 'success', null);
     } catch (err) {
       errors.push(`metabase store: ${err.message}`);
-      logFetch('metabase', metabaseRows.length, 0, 'error', err.message);
+      await logFetch('metabase', metabaseRows.length, 0, 'error', err.message);
     }
   }
 
@@ -341,13 +344,13 @@ async function fetchAndStoreAll() {
 // ---------------------------------------------------------------------------
 // Status
 // ---------------------------------------------------------------------------
-function getStatus() {
+async function getStatus() {
   const tables = ['raw_creatives', 'raw_meta_dump', 'raw_metabase'];
   const status = {};
 
   for (const table of tables) {
-    const count = getRowCount(table);
-    const lastFetch = getOne(
+    const count = await getRowCount(table);
+    const lastFetch = await getOne(
       `SELECT fetched_at FROM ${table} ORDER BY fetched_at DESC LIMIT 1`
     );
     status[table] = {
@@ -356,7 +359,7 @@ function getStatus() {
     };
   }
 
-  const lastLog = getOne(
+  const lastLog = await getOne(
     `SELECT * FROM data_fetch_log ORDER BY fetched_at DESC LIMIT 1`
   );
   status.lastFetchLog = lastLog || null;
@@ -367,8 +370,8 @@ function getStatus() {
 // ---------------------------------------------------------------------------
 // Internal: log a fetch event
 // ---------------------------------------------------------------------------
-function logFetch(fetchType, rowsFetched, rowsChanged, status, errorMessage) {
-  run(
+async function logFetch(fetchType, rowsFetched, rowsChanged, status, errorMessage) {
+  await run(
     `INSERT INTO data_fetch_log (fetch_type, rows_fetched, rows_changed, status, error_message)
      VALUES (?, ?, ?, ?, ?)`,
     [fetchType, rowsFetched, rowsChanged, status, errorMessage]

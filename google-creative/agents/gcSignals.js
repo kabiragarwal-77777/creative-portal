@@ -11,11 +11,11 @@ const path = require('path');
 const fs = require('fs');
 const https = require('https');
 
-let Database;
+let createDb;
 try {
-    Database = require('better-sqlite3');
+    createDb = require('../lib/duckdb-adapter').createDb;
 } catch (e) {
-    Database = require('../../inventory-scanner/node_modules/better-sqlite3');
+    createDb = require('../../lib/duckdb-adapter').createDb;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -82,24 +82,22 @@ function pearsonCorrelation(xs, ys) {
 
 // ── Meta CI DB reader (read-only) ───────────────────────────────────────────
 
-function readMetaCiSignals() {
+async function readMetaCiSignals() {
     try {
         const ciDbPath = path.join(__dirname, '../../creative-intelligence/ci.db');
         if (!fs.existsSync(ciDbPath)) return null;
-        const ciDb = new Database(ciDbPath, { readonly: true });
+        const ciDb = await createDb(ciDbPath);
         const today = todayISO();
         // Check if market_signals table exists
-        const tableCheck = ciDb.prepare(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='market_signals'"
+        const tableCheck = await ciDb.prepare(
+            "SELECT table_name as name FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_name = 'market_signals'"
         ).get();
         if (!tableCheck) {
-            ciDb.close();
             return null;
         }
-        const row = ciDb.prepare(
+        const row = await ciDb.prepare(
             'SELECT * FROM market_signals WHERE date = ? ORDER BY id DESC LIMIT 1'
         ).get(today);
-        ciDb.close();
         return row || null;
     } catch (e) {
         console.warn('[GC Signals] Could not read Meta CI signals:', e.message);
@@ -153,16 +151,16 @@ async function fetchMarketDataIndependently() {
 
 // ── Google ROAS correlation ─────────────────────────────────────────────────
 
-function computeGoogleRoasCorrelation(db, sentimentScore) {
+async function computeGoogleRoasCorrelation(db, sentimentScore) {
     try {
         // Get daily ROAS from gc_adset_performance for last 30 days
-        const rows = db.prepare(`
+        const rows = await db.prepare(`
             SELECT date,
                    CASE WHEN SUM(spend) > 0
                         THEN SUM(conversion_value) / SUM(spend)
                         ELSE 0 END AS daily_roas
             FROM gc_adset_performance
-            WHERE date >= date('now', '-30 days')
+            WHERE date >= CURRENT_DATE - INTERVAL 30 DAY
             GROUP BY date
             ORDER BY date ASC
         `).all();
@@ -170,7 +168,7 @@ function computeGoogleRoasCorrelation(db, sentimentScore) {
         if (!rows || rows.length < 3) return null;
 
         // Get market signals for corresponding dates
-        const signalRows = db.prepare(`
+        const signalRows = await db.prepare(`
             SELECT date,
                    CASE market_sentiment
                        WHEN 'Low Volatility/Bullish' THEN 1
@@ -179,7 +177,7 @@ function computeGoogleRoasCorrelation(db, sentimentScore) {
                        ELSE 0
                    END AS sentiment_score
             FROM gc_market_signals
-            WHERE date >= date('now', '-30 days')
+            WHERE date >= CURRENT_DATE - INTERVAL 30 DAY
             ORDER BY date ASC
         `).all();
 
@@ -208,9 +206,9 @@ function computeGoogleRoasCorrelation(db, sentimentScore) {
 // ── Module export ───────────────────────────────────────────────────────────
 
 module.exports = function (config) {
-    const db = getGcDb();
 
     async function fetchMarketSignals() {
+        const db = await getGcDb();
         const today = todayISO();
         console.log(`[GC Signals] Fetching market signals for ${today}...`);
 
@@ -220,7 +218,7 @@ module.exports = function (config) {
 
         // 1. Try reading from Meta CI DB first
         try {
-            const metaRow = readMetaCiSignals();
+            const metaRow = await readMetaCiSignals();
             if (metaRow) {
                 nifty_50 = metaRow.nifty_50 ?? null;
                 vix = metaRow.vix ?? null;
@@ -250,7 +248,7 @@ module.exports = function (config) {
         }
 
         // 3. Compute Google ROAS correlation
-        const google_roas_correlation = computeGoogleRoasCorrelation(db, sentimentToScore(market_sentiment));
+        const google_roas_correlation = await computeGoogleRoasCorrelation(db, sentimentToScore(market_sentiment));
 
         // 4. Store in gc_market_signals
         const signals_json = JSON.stringify({
@@ -265,8 +263,8 @@ module.exports = function (config) {
 
         try {
             // Upsert: delete today's old entry if exists, then insert fresh
-            db.prepare('DELETE FROM gc_market_signals WHERE date = ?').run(today);
-            db.prepare(`
+            await db.prepare('DELETE FROM gc_market_signals WHERE date = ?').run(today);
+            await db.prepare(`
                 INSERT INTO gc_market_signals (date, nifty_50, vix, dxy, market_sentiment, google_roas_correlation, signals_json)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             `).run(today, nifty_50, vix, dxy, market_sentiment, google_roas_correlation, signals_json);
@@ -289,7 +287,8 @@ module.exports = function (config) {
 
     async function getLatestSignals() {
         try {
-            const row = db.prepare(`
+            const db = await getGcDb();
+            const row = await db.prepare(`
                 SELECT * FROM gc_market_signals ORDER BY id DESC LIMIT 1
             `).get();
             if (!row) return null;

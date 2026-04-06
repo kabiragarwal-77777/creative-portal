@@ -24,19 +24,22 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Initialize DB and seed
-const db = getDb();
+let db;
+(async () => {
+  db = await getDb();
 
-// Run seed if needed
-if (!isSeeded()) {
-  console.log('[Server] First run detected — seeding database...');
-  try {
-    const { runSeed } = require('./data/seed');
-    runSeed();
-    console.log('[Server] Database seeded successfully');
-  } catch (err) {
-    console.error('[Server] Seed error:', err.message);
+  // Run seed if needed
+  if (!(await isSeeded())) {
+    console.log('[Server] First run detected — seeding database...');
+    try {
+      const { runSeed } = require('./data/seed');
+      await runSeed();
+      console.log('[Server] Database seeded successfully');
+    } catch (err) {
+      console.error('[Server] Seed error:', err.message);
+    }
   }
-}
+})();
 
 // Mount routes
 app.use('/api/inventories', routes.inventoriesRouter);
@@ -71,13 +74,13 @@ app.post('/api/scheduler/run/:jobName', async (req, res) => {
 });
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
   try {
-    const db = getDb();
-    const inventoryCount = db.prepare('SELECT COUNT(*) as count FROM inventories').get().count;
-    const competitorCount = db.prepare('SELECT COUNT(*) as count FROM competitors').get().count;
-    const insightCount = db.prepare('SELECT COUNT(*) as count FROM ai_insights').get().count;
-    const lastDiscovery = db.prepare('SELECT run_date FROM discovery_log ORDER BY run_date DESC LIMIT 1').get();
+    const db = await getDb();
+    const inventoryCount = (await db.prepare('SELECT COUNT(*) as count FROM inventories').get()).count;
+    const competitorCount = (await db.prepare('SELECT COUNT(*) as count FROM competitors').get()).count;
+    const insightCount = (await db.prepare('SELECT COUNT(*) as count FROM ai_insights').get()).count;
+    const lastDiscovery = await db.prepare('SELECT run_date FROM discovery_log ORDER BY run_date DESC LIMIT 1').get();
     const schedulerStatus = agents.getSchedulerStatus();
 
     res.json({
@@ -118,12 +121,12 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`[Inventory Scanner] Running on http://localhost:${PORT}`);
 
   // Start scheduler
   try {
-    agents.startScheduler();
+    await agents.startScheduler();
     console.log('[Server] Scheduler started');
   } catch (err) {
     console.error('[Server] Scheduler start error:', err.message);
@@ -131,7 +134,8 @@ app.listen(PORT, () => {
 
   // Run initial discovery if no logs exist
   try {
-    const logCount = db.prepare('SELECT COUNT(*) as count FROM discovery_log').get().count;
+    const _db = await getDb();
+    const logCount = (await _db.prepare('SELECT COUNT(*) as count FROM discovery_log').get()).count;
     if (logCount === 0) {
       console.log('[Server] No discovery logs found — running initial discovery...');
       agents.runDiscovery().then(() => {

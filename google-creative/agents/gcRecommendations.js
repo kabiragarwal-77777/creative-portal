@@ -48,9 +48,9 @@ async function callOpenAI(systemPrompt, userPrompt, apiKey) {
 
 // ── Data loaders ────────────────────────────────────────────────────────────
 
-function getTopPerformers(db, limit = 20) {
+async function getTopPerformers(db, limit = 20) {
     try {
-        return db.prepare(`
+        return await db.prepare(`
             SELECT cs.creative_id, cs.gcps_score, cs.ad_type,
                    c.headline, c.description, c.asset_type, c.campaign_name,
                    sig.signal_type, sig.signal_value, sig.confidence
@@ -67,9 +67,9 @@ function getTopPerformers(db, limit = 20) {
     }
 }
 
-function getUnderperformers(db, limit = 10) {
+async function getUnderperformers(db, limit = 10) {
     try {
-        return db.prepare(`
+        return await db.prepare(`
             SELECT cs.creative_id, cs.gcps_score, cs.ad_type,
                    c.headline, c.description, c.asset_type,
                    sig.signal_type, sig.signal_value
@@ -86,9 +86,9 @@ function getUnderperformers(db, limit = 10) {
     }
 }
 
-function getMarketSignals(db) {
+async function getMarketSignals(db) {
     try {
-        return db.prepare(`
+        return await db.prepare(`
             SELECT signal_type, signal_value, confidence, captured_at
             FROM gc_market_signals
             ORDER BY captured_at DESC
@@ -236,13 +236,13 @@ Return ONLY valid JSON array:
 
 // ── Ensure table ────────────────────────────────────────────────────────────
 
-function ensureTable(db) {
-    db.prepare(`
+async function ensureTable(db) {
+    await db.prepare(`
         CREATE TABLE IF NOT EXISTS gc_recommendations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             brief_type TEXT NOT NULL,
             briefs_json TEXT NOT NULL,
-            generated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            generated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
         )
     `).run();
 }
@@ -260,13 +260,13 @@ module.exports = function (config) {
     async function generateBriefs(type = 'all') {
         if (!apiKey) throw new Error('Missing OPENAI_API_KEY');
 
-        const db = getGcDb();
-        ensureTable(db);
+        const db = await getGcDb();
+        await ensureTable(db);
 
         // 1. Gather data
-        const topRows = getTopPerformers(db);
-        const lowRows = getUnderperformers(db);
-        const mktSignals = getMarketSignals(db);
+        const topRows = await getTopPerformers(db);
+        const lowRows = await getUnderperformers(db);
+        const mktSignals = await getMarketSignals(db);
 
         const ctx = {
             topSignals: summariseTopSignals(topRows),
@@ -283,7 +283,7 @@ module.exports = function (config) {
         const results = {};
         const insertStmt = db.prepare(`
             INSERT INTO gc_recommendations (brief_type, briefs_json, generated_at)
-            VALUES (?, ?, datetime('now'))
+            VALUES (?, ?, CURRENT_TIMESTAMP)
         `);
 
         // 2. Generate each type (sequentially to stay within rate limits)
@@ -300,7 +300,7 @@ module.exports = function (config) {
                 results[t] = Array.isArray(briefs) ? briefs : [briefs];
 
                 // Persist
-                insertStmt.run(t, JSON.stringify(results[t]));
+                await insertStmt.run(t, JSON.stringify(results[t]));
                 console.log(`[gcRecommendations] Stored ${results[t].length} ${t.toUpperCase()} briefs`);
             } catch (err) {
                 console.error(`[gcRecommendations] Failed to generate ${t} briefs:`, err.message);
@@ -317,15 +317,15 @@ module.exports = function (config) {
      * @returns {Object} { rsa?: [...], video?: [...], pmax?: [...] }
      */
     async function getLatestBriefs(type = 'all') {
-        const db = getGcDb();
-        ensureTable(db);
+        const db = await getGcDb();
+        await ensureTable(db);
 
         const types = type === 'all' ? BRIEF_TYPES : [type];
         const results = {};
 
         for (const t of types) {
             try {
-                const row = db.prepare(`
+                const row = await db.prepare(`
                     SELECT briefs_json, generated_at
                     FROM gc_recommendations
                     WHERE brief_type = ?
