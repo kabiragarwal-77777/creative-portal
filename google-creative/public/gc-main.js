@@ -81,7 +81,7 @@
     // ── Pipeline status / last updated ─────────────────────────
 
     window.GC.updateLastUpdated = function() {
-        fetch('/api/gc/pipeline/status')
+        fetch('/creative-portal/api/gc/pipeline/status')
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 var tsEl = document.getElementById('gcLastUpdated');
@@ -122,7 +122,7 @@
             stEl.className = 'gc-status-running';
         }
 
-        fetch('/api/gc/fetch/trigger', { method: 'POST' })
+        fetch('/creative-portal/api/gc/fetch/trigger', { method: 'POST' })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 GC.showLoading(false);
@@ -192,9 +192,9 @@
                 '<p style="color:var(--text-dim,#71717a);">Loading dashboard...</p>' +
             '</div>';
 
-        var pipelineP = fetch('/api/gc/pipeline/status').then(function(r) { return r.json(); }).catch(function() { return {}; });
-        var creativesP = fetch('/api/gc/creatives?days=90').then(function(r) { return r.json(); }).catch(function() { return { creatives: [] }; });
-        var forecastP  = fetch('/api/gc/forecast/summary').then(function(r) { return r.json(); }).catch(function() { return {}; });
+        var pipelineP = fetch('/creative-portal/api/gc/pipeline/status').then(function(r) { return r.json(); }).catch(function() { return {}; });
+        var creativesP = fetch('/creative-portal/api/gc/creatives?days=90').then(function(r) { return r.json(); }).catch(function() { return { creatives: [] }; });
+        var forecastP  = fetch('/creative-portal/api/gc/forecast/summary').then(function(r) { return r.json(); }).catch(function() { return {}; });
 
         Promise.all([pipelineP, creativesP, forecastP]).then(function(results) {
             var pipeline  = results[0] || {};

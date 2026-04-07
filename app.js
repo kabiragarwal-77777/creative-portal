@@ -229,7 +229,7 @@ async function runViewAssistantQuery() {
     if (checksEl) checksEl.innerHTML = '<div class="ai-dock-item">Reading current filters, date range, and diagnostics.</div>';
     if (nextEl) nextEl.innerHTML = '<div class="ai-dock-item">Preparing focused next steps.</div>';
     try {
-        const res = await fetch('/api/ai/analyze', {
+        const res = await fetch('api/ai/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -326,7 +326,7 @@ function matureFunnelRow(row, asOfDateStr) {
 
 // Force refresh — clears all server caches then re-fetches
 window.forceRefresh = async function() {
-    try { await fetch('/api/cache/clear', { method: 'POST' }); } catch(e) {}
+    try { await fetch('api/cache/clear', { method: 'POST' }); } catch(e) {}
     fetchLiveData();
 };
 
@@ -344,17 +344,17 @@ async function fetchLiveData(customDateFrom, customDateTo) {
 
         // Parallel fetch: Meta insights + Metabase funnel (required) + Ad statuses (optional)
         const [metaRes, funnelRes, adsStatusRes] = await Promise.all([
-            fetch('/api/meta/ad-insights-daily', {
+            fetch('api/meta/ad-insights-daily', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ dateFrom, dateTo })
             }).then(r => r.json()),
-            fetch('/api/metabase/ad-funnel', {
+            fetch('api/metabase/ad-funnel', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ dateFrom, dateTo })
             }).then(r => r.json()),
-            fetch('/api/meta/ads-status').then(r => r.json()).catch(() => ({ success: false, data: [] }))
+            fetch('api/meta/ads-status').then(r => r.json()).catch(() => ({ success: false, data: [] }))
         ]);
 
         if (!metaRes.success && !metaRes.data) {
@@ -920,12 +920,12 @@ async function fetchVerificationDelta(dateFrom, dateTo) {
     }
 
     const [metaRes, funnelRes] = await Promise.all([
-        fetch('/api/meta/ad-insights-daily', {
+        fetch('api/meta/ad-insights-daily', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ dateFrom, dateTo })
         }).then(r => r.json()).catch(() => ({ success: false, data: [] })),
-        fetch('/api/metabase/ad-funnel', {
+        fetch('api/metabase/ad-funnel', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ dateFrom, dateTo })
@@ -2655,7 +2655,7 @@ init();
 // =========================================================================
 // CAMPAIGN TREE — Hierarchical campaign → adset → ad analysis
 // =========================================================================
-const TREE_SERVER = 'http://localhost:3000';
+const TREE_SERVER = '';
 
 function dateToExcelSerial(dateStr) {
     const [y, m, d] = dateStr.split('-').map(Number);
@@ -3209,7 +3209,7 @@ window.pauseAd = async function(adId, btn) {
     btn.innerHTML = '⏳ Pausing...';
     btn.disabled = true;
     try {
-        const res = await fetch('/api/meta/ad-status', {
+        const res = await fetch('api/meta/ad-status', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ad_id: adId, status: 'PAUSED' })

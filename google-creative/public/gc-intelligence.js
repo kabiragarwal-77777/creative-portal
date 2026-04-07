@@ -120,9 +120,9 @@
         showCardsLoading();
 
         Promise.all([
-            fetch('/api/gc/creatives?days=90&type=all&performance=all')
+            fetch('/creative-portal/api/gc/creatives?days=90&type=all&performance=all')
                 .then(function(r) { return r.json(); }),
-            fetch('/api/gc/learning/report')
+            fetch('/creative-portal/api/gc/learning/report')
                 .then(function(r) { return r.json(); })
                 .catch(function() { return { success: false, data: null }; })
         ]).then(function(results) {

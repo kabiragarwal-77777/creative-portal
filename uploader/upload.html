@@ -1245,7 +1245,7 @@
 
     // Upload image to Meta via server-side Drive download to avoid browser 429/CORS issues
     async function uploadImageByUrl(driveUrl) {
-        const resp = await fetch('/api/upload-image', {
+        const resp = await fetch('/creative-portal/api/upload-image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ driveUrl }),
@@ -1260,7 +1260,7 @@
 
     // Upload video to Meta via server-side Drive download to avoid browser-side rate limits
     async function uploadVideoByUrl(driveUrl, title) {
-        const resp = await fetch('/api/upload-video', {
+        const resp = await fetch('/creative-portal/api/upload-video', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ driveUrl, title }),
@@ -2007,7 +2007,7 @@
             $('assetFolder').value = folderUrl;
             // Resolve folder to individual file links via server API
             try {
-                const resp = await fetch('/api/resolve-folder', {
+                const resp = await fetch('/creative-portal/api/resolve-folder', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ folderUrl }),
@@ -2568,7 +2568,7 @@
             if (folderUrl && !config.asset_horizontal && !config.asset_vertical && !config.asset_square) {
                 const logId = addLogEntry('Resolving Drive folder to assets...', 'pending');
                 try {
-                    const resp = await fetch('/api/resolve-folder', {
+                    const resp = await fetch('/creative-portal/api/resolve-folder', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ folderUrl }),
@@ -3014,7 +3014,7 @@
         addLogEntry('Video uploads can take 3-5 minutes while Meta processes all placements. Keep this tab open.', 'info');
 
         try {
-            const resp = await fetch('/api/execute-full', {
+            const resp = await fetch('/creative-portal/api/execute-full', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),

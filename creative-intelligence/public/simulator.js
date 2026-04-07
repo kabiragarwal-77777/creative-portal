@@ -130,7 +130,7 @@
     }
 
     function fetchDashboard() {
-        fetch('/api/ci2/roas-simulator/dashboard')
+        fetch('/creative-portal/api/ci2/roas-simulator/dashboard')
             .then(function(res) { return res.json(); })
             .then(function(result) {
                 if (!result.success || !result.data) return;
@@ -158,7 +158,7 @@
         }
         if (manual && snapshotBtn) snapshotBtn.disabled = true;
 
-        fetch('/api/ci2/roas-simulator/refresh', {
+        fetch('/creative-portal/api/ci2/roas-simulator/refresh', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: '{}'
@@ -338,7 +338,7 @@
 
         chartContainer.innerHTML = '<div style="font-size:12px;color:var(--text-dim);">Loading simulator line chart...</div>';
 
-        fetch('/api/ci2/roas-simulator/trendline/' + encodeURIComponent(adId))
+        fetch('/creative-portal/api/ci2/roas-simulator/trendline/' + encodeURIComponent(adId))
             .then(function(res) { return res.json(); })
             .then(function(result) {
                 if (!result.success || !result.data) {

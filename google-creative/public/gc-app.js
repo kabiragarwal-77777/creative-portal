@@ -141,7 +141,7 @@ async function runViewAssistantQuery() {
     if (checksEl) checksEl.innerHTML = '<div class="ai-dock-item">Reading current filters, date range, and diagnostics.</div>';
     if (nextEl) nextEl.innerHTML = '<div class="ai-dock-item">Preparing focused next steps.</div>';
     try {
-        const res = await fetch('/api/ai/analyze', {
+        const res = await fetch('/creative-portal/api/ai/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -234,17 +234,17 @@ async function fetchLiveData(customDateFrom, customDateTo) {
 
         // Parallel fetch: Google insights + Metabase funnel + Campaign statuses
         const [googleRes, funnelRes, campaignsRes] = await Promise.all([
-            fetch('/api/google/ad-insights-daily', {
+            fetch('/creative-portal/api/google/ad-insights-daily', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ dateFrom, dateTo })
             }).then(r => r.json()),
-            fetch('/api/google/ad-funnel', {
+            fetch('/creative-portal/api/google/ad-funnel', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ dateFrom, dateTo })
             }).then(r => r.json()),
-            fetch('/api/google/campaigns').then(r => r.json()).catch(() => ({ success: false, data: [] }))
+            fetch('/creative-portal/api/google/campaigns').then(r => r.json()).catch(() => ({ success: false, data: [] }))
         ]);
 
         const googleRows = googleRes.data || [];
@@ -2023,7 +2023,7 @@ window.updateGoogleBudget = async function(campaignId, action, btn) {
     btn.innerHTML = '\u231B Updating...';
     btn.disabled = true;
     try {
-        const res = await fetch('/api/google/campaign-budget', {
+        const res = await fetch('/creative-portal/api/google/campaign-budget', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ campaign_id: campaignId, action })

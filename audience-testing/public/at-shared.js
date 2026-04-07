@@ -9,7 +9,7 @@
 
     AT.api = async function(path, opts) {
         try {
-            var res = await fetch('/api/at' + path, opts || {});
+            var res = await fetch('/creative-portal/api/at' + path, opts || {});
             return await res.json();
         } catch(e) { console.error('[AT]', e); return { success: false, error: e.message }; }
     };

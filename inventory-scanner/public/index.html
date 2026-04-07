@@ -428,7 +428,7 @@
 
   async function fetchD6Benchmarks() {
     try {
-      const res = await fetch('/api/inventory/benchmark/all');
+      const res = await fetch('/creative-portal/api/inventory/benchmark/all');
       if (!res.ok) return;
       const payload = await res.json();
       d6BenchmarkData = payload.data || payload;
@@ -493,7 +493,7 @@
     try {
       const budget = document.getElementById('total-budget');
       const totalBudget = budget ? budget.value : 1000000;
-      const res = await fetch('/api/inventory/recommendations?budget=' + totalBudget);
+      const res = await fetch('/creative-portal/api/inventory/recommendations?budget=' + totalBudget);
       if (!res.ok) return;
       aiRecommendations = await res.json();
       renderAIRecommendationPanel();

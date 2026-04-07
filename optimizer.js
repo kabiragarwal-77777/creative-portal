@@ -4341,10 +4341,10 @@ function getCurrentOptimizerDisplayScan() {
 
 async function fetchApexExternalContext() {
     var requests = [
-        fetch('/api/competitor/trends', { signal: AbortSignal.timeout(15000) }).then(function(r) { return r.json(); }),
-        fetch('/api/competitor/radar', { signal: AbortSignal.timeout(15000) }).then(function(r) { return r.json(); }),
-        fetch('/api/trends/data', { signal: AbortSignal.timeout(15000) }).then(function(r) { return r.json(); }),
-        fetch('/api/trends/status', { signal: AbortSignal.timeout(15000) }).then(function(r) { return r.json(); })
+        fetch('api/competitor/trends', { signal: AbortSignal.timeout(15000) }).then(function(r) { return r.json(); }),
+        fetch('api/competitor/radar', { signal: AbortSignal.timeout(15000) }).then(function(r) { return r.json(); }),
+        fetch('api/trends/data', { signal: AbortSignal.timeout(15000) }).then(function(r) { return r.json(); }),
+        fetch('api/trends/status', { signal: AbortSignal.timeout(15000) }).then(function(r) { return r.json(); })
     ];
     var settled = await Promise.allSettled(requests);
     var competitorTrends = settled[0].status === 'fulfilled' ? settled[0].value : null;
@@ -4420,7 +4420,7 @@ async function fetchApexBreakdowns(range) {
         };
     }
 
-    var response = await fetch('/api/meta/apex-breakdowns', {
+    var response = await fetch('api/meta/apex-breakdowns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dateFrom: range.since, dateTo: range.until }),
@@ -5313,7 +5313,7 @@ async function generateOptimizationPlan(scanData) {
 
     var plan;
     try {
-        var brainResponse = await fetch('/api/optimizer/brain', {
+        var brainResponse = await fetch('api/optimizer/brain', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -5331,7 +5331,7 @@ async function generateOptimizationPlan(scanData) {
         }) : brainResult;
     } catch (brainErr) {
         console.warn('[Optimizer] Brain route failed, falling back to generic AI analyze:', brainErr.message);
-        var response = await fetch('/api/ai/analyze', {
+        var response = await fetch('api/ai/analyze', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ system: systemPrompt, prompt: userPrompt, max_tokens: 16000 }),
             signal: AbortSignal.timeout(300000)
@@ -5444,7 +5444,7 @@ async function executeAllActions(actions) {
         };
     });
 
-    var res = await fetch('/api/meta-write/batch', {
+    var res = await fetch('api/meta-write/batch', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ actions: batch }),
         signal: AbortSignal.timeout(300000)

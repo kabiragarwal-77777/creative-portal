@@ -483,11 +483,11 @@ async function scanGoogleAccount(progressCb) {
     var googleRes, funnelRes;
     try {
         var results = await Promise.all([
-            fetch('/api/google/ad-insights-daily', {
+            fetch('/creative-portal/api/google/ad-insights-daily', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ dateFrom: dr.since, dateTo: dr.until })
             }).then(function(r) { return r.json(); }),
-            fetch('/api/google/ad-funnel', {
+            fetch('/creative-portal/api/google/ad-funnel', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ dateFrom: dr.since, dateTo: dr.until })
             }).then(function(r) { return r.json(); })

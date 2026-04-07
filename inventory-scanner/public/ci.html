@@ -2531,7 +2531,7 @@ if(document.readyState!=='loading')renderModuleF();
 
   async function loadBriefs() {
     try {
-      var res = await fetch('/api/competitor/briefs?type=all');
+      var res = await fetch('/creative-portal/api/competitor/briefs?type=all');
       var json = await res.json();
       if (json.success && json.data) {
         briefsCache.static = json.data.static || [];
@@ -2553,7 +2553,7 @@ if(document.readyState!=='loading')renderModuleF();
     grid.innerHTML = '<div class="briefs-skeleton"><div class="skeleton-card"><div class="skeleton-line skeleton" style="width:70%"></div><div class="skeleton-line skeleton" style="width:100%;height:40px"></div><div class="skeleton-line skeleton" style="width:90%"></div></div><div class="skeleton-card"><div class="skeleton-line skeleton" style="width:70%"></div><div class="skeleton-line skeleton" style="width:100%;height:40px"></div><div class="skeleton-line skeleton" style="width:90%"></div></div><div class="skeleton-card"><div class="skeleton-line skeleton" style="width:70%"></div><div class="skeleton-line skeleton" style="width:100%;height:40px"></div><div class="skeleton-line skeleton" style="width:90%"></div></div></div>';
     var errorMsg = '';
     try {
-      var res = await fetch('/api/competitor/briefs/refresh', { method: 'POST' });
+      var res = await fetch('/creative-portal/api/competitor/briefs/refresh', { method: 'POST' });
       var json = await res.json();
       if (json.success && json.data) {
         briefsCache.static = json.data.static || [];
@@ -2677,14 +2677,14 @@ if(document.readyState!=='loading')renderModuleF();
           if (briefFilterVertical !== 'all') payload.vertical = briefFilterVertical;
           if (briefFilterCompetitor !== 'all') payload.competitor = briefFilterCompetitor;
           if (briefFilterType !== 'all') payload.type = briefFilterType;
-          res = await fetch('/api/competitor/briefs/competitor/generate', {
+          res = await fetch('/creative-portal/api/competitor/briefs/competitor/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
         } else {
           // No filters = use standard refresh (faster, single OpenAI call)
-          res = await fetch('/api/competitor/briefs/refresh', { method: 'POST' });
+          res = await fetch('/creative-portal/api/competitor/briefs/refresh', { method: 'POST' });
         }
 
         json = await res.json();
@@ -3126,9 +3126,9 @@ window.UNIVEST_DATA = { competitors: [], ads: [], campaigns: [], insights: [] };
 
     // Fetch classified ads and trends in parallel
     const [classifiedRes, trendsRes, radarRes] = await Promise.all([
-      fetch('/api/competitor/classified').then(r => r.json()).catch(() => ({ success: false })),
-      fetch('/api/competitor/trends').then(r => r.json()).catch(() => ({ success: false })),
-      fetch('/api/competitor/radar').then(r => r.json()).catch(() => ({ success: false }))
+      fetch('/creative-portal/api/competitor/classified').then(r => r.json()).catch(() => ({ success: false })),
+      fetch('/creative-portal/api/competitor/trends').then(r => r.json()).catch(() => ({ success: false })),
+      fetch('/creative-portal/api/competitor/radar').then(r => r.json()).catch(() => ({ success: false }))
     ]);
 
     if (classifiedRes.success && classifiedRes.data) {

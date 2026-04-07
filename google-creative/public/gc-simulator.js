@@ -397,7 +397,7 @@
         var submitBtn = document.getElementById('gcSimSubmitBtn');
         if (submitBtn) submitBtn.disabled = true;
 
-        fetch('/api/gc/simulator/predict', {
+        fetch('/creative-portal/api/gc/simulator/predict', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -504,7 +504,7 @@
     // ---- Simulations List ----
 
     function fetchSimulations() {
-        fetch('/api/gc/simulator/simulations')
+        fetch('/creative-portal/api/gc/simulator/simulations')
         .then(function(r) { return r.json(); })
         .then(function(result) {
             if (result.success && result.data) {
@@ -576,7 +576,7 @@
             '</div>' +
         '</div>';
 
-        fetch('/api/gc/simulator/' + encodeURIComponent(simId) + '/timeseries')
+        fetch('/creative-portal/api/gc/simulator/' + encodeURIComponent(simId) + '/timeseries')
         .then(function(r) { return r.json(); })
         .then(function(result) {
             if (result.success && result.data) {

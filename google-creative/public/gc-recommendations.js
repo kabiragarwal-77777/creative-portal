@@ -91,7 +91,7 @@
         showLoading(true);
         hideStatus();
 
-        fetch('/api/gc/recommendations/briefs?type=all')
+        fetch('/creative-portal/api/gc/recommendations/briefs?type=all')
         .then(function(r) { return r.json(); })
         .then(function(result) {
             showLoading(false);
@@ -117,7 +117,7 @@
 
         showStatus('Regenerating creative briefs using latest performance data...', '#6c5ce7');
 
-        fetch('/api/gc/recommendations/refresh', {
+        fetch('/creative-portal/api/gc/recommendations/refresh', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: '{}'

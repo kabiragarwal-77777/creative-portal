@@ -130,7 +130,7 @@
             '</div>';
 
         try {
-            var response = await fetch('/api/ai/analyze', {
+            var response = await fetch('api/ai/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

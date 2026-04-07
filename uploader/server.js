@@ -307,7 +307,7 @@ button:hover{background:#7c6ef0}
 <div class="brand-icon">PM</div>
 <h1>Performance Marketing Auto</h1>
 <div class="sub">Sign in to access the portal</div>
-<form method="POST" action="/auth/login">
+<form method="POST" action="auth/login">
 <div class="error" id="err"></div>
 <input type="text" name="username" placeholder="Username" required autocomplete="username">
 <input type="password" name="password" placeholder="Password" required autocomplete="current-password">
@@ -358,10 +358,13 @@ app.post('/auth/login', (req, res) => {
     if (username === PORTAL_USER && password === PORTAL_PASS) {
         const sessionId = generateSessionId();
         authSessions.set(sessionId, { user: username, createdAt: Date.now(), lastAccess: Date.now() });
-        res.setHeader('Set-Cookie', `portal_session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`);
-        return res.redirect('/');
+        const cookiePath = (req.headers['x-forwarded-prefix'] || '') + '/';
+        res.setHeader('Set-Cookie', `portal_session=${sessionId}; Path=${cookiePath}; HttpOnly; SameSite=Lax; Max-Age=86400`);
+        const base = req.headers['x-forwarded-prefix'] || '';
+        return res.redirect(base + '/');
     }
-    return res.redirect('/auth/login?error=1');
+    const base = req.headers['x-forwarded-prefix'] || '';
+    return res.redirect(base + '/auth/login?error=1');
 });
 
 // Login page (GET)
@@ -375,8 +378,10 @@ app.get('/auth/logout', (req, res) => {
     const cookies = parseCookies(req.headers.cookie);
     const sessionId = cookies['portal_session'];
     if (sessionId) authSessions.delete(sessionId);
-    res.setHeader('Set-Cookie', 'portal_session=; Path=/; HttpOnly; Max-Age=0');
-    res.redirect('/auth/login');
+    const cookiePath = (req.headers['x-forwarded-prefix'] || '') + '/';
+    res.setHeader('Set-Cookie', `portal_session=; Path=${cookiePath}; HttpOnly; Max-Age=0`);
+    const base = req.headers['x-forwarded-prefix'] || '';
+    res.redirect(base + '/auth/login');
 });
 
 // Clean up expired sessions every hour (24h max age)
@@ -5705,6 +5710,7 @@ try {
     app.use('/api/meta', scannerRoutes.metaRouter);
     app.use('/api/google', scannerRoutes.googleRouter);
     app.use('/api/synthesis', scannerRoutes.synthesisRouter);
+    app.use('/api/inventory', scannerRoutes.inventoryEngineRouter);
 
     // Scheduler routes
     app.get('/api/scheduler/status', (req, res) => {

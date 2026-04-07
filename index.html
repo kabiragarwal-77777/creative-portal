@@ -832,7 +832,7 @@
             const promptBody = `Active view context:\n${JSON.stringify(assistantContext, null, 2)}\n\nUser question:\n${prompt}`;
 
             try {
-                const res = await fetch('/api/ai/analyze', {
+                const res = await fetch('api/ai/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ system, prompt: promptBody, max_tokens: 2200 }),
