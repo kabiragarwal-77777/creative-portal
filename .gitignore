@@ -9,3 +9,7 @@ inventory-scanner/.env
 .claude/
 mb_*.json
 node_modules
+
+# DuckDB files (binary — must not be committed)
+*.duckdb
+*.duckdb.wal
