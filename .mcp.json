@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "code-review-graph": {
+      "command": "C:\\Users\\Dell\\Desktop\\creative-portal\\Scripts\\code-review-graph.exe",
+      "args": ["serve"]
+    }
+  }
+}

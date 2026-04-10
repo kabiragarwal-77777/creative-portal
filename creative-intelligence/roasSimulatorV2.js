@@ -4,7 +4,12 @@ const createPredictor = require('./predictor');
 module.exports = function(config) {
     const predictor = createPredictor(config);
 
-    const SIMULATOR_START_DATE = '2026-03-25';
+    const SIMULATOR_START_DATE = '2026-03-20';
+    const SIMULATOR_CAMPAIGN_PREFIXES = [
+        'Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India',
+        'Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India',
+        'Test4-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India',
+    ];
     const IMMATURE_MAX_DAYS = 180;
     const CHECKPOINTS = [
         { code: 'P0', day: 0, label: 'Day 0' },
@@ -27,6 +32,11 @@ module.exports = function(config) {
         return Math.round(Number(value) * 10000) / 10000;
     }
 
+    function isAllowedSimulatorCampaign(campaignName) {
+        const name = String(campaignName || '');
+        return SIMULATOR_CAMPAIGN_PREFIXES.some(prefix => name.startsWith(prefix));
+    }
+
     function safeRoas(spend, revenue) {
         const sp = Number(spend) || 0;
         const rev = Number(revenue) || 0;
@@ -36,17 +46,21 @@ module.exports = function(config) {
         return round4(ratio * 100);
     }
 
+    function normalizedSimulatorSpend(snapshot) {
+        return Number(snapshot && snapshot.spend) || 0;
+    }
+
     function actualRoas(snapshot, horizon) {
         if (!snapshot) return null;
         const direct = snapshot[horizon.roasField];
         if (direct != null) return round4(direct);
-        return safeRoas(snapshot.spend, snapshot[horizon.revenueField]);
+        return safeRoas(normalizedSimulatorSpend(snapshot), snapshot[horizon.revenueField]);
     }
 
     function currentAnchorRoas(snapshot) {
         if (!snapshot) return null;
         if (snapshot.overall_roas != null) return round4(snapshot.overall_roas);
-        return safeRoas(snapshot.spend, snapshot.overall_revenue);
+        return safeRoas(normalizedSimulatorSpend(snapshot), snapshot.overall_revenue);
     }
 
     function accuracyPct(predicted, actual) {
@@ -70,7 +84,8 @@ module.exports = function(config) {
             const actual = actualRoas(latestSnapshot, horizon);
             const predicted = run[horizon.predictedField];
             const isMature = (Number(latestSnapshot.days_live) || 0) >= (horizon.day + 1);
-            const accuracy = isMature ? accuracyPct(predicted, actual) : null;
+            const isForecastHorizon = horizon.day > (Number(run.checkpoint_day) || 0);
+            const accuracy = (isMature && isForecastHorizon) ? accuracyPct(predicted, actual) : null;
 
             byHorizon[horizon.code] = {
                 mature: isMature,
@@ -94,7 +109,7 @@ module.exports = function(config) {
 
     function getLatestSnapshots() {
         const d = getCiDb();
-        return d.prepare(`
+        const rows = d.prepare(`
             SELECT s.*
             FROM snapshots s
             INNER JOIN (
@@ -105,9 +120,11 @@ module.exports = function(config) {
                 ON latest.ad_id = s.ad_id AND latest.max_date = s.snapshot_date
             WHERE s.go_live_date >= ?
               AND COALESCE(s.days_live, 0) <= ?
+              AND COALESCE(s.spend, 0) > 0
               AND (s.is_ghost != 1 OR s.is_ghost IS NULL)
             ORDER BY COALESCE(s.days_live, 0) ASC, COALESCE(s.spend, 0) ASC, s.ad_name ASC
         `).all(SIMULATOR_START_DATE, IMMATURE_MAX_DAYS);
+        return rows.filter(row => isAllowedSimulatorCampaign(row.campaign_name));
     }
 
     function getSnapshotHistory(adId) {
@@ -158,6 +175,7 @@ module.exports = function(config) {
     function buildCheckpointSeries(run) {
         const points = [];
         const checkpointDay = Number(run.checkpoint_day) || 0;
+        const checkpointAnchor = run.actual_roas_at_creation != null ? round4(run.actual_roas_at_creation) : null;
 
         HORIZONS.forEach(horizon => {
             if (horizon.day > checkpointDay) return;
@@ -173,13 +191,13 @@ module.exports = function(config) {
             });
         });
 
-        if (run.actual_roas_at_creation != null && !points.some(point => point.day === checkpointDay)) {
+        if (checkpointAnchor != null && !points.some(point => point.day === checkpointDay)) {
             points.push({
                 horizon: `D${checkpointDay}`,
                 day: checkpointDay,
-                value: round4(run.actual_roas_at_creation),
-                low: round4(run.actual_roas_at_creation),
-                high: round4(run.actual_roas_at_creation),
+                value: checkpointAnchor,
+                low: checkpointAnchor,
+                high: checkpointAnchor,
                 pointType: 'checkpoint_anchor',
             });
         }
@@ -190,14 +208,119 @@ module.exports = function(config) {
         });
 
         points.sort((a, b) => a.day - b.day);
+
+        let lastValue = null;
+        points.forEach(point => {
+            if (point.value == null) return;
+            const nextValue = lastValue == null ? Number(point.value) : Math.max(Number(point.value) || 0, lastValue);
+            point.value = round4(nextValue);
+            if (point.low != null) point.low = round4(Math.max(Number(point.low) || 0, point.value));
+            if (point.high != null) point.high = round4(Math.max(Number(point.high) || 0, point.value));
+            lastValue = Number(point.value) || lastValue;
+        });
+
         return points;
     }
 
-    async function ensureCheckpointRuns() {
+    function average(values) {
+        const nums = values.filter(v => v != null && !Number.isNaN(Number(v))).map(Number);
+        if (!nums.length) return null;
+        return round4(nums.reduce((sum, value) => sum + value, 0) / nums.length);
+    }
+
+    function makeMonotonicSeries(points) {
+        let maxSoFar = null;
+        return (points || []).map(point => {
+            const value = point && point.value != null ? Number(point.value) : null;
+            if (value == null || Number.isNaN(value)) {
+                return { ...point };
+            }
+            maxSoFar = maxSoFar == null ? value : Math.max(maxSoFar, value);
+            return {
+                ...point,
+                value: round4(maxSoFar),
+            };
+        });
+    }
+
+    function buildAggregateView(latestSnapshots, checkpointRows) {
+        const checkpointMap = {};
+        checkpointRows.forEach(row => {
+            if (!checkpointMap[row.ad_id]) checkpointMap[row.ad_id] = {};
+            checkpointMap[row.ad_id][row.checkpoint_code] = row;
+        });
+
+        const latestValid = latestSnapshots.filter(row => currentAnchorRoas(row) != null);
+        const totalSpend = round4(latestValid.reduce((sum, row) => sum + (Number(row.spend) || 0), 0));
+
+        const actualLine = HORIZONS.map(horizon => {
+            const values = latestValid.map(row => actualRoas(row, horizon)).filter(v => v != null);
+            const revenues = latestValid.map(row => row[horizon.revenueField]).filter(v => v != null);
+            return {
+                horizon: horizon.label,
+                day: horizon.day,
+                value: average(values),
+                revenue: round4(revenues.reduce((sum, value) => sum + (Number(value) || 0), 0)),
+                snapshot_count: values.length,
+            };
+        });
+
+        const checkpoints = CHECKPOINTS.map(checkpoint => {
+            const byDay = {};
+            latestSnapshots.forEach(snapshot => {
+                const run = (checkpointMap[snapshot.ad_id] || {})[checkpoint.code];
+                if (!run) return;
+                const series = buildCheckpointSeries(run);
+                series.forEach(point => {
+                    if (!byDay[point.day]) byDay[point.day] = [];
+                    byDay[point.day].push(point.value);
+                });
+            });
+
+            return {
+                checkpoint_code: checkpoint.code,
+                checkpoint_day: checkpoint.day,
+                points: Object.keys(byDay).map(day => ({
+                    horizon: `D${day}`,
+                    day: Number(day),
+                    value: average(byDay[day]),
+                    low: average(byDay[day]),
+                    high: average(byDay[day]),
+                    pointType: 'forecast',
+                })).sort((a, b) => a.day - b.day),
+            };
+        });
+
+        return {
+            title: 'Aggregate simulator learning view',
+            subtitle: 'Average actual line and average checkpoint forecasts across all immature ads with spend.',
+            ad: {
+                ad_name: 'Aggregate simulator learning view',
+                days_live: latestValid.length,
+                spend: totalSpend,
+                actual_anchor_roas: average(latestValid.map(row => currentAnchorRoas(row))),
+                latest_snapshot_date: latestSnapshots.reduce((max, row) => !max || row.snapshot_date > max ? row.snapshot_date : max, null),
+            },
+            horizons: actualLine.map(point => ({
+                label: point.horizon,
+                day: point.day,
+                actual_roas: point.value,
+                actual_revenue: point.revenue,
+                mature: point.snapshot_count > 0,
+            })),
+            actualLine,
+            checkpoints,
+        };
+    }
+
+    async function ensureCheckpointRuns(forceRebuild) {
         predictor.buildCohortBenchmarks();
 
         const d = getCiDb();
         const latestSnapshots = getLatestSnapshots();
+        if (forceRebuild) {
+            d.prepare('DELETE FROM simulator_checkpoint_runs').run();
+        }
         const insertRun = d.prepare(`
             INSERT OR IGNORE INTO simulator_checkpoint_runs (
                 ad_id, ad_name, campaign_name, adset_name, creative_type, go_live_date,
@@ -315,7 +438,135 @@ module.exports = function(config) {
             }
         }
 
-        return { adsEvaluated: latestSnapshots.length, created, existing, skipped };
+        return { adsEvaluated: latestSnapshots.length, created, existing, skipped, rebuilt: !!forceRebuild };
+    }
+
+    async function ensureCheckpointRunsForAd(adId) {
+        if (!adId) {
+            return { adsEvaluated: 0, created: 0, existing: 0, skipped: 0, rebuilt: false };
+        }
+
+        predictor.buildCohortBenchmarks();
+
+        const latest = getLatestSnapshots().find(row => row.ad_id === adId);
+        if (!latest) {
+            return { adsEvaluated: 0, created: 0, existing: 0, skipped: 1, rebuilt: false };
+        }
+
+        const history = getSnapshotHistory(adId);
+        if (!history.length) {
+            return { adsEvaluated: 1, created: 0, existing: 0, skipped: 1, rebuilt: false };
+        }
+
+        const d = getCiDb();
+        const existingSet = new Set(getCheckpointRuns(adId).map(row => row.checkpoint_code));
+        const insertRun = d.prepare(`
+            INSERT OR IGNORE INTO simulator_checkpoint_runs (
+                ad_id, ad_name, campaign_name, adset_name, creative_type, go_live_date,
+                checkpoint_code, checkpoint_day, created_snapshot_date, days_live_at_creation,
+                spend_at_creation, installs_at_creation, signups_at_creation,
+                actual_roas_at_creation, actual_revenue_at_creation,
+                actual_d6_roas, actual_d15_roas, actual_d30_roas, actual_d60_roas, actual_d180_roas,
+                predicted_d6_roas, predicted_d6_low, predicted_d6_high,
+                predicted_d15_roas, predicted_d15_low, predicted_d15_high,
+                predicted_d30_roas, predicted_d30_low, predicted_d30_high,
+                predicted_d60_roas, predicted_d60_low, predicted_d60_high,
+                predicted_d180_roas, predicted_d180_low, predicted_d180_high,
+                prediction_method, confidence_score, trajectory, recommended_action, reasoning, gpt_qualitative
+            ) VALUES (
+                @ad_id, @ad_name, @campaign_name, @adset_name, @creative_type, @go_live_date,
+                @checkpoint_code, @checkpoint_day, @created_snapshot_date, @days_live_at_creation,
+                @spend_at_creation, @installs_at_creation, @signups_at_creation,
+                @actual_roas_at_creation, @actual_revenue_at_creation,
+                @actual_d6_roas, @actual_d15_roas, @actual_d30_roas, @actual_d60_roas, @actual_d180_roas,
+                @predicted_d6_roas, @predicted_d6_low, @predicted_d6_high,
+                @predicted_d15_roas, @predicted_d15_low, @predicted_d15_high,
+                @predicted_d30_roas, @predicted_d30_low, @predicted_d30_high,
+                @predicted_d60_roas, @predicted_d60_low, @predicted_d60_high,
+                @predicted_d180_roas, @predicted_d180_low, @predicted_d180_high,
+                @prediction_method, @confidence_score, @trajectory, @recommended_action, @reasoning, @gpt_qualitative
+            )
+        `);
+
+        let created = 0;
+        let existing = 0;
+        let skipped = 0;
+
+        for (const checkpoint of CHECKPOINTS) {
+            if (existingSet.has(checkpoint.code)) {
+                existing++;
+                continue;
+            }
+            if ((Number(latest.days_live) || 0) < checkpoint.day) {
+                skipped++;
+                continue;
+            }
+
+            const checkpointSnapshot = getCheckpointSnapshot(history, checkpoint.day);
+            if (!checkpointSnapshot) {
+                skipped++;
+                continue;
+            }
+
+            const prediction = await predictor.predictNewAd(checkpointSnapshot);
+            if (!prediction) {
+                skipped++;
+                continue;
+            }
+
+            const result = insertRun.run({
+                ad_id: checkpointSnapshot.ad_id,
+                ad_name: checkpointSnapshot.ad_name,
+                campaign_name: checkpointSnapshot.campaign_name || null,
+                adset_name: checkpointSnapshot.adset_name || null,
+                creative_type: checkpointSnapshot.creative_type || null,
+                go_live_date: checkpointSnapshot.go_live_date || null,
+                checkpoint_code: checkpoint.code,
+                checkpoint_day: checkpoint.day,
+                created_snapshot_date: checkpointSnapshot.snapshot_date,
+                days_live_at_creation: checkpointSnapshot.days_live || 0,
+                spend_at_creation: checkpointSnapshot.spend || 0,
+                installs_at_creation: checkpointSnapshot.installs || 0,
+                signups_at_creation: checkpointSnapshot.signups || 0,
+                actual_roas_at_creation: currentAnchorRoas(checkpointSnapshot),
+                actual_revenue_at_creation: round4(checkpointSnapshot.overall_revenue || 0),
+                actual_d6_roas: actualRoas(checkpointSnapshot, HORIZONS[0]),
+                actual_d15_roas: actualRoas(checkpointSnapshot, HORIZONS[1]),
+                actual_d30_roas: actualRoas(checkpointSnapshot, HORIZONS[2]),
+                actual_d60_roas: actualRoas(checkpointSnapshot, HORIZONS[3]),
+                actual_d180_roas: actualRoas(checkpointSnapshot, HORIZONS[4]),
+                predicted_d6_roas: round4(prediction.predicted_d6_roas),
+                predicted_d6_low: round4(prediction.predicted_d6_low),
+                predicted_d6_high: round4(prediction.predicted_d6_high),
+                predicted_d15_roas: round4(prediction.predicted_d15_roas),
+                predicted_d15_low: round4(prediction.predicted_d15_low),
+                predicted_d15_high: round4(prediction.predicted_d15_high),
+                predicted_d30_roas: round4(prediction.predicted_d30_roas),
+                predicted_d30_low: round4(prediction.predicted_d30_low),
+                predicted_d30_high: round4(prediction.predicted_d30_high),
+                predicted_d60_roas: round4(prediction.predicted_d60_roas),
+                predicted_d60_low: round4(prediction.predicted_d60_low),
+                predicted_d60_high: round4(prediction.predicted_d60_high),
+                predicted_d180_roas: round4(prediction.predicted_d180_roas),
+                predicted_d180_low: round4(prediction.predicted_d180_low),
+                predicted_d180_high: round4(prediction.predicted_d180_high),
+                prediction_method: prediction.prediction_method || null,
+                confidence_score: prediction.confidence_score || null,
+                trajectory: prediction.trajectory || null,
+                recommended_action: prediction.recommended_action || null,
+                reasoning: prediction.reasoning || null,
+                gpt_qualitative: prediction.gpt_qualitative || null,
+            });
+
+            if (result.changes > 0) {
+                created++;
+                existingSet.add(checkpoint.code);
+            } else {
+                existing++;
+            }
+        }
+
+        return { adsEvaluated: 1, created, existing, skipped, rebuilt: false };
     }
 
     function getDashboardData() {
@@ -323,6 +574,8 @@ module.exports = function(config) {
         const checkpointRows = getCheckpointRuns();
         const checkpointMap = {};
         const accuracySummary = {};
+        const accuracyMatrix = {};
+        const learningSummary = predictor.getTrendLibrarySummary ? predictor.getTrendLibrarySummary() : null;
 
         checkpointRows.forEach(row => {
             if (!checkpointMap[row.ad_id]) checkpointMap[row.ad_id] = {};
@@ -338,6 +591,16 @@ module.exports = function(config) {
                 if (run && accuracy && accuracy.average_accuracy_pct != null) {
                     if (!accuracySummary[checkpoint.code]) accuracySummary[checkpoint.code] = [];
                     accuracySummary[checkpoint.code].push(accuracy.average_accuracy_pct);
+                }
+
+                if (run && accuracy && accuracy.by_horizon) {
+                    if (!accuracyMatrix[checkpoint.code]) accuracyMatrix[checkpoint.code] = {};
+                    Object.entries(accuracy.by_horizon).forEach(([horizonCode, item]) => {
+                        if (item && item.accuracy_pct != null) {
+                            if (!accuracyMatrix[checkpoint.code][horizonCode]) accuracyMatrix[checkpoint.code][horizonCode] = [];
+                            accuracyMatrix[checkpoint.code][horizonCode].push(item.accuracy_pct);
+                        }
+                    });
                 }
 
                 return {
@@ -390,7 +653,13 @@ module.exports = function(config) {
             verified_accuracy_p2: accuracySummary.P2 ? accuracySummary.P2.length : 0,
             verified_accuracy_p8: accuracySummary.P8 ? accuracySummary.P8.length : 0,
             verified_accuracy_p14: accuracySummary.P14 ? accuracySummary.P14.length : 0,
+            accuracy_matrix: Object.fromEntries(Object.entries(accuracyMatrix).map(([checkpointCode, byHorizon]) => ([
+                checkpointCode,
+                Object.fromEntries(Object.entries(byHorizon).map(([horizonCode, values]) => [horizonCode, round4(values.reduce((sum, value) => sum + value, 0) / values.length)])),
+            ]))),
         };
+
+        const aggregateView = buildAggregateView(latestSnapshots, checkpointRows);
 
         return {
             summary,
@@ -401,6 +670,8 @@ module.exports = function(config) {
             })),
             checkpoints: CHECKPOINTS,
             startDate: SIMULATOR_START_DATE,
+            learning_summary: learningSummary,
+            aggregate_view: aggregateView,
         };
     }
 
@@ -416,6 +687,15 @@ module.exports = function(config) {
             actual_roas: actualRoas(latest, horizon),
             actual_revenue: round4(latest[horizon.revenueField]),
             mature: (Number(latest.days_live) || 0) >= (horizon.day + 1),
+        }));
+
+        const actualLine = HORIZONS.map(horizon => ({
+            horizon: horizon.label,
+            day: horizon.day,
+            value: actualRoas(latest, horizon),
+            revenue: round4(latest[horizon.revenueField]),
+            mature: (Number(latest.days_live) || 0) >= (horizon.day + 1),
+            snapshot_date: latest.snapshot_date,
         }));
 
         const checkpointLines = checkpointRuns.map(run => ({
@@ -453,16 +733,7 @@ module.exports = function(config) {
                 actual_anchor_roas: currentAnchorRoas(latest),
             },
             horizons,
-            actualLine: history
-                .filter(row => (Number(row.spend) || 0) > 0 && currentAnchorRoas(row) != null)
-                .map(row => ({
-                    horizon: `D${row.days_live || 0}`,
-                    day: row.days_live || 0,
-                    value: currentAnchorRoas(row),
-                    revenue: round4(row.overall_revenue),
-                    mature: true,
-                    snapshot_date: row.snapshot_date,
-                })),
+            actualLine,
             checkpoints: checkpointLines,
             history: history.map(row => ({
                 snapshot_date: row.snapshot_date,
@@ -502,6 +773,7 @@ module.exports = function(config) {
         HORIZONS,
         SIMULATOR_START_DATE,
         ensureCheckpointRuns,
+        ensureCheckpointRunsForAd,
         getDashboardData,
         getTrendlineData,
         startScheduler,

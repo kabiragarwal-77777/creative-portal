@@ -1,4 +1,4 @@
-const db = require('./db');
+﻿const db = require('./db');
 const path = require('path');
 
 module.exports = function (config) {
@@ -46,6 +46,92 @@ module.exports = function (config) {
             .trim() || 'UNKNOWN';
     }
 
+    const CHECKPOINTS = [
+        { code: 'P0', day: 0, label: 'Day 0' },
+        { code: 'P2', day: 2, label: 'Day 2' },
+        { code: 'P8', day: 8, label: 'Day 8' },
+        { code: 'P14', day: 14, label: 'Day 14' },
+    ];
+
+    const HORIZONS = [
+        { code: 'd6', day: 6, label: 'D6', revenueField: 'd6_overall_revenue', roasField: 'd6_roas' },
+        { code: 'd15', day: 15, label: 'D15', revenueField: 'd15_overall_revenue', roasField: 'd15_roas' },
+        { code: 'd30', day: 30, label: 'D30', revenueField: 'd30_overall_revenue', roasField: 'd30_roas' },
+        { code: 'd60', day: 60, label: 'D60', revenueField: 'd60_overall_revenue', roasField: 'd60_roas' },
+        { code: 'd180', day: 180, label: 'D180', revenueField: 'd180_overall_revenue', roasField: 'd180_roas' },
+    ];
+
+    const trendLibraryCache = {
+        builtAt: null,
+        summary: null,
+        families: null,
+    };
+
+    function safeRoas(spend, revenue) {
+        const sp = Number(spend) || 0;
+        const rev = Number(revenue) || 0;
+        if (sp <= 0 || rev < 0) return null;
+        const ratio = rev / sp;
+        if (!Number.isFinite(ratio) || ratio > 50) return null;
+        return round4(ratio * 100);
+    }
+
+    function currentAnchorRoas(row) {
+        if (!row) return null;
+        if (row.overall_roas != null) return round4(row.overall_roas);
+        return safeRoas(row.spend, row.overall_revenue);
+    }
+
+    function actualRoasForRow(row, horizon) {
+        if (!row || !horizon) return null;
+        const direct = row[horizon.roasField];
+        if (direct != null) return round4(direct);
+        return safeRoas(row.spend, row[horizon.revenueField]);
+    }
+
+    function getStageCode(daysLive) {
+        const d = Number(daysLive) || 0;
+        if (d >= 14) return 'P14';
+        if (d >= 8) return 'P8';
+        if (d >= 2) return 'P2';
+        return 'P0';
+    }
+
+    function meanVector(vectors) {
+        if (!vectors.length) return [];
+        const len = vectors[0].length;
+        const out = new Array(len).fill(0);
+        vectors.forEach(vec => {
+            for (let i = 0; i < len; i++) {
+                out[i] += Number(vec[i]) || 0;
+            }
+        });
+        return out.map(v => round4(v / vectors.length));
+    }
+
+    function labelCurveBucket(ratios) {
+        const d15 = Number(ratios.d15) || 0;
+        const d30 = Number(ratios.d30) || 0;
+        const d60 = Number(ratios.d60) || 0;
+        const d180 = Number(ratios.d180) || 0;
+
+        if (d180 < 1.15) return 'flat';
+        if (d15 <= 1.15 && d180 >= 1.8) return 'late_lift';
+        if (d60 >= 1.8 || d180 >= 2.6) return 'fast_ramp';
+        if (d30 >= 1.2 && d180 >= 1.35) return 'steady_ramp';
+        return 'weak_growth';
+    }
+
+    function familySelectionScore(family, signals, cohort) {
+        if (!family) return 0;
+        const vec = metaSignalsToVector(signals);
+        const similarity = cosineSimilarity(vec, family.signal_vector || []);
+        const sizeFactor = Math.min(family.sample_size || 0, 60) / 60;
+        const stageFactor = family.stage_code === 'P14' ? 1 : family.stage_code === 'P8' ? 0.9 : family.stage_code === 'P2' ? 0.8 : 0.75;
+        const cohortFactor = cohort && family.cohort_key === cohort.cohort_key ? 1.05 : 1;
+        return (similarity * 0.7 + sizeFactor * 0.3) * stageFactor * cohortFactor;
+    }
+
     // =========================================================================
     // AI-powered similarity prediction (replaces simple multipliers)
     // =========================================================================
@@ -89,7 +175,7 @@ module.exports = function (config) {
         const holdRatio = (adSnapshot.hold_rate != null && cohort && cohort.benchmark_hold_rate > 0)
             ? adSnapshot.hold_rate / cohort.benchmark_hold_rate : 1;
         const cpiRatio = (adSnapshot.cpi != null && adSnapshot.cpi > 0 && cohort && cohort.benchmark_cpi > 0)
-            ? cohort.benchmark_cpi / adSnapshot.cpi : 1; // inverted — lower CPI is better
+            ? cohort.benchmark_cpi / adSnapshot.cpi : 1; // inverted â€” lower CPI is better
         const ctrRatio = (adSnapshot.ctr != null && cohort && cohort.benchmark_ctr > 0)
             ? adSnapshot.ctr / cohort.benchmark_ctr : 1;
 
@@ -219,7 +305,7 @@ module.exports = function (config) {
                 roas_correlation: row.google_roas_correlation,
             };
         } catch (e) {
-            // DB not available — return neutral defaults
+            // DB not available â€” return neutral defaults
             return { sentiment: 'neutral', nifty_50: null, vix: null, dxy: null };
         }
     }
@@ -228,7 +314,7 @@ module.exports = function (config) {
      * Call OpenAI to predict ROAS using similar historical ads + market conditions.
      * Returns { predictions, qualitative, raw }.
      */
-    async function predictWithAI(adSnapshot, signals, similarAds, marketSignals, cohort) {
+    async function predictWithAI(adSnapshot, signals, similarAds, marketSignals, cohort, trendFamily) {
         if (!OPENAI_API_KEY) return null;
 
         const similarForPrompt = similarAds.map(c => ({
@@ -247,18 +333,18 @@ module.exports = function (config) {
             concept_match: c.concept_match,
         }));
 
-        const prompt = `You are a Meta Ads performance analyst for Univest (Indian fintech app — stock trading, mutual funds).
+        const prompt = `You are a Meta Ads performance analyst for Univest (Indian fintech app â€” stock trading, mutual funds).
 You predict ROAS (Return on Ad Spend) trajectories for new Meta ad creatives based on historical similar ads and market conditions.
 
-ROAS is calculated as (revenue / spend) * 100, so 15% means ₹15 revenue per ₹100 spent.
+ROAS is calculated as (revenue / spend) * 100, so 15% means â‚¹15 revenue per â‚¹100 spent.
 
 ## New Ad Being Predicted
 - Ad Name: ${adSnapshot.ad_name}
 - Campaign: ${adSnapshot.campaign_name}
 - Creative Type: ${adSnapshot.creative_type}
 - Days Live: ${adSnapshot.days_live || 0}
-- Spend so far: ₹${Math.round(adSnapshot.spend || 0)}
-- CPI: ${adSnapshot.cpi ? '₹' + Math.round(adSnapshot.cpi * 100) / 100 : 'N/A'}
+- Spend so far: â‚¹${Math.round(adSnapshot.spend || 0)}
+- CPI: ${adSnapshot.cpi ? 'â‚¹' + Math.round(adSnapshot.cpi * 100) / 100 : 'N/A'}
 - CTR: ${adSnapshot.ctr ? adSnapshot.ctr.toFixed(2) + '%' : 'N/A'}
 - Hook Rate: ${adSnapshot.hook_rate || 'N/A'}
 - Hold Rate: ${adSnapshot.hold_rate || 'N/A'}
@@ -271,22 +357,33 @@ ${JSON.stringify(similarForPrompt, null, 1)}
 ## Cohort Benchmarks (${cohort ? cohort.cohort_key + ', n=' + cohort.sample_size : 'none'})
 ${cohort ? `- Median D6 ROAS: ${cohort.median_d6_roas}%, Overall: ${cohort.median_overall_roas}%
 - P25 D6: ${cohort.p25_d6_roas}%, P75 D6: ${cohort.p75_d6_roas}%
-- Benchmark CPI: ₹${cohort.benchmark_cpi}, CTR: ${cohort.benchmark_ctr}%
+- Benchmark CPI: â‚¹${cohort.benchmark_cpi}, CTR: ${cohort.benchmark_ctr}%
 - D6-to-Overall multiplier: ${cohort.d6_to_overall_multiplier}x` : 'No cohort data available'}
+
+## Historical Curve Family
+${trendFamily ? `- Stage: ${trendFamily.stage_code}
+- Bucket: ${trendFamily.bucket}
+- Sample size: ${trendFamily.sample_size}
+- Creative type: ${trendFamily.creative_type}
+- Campaign pattern: ${trendFamily.campaign_pattern}
+- Median ratio to checkpoint base: D6 ${trendFamily.median_ratio_d6}x, D15 ${trendFamily.median_ratio_d15}x, D30 ${trendFamily.median_ratio_d30}x, D60 ${trendFamily.median_ratio_d60}x, D180 ${trendFamily.median_ratio_d180}x
+- Selection score: ${trendFamily.selection_score}` : 'No trend family available'}
 
 ## Market Conditions
 - Sentiment: ${marketSignals.sentiment}
 ${marketSignals.nifty_50 ? '- Nifty 50: ' + marketSignals.nifty_50 : ''}
-${marketSignals.vix ? '- India VIX: ' + marketSignals.vix + (marketSignals.vix > 20 ? ' (elevated — users more cautious with investments)' : ' (low — favorable for fintech)') : ''}
+${marketSignals.vix ? '- India VIX: ' + marketSignals.vix + (marketSignals.vix > 20 ? ' (elevated â€” users more cautious with investments)' : ' (low â€” favorable for fintech)') : ''}
 ${marketSignals.dxy ? '- DXY: ' + marketSignals.dxy : ''}
 
 ## Instructions
-1. Weight similar ads by their similarity score — closer matches matter more
-2. Concept-matched ads (same creative concept) are especially predictive
-3. Consider the ROAS growth curve pattern: D6 → D15 → D30 → D60 → D180
-4. Factor in market conditions: high VIX = users less likely to invest = lower ROAS
-5. For Univest, revenue comes from subscription renewals, so ROAS typically grows over time as users renew
-6. D6 ROAS is typically 5-15% for good ads, with overall reaching 15-30% for top performers
+1. Weight similar ads by their similarity score â€” closer matches matter more
+2. Blend the similarity curve with the historical curve family from this stage
+3. Preserve an upward curve when the evidence supports it
+4. If the creative is promising, do NOT return a flat line. D180 should be materially above D6 and the intermediate horizons should step upward between them.
+5. For promising ads, make the lift visible across D15, D30, D60, and D180, not just at the end.
+6. Factor in market conditions: high VIX = users less likely to invest = lower ROAS
+7. For Univest, revenue comes from subscription renewals, so ROAS typically grows over time as users renew
+8. Do not invent a separate fallback below similarity and curve-family averages
 
 Return ONLY valid JSON:
 {
@@ -335,46 +432,88 @@ Return ONLY valid JSON:
 
     /**
      * Compute weighted-average predictions from similar ads when AI is unavailable.
-     * Better than flat multipliers — uses actual ROAS curves of similar ads.
+     * Better than flat multipliers â€” uses actual ROAS curves of similar ads.
      */
-    function computeSimilarityFallback(similarAds, adSnapshot) {
-        if (!similarAds.length) return null;
+    function computeSimilarityFallback(similarAds, adSnapshot, trendFamily, cohort) {
+        const similarCurve = computeSimilarAdsCurve(similarAds);
+        const anchorRoas = currentAnchorRoas(adSnapshot);
+        const familyCurve = curveFromFamily(trendFamily, anchorRoas, null);
+        const cohortCurve = buildCohortCurve(cohort, anchorRoas);
 
-        // Weight by similarity score
+        const candidates = [similarCurve, familyCurve, cohortCurve].filter(Boolean);
+        if (!candidates.length) return null;
+
+        const weights = [];
+        if (similarCurve) weights.push(Math.max(1, similarAds.length));
+        if (familyCurve) weights.push(Math.max(1, trendFamily ? trendFamily.sample_size || 1 : 1));
+        if (cohortCurve) weights.push(Math.max(1, cohort ? cohort.sample_size || 1 : 1));
+
+        const totalWeight = weights.reduce((sum, value) => sum + value, 0) || 1;
+        const blended = { d6: 0, d15: 0, d30: 0, d60: 0, d180: 0 };
+
+        candidates.forEach((curve, idx) => {
+            const weight = weights[idx] || 1;
+            ['d6', 'd15', 'd30', 'd60', 'd180'].forEach(key => {
+                if (curve[key] != null) blended[key] += Number(curve[key]) * weight;
+            });
+        });
+
+        const out = {
+            d6: blended.d6 / totalWeight,
+            d15: blended.d15 / totalWeight,
+            d30: blended.d30 / totalWeight,
+            d60: blended.d60 / totalWeight,
+            d180: blended.d180 / totalWeight,
+        };
+
+        if (!(out.d6 > 0) && similarCurve && similarCurve.d6 > 0) {
+            out.d6 = similarCurve.d6;
+        }
+
+        return enforceMonotonicCurve(out);
+    }
+
+    function computeSimilarAdsCurve(similarAds) {
+        if (!similarAds || !similarAds.length) return null;
+
         let totalWeight = 0;
-        let wD6 = 0, wD15 = 0, wD30 = 0, wD60 = 0, wOverall = 0;
+        const sums = { d6: 0, d15: 0, d30: 0, d60: 0, d180: 0 };
 
         for (const ad of similarAds) {
-            const w = ad.similarity * ad.similarity; // square to emphasize closer matches
-            if (ad.d6_roas > 0 && ad.d6_roas <= 5000) { wD6 += ad.d6_roas * w; }
-            if (ad.d15_roas > 0 && ad.d15_roas <= 5000) { wD15 += ad.d15_roas * w; }
-            if (ad.d30_roas > 0 && ad.d30_roas <= 5000) { wD30 += ad.d30_roas * w; }
-            if (ad.d60_roas > 0 && ad.d60_roas <= 5000) { wD60 += ad.d60_roas * w; }
-            if (ad.overall_roas > 0 && ad.overall_roas <= 5000) { wOverall += ad.overall_roas * w; }
+            const w = Math.max(0.01, (ad.similarity || 0)) ** 2;
+            if (ad.d6_roas > 0 && ad.d6_roas <= 5000) sums.d6 += ad.d6_roas * w;
+            if (ad.d15_roas > 0 && ad.d15_roas <= 5000) sums.d15 += ad.d15_roas * w;
+            if (ad.d30_roas > 0 && ad.d30_roas <= 5000) sums.d30 += ad.d30_roas * w;
+            if (ad.d60_roas > 0 && ad.d60_roas <= 5000) sums.d60 += ad.d60_roas * w;
+            if (ad.overall_roas > 0 && ad.overall_roas <= 5000) sums.d180 += ad.overall_roas * w;
             totalWeight += w;
         }
 
-        if (totalWeight === 0) return null;
+        if (totalWeight <= 0) return null;
 
-        const avgD6 = wD6 / totalWeight;
-        const avgD15 = wD15 / totalWeight || avgD6 * 1.1;
-        const avgD30 = wD30 / totalWeight || avgD6 * 1.3;
-        const avgD60 = wD60 / totalWeight || avgD6 * 1.5;
-        const avgD180 = wOverall / totalWeight || avgD6 * 1.8;
+        const curve = {
+            d6: sums.d6 / totalWeight || null,
+            d15: sums.d15 / totalWeight || null,
+            d30: sums.d30 / totalWeight || null,
+            d60: sums.d60 / totalWeight || null,
+            d180: sums.d180 / totalWeight || null,
+        };
 
-        // If we have actual D6 ROAS, scale predictions relative to it
-        if (adSnapshot.d6_roas > 0 && avgD6 > 0) {
-            const scale = adSnapshot.d6_roas / avgD6;
-            return {
-                d6: adSnapshot.d6_roas,
-                d15: avgD15 * scale,
-                d30: avgD30 * scale,
-                d60: avgD60 * scale,
-                d180: avgD180 * scale,
-            };
-        }
+        return enforceMonotonicCurve(curve);
+    }
 
-        return { d6: avgD6, d15: avgD15, d30: avgD30, d60: avgD60, d180: avgD180 };
+    function buildCohortCurve(cohort, anchorRoas) {
+        if (!cohort) return null;
+        const base = anchorRoas > 0 ? anchorRoas : (cohort.median_d6_roas || null);
+        if (!(base > 0)) return null;
+        const curve = {
+            d6: base,
+            d15: round4(base * ((cohort.p75_d6_roas && cohort.p25_d6_roas) ? 1 + ((cohort.p75_d6_roas / Math.max(cohort.p25_d6_roas, 1)) - 1) * 0.25 : 1.15)),
+            d30: round4(base * (cohort.d6_to_overall_multiplier || 1.3)),
+            d60: round4(base * (cohort.d6_to_overall_multiplier || 1.5)),
+            d180: round4(base * (cohort.d6_to_overall_multiplier || 1.8)),
+        };
+        return enforceMonotonicCurve(curve);
     }
 
     // =========================================================================
@@ -481,7 +620,308 @@ Return ONLY valid JSON:
             db.saveCohortBenchmarks(benchmarks);
         }
 
+        buildTrendLibrary();
+
         return { cohortsBuilt: benchmarks.length };
+    }
+
+    function buildTrendLibrary() {
+        const d = db.getCiDb();
+        const rows = d.prepare(`
+            SELECT *
+            FROM snapshots
+            WHERE snapshot_date >= '2025-11-21'
+            ORDER BY ad_id ASC, snapshot_date ASC
+        `).all();
+
+        const histories = {};
+        rows.forEach(row => {
+            if (!histories[row.ad_id]) histories[row.ad_id] = [];
+            histories[row.ad_id].push(row);
+        });
+
+        const families = {};
+        let sampleCount = 0;
+
+        function addSample(stageCode, familyKey, sample) {
+            if (!families[stageCode]) families[stageCode] = {};
+            if (!families[stageCode][familyKey]) {
+                families[stageCode][familyKey] = {
+                    stage_code: stageCode,
+                    family_key: familyKey,
+                    samples: [],
+                };
+            }
+            families[stageCode][familyKey].samples.push(sample);
+        }
+
+        CHECKPOINTS.forEach(checkpoint => {
+            Object.values(histories).forEach(history => {
+                const checkpointSnapshot = history.find(row => (Number(row.spend) || 0) > 0 && (Number(row.days_live) || 0) >= checkpoint.day);
+                if (!checkpointSnapshot) return;
+
+                const anchorRoas = currentAnchorRoas(checkpointSnapshot);
+                if (!(anchorRoas > 0)) return;
+
+                const ratios = {};
+                const actuals = {};
+                let validHorizonCount = 0;
+
+                HORIZONS.forEach(horizon => {
+                    const actual = actualRoasForRow(checkpointSnapshot, horizon);
+                    if (actual == null) return;
+                    ratios[horizon.code] = round4(actual / anchorRoas);
+                    actuals[horizon.code] = round4(actual);
+                    validHorizonCount++;
+                });
+
+                if (validHorizonCount < 3) return;
+
+                const baseSignals = extractMetaSignals(checkpointSnapshot, null);
+                const bucket = labelCurveBucket(ratios);
+                const creativeType = (checkpointSnapshot.creative_type || 'UNKNOWN').toUpperCase();
+                const campaignPattern = normalizeCampaign(checkpointSnapshot.campaign_name);
+                const concept = extractConcept(checkpointSnapshot.ad_name) || 'NONE';
+                const familyKey = `${bucket}::${creativeType}::${campaignPattern}::${concept}`;
+
+                addSample(checkpoint.code, familyKey, {
+                    ad_id: checkpointSnapshot.ad_id,
+                    ad_name: checkpointSnapshot.ad_name,
+                    campaign_name: checkpointSnapshot.campaign_name,
+                    adset_name: checkpointSnapshot.adset_name,
+                    creative_type: creativeType,
+                    campaign_pattern: campaignPattern,
+                    concept,
+                    checkpoint_day: checkpoint.day,
+                    stage_code: checkpoint.code,
+                    anchor_roas: anchorRoas,
+                    ratios,
+                    actuals,
+                    signals: baseSignals,
+                    signal_vector: metaSignalsToVector(baseSignals),
+                });
+                sampleCount++;
+            });
+        });
+
+        const summary = {
+            built_at: new Date().toISOString(),
+            sample_count: sampleCount,
+            stage_counts: {},
+            family_counts: {},
+            families: {},
+        };
+
+        Object.entries(families).forEach(([stageCode, stageFamilies]) => {
+            summary.stage_counts[stageCode] = 0;
+            summary.family_counts[stageCode] = [];
+            summary.families[stageCode] = [];
+
+            Object.values(stageFamilies).forEach(family => {
+                const samples = family.samples || [];
+                if (!samples.length) return;
+
+                const ratioSeries = {
+                    d6: [],
+                    d15: [],
+                    d30: [],
+                    d60: [],
+                    d180: [],
+                };
+                const anchorSeries = [];
+                const signalVectors = [];
+
+                samples.forEach(sample => {
+                    anchorSeries.push(sample.anchor_roas);
+                    signalVectors.push(sample.signal_vector || []);
+                    HORIZONS.forEach(horizon => {
+                        if (sample.ratios[horizon.code] != null) {
+                            ratioSeries[horizon.code].push(sample.ratios[horizon.code]);
+                        }
+                    });
+                });
+
+                const familySummary = {
+                    stage_code: stageCode,
+                    family_key: family.family_key,
+                    sample_size: samples.length,
+                    creative_type: samples[0].creative_type,
+                    campaign_pattern: samples[0].campaign_pattern,
+                    concept: samples[0].concept,
+                    bucket: family.family_key ? family.family_key.split('::')[0] : 'unknown',
+                    median_anchor_roas: median(anchorSeries),
+                    median_ratio_d6: median(ratioSeries.d6),
+                    median_ratio_d15: median(ratioSeries.d15),
+                    median_ratio_d30: median(ratioSeries.d30),
+                    median_ratio_d60: median(ratioSeries.d60),
+                    median_ratio_d180: median(ratioSeries.d180),
+                    p25_ratio_d6: percentile(ratioSeries.d6, 25),
+                    p75_ratio_d6: percentile(ratioSeries.d6, 75),
+                    p25_ratio_d180: percentile(ratioSeries.d180, 25),
+                    p75_ratio_d180: percentile(ratioSeries.d180, 75),
+                    signal_vector: meanVector(signalVectors),
+                };
+
+                summary.stage_counts[stageCode] += samples.length;
+                summary.family_counts[stageCode].push({
+                    family_key: familySummary.family_key,
+                    sample_size: familySummary.sample_size,
+                    bucket: familySummary.bucket,
+                    creative_type: familySummary.creative_type,
+                    campaign_pattern: familySummary.campaign_pattern,
+                    median_ratio_d180: familySummary.median_ratio_d180,
+                });
+                summary.families[stageCode].push(familySummary);
+            });
+
+            summary.family_counts[stageCode].sort((a, b) => b.sample_size - a.sample_size);
+            summary.families[stageCode].sort((a, b) => b.sample_size - a.sample_size);
+        });
+
+        trendLibraryCache.builtAt = summary.built_at;
+        trendLibraryCache.summary = summary;
+        trendLibraryCache.families = summary.families;
+        return summary;
+    }
+
+    function getTrendLibrarySummary() {
+        if (!trendLibraryCache.summary) {
+            buildTrendLibrary();
+        }
+        return trendLibraryCache.summary;
+    }
+
+    function selectTrendFamily(adSnapshot, cohort, metaSignals) {
+        if (!trendLibraryCache.families) {
+            buildTrendLibrary();
+        }
+
+        const stageCode = getStageCode(adSnapshot.days_live || 0);
+        const families = (trendLibraryCache.families && trendLibraryCache.families[stageCode]) || [];
+        if (!families.length) return null;
+
+        let best = null;
+        let bestScore = -Infinity;
+
+        families.forEach(family => {
+            const score = familySelectionScore(family, metaSignals, cohort);
+            if (score > bestScore) {
+                best = family;
+                bestScore = score;
+            }
+        });
+
+        if (!best) return null;
+        return {
+            ...best,
+            selection_score: round4(bestScore),
+        };
+    }
+
+    function curveFromFamily(family, anchorRoas, fallbackCurve) {
+        if (!family || !(anchorRoas > 0)) return fallbackCurve || null;
+
+        const curve = {
+            d6: round4(anchorRoas * (family.median_ratio_d6 || 1)),
+            d15: round4(anchorRoas * (family.median_ratio_d15 || family.median_ratio_d6 || 1.15)),
+            d30: round4(anchorRoas * (family.median_ratio_d30 || family.median_ratio_d15 || 1.3)),
+            d60: round4(anchorRoas * (family.median_ratio_d60 || family.median_ratio_d30 || 1.5)),
+            d180: round4(anchorRoas * (family.median_ratio_d180 || family.median_ratio_d60 || 1.8)),
+        };
+        return enforceMonotonicCurve(curve) || fallbackCurve || null;
+    }
+
+    function applyGrowthExpectation(curve, context) {
+        if (!curve) return null;
+
+        const anchorRoas = Number(context && context.anchorRoas) || 0;
+        const signalScore = Number(context && context.signalScore) || 0;
+        const trajectory = context && context.trajectory ? context.trajectory : 'average';
+        const trendFamily = context && context.trendFamily ? context.trendFamily : null;
+        const similarAds = context && Array.isArray(context.similarAds) ? context.similarAds : [];
+        const topSimilarity = similarAds.length && similarAds[0] && similarAds[0].similarity != null
+            ? Number(similarAds[0].similarity)
+            : 0;
+        const familyBucket = trendFamily ? trendFamily.bucket : 'unknown';
+        const strongFamily = ['fast_ramp', 'late_lift'].includes(familyBucket);
+        const decentFamily = ['steady_ramp', 'weak_growth'].includes(familyBucket);
+        const strongMatch = trajectory === 'promising' && signalScore >= 78 && topSimilarity >= 0.82 && strongFamily;
+        const moderateMatch = trajectory === 'promising' && signalScore >= 68 && topSimilarity >= 0.72 && (strongFamily || decentFamily);
+
+        // Default: keep the base curve from family/similarity untouched except for monotonic cleanup.
+        if (!strongMatch && !moderateMatch) {
+            return enforceMonotonicCurve({ ...curve });
+        }
+
+        const start = Math.max(anchorRoas, Number(curve.d6) || 0, Number(curve.d15) || 0);
+        const currentEnd = Number(curve.d180) || start;
+
+        let targetEnd = currentEnd;
+        if (strongMatch) {
+            const upliftFloor = 1.45 + Math.min(Math.max(signalScore - 78, 0) / 35, 0.35);
+            targetEnd = Math.max(currentEnd, start * upliftFloor);
+        } else if (moderateMatch) {
+            const upliftFloor = 1.12 + Math.min(Math.max(signalScore - 68, 0) / 90, 0.12);
+            targetEnd = Math.max(currentEnd, start * upliftFloor);
+        }
+
+        const weights = { d6: 0, d15: 0.22, d30: 0.45, d60: 0.72, d180: 1 };
+        const out = {};
+        Object.keys(weights).forEach(key => {
+            const base = Number(curve[key]);
+            if (!Number.isFinite(base)) {
+                out[key] = null;
+                return;
+            }
+            const stepped = start + (targetEnd - start) * weights[key];
+            out[key] = round4(Math.max(base, stepped));
+        });
+
+        return enforceMonotonicCurve(out);
+    }
+
+    function shapePredictedCurve(curve, context) {
+        const anchorRoas = Number(context && context.anchorRoas) || 0;
+        const baseCurve = enforceMonotonicCurve({
+            d6: Number(curve && curve.d6) || null,
+            d15: Number(curve && curve.d15) || null,
+            d30: Number(curve && curve.d30) || null,
+            d60: Number(curve && curve.d60) || null,
+            d180: Number(curve && curve.d180) || null,
+        });
+        if (!baseCurve) return null;
+        return floorCurveAtAnchor(applyGrowthExpectation(baseCurve, context) || baseCurve, anchorRoas);
+    }
+
+    function enforceMonotonicCurve(curve) {
+        if (!curve) return null;
+        const ordered = ['d6', 'd15', 'd30', 'd60', 'd180'];
+        let last = 0;
+        ordered.forEach(key => {
+            if (curve[key] == null) return;
+            if (curve[key] < last) curve[key] = round4(last);
+            last = Number(curve[key]) || last;
+        });
+        return curve;
+    }
+
+    function floorCurveAtAnchor(curve, anchorRoas) {
+        if (!curve) return null;
+        const floor = Number(anchorRoas) || 0;
+        if (!(floor > 0)) return enforceMonotonicCurve({ ...curve });
+
+        const ordered = ['d6', 'd15', 'd30', 'd60', 'd180'];
+        const out = { ...curve };
+        let last = floor;
+
+        ordered.forEach(key => {
+            if (out[key] == null) return;
+            const next = Math.max(Number(out[key]) || 0, last);
+            out[key] = round4(next);
+            last = Number(out[key]) || last;
+        });
+
+        return out;
     }
 
     // =========================================================================
@@ -492,7 +932,6 @@ Return ONLY valid JSON:
         const creativeType = (adSnapshot.creative_type || 'UNKNOWN').toUpperCase();
         const campaignPattern = normalizeCampaign(adSnapshot.campaign_name);
 
-        // 1. Match to cohort
         const specificKey = `${creativeType}::${campaignPattern}`;
         const typeKey = `${creativeType}::ALL`;
         const globalKey = 'ALL::ALL';
@@ -502,8 +941,6 @@ Return ONLY valid JSON:
         if (!cohort) cohort = db.getCohortBenchmarks(globalKey);
 
         const daysLive = adSnapshot.days_live || 0;
-
-        // Base prediction output (shared fields)
         const basePrediction = {
             ad_id: adSnapshot.ad_id,
             ad_name: adSnapshot.ad_name,
@@ -524,7 +961,6 @@ Return ONLY valid JSON:
             cohort_sample_size: cohort ? cohort.sample_size : 0,
         };
 
-        // If no cohorts at all, return a minimal prediction
         if (!cohort) {
             return {
                 ...basePrediction,
@@ -542,15 +978,13 @@ Return ONLY valid JSON:
             };
         }
 
-        // 2. Extract signals and find similar historical ads
         const metaSignals = extractMetaSignals(adSnapshot, cohort);
         const similarAds = findSimilarHistoricalAds(metaSignals, cohort, 10);
         const marketSignals = getMarketSignals();
+        const trendFamily = selectTrendFamily(adSnapshot, cohort, metaSignals);
 
-        // 3. Score early signals (still needed for confidence + trajectory)
         const signals = {};
         let signalCount = 0;
-
         if (adSnapshot.hook_rate != null && cohort.benchmark_hook_rate > 0) {
             signals.hook_rate = adSnapshot.hook_rate / cohort.benchmark_hook_rate;
             signalCount++;
@@ -571,12 +1005,14 @@ Return ONLY valid JSON:
         const weights = { hook_rate: 0.3, cpi: 0.3, ctr: 0.2, hold_rate: 0.2 };
         let weightedSum = 0, weightTotal = 0;
         for (const [metric, weight] of Object.entries(weights)) {
-            if (signals[metric] != null) { weightedSum += signals[metric] * weight; weightTotal += weight; }
+            if (signals[metric] != null) {
+                weightedSum += signals[metric] * weight;
+                weightTotal += weight;
+            }
         }
         const rawRatio = weightTotal > 0 ? weightedSum / weightTotal : 0.5;
         const signalScore = Math.min(100, Math.max(0, rawRatio * 50));
 
-        // 4. AI-powered prediction (primary method)
         let predicted_d6, predicted_d6_low, predicted_d6_high;
         let predicted_d15, predicted_d15_low, predicted_d15_high;
         let predicted_d30, predicted_d30_low, predicted_d30_high;
@@ -586,10 +1022,18 @@ Return ONLY valid JSON:
         let gptQualitative = null;
         let trajectory, recommendedAction;
 
-        const aiResult = await predictWithAI(adSnapshot, metaSignals, similarAds, marketSignals, cohort);
+        const aiResult = await predictWithAI(adSnapshot, metaSignals, similarAds, marketSignals, cohort, trendFamily);
+
+        const growthContext = {
+            anchorRoas: currentAnchorRoas(adSnapshot),
+            signalScore,
+            trajectory: null,
+            trendFamily,
+            similarAds,
+        };
 
         if (aiResult && aiResult.predictions) {
-            const p = aiResult.predictions;
+            const p = aiResult.predictions || {};
             const d6 = p.day_6 || {};
             const d15 = p.day_15 || {};
             const d30 = p.day_30 || {};
@@ -597,98 +1041,84 @@ Return ONLY valid JSON:
             const d180 = p.day_180 || {};
 
             predicted_d6 = d6.roas || 0;
-            predicted_d6_low = d6.low || predicted_d6 * 0.7;
-            predicted_d6_high = d6.high || predicted_d6 * 1.3;
+            predicted_d6_low = d6.low || predicted_d6 * 0.8;
+            predicted_d6_high = d6.high || predicted_d6 * 1.2;
             predicted_d15 = d15.roas || 0;
-            predicted_d15_low = d15.low || predicted_d15 * 0.7;
-            predicted_d15_high = d15.high || predicted_d15 * 1.3;
+            predicted_d15_low = d15.low || predicted_d15 * 0.8;
+            predicted_d15_high = d15.high || predicted_d15 * 1.2;
             predicted_d30 = d30.roas || 0;
-            predicted_d30_low = d30.low || predicted_d30 * 0.7;
-            predicted_d30_high = d30.high || predicted_d30 * 1.3;
+            predicted_d30_low = d30.low || predicted_d30 * 0.8;
+            predicted_d30_high = d30.high || predicted_d30 * 1.2;
             predicted_d60 = d60.roas || 0;
-            predicted_d60_low = d60.low || predicted_d60 * 0.7;
-            predicted_d60_high = d60.high || predicted_d60 * 1.3;
+            predicted_d60_low = d60.low || predicted_d60 * 0.8;
+            predicted_d60_high = d60.high || predicted_d60 * 1.2;
             predicted_d180 = d180.roas || 0;
-            predicted_d180_low = d180.low || predicted_d180 * 0.7;
-            predicted_d180_high = d180.high || predicted_d180 * 1.3;
+            predicted_d180_low = d180.low || predicted_d180 * 0.8;
+            predicted_d180_high = d180.high || predicted_d180 * 1.2;
 
-            predictionMethod = 'ai_similarity';
+            predictionMethod = 'ai_similarity_family';
             trajectory = p.trajectory || (signalScore >= 70 ? 'promising' : signalScore >= 40 ? 'average' : 'concerning');
             recommendedAction = p.recommended_action || (trajectory === 'promising' ? 'SCALE' : trajectory === 'average' ? 'WATCH' : 'PAUSE');
-
             gptQualitative = aiResult.raw;
-            console.log(`[predictor] AI prediction for ${adSnapshot.ad_name}: D6=${predicted_d6.toFixed(1)}%, D30=${predicted_d30.toFixed(1)}% (${similarAds.length} similar ads, market: ${marketSignals.sentiment})`);
+            growthContext.trajectory = trajectory;
         } else {
-            // 5. Fallback: try similarity-weighted average from historical ads
-            const simFallback = computeSimilarityFallback(similarAds, adSnapshot);
+            const simFallback = computeSimilarityFallback(similarAds, adSnapshot, trendFamily, cohort);
+            const anchorRoas = currentAnchorRoas(adSnapshot);
+            const familyCurve = curveFromFamily(trendFamily, anchorRoas, null);
+            const chosenCurve = simFallback || familyCurve || buildCohortCurve(cohort, anchorRoas);
 
-            if (simFallback) {
-                predictionMethod = 'similarity_weighted';
-                predicted_d6 = simFallback.d6;
-                predicted_d6_low = predicted_d6 * 0.7;
-                predicted_d6_high = predicted_d6 * 1.3;
-                predicted_d15 = simFallback.d15;
-                predicted_d15_low = predicted_d15 * 0.7;
-                predicted_d15_high = predicted_d15 * 1.3;
-                predicted_d30 = simFallback.d30;
-                predicted_d30_low = predicted_d30 * 0.7;
-                predicted_d30_high = predicted_d30 * 1.3;
-                predicted_d60 = simFallback.d60;
-                predicted_d60_low = predicted_d60 * 0.7;
-                predicted_d60_high = predicted_d60 * 1.3;
-                predicted_d180 = simFallback.d180;
-                predicted_d180_low = predicted_d180 * 0.7;
-                predicted_d180_high = predicted_d180 * 1.3;
-
-                console.log(`[predictor] Similarity-weighted prediction for ${adSnapshot.ad_name}: D6=${predicted_d6.toFixed(1)}% (${similarAds.length} similar ads)`);
+            if (chosenCurve) {
+                predictionMethod = simFallback ? 'similarity_weighted_family' : (familyCurve ? 'curve_family' : 'cohort_curve');
+                predicted_d6 = chosenCurve.d6;
+                predicted_d15 = chosenCurve.d15;
+                predicted_d30 = chosenCurve.d30;
+                predicted_d60 = chosenCurve.d60;
+                predicted_d180 = chosenCurve.d180;
             } else {
-                // 6. Last resort: old multiplier-based fallback
-                const rawMult = cohort.d6_to_overall_multiplier || 1;
-                const d6Mult = Math.max(rawMult, 1.5);
-
-                if (daysLive >= 6 && adSnapshot.d6_roas > 0 && adSnapshot.d6_roas <= 5000) {
-                    predictionMethod = 'd6_extrapolation';
-                    predicted_d6 = adSnapshot.d6_roas;
-                    predicted_d6_low = cohort.p25_d6_roas || predicted_d6 * 0.7;
-                    predicted_d6_high = cohort.p75_d6_roas || predicted_d6 * 1.3;
-                } else {
-                    predictionMethod = 'early_signal_interpolation';
-                    const scoreFraction = signalScore / 100;
-                    const p25d6 = cohort.p25_d6_roas || 0;
-                    const p75d6 = cohort.p75_d6_roas || 0;
-                    predicted_d6 = p25d6 + scoreFraction * (p75d6 - p25d6);
-                    predicted_d6_low = p25d6 * Math.max(0.5, scoreFraction);
-                    predicted_d6_high = p75d6 * Math.min(2, scoreFraction + 0.5);
-                }
-
-                const d15M = d6Mult > 1 ? 1 + (d6Mult - 1) * 0.15 : d6Mult;
-                predicted_d15 = predicted_d6 * d15M;
-                predicted_d15_low = (predicted_d6_low || predicted_d6 * 0.7) * d15M;
-                predicted_d15_high = (predicted_d6_high || predicted_d6 * 1.3) * d15M;
-
-                const d30M = d6Mult > 1 ? 1 + (d6Mult - 1) * 0.5 : d6Mult;
-                predicted_d30 = predicted_d6 * d30M;
-                predicted_d30_low = (predicted_d6_low || predicted_d6 * 0.7) * d30M;
-                predicted_d30_high = (predicted_d6_high || predicted_d6 * 1.3) * d30M;
-
-                const d60M = d6Mult > 1 ? 1 + (d6Mult - 1) * 0.75 : d6Mult;
-                predicted_d60 = predicted_d6 * d60M;
-                predicted_d60_low = (predicted_d6_low || predicted_d6 * 0.7) * d60M;
-                predicted_d60_high = (predicted_d6_high || predicted_d6 * 1.3) * d60M;
-
-                predicted_d180 = predicted_d6 * d6Mult;
-                predicted_d180_low = (predicted_d6_low || predicted_d6 * 0.7) * d6Mult;
-                predicted_d180_high = (predicted_d6_high || predicted_d6 * 1.3) * d6Mult;
+                predictionMethod = 'signal_curve';
+                const base = anchorRoas > 0 ? anchorRoas : (cohort.median_d6_roas || 0);
+                predicted_d6 = base;
+                predicted_d15 = base;
+                predicted_d30 = base;
+                predicted_d60 = base;
+                predicted_d180 = base;
             }
 
-            // Trajectory from signal score
-            if (daysLive === 0 && signalCount === 0) { trajectory = 'too_early'; recommendedAction = 'WATCH'; }
-            else if (signalScore >= 70) { trajectory = 'promising'; recommendedAction = 'SCALE'; }
-            else if (signalScore >= 40) { trajectory = 'average'; recommendedAction = 'WATCH'; }
-            else { trajectory = 'concerning'; recommendedAction = 'PAUSE'; }
+            predicted_d6_low = predicted_d6 * 0.8;
+            predicted_d6_high = predicted_d6 * 1.2;
+            predicted_d15_low = predicted_d15 * 0.8;
+            predicted_d15_high = predicted_d15 * 1.2;
+            predicted_d30_low = predicted_d30 * 0.8;
+            predicted_d30_high = predicted_d30 * 1.2;
+            predicted_d60_low = predicted_d60 * 0.8;
+            predicted_d60_high = predicted_d60 * 1.2;
+            predicted_d180_low = predicted_d180 * 0.8;
+            predicted_d180_high = predicted_d180 * 1.2;
+
+            trajectory = daysLive === 0 && signalCount === 0
+                ? 'too_early'
+                : signalScore >= 70
+                    ? 'promising'
+                    : signalScore >= 40
+                        ? 'average'
+                        : 'concerning';
+            recommendedAction = trajectory === 'promising' ? 'SCALE' : trajectory === 'average' ? 'WATCH' : 'PAUSE';
+            growthContext.trajectory = trajectory;
         }
 
-        // 7. Confidence score — factor in similarity quality
+        const curve = shapePredictedCurve({
+            d6: predicted_d6,
+            d15: predicted_d15,
+            d30: predicted_d30,
+            d60: predicted_d60,
+            d180: predicted_d180,
+        }, growthContext) || {};
+        predicted_d6 = curve.d6 != null ? curve.d6 : predicted_d6;
+        predicted_d15 = curve.d15 != null ? curve.d15 : predicted_d15;
+        predicted_d30 = curve.d30 != null ? curve.d30 : predicted_d30;
+        predicted_d60 = curve.d60 != null ? curve.d60 : predicted_d60;
+        predicted_d180 = curve.d180 != null ? curve.d180 : predicted_d180;
+
         const sampleFactor = Math.min(cohort.sample_size || 0, 50) / 50;
         const daysFactor = Math.min(daysLive, 14) / 14;
         const signalFactor = signalCount / 4;
@@ -702,10 +1132,10 @@ Return ONLY valid JSON:
             similarityFactor * 0.3
         ) * 100);
 
-        // 8. Build reasoning string
         const reasonParts = [];
         reasonParts.push(`Method: ${predictionMethod}`);
         reasonParts.push(`${similarAds.length} similar ads found (top sim: ${similarAds.length > 0 ? (similarAds[0].similarity * 100).toFixed(0) + '%' : 'none'})`);
+        if (trendFamily) reasonParts.push(`Curve family: ${trendFamily.bucket} (${trendFamily.stage_code}, n=${trendFamily.sample_size})`);
         if (marketSignals.sentiment !== 'neutral') reasonParts.push(`Market: ${marketSignals.sentiment}`);
         if (marketSignals.vix) reasonParts.push(`VIX: ${marketSignals.vix}`);
         reasonParts.push(`Signal score: ${signalScore.toFixed(1)}/100 (cohort: ${cohort.cohort_key}, n=${cohort.sample_size})`);
@@ -739,7 +1169,6 @@ Return ONLY valid JSON:
             reasoning: reasonParts.join('. '),
         };
     }
-
     function round4(v) {
         if (v == null || isNaN(v)) return null;
         return Math.round(v * 10000) / 10000;
@@ -803,7 +1232,7 @@ Return ONLY valid JSON:
             const actuals = {};
             let hasUpdate = false;
 
-            // D6 accuracy — only after 14+ days (matured) and actual D6 ROAS exists, > 0, and <= 5000 (valid)
+            // D6 accuracy â€” only after 14+ days (matured) and actual D6 ROAS exists, > 0, and <= 5000 (valid)
             if (daysLive >= 14 && pred.predicted_d6_roas != null) {
                 const actualD6 = latest.d6_roas;
                 if (actualD6 != null && actualD6 > 0 && actualD6 <= 5000) {
@@ -815,7 +1244,7 @@ Return ONLY valid JSON:
                 }
             }
 
-            // D30 accuracy — only after 30+ days
+            // D30 accuracy â€” only after 30+ days
             if (daysLive >= 30 && pred.predicted_d30_roas != null) {
                 const actualD30 = latest.overall_roas;
                 if (actualD30 != null && actualD30 > 0 && actualD30 <= 5000) {
@@ -910,6 +1339,8 @@ Respond in JSON with these fields:
 
     return {
         buildCohortBenchmarks,
+        buildTrendLibrary,
+        getTrendLibrarySummary,
         predictNewAd,
         detectAndPredictNewAds,
         trackPredictionAccuracy,

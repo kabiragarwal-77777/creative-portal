@@ -1,0 +1,43 @@
+{
+  "lastRunAt": "2026-04-10T12:00:48.979Z",
+  "nextRunAt": "2026-04-11T12:00:48.979Z",
+  "previousRunAt": "2026-04-10T11:37:41.709Z",
+  "candidates": [
+    {
+      "id": "cnbctv18",
+      "name": "CNBC TV18 Digital",
+      "url": "https://www.cnbctv18.com/",
+      "status": "candidate"
+    },
+    {
+      "id": "financial-express",
+      "name": "Financial Express Digital",
+      "url": "https://www.financialexpress.com/",
+      "status": "candidate"
+    },
+    {
+      "id": "forbes-india",
+      "name": "Forbes India Digital",
+      "url": "https://www.forbesindia.com/",
+      "status": "watching"
+    },
+    {
+      "id": "dsij",
+      "name": "DSIJ Digital",
+      "url": "https://www.dsij.in/advertise-with-us",
+      "status": "candidate"
+    },
+    {
+      "id": "jiosaavn",
+      "name": "JioSaavn Audio",
+      "url": "https://www.themediaant.com/digital?pricingModels=Others",
+      "status": "candidate"
+    },
+    {
+      "id": "et-markets",
+      "name": "ET Markets Sponsorship",
+      "url": "https://economictimes.indiatimes.com/markets",
+      "status": "candidate"
+    }
+  ]
+}

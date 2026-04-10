@@ -1,0 +1,10 @@
+{
+  "name": "google-creative-intelligence",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Google Ads Creative Intelligence layer",
+  "dependencies": {
+    "google-ads-api": "^14.0.0",
+    "googleapis": "^140.0.0"
+  }
+}

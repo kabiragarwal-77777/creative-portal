@@ -12,6 +12,16 @@
         recommendations: null,
         timestamps: {},
 
+        scopedKey: function(key) {
+            var signature = 'default';
+            try {
+                if (typeof window.getAIContextSignature === 'function') {
+                    signature = window.getAIContextSignature();
+                }
+            } catch (e) {}
+            return key + '::' + signature;
+        },
+
         isStale: function(key, maxAgeMinutes) {
             maxAgeMinutes = maxAgeMinutes || 60;
             var ts = this.timestamps[key];
@@ -71,9 +81,16 @@
 
         clear: function(key) {
             if (key) {
-                this[key] = null;
-                delete this.timestamps[key];
-                try { localStorage.removeItem('ai_cache_' + key); } catch (e) {}
+                var keys = [key];
+                Object.keys(this.timestamps).forEach(function(k) {
+                    if (k === key || k.indexOf(key + '::') === 0) keys.push(k);
+                });
+                keys = Array.from(new Set(keys));
+                keys.forEach(function(k) {
+                    if (k === key) this[k] = null;
+                    delete this.timestamps[k];
+                    try { localStorage.removeItem('ai_cache_' + k); } catch (e) {}
+                }, this);
             } else {
                 var self = this;
                 ['intelligence', 'recommendations'].forEach(function(k) { self.clear(k); });
@@ -99,6 +116,7 @@
 
     // Generic AI caller with loading states, error handling, caching
     async function callAI(systemPrompt, userPrompt, cacheKey, renderFn, containerEl, forceRefresh) {
+        var scopedKey = typeof window.getAIViewCacheKey === 'function' ? window.getAIViewCacheKey(cacheKey) : cacheKey;
         // Check data sufficiency
         var check = checkDataSufficiency();
         if (!check.sufficient) {
@@ -112,10 +130,10 @@
 
         // Check cache
         if (!forceRefresh) {
-            var cached = AI_CACHE.get(cacheKey);
+            var cached = AI_CACHE.get(scopedKey);
             if (cached) {
                 renderFn(cached, containerEl);
-                showCacheNotice(containerEl, AI_CACHE.timestamps[cacheKey]);
+                showCacheNotice(containerEl, AI_CACHE.timestamps[scopedKey]);
                 return;
             }
         }
@@ -157,7 +175,7 @@
                 throw new Error('AI returned invalid JSON. Raw start: ' + content.substring(0, 300));
             }
 
-            AI_CACHE.set(cacheKey, parsed);
+            AI_CACHE.set(scopedKey, parsed);
             renderFn(parsed, containerEl);
 
         } catch (err) {
@@ -165,9 +183,9 @@
                 '<div class="ai-error">' +
                     '<div class="ai-error-title">Analysis failed</div>' +
                     '<div class="ai-error-msg">' + escapeHtml(err.message) + '</div>' +
-                    '<button onclick="window.aiRegenerate && window.aiRegenerate(\'' + cacheKey + '\')" class="btn-ci-primary" style="margin-top:12px;">Try Again</button>' +
-                    (AI_CACHE.get(cacheKey) ?
-                        '<button onclick="window.aiShowCached && window.aiShowCached(\'' + cacheKey + '\')" class="btn-ci-primary" style="margin-top:12px;margin-left:8px;background:var(--border);">Show Last Result</button>' : '') +
+                    '<button onclick="window.aiRegenerate && window.aiRegenerate(\'' + scopedKey + '\')" class="btn-ci-primary" style="margin-top:12px;">Try Again</button>' +
+                    (AI_CACHE.get(scopedKey) ?
+                        '<button onclick="window.aiShowCached && window.aiShowCached(\'' + scopedKey + '\')" class="btn-ci-primary" style="margin-top:12px;margin-left:8px;background:var(--border);">Show Last Result</button>' : '') +
                 '</div>';
             console.error('AI call failed:', err);
         }
@@ -189,6 +207,32 @@
         div.textContent = String(str);
         return div.innerHTML;
     }
+
+    window.getAIContextSignature = function() {
+        try {
+            var ctx = window.getPortalAssistantContext ? window.getPortalAssistantContext() : null;
+            var data = window.allData || [];
+            var range = ctx && ctx.dateRange ? [ctx.dateRange.since || '', ctx.dateRange.until || '', ctx.dateRange.label || ''].join('|') : '';
+            var diag = ctx && ctx.diagnostics ? [ctx.diagnostics.source || '', ctx.diagnostics.matchedKeys || 0, ctx.diagnostics.unmatchedKeys || 0].join('|') : '';
+            var mode = ctx && ctx.dataMode ? [ctx.dataMode.type || '', ctx.dataMode.label || '', ctx.dataMode.detail || ''].join('|') : '';
+            return [
+                ctx && ctx.app || 'meta',
+                ctx && ctx.view || 'unknown',
+                range,
+                diag,
+                mode,
+                data.length,
+                data.filter(function(d) { return d && (d.spent > 0 || d.spend > 0); }).length,
+                data.filter(function(d) { return d && (d.d6 > 0 || d.d6Con > 0); }).length
+            ].join('::');
+        } catch (e) {
+            return 'default';
+        }
+    };
+
+    window.getAIViewCacheKey = function(cacheKey) {
+        return AI_CACHE.scopedKey(cacheKey);
+    };
 
     window.AI_CACHE = AI_CACHE;
     window.checkDataSufficiency = checkDataSufficiency;

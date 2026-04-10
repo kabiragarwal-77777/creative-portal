@@ -84,6 +84,25 @@ module.exports = function(config) {
         }
     });
 
+    // GET /ads/daily — Ad-level Google-only daily history
+    router.get('/ads/daily', (req, res) => {
+        try {
+            const { getGcDb } = require('./db/gc-db');
+            const db = getGcDb();
+            const days = parseInt(req.query.days) || 90;
+            const rows = db.prepare(`
+                SELECT *
+                FROM gc_ad_daily
+                WHERE date >= date('now', '-' || ? || ' days')
+                ORDER BY date DESC, cost_micros DESC
+            `).all(days);
+            res.json({ success: true, data: rows, total: rows.length });
+        } catch(err) {
+            console.error('[GC] /ads/daily error:', err.message);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
     // POST /fetch/trigger — Manual refresh
     router.post('/fetch/trigger', async (req, res) => {
         try {

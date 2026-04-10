@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Marketing Auto</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-body: #08080d;
+            --bg-nav: #0f0f18;
+            --bg-tab: #1a1a2e;
+            --bg-active: #6c5ce7;
+            --text: #e2e2e2;
+            --text-muted: #888;
+            --border: #2a2a3e;
+            --nav-glow: rgba(108, 92, 231, 0.22);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-body);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .top-nav {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background:
+                radial-gradient(circle at left top, rgba(108, 92, 231, 0.12), transparent 28%),
+                radial-gradient(circle at right top, rgba(0, 212, 170, 0.10), transparent 24%),
+                linear-gradient(180deg, #11121b, #0b0c13);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding: 10px 18px;
+            min-height: 72px;
+            flex-shrink: 0;
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-right: 10px;
+            padding: 8px 12px 8px 8px;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            background: rgba(255,255,255,0.03);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+        }
+
+        .brand-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #6c5ce7, #00d4aa);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            font-weight: 800;
+            color: #fff;
+            box-shadow: 0 12px 24px rgba(67, 56, 202, 0.28);
+        }
+
+        .brand-text {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: -0.35px;
+            color: var(--text);
+            line-height: 1.1;
+        }
+
+        .brand-text span {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex: 1;
+            overflow-x: auto;
+            scrollbar-width: none;
+            padding: 6px;
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 18px;
+            background: rgba(255,255,255,0.025);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+        }
+
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-tools {
+            display: none;
+        }
+
+        .assistant-context {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .assistant-entry {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 4px;
+        }
+
+        .assistant-entry input {
+            width: 270px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            font-size: 12px;
+            padding: 6px 8px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .assistant-entry input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .assistant-btn {
+            border: none;
+            background: var(--bg-active);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .assistant-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .assistant-quick {
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 11px;
+            padding: 6px 8px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .assistant-panel {
+            position: fixed;
+            top: 64px;
+            right: 20px;
+            width: min(520px, calc(100vw - 40px));
+            max-height: calc(100vh - 84px);
+            background: rgba(15, 15, 24, 0.98);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 22px 60px rgba(0, 0, 0, 0.45);
+            padding: 16px;
+            z-index: 20;
+            display: none;
+            overflow: auto;
+        }
+
+        .assistant-panel.open {
+            display: block;
+        }
+
+        .assistant-panel-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .assistant-panel-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .assistant-panel-sub {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 3px;
+            line-height: 1.45;
+        }
+
+        .assistant-close {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .assistant-section {
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+            margin-top: 12px;
+        }
+
+        .assistant-section h4 {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .assistant-answer {
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text);
+            white-space: pre-wrap;
+        }
+
+        .assistant-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .assistant-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 12px;
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        @media (max-width: 1200px) {
+            .top-nav {
+                padding: 8px 16px;
+                min-height: 0;
+                flex-wrap: wrap;
+            }
+
+            .tabs {
+                order: 3;
+                width: 100%;
+                overflow-x: auto;
+                padding-bottom: 6px;
+            }
+
+            .nav-tools {
+                margin-left: auto;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+            }
+
+            .assistant-entry input {
+                width: 220px;
+            }
+        }
+
+        .tab {
+            padding: 11px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            border-radius: 12px;
+            transition: all 0.18s ease;
+            font-family: inherit;
+            position: relative;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            box-shadow: inset 0 0 0 1px transparent;
+        }
+
+        .tab:hover {
+            color: var(--text);
+            background: rgba(255,255,255,0.05);
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+        }
+
+        .tab.active {
+            color: #fff;
+            background:
+                radial-gradient(circle at top left, rgba(255,255,255,0.14), transparent 45%),
+                linear-gradient(135deg, #5f56df, #4338ca);
+            box-shadow: 0 10px 20px var(--nav-glow), inset 0 0 0 1px rgba(255,255,255,0.08);
+        }
+
+        .tab.active::after {
+            display: none;
+        }
+
+        .tab-icon {
+            margin-right: 6px;
+            display: inline-block;
+            min-width: 14px;
+            text-align: center;
+            opacity: 0.92;
+        }
+
+        .frame-container {
+            flex: 1;
+            position: relative;
+        }
+
+        .frame-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: var(--bg-body);
+        }
+
+        .frame-container iframe.hidden {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .launcher-screen {
+            flex: 1;
+            overflow: auto;
+            padding: 38px 34px 42px;
+            background:
+                radial-gradient(circle at top left, rgba(108, 92, 231, 0.14), transparent 24%),
+                radial-gradient(circle at top right, rgba(0, 212, 170, 0.10), transparent 18%),
+                linear-gradient(180deg, #090a10, #0a0b12 34%, #08080d 100%);
+        }
+
+        .launcher-screen.hidden {
+            display: none;
+        }
+
+        .launcher-wrap {
+            max-width: 1380px;
+            margin: 0 auto;
+        }
+
+        .launcher-hero {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+
+        .launcher-kicker {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: #8ea4ff;
+            margin-bottom: 10px;
+        }
+
+        .launcher-title {
+            font-size: 44px;
+            line-height: 0.98;
+            letter-spacing: -0.05em;
+            max-width: 760px;
+        }
+
+        .launcher-subtitle {
+            max-width: 820px;
+            margin-top: 14px;
+            color: #939bb0;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .launcher-home-btn {
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.04);
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 700;
+            padding: 10px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+
+        .launcher-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .launcher-card {
+            min-height: 192px;
+            border: 1px solid rgba(98, 111, 147, 0.22);
+            border-radius: 24px;
+            background:
+                linear-gradient(180deg, rgba(18, 22, 38, 0.94), rgba(11, 13, 22, 0.98));
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 18px 34px rgba(0, 0, 0, 0.22);
+            padding: 22px 22px 20px;
+            color: var(--text);
+            text-align: left;
+            cursor: pointer;
+            transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .launcher-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(125, 145, 255, 0.34);
+            box-shadow: 0 22px 42px rgba(0, 0, 0, 0.28);
+        }
+
+        .launcher-card-icon {
+            width: 46px;
+            height: 46px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.07);
+            color: #a7b8ff;
+            font-size: 18px;
+        }
+
+        .launcher-card-title {
+            font-size: 27px;
+            line-height: 1.02;
+            letter-spacing: -0.04em;
+            font-weight: 700;
+        }
+
+        .launcher-card-copy {
+            color: #98a2b6;
+            font-size: 14px;
+            line-height: 1.62;
+            max-width: 92%;
+        }
+
+        .launcher-card-meta {
+            margin-top: auto;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #78829b;
+        }
+
+        .frame-container.hidden {
+            display: none;
+        }
+
+        .shell-back-btn {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 30;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(15, 18, 29, 0.88);
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 700;
+            padding: 10px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26);
+            display: none;
+        }
+
+        .shell-back-btn.visible {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        @media (max-width: 1100px) {
+            .launcher-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 720px) {
+            .launcher-screen {
+                padding: 24px 16px 28px;
+            }
+
+            .launcher-hero {
+                flex-direction: column;
+            }
+
+            .launcher-title {
+                font-size: 34px;
+            }
+
+            .launcher-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="top-nav" id="shellTopNav" style="display:none;">
+        <div class="brand">
+            <div class="brand-icon">PM</div>
+            <div class="brand-text">Performance Marketing <span>Auto</span></div>
+        </div>
+        <div class="tabs">
+            <button class="tab active" data-tab="creative">
+                <span class="tab-icon">&#9632;</span> Meta Portal
+            </button>
+            <button class="tab" data-tab="google">
+                <span class="tab-icon">G</span> Google Portal
+            </button>
+            <button class="tab" data-tab="simulator">
+                <span class="tab-icon">&#9670;</span> ROAS Simulator
+            </button>
+            <button class="tab" data-tab="optimizer">
+                <span class="tab-icon">&#9889;</span> Optimizer
+            </button>
+            <button class="tab" data-tab="trends">
+                <span class="tab-icon">&#128202;</span> Trend Scanner
+            </button>
+            <button class="tab" data-tab="ci">
+                <span class="tab-icon">&#9733;</span> Competitor Intel
+            </button>
+            <button class="tab" data-tab="feedback">
+                <span class="tab-icon">&#129504;</span> Self-Learning
+            </button>
+            <button class="tab" data-tab="scanner">
+                <span class="tab-icon">&#9671;</span> Inventory Scanner
+            </button>
+            <button class="tab" data-tab="uploader">
+                <span class="tab-icon">&#9650;</span> Meta Ad Upload
+            </button>
+        </div>
+        <div class="nav-tools">
+            <div class="assistant-context" id="assistantContextSummary">Meta Portal • awaiting view context</div>
+            <div class="assistant-entry">
+                <button class="assistant-quick" data-quick-prompt="I think data is wrong here">Check Data</button>
+                <button class="assistant-quick" data-quick-prompt="Which campaign should I scale right now for max ROAS?">Scale Now</button>
+                <button class="assistant-quick" data-quick-prompt="The optimizer shows very limited actions. Why?">Why Limited?</button>
+                <input type="text" id="assistantPromptInput" placeholder="Ask about this view...">
+                <button class="assistant-btn" id="assistantAskBtn">Ask</button>
+            </div>
+        </div>
+    </nav>
+    <section class="launcher-screen" id="launcherScreen">
+        <div class="launcher-wrap">
+            <div class="launcher-hero">
+                <div>
+                    <div class="launcher-kicker">Performance Marketing Auto</div>
+                    <h1 class="launcher-title">Choose the workflow you want to open.</h1>
+                    <p class="launcher-subtitle">Start from the main product launcher, then go straight into the exact module you need. Meta Portal and Google Portal stay full portals. ROAS Simulator and Optimizer open as their own top-level workspaces.</p>
+                </div>
+            </div>
+            <div class="launcher-grid">
+                <button type="button" class="launcher-card" data-launch-tab="creative">
+                    <span class="launcher-card-icon">&#9632;</span>
+                    <span class="launcher-card-title">Meta Portal</span>
+                    <span class="launcher-card-copy">Open the full Meta creative portal with dashboard, campaign tree, intelligence, recommendations, and linked workflows.</span>
+                    <span class="launcher-card-meta">Primary Portal</span>
+                </button>
+                <button type="button" class="launcher-card" data-launch-tab="google">
+                    <span class="launcher-card-icon">G</span>
+                    <span class="launcher-card-title">Google Portal</span>
+                    <span class="launcher-card-copy">Open the Google portal as its own workspace with Google-specific reporting, intelligence, and optimization tools.</span>
+                    <span class="launcher-card-meta">Primary Portal</span>
+                </button>
+                <button type="button" class="launcher-card" data-launch-tab="simulator">
+                    <span class="launcher-card-icon">&#9670;</span>
+                    <span class="launcher-card-title">ROAS Simulator</span>
+                    <span class="launcher-card-copy">Jump directly into the Meta-only ROAS simulator instead of opening it through the Meta portal navigation.</span>
+                    <span class="launcher-card-meta">Standalone Workspace</span>
+                </button>
+                <button type="button" class="launcher-card" data-launch-tab="optimizer">
+                    <span class="launcher-card-icon">&#9889;</span>
+                    <span class="launcher-card-title">Optimizer</span>
+                    <span class="launcher-card-copy">Open the optimizer as its own top-level workspace with the shared Meta and Google switching flow.</span>
+                    <span class="launcher-card-meta">Standalone Workspace</span>
+                </button>
+                <button type="button" class="launcher-card" data-launch-tab="trends">
+                    <span class="launcher-card-icon">&#128202;</span>
+                    <span class="launcher-card-title">Trend Scanner</span>
+                    <span class="launcher-card-copy">Review market, creative, and messaging trend signals without moving through another portal first.</span>
+                    <span class="launcher-card-meta">Scanner</span>
+                </button>
+                <button type="button" class="launcher-card" data-launch-tab="ci">
+                    <span class="launcher-card-icon">&#9733;</span>
+                    <span class="launcher-card-title">Competitor Intel</span>
+                    <span class="launcher-card-copy">Open competitor tracking and intelligence directly from the launcher as a separate operating surface.</span>
+                    <span class="launcher-card-meta">Intelligence</span>
+                </button>
+                <button type="button" class="launcher-card" data-launch-tab="feedback">
+                    <span class="launcher-card-icon">&#129504;</span>
+                    <span class="launcher-card-title">Self-Learning</span>
+                    <span class="launcher-card-copy">Go straight into the self-learning and feedback system instead of reaching it from another module.</span>
+                    <span class="launcher-card-meta">Learning System</span>
+                </button>
+                <button type="button" class="launcher-card" data-launch-tab="scanner">
+                    <span class="launcher-card-icon">&#9671;</span>
+                    <span class="launcher-card-title">Inventory Scanner</span>
+                    <span class="launcher-card-copy">Open inventory analysis as its own dedicated workflow from the main screen.</span>
+                    <span class="launcher-card-meta">Scanner</span>
+                </button>
+                <button type="button" class="launcher-card" data-launch-tab="uploader">
+                    <span class="launcher-card-icon">&#9650;</span>
+                    <span class="launcher-card-title">Meta Ad Upload</span>
+                    <span class="launcher-card-copy">Launch the Meta ad uploader directly from the shell as a separate workflow entry point.</span>
+                    <span class="launcher-card-meta">Execution Tool</span>
+                </button>
+            </div>
+        </div>
+    </section>
+    <button type="button" class="shell-back-btn" id="shellBackBtn">&#8592; Back To Launcher</button>
+    <div class="frame-container hidden" id="frameContainer">
+        <iframe id="frame-creative" src="creative.html?v=35"></iframe>
+        <iframe id="frame-google" src="google-creative.html" class="hidden" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"></iframe>
+        <iframe id="frame-simulator" src="creative.html?v=35&view=simulator&standalone=1" class="hidden"></iframe>
+        <iframe id="frame-optimizer" src="creative.html?v=35&view=optimizer&standalone=1" class="hidden"></iframe>
+        <iframe id="frame-trends" src="trend-scanner.html" class="hidden" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"></iframe>
+        <iframe id="frame-ci" src="inventory-scanner/public/ci.html" class="hidden" allow="popups" sandbox="allow-same-origin allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms allow-top-navigation"></iframe>
+        <iframe id="frame-feedback" src="feedback.html?v=100" class="hidden" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"></iframe>
+        <iframe id="frame-scanner" src="inventory-scanner/public/index.html" class="hidden" allow="popups" sandbox="allow-same-origin allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms allow-top-navigation"></iframe>
+        <iframe id="frame-uploader" src="uploader/upload.html?v=7" class="hidden"></iframe>
+    </div>
+    <div class="assistant-panel" id="assistantPanel">
+        <div class="assistant-panel-header">
+            <div>
+                <div class="assistant-panel-title">View Assistant</div>
+                <div class="assistant-panel-sub" id="assistantPanelSub">Context-aware answers for the active portal view.</div>
+            </div>
+            <button class="assistant-close" id="assistantCloseBtn">&#10005;</button>
+        </div>
+        <div class="assistant-section" style="margin-top:0;padding-top:0;border-top:none;">
+            <h4>Answer</h4>
+            <div class="assistant-answer" id="assistantAnswer">Ask a question about the active view.</div>
+        </div>
+        <div class="assistant-section">
+            <h4>Checks</h4>
+            <div class="assistant-list" id="assistantChecks">
+                <div class="assistant-item">Waiting for analysis.</div>
+            </div>
+        </div>
+        <div class="assistant-section">
+            <h4>Next Steps</h4>
+            <div class="assistant-list" id="assistantActions">
+                <div class="assistant-item">The assistant will suggest focused next steps here.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tabs = document.querySelectorAll('.tab');
+        const launcherCards = document.querySelectorAll('.launcher-card');
+        const launcherScreen = document.getElementById('launcherScreen');
+        const frameContainer = document.getElementById('frameContainer');
+        const shellTopNav = document.getElementById('shellTopNav');
+        const shellBackBtn = document.getElementById('shellBackBtn');
+        const frames = {
+            creative: document.getElementById('frame-creative'),
+            google: document.getElementById('frame-google'),
+            simulator: document.getElementById('frame-simulator'),
+            optimizer: document.getElementById('frame-optimizer'),
+            trends: document.getElementById('frame-trends'),
+            ci: document.getElementById('frame-ci'),
+            feedback: document.getElementById('frame-feedback'),
+            scanner: document.getElementById('frame-scanner'),
+            uploader: document.getElementById('frame-uploader'),
+        };
+        const assistantPromptInput = document.getElementById('assistantPromptInput');
+        const assistantAskBtn = document.getElementById('assistantAskBtn');
+        const assistantPanel = document.getElementById('assistantPanel');
+        const assistantContextSummary = document.getElementById('assistantContextSummary');
+        const assistantPanelSub = document.getElementById('assistantPanelSub');
+        const assistantAnswer = document.getElementById('assistantAnswer');
+        const assistantChecks = document.getElementById('assistantChecks');
+        const assistantActions = document.getElementById('assistantActions');
+        let assistantContext = {
+            app: 'meta',
+            view: 'dashboard',
+            title: 'Meta Portal',
+            dateRange: { label: '--' },
+            dataMode: { label: 'Awaiting context' },
+            diagnostics: { source: 'Portal shell' },
+        };
+
+        function openTab(target) {
+            tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === target));
+            Object.entries(frames).forEach(([key, frame]) => {
+                frame.classList.toggle('hidden', key !== target);
+            });
+            launcherScreen.classList.add('hidden');
+            frameContainer.classList.remove('hidden');
+            shellTopNav.style.display = 'none';
+            shellBackBtn.classList.add('visible');
+            refreshAssistantContext();
+        }
+
+        function showLauncher() {
+            launcherScreen.classList.remove('hidden');
+            frameContainer.classList.add('hidden');
+            shellTopNav.style.display = 'none';
+            shellBackBtn.classList.remove('visible');
+            assistantPanel.classList.remove('open');
+        }
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                openTab(tab.dataset.tab);
+            });
+        });
+
+        launcherCards.forEach(card => {
+            card.addEventListener('click', () => {
+                openTab(card.dataset.launchTab);
+            });
+        });
+
+        shellBackBtn.addEventListener('click', showLauncher);
+
+        document.querySelectorAll('[data-quick-prompt]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                assistantPromptInput.value = btn.dataset.quickPrompt || '';
+                runAssistantQuery();
+            });
+        });
+
+        document.getElementById('assistantCloseBtn').addEventListener('click', () => {
+            assistantPanel.classList.remove('open');
+        });
+
+        assistantAskBtn.addEventListener('click', runAssistantQuery);
+        assistantPromptInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') runAssistantQuery();
+        });
+
+        window.addEventListener('message', (event) => {
+            if (!event || !event.data || event.data.type !== 'portal-context') return;
+            assistantContext = event.data.context || assistantContext;
+            renderAssistantContextSummary();
+        });
+
+        function getActiveTabKey() {
+            const active = document.querySelector('.tab.active');
+            return active ? active.dataset.tab : 'creative';
+        }
+
+        function buildFallbackContext() {
+            const activeTab = getActiveTabKey();
+            const activeLabel = document.querySelector('.tab.active')?.textContent?.trim() || 'Portal';
+            return {
+                app: activeTab,
+                view: activeTab,
+                title: activeLabel,
+                dateRange: { label: 'Not published by this view yet' },
+                dataMode: { label: 'Context unavailable' },
+                diagnostics: { source: 'Host shell fallback' },
+            };
+        }
+
+        function refreshAssistantContext() {
+            const frame = frames[getActiveTabKey()];
+            try {
+                if (frame && frame.contentWindow && typeof frame.contentWindow.getPortalAssistantContext === 'function') {
+                    assistantContext = frame.contentWindow.getPortalAssistantContext() || assistantContext;
+                } else {
+                    assistantContext = buildFallbackContext();
+                }
+            } catch (err) {
+                assistantContext = buildFallbackContext();
+            }
+            renderAssistantContextSummary();
+        }
+
+        function renderAssistantContextSummary() {
+            const title = assistantContext.title || 'Portal';
+            const view = assistantContext.view || 'view';
+            const range = assistantContext.dateRange?.label || '--';
+            const mode = assistantContext.dataMode?.label || '--';
+            assistantContextSummary.textContent = `${title} • ${view} • ${range} • ${mode}`;
+            assistantPanelSub.textContent = `${title} • ${range} • ${mode}`;
+        }
+
+        function renderAssistantResponse(payload) {
+            const checks = Array.isArray(payload?.checks) && payload.checks.length ? payload.checks : ['No structured checks returned.'];
+            const actions = Array.isArray(payload?.next_steps) && payload.next_steps.length ? payload.next_steps : ['No next steps returned.'];
+            assistantAnswer.textContent = payload?.answer || 'No answer returned.';
+            assistantChecks.innerHTML = checks.map(item => `<div class="assistant-item">${escapeHtml(item)}</div>`).join('');
+            assistantActions.innerHTML = actions.map(item => `<div class="assistant-item">${escapeHtml(item)}</div>`).join('');
+            assistantPanel.classList.add('open');
+        }
+
+        async function runAssistantQuery() {
+            const prompt = assistantPromptInput.value.trim();
+            if (!prompt) return;
+            refreshAssistantContext();
+            assistantAskBtn.disabled = true;
+            assistantAnswer.textContent = 'Thinking through the active view...';
+            assistantChecks.innerHTML = '<div class="assistant-item">Reading active view context.</div>';
+            assistantActions.innerHTML = '<div class="assistant-item">Preparing a focused answer.</div>';
+            assistantPanel.classList.add('open');
+
+            const system = [
+                'You are a concise analytics copilot for the active portal view.',
+                'Use the provided JSON context as the source of truth for the current screen.',
+                'Return strict JSON with keys: answer (string), checks (array of strings), next_steps (array of strings).',
+                'Keep the answer high-signal and practical.',
+                'If the user asks about data quality, mention date range, maturity mode, and any diagnostics from context.',
+            ].join(' ');
+            const promptBody = `Active view context:\n${JSON.stringify(assistantContext, null, 2)}\n\nUser question:\n${prompt}`;
+
+            try {
+                const res = await fetch('/api/ai/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ system, prompt: promptBody, max_tokens: 2200 }),
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Assistant request failed');
+                renderAssistantResponse(JSON.parse(data.content));
+            } catch (err) {
+                renderAssistantResponse({
+                    answer: `The assistant could not complete the analysis: ${err.message}`,
+                    checks: [
+                        `Context view: ${assistantContext.view || 'unknown'}`,
+                        `Date range: ${assistantContext.dateRange?.label || '--'}`,
+                        `Data mode: ${assistantContext.dataMode?.label || '--'}`,
+                    ],
+                    next_steps: ['Retry the question after the current view finishes loading.'],
+                });
+            } finally {
+                assistantAskBtn.disabled = false;
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        showLauncher();
+    </script>
+</body>
+</html>

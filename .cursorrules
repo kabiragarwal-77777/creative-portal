@@ -1,0 +1,3 @@
+Use code-review-graph first for codebase exploration, impact analysis, and reviews.
+Start with `get_minimal_context(task="<task>")`, then use `query_graph`, `get_impact_radius`, or `get_review_context` as needed.
+Prefer `detail_level="minimal"` and the smallest useful context.

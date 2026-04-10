@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rebuild Creative Portal - Full Prompt</title>
+<style>
+  @media print {
+    body { font-size: 9pt; }
+    h1 { font-size: 16pt; }
+    h2 { font-size: 13pt; page-break-before: auto; }
+    h3 { font-size: 11pt; }
+    pre { font-size: 7.5pt; white-space: pre-wrap; word-break: break-all; }
+    .no-print { display: none; }
+    table { font-size: 8pt; }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.5; color: #1a1a2e; max-width: 900px; margin: 0 auto; padding: 32px 24px; background: #fff; }
+  h1 { font-size: 28px; margin-bottom: 8px; color: #6c5ce7; border-bottom: 3px solid #6c5ce7; padding-bottom: 8px; }
+  h2 { font-size: 20px; margin-top: 32px; margin-bottom: 12px; color: #16213e; border-bottom: 2px solid #00d4aa; padding-bottom: 4px; }
+  h3 { font-size: 16px; margin-top: 20px; margin-bottom: 8px; color: #6c5ce7; }
+  p, li { margin-bottom: 6px; font-size: 13px; }
+  ul, ol { padding-left: 24px; margin-bottom: 12px; }
+  pre { background: #f4f4f8; border: 1px solid #ddd; border-radius: 6px; padding: 12px; overflow-x: auto; font-size: 11px; margin: 8px 0 16px; font-family: 'Consolas', 'Courier New', monospace; }
+  code { background: #f0f0f4; padding: 1px 5px; border-radius: 3px; font-size: 12px; font-family: 'Consolas', monospace; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 16px; }
+  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 12px; }
+  th { background: #6c5ce7; color: #fff; }
+  tr:nth-child(even) { background: #f8f8fc; }
+  strong { color: #16213e; }
+  hr { border: none; border-top: 1px solid #ddd; margin: 24px 0; }
+  .subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+  .btn { display: inline-block; background: #6c5ce7; color: #fff; padding: 12px 28px; border-radius: 8px; font-size: 16px; cursor: pointer; border: none; margin: 16px 0; text-decoration: none; }
+  .btn:hover { background: #5a4bd1; }
+</style>
+</head>
+<body>
+
+<div class="no-print" style="text-align:center; margin-bottom: 24px;">
+  <button class="btn" onclick="window.print()">Save as PDF (Ctrl+P)</button>
+  <p style="color:#888; font-size:12px; margin-top:4px;">Click the button or press Ctrl+P, then choose "Save as PDF" as the destination.</p>
+</div>
+
+<h1>Rebuild Creative Portal from Scratch</h1>
+<p class="subtitle">Complete prompt to regenerate the Univest Performance Marketing Portal. Feed this to Claude Code or any capable AI coding assistant.</p>
+
+<hr>
+
+<h2>OBJECTIVE</h2>
+<p>Build a <strong>7-tab performance marketing portal</strong> for Univest (a fintech app) that combines Meta Ads management, Google Ads management, competitor intelligence, creative analytics, trend scanning, AI-powered optimization, and a self-learning feedback engine &mdash; all in one unified web application.</p>
+
+<hr>
+
+<h2>ENVIRONMENT &amp; API KEYS</h2>
+<p>Create a <code>.env</code> file in the project root with the following keys:</p>
+<pre># Meta (Facebook) Ads API
+META_ACCESS_TOKEN=&lt;your-meta-access-token&gt;
+META_APP_SECRET=&lt;your-meta-app-secret&gt;
+META_APP_SECRET_PROOF=&lt;your-app-secret-proof&gt;
+META_AD_ACCOUNT_ID=act_725019929189148
+
+# Google Apps Script (for Google Sheets read/write)
+GOOGLE_APPS_SCRIPT_URL=https://script.google.com/macros/s/&lt;your-script-id&gt;/exec
+
+# OpenAI (for AI analysis, classification, concept generation)
+OPENAI_API_KEY=sk-proj-&lt;your-openai-key&gt;
+
+# Metabase (internal analytics database)
+METABASE_SESSION_TOKEN=&lt;your-metabase-session-token&gt;</pre>
+
+<h3>External Services</h3>
+<table>
+  <tr><th>Service</th><th>URL</th><th>Purpose</th></tr>
+  <tr><td>Meta Graph API</td><td><code>https://graph.facebook.com/v21.0/</code></td><td>Ad insights, ad management, media upload, ad library</td></tr>
+  <tr><td>Metabase</td><td><code>https://analytics.univest.in/api/dataset</code></td><td>SQL queries against Prod PostgreSQL (database_id=2) for funnel metrics</td></tr>
+  <tr><td>OpenAI</td><td><code>https://api.openai.com/v1/chat/completions</code></td><td>GPT-4 for ad classification, analysis, proposals, trend synthesis</td></tr>
+  <tr><td>Google Apps Script</td><td>(URL in .env)</td><td>Google Sheets read/write for ad specs</td></tr>
+</table>
+
+<hr>
+
+<h2>TECH STACK</h2>
+<ul>
+  <li><strong>Frontend:</strong> Vanilla JavaScript (no React/Vue/Angular), HTML, CSS (dark theme)</li>
+  <li><strong>Backend:</strong> Node.js + Express.js</li>
+  <li><strong>Database:</strong> SQLite via <code>better-sqlite3</code> (one DB per module)</li>
+  <li><strong>Scheduling:</strong> <code>node-cron</code> for automated pipelines</li>
+  <li><strong>Styling:</strong> CSS Grid/Flexbox, dark theme with <code>#6c5ce7</code> purple and <code>#00d4aa</code> teal accents</li>
+</ul>
+
+<h3>Dependencies (package.json)</h3>
+<pre>{
+  "name": "performance-marketing-auto",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node uploader/server.js",
+    "start:intel": "node intelligence/server.js",
+    "start:all": "concurrently \"node uploader/server.js\" \"node intelligence/server.js\""
+  },
+  "engines": { "node": "&gt;=18.0.0" },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "better-sqlite3": "^12.8.0",
+    "cheerio": "^1.0.0",
+    "concurrently": "^9.2.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "form-data": "^4.0.2",
+    "google-ads-api": "^23.0.0",
+    "node-cron": "^3.0.3",
+    "openai": "^4.78.0",
+    "rss-parser": "^3.13.0"
+  }
+}</pre>
+
+<hr>
+
+<h2>ARCHITECTURE OVERVIEW</h2>
+<pre>index.html (Tab Shell - 7 iframes)
+  +-- Tab 1: Meta Portal         -> creative.html + app.js
+  +-- Tab 2: Meta Ad Upload      -> uploader/upload.html + uploader/server.js
+  +-- Tab 3: Inventory Scanner   -> inventory-scanner/public/index.html
+  +-- Tab 4: Competitor Intel    -> inventory-scanner/public/ci.html
+  +-- Tab 5: Google Portal       -> google-creative.html + google-creative/server.js
+  +-- Tab 6: Trend Scanner       -> trend-scanner.html + trend-scanner/routes.js
+  +-- Tab 7: Self-Learning       -> feedback.html + feedback-engine/server.js
+
+Backend Servers:
+  +-- uploader/server.js          (port 3000) - Main server
+  +-- creative-intelligence/      - CI pipeline (mounted on main server)
+  +-- feedback-engine/server.js   (port 3002) - Self-learning engine
+  +-- google-creative/server.js   (port 3003) - Google Ads intelligence
+  +-- inventory-scanner/server.js (port 3004) - Inventory discovery
+  +-- trend-scanner/              - Trend pipeline (mounted on main server)
+
+Databases (SQLite):
+  +-- creative-intelligence/ci.db
+  +-- feedback-engine/db/feedback-engine.db
+  +-- google-creative/db/google-creative.db
+  +-- inventory-scanner/database/scanner.db</pre>
+
+<hr>
+
+<h2>TAB 1: META CREATIVE PORTAL</h2>
+<h3>Purpose</h3>
+<p>Full-featured dashboard for monitoring Meta (Facebook + Instagram) ad creative performance.</p>
+
+<h3>Frontend: creative.html + app.js</h3>
+<p><strong>Sidebar Navigation (11 views):</strong></p>
+<ol>
+  <li><strong>Dashboard</strong> - KPI grid (14 metrics) + summary charts</li>
+  <li><strong>All Creatives</strong> - Full table of every creative with 20+ columns</li>
+  <li><strong>New This Week</strong> - Creatives launched in last 7 days</li>
+  <li><strong>Top Performers</strong> - Sorted by D6 ROAS descending</li>
+  <li><strong>Underperformers</strong> - D6 ROAS &lt; 15%, flagged for pause</li>
+  <li><strong>Scorecard</strong> - Performance matrix (Exceptional / Performed / Try / Failed / Drop)</li>
+  <li><strong>Alerts</strong> - Red/yellow/green flags for anomalies</li>
+  <li><strong>Campaign Tree</strong> - Hierarchical: Campaign -> Adset -> Ad</li>
+  <li><strong>AI Intelligence</strong> - GPT-4 analysis of portfolio</li>
+  <li><strong>ROAS Simulator</strong> - Predict outcomes of budget changes</li>
+  <li><strong>Recommendations</strong> - AI-generated optimization suggestions</li>
+</ol>
+
+<p><strong>14 KPI Metrics:</strong> Total Creatives, Live Count, Total Spend, Total Installs, CPI, CTR, Total Signups, Signup Cost, D6 ROAS, Overall ROAS, D0 Trial Cost, D0 CAC, D6 CAC, P0P1 Cost</p>
+
+<h3>Data Flow</h3>
+<p><strong>Step 1 - Fetch Meta Insights:</strong></p>
+<pre>POST /api/meta/ad-insights-daily
+Body: { date_from, date_to }
+-> Calls Meta Graph API: GET /v21.0/act_{AD_ACCOUNT_ID}/insights
+   Fields: campaign_name, adset_name, ad_name, ad_id, spend, impressions, clicks,
+           actions (mobile_app_install), video_p25/p50/p75/p100_watched_actions,
+           video_play_actions, video_3s_watched
+   Level: ad, Time increment: 1 (daily)
+-> Returns: Array of daily ad-level metrics</pre>
+
+<p><strong>Step 2 - Fetch Metabase Funnel:</strong></p>
+<pre>POST /api/metabase/ad-funnel
+Body: { date_from, date_to }
+-> Calls Metabase: POST https://analytics.univest.in/api/dataset
+   Headers: { "X-Metabase-Session": METABASE_SESSION_TOKEN }
+   Body: {
+     database: 2,
+     type: "native",
+     native: {
+       query: "SELECT date, campaign, adset, tracker_name,
+                      signups, d0_trials, d0_conversions, d0_revenue,
+                      d6_conversions, d6_revenue, d6_overall_revenue,
+                      overall_conversions, overall_revenue
+               FROM ad_funnel_daily
+               WHERE date BETWEEN '{{date_from}}' AND '{{date_to}}'
+               AND platform = 'android'"
+     }
+   }
+-> Returns: Rows of daily funnel metrics per campaign/adset/tracker</pre>
+
+<p><strong>Step 3 - Fetch Ad Status:</strong></p>
+<pre>GET /api/meta/ads-status
+-> Calls Meta Graph API: GET /v21.0/act_{AD_ACCOUNT_ID}/ads
+   Fields: id, name, effective_status
+   Filtering: [{field:'effective_status', operator:'IN', value:['ACTIVE','PAUSED']}]
+-> Returns: Map of ad_id -> status</pre>
+
+<p><strong>Step 4 - Merge &amp; Aggregate (in app.js):</strong></p>
+<ul>
+  <li>Group daily rows by creative (using ad_name as key)</li>
+  <li>Sum: spend (&times;1.18 for GST), installs, clicks, impressions, video metrics</li>
+  <li>Match Metabase rows to Meta rows using campaign+adset+tracker_name lookup</li>
+  <li>Sum: signups, d0_trials, d0_conversions, d6_conversions, d6_revenue, d6_overall_revenue, overall_revenue</li>
+  <li>Compute derived metrics: CPI, CTR, hook%, hold%, signup%, D6 ROAS, overall ROAS</li>
+</ul>
+
+<h3>AI Features (ai-cache.js + ai-context.js)</h3>
+<p><strong>AI Context Builder</strong> packages all creative data into structured context:</p>
+<ul>
+  <li>Portfolio benchmarks (median CPI, ROAS, signup rate across all creatives with &gt;&#8377;5K spend)</li>
+  <li>Top 20 and Bottom 20 creatives by D6 ROAS (with &gt;&#8377;10K spend)</li>
+  <li>Video-specific benchmarks (hook%, hold%, completion%)</li>
+  <li>Static-specific benchmarks (CTR, CPI)</li>
+  <li>LTV data (revenue per signup, D6->overall multiplier)</li>
+  <li>Univest context (company=Univest, product=fintech investing app, target_audience=Indian retail investors)</li>
+</ul>
+
+<pre>POST /api/ai/analyze
+Body: { system_prompt, user_prompt }
+-> Calls OpenAI GPT-4: model "gpt-4", temperature 0.3, response_format: json_object
+-> Returns: Structured JSON analysis</pre>
+
+<p><strong>Caching:</strong> 4-hour TTL in localStorage + in-memory, force refresh option, minimum data requirements (3 creatives with spend, 2 with D6 data).</p>
+
+<hr>
+
+<h2>TAB 2: META AD UPLOADER</h2>
+<h3>Purpose</h3>
+<p>Bulk upload video/static ad creatives to Meta from Google Sheets specs.</p>
+
+<h3>Frontend: uploader/upload.html</h3>
+<ul>
+  <li>Google Sheets sync button -> fetches ad specs</li>
+  <li>Preview table showing all rows before upload</li>
+  <li>Per-row execute button + bulk upload</li>
+  <li>Status tracking (success/error per row)</li>
+  <li>Write-back to Google Sheets with ad_id, adset_id, status</li>
+</ul>
+
+<h3>Backend: uploader/server.js</h3>
+<pre>POST /api/upload/sheet-to-meta    -> Parse Google Sheet -> Upload ads
+POST /api/upload/preview          -> Preview rows before upload
+POST /api/upload/:index/execute   -> Upload single row
+GET  /api/upload/status           -> Check upload progress
+POST /api/upload/sync-from-sheets -> Fetch fresh sheet data</pre>
+
+<p><strong>Upload Pipeline:</strong></p>
+<ol>
+  <li>Read ad specs from Google Sheets (via Apps Script URL)</li>
+  <li>For each row: Upload media -> Create AdCreative -> Create/reuse AdSet -> Create Ad -> Write results back</li>
+</ol>
+
+<pre>POST /v21.0/{AD_ACCOUNT_ID}/advideos       -> Upload video
+POST /v21.0/{AD_ACCOUNT_ID}/adimages       -> Upload image
+POST /v21.0/act_{AD_ACCOUNT_ID}/adcreatives -> Create creative
+POST /v21.0/act_{AD_ACCOUNT_ID}/adsets      -> Create adset
+POST /v21.0/act_{AD_ACCOUNT_ID}/ads         -> Create ad</pre>
+
+<hr>
+
+<h2>TAB 3: INVENTORY SCANNER</h2>
+<h3>Purpose</h3>
+<p>Discover and track ad inventory placements, pricing, and format recommendations.</p>
+<pre>GET  /api/inventories               -> List tracked ad inventories
+GET  /api/discovery                 -> Discovery status &amp; logs
+POST /api/discovery/run             -> Trigger discovery scan
+GET  /api/competitors               -> Competitor profiles
+GET  /api/competitors/whitespace    -> Inventory gaps
+GET  /api/budget/:inventoryId       -> Budget recommendations
+GET  /api/pricing/:inventoryId      -> CPM/CPC benchmarks
+GET  /api/formats/:inventoryId      -> Best-performing formats</pre>
+
+<p><strong>Multi-Agent System:</strong> discoveryAgent, existingInventoryAgent, budgetAgent, pricingAgent, adFormatAgent, onboardingAgent, schedulerAgent</p>
+
+<hr>
+
+<h2>TAB 4: COMPETITOR INTELLIGENCE</h2>
+<h3>Purpose</h3>
+<p>Monitor competitor ad activity via Meta Ad Library + classify ads + detect trends.</p>
+
+<p><strong>competitor-meta-fetcher.js</strong> - Fetch competitor ads:</p>
+<pre>GET https://graph.facebook.com/v19.0/ads_archive
+  search_terms={competitor_name}
+  ad_reached_countries=IN
+  fields=id,ad_creative_body,ad_creative_link_caption,
+         ad_delivery_start_time,ad_delivery_stop_time,
+         impressions,spend,publisher_platforms
+  limit=50 (paginated, max 10 pages / 500 ads per competitor)</pre>
+
+<p><strong>Tracked Competitors:</strong> Zerodha, Groww, Angel One, 5Paisa, Upstox, INDmoney, Dhan, StockGro, Coin by Zerodha + Univest</p>
+
+<p><strong>competitor-classifier.js</strong> - Classify each ad:</p>
+<ul>
+  <li><strong>Themes:</strong> FOMO, Social Proof, Education, Offer/Discount, Feature, Comparison, Trust/SEBI, Free Trial, Testimonial, Celebrity</li>
+  <li><strong>Formats:</strong> Video, Static, Carousel, Story</li>
+  <li><strong>Hook Styles:</strong> Question, Stat-led, Benefit-led, Fear-led, Story-led, Offer-led</li>
+  <li><strong>CTA Types:</strong> App Install, Sign Up, Free Trial, Learn More, Call Now, Download</li>
+  <li><strong>Audience Signals:</strong> Beginner, Experienced, F&amp;O Trader, Long-term, HNI</li>
+</ul>
+<p>Strategy: Fast keyword match first, OpenAI GPT fallback for ambiguous ads.</p>
+
+<p><strong>competitor-trends.js</strong> - Compute signals: Rising/falling themes (14-day comparison), dominant format per competitor, evergreen ads (30+ days), new ads (7d), dormant competitors, platform diversification.</p>
+
+<hr>
+
+<h2>TAB 5: GOOGLE ADS PORTAL</h2>
+<h3>Purpose</h3>
+<p>Dashboard for Google Ads creative performance (UAC, Search, PMax, Video, Display).</p>
+<p>Identical layout to Meta portal. Database: SQLite <code>google-creative.db</code> (tables: gc_creatives, gc_creative_scores, gc_adset_performance).</p>
+
+<p><strong>Multi-Agent System:</strong> gcDataFetcher, gcClassifier, gcScoring, gcSignals, gcSimulator, gcForecast, gcRecommendations</p>
+
+<pre>GET  /creatives                -> List creatives with GCPS score
+GET  /adsets                   -> Adset performance aggregation
+POST /fetch/trigger            -> Manual data refresh
+GET  /signals/:creativeId      -> Creative signals breakdown
+GET  /recommendations          -> Batch recommendations
+POST /simulator/run            -> Simulate budget changes
+GET  /forecast                 -> Revenue forecast</pre>
+
+<hr>
+
+<h2>TAB 6: TREND SCANNER</h2>
+<h3>Purpose</h3>
+<p>Real-time trend aggregation from 6 sources -> synthesize themes -> generate creative concepts.</p>
+
+<p><strong>9 Agents:</strong></p>
+<ol>
+  <li>redditAgent - Stock market/investing subreddits</li>
+  <li>youtubeAgent - India finance YouTube channels</li>
+  <li>newsAgent - Financial news headlines</li>
+  <li>twitterAgent - India Twitter trending</li>
+  <li>googleTrendsAgent - Google Trends India</li>
+  <li>indiaFinanceAgent - India fintech content</li>
+  <li>synthAgent - Synthesize trends into themes (OpenAI)</li>
+  <li>scriptAgent - Generate creative concepts (static + video)</li>
+  <li>schedulerAgent - Scheduled scans</li>
+</ol>
+
+<pre>GET  /api/trends/status                    -> Scan progress
+GET  /api/trends/data                      -> Synthesized trends + concepts
+POST /api/trends/scan                      -> Trigger full scan
+POST /api/trends/concepts/:trendId/:format -> Generate concept
+GET  /api/trends/raw                       -> Raw source counts</pre>
+
+<pre>Pipeline: Raw Trends (6 sources) -> Synthesized Themes -> Creative Concepts</pre>
+
+<hr>
+
+<h2>TAB 7: SELF-LEARNING FEEDBACK ENGINE</h2>
+<h3>Purpose</h3>
+<p>Autonomous AI system: monitor creatives, generate predictions, track accuracy, propose optimizations with human-in-the-loop approval.</p>
+
+<p><strong>8 Agents:</strong> feWatcher, feKnowledgeCrawler, feAccuracyAuditor, feSelfTester, feProposalGenerator, feApprovalEngine, feMemory, feAnomalyDetector</p>
+
+<pre>GET  /watcher/summary              -> Live predictions summary
+POST /watcher/refresh              -> Force refresh
+GET  /knowledge/items              -> Knowledge base search
+POST /knowledge/crawl              -> Index new sources
+GET  /audit/report                 -> Accuracy audit results
+POST /audit/run                    -> Run new audit
+GET  /hypotheses                   -> List test hypotheses
+POST /hypotheses/generate          -> Generate new hypotheses
+GET  /proposals                    -> List AI proposals
+POST /proposals/generate           -> Generate new proposals
+POST /proposals/:id/approve        -> Approve proposal
+POST /proposals/:id/reject         -> Reject with reason
+POST /proposals/approve-batch      -> Bulk approve
+GET  /memory/episodic              -> Event logs
+GET  /memory/semantic              -> Learned patterns
+GET  /memory/procedural            -> Workflow docs
+GET  /anomalies                    -> Detected anomalies
+POST /anomalies/:id/resolve        -> Mark resolved</pre>
+
+<hr>
+
+<h2>CREATIVE INTELLIGENCE PIPELINE</h2>
+<p>Continuous monitoring + action generation. Database: SQLite <code>ci.db</code> (tables: simulations, snapshots, trends, actions, analyses, pipeline_runs).</p>
+
+<p><strong>Pipeline Stages:</strong></p>
+<ol>
+  <li><strong>Collect</strong> - Daily snapshots from Meta + Metabase</li>
+  <li><strong>Analyze</strong> - Compute trends, detect anomalies, run predictions</li>
+  <li><strong>Action</strong> - Generate pause/scale/watch/kill recommendations</li>
+  <li><strong>Forecast</strong> - D6/D30/D60/D120/D365 ROAS predictions</li>
+</ol>
+
+<pre>POST /pipeline/run              -> Trigger full pipeline (async)
+GET  /pipeline/status           -> Pipeline status + scheduler
+GET  /dashboard                 -> Latest snapshots, actions, trends, predictions
+GET  /snapshots                 -> Daily creative snapshots
+GET  /trends/:adId              -> Metric trends (7d/30d/all-time)
+GET  /actions                   -> Active pause/scale/watch/kill actions
+POST /actions/:id/execute       -> Execute action via Meta API
+GET  /predictions               -> ROAS predictions at multiple horizons</pre>
+
+<hr>
+
+<h2>OPTIMIZER MODULE</h2>
+<p>Scan -> Plan -> Execute workflow for campaign optimization.</p>
+<ul>
+  <li><strong>PAUSE:</strong> D6 ROAS &lt; threshold AND spend &gt; minimum AND days live &gt; maturity</li>
+  <li><strong>SCALE:</strong> D6 ROAS &gt; threshold AND sufficient volume AND under budget cap</li>
+  <li><strong>ACTIVATE:</strong> Ad currently paused but meets performance criteria</li>
+  <li><strong>NO_ACTION:</strong> Hold for observation (insufficient data)</li>
+</ul>
+
+<hr>
+
+<h2>KEY METRICS &amp; CALCULATIONS</h2>
+
+<h3>Univest Funnel</h3>
+<pre>Impression -> Click -> Install -> Signup -> D0 Trial -> D0 Payment -> D6 Payment -> Overall Revenue</pre>
+<ul>
+  <li><strong>D0 Trial:</strong> Trial started within 24h of install</li>
+  <li><strong>D0:</strong> Payment on day 0</li>
+  <li><strong>D6:</strong> Payment within 6 days (PRIMARY conversion metric)</li>
+  <li><strong>Overall:</strong> Lifetime revenue (all payments ever)</li>
+</ul>
+
+<h3>KPI Formulas</h3>
+<table>
+  <tr><th>Metric</th><th>Formula</th></tr>
+  <tr><td>CPI</td><td>Spend / Installs</td></tr>
+  <tr><td>CTR</td><td>(Clicks / Impressions) x 100</td></tr>
+  <tr><td>Signup Cost</td><td>Spend / Signups</td></tr>
+  <tr><td>D0 Trial Cost</td><td>Spend / D0 Trials</td></tr>
+  <tr><td>D6 CAC</td><td>Spend / D6 Conversions</td></tr>
+  <tr><td>D6 ROAS</td><td>(D6 Revenue / Spend) x 100</td></tr>
+  <tr><td>Overall ROAS</td><td>(Overall Revenue / Spend) x 100</td></tr>
+  <tr><td>Hook Rate</td><td>(3-sec Video Views / Impressions) x 100</td></tr>
+  <tr><td>Hold Rate</td><td>(Thruplay / 3-sec Views) x 100</td></tr>
+  <tr><td>Signup %</td><td>(Signups / Installs) x 100</td></tr>
+</table>
+
+<h3>Performance Rating Thresholds</h3>
+<table>
+  <tr><th>Rating</th><th>D6 ROAS</th></tr>
+  <tr><td>Exceptional</td><td>&gt; 40%</td></tr>
+  <tr><td>Performed</td><td>28-40%</td></tr>
+  <tr><td>Try</td><td>15-28%</td></tr>
+  <tr><td>Failed</td><td>&lt; 15%</td></tr>
+  <tr><td>Drop</td><td>Declining trajectory (slope &lt; -10% over 7d)</td></tr>
+</table>
+
+<p><strong>Spend Adjustment:</strong> All Meta spend is multiplied by <strong>1.18</strong> (18% GST) to reflect true cost.</p>
+
+<hr>
+
+<h2>METABASE INTEGRATION</h2>
+<pre>const metabaseUrl = 'https://analytics.univest.in/api/dataset';
+const headers = {
+  'Content-Type': 'application/json',
+  'X-Metabase-Session': process.env.METABASE_SESSION_TOKEN
+};
+
+const body = {
+  database: 2,  // Prod PostgreSQL
+  type: "native",
+  native: {
+    query: "YOUR SQL HERE",
+    "template-tags": {}
+  }
+};
+
+// Response parsing:
+const result = await axios.post(metabaseUrl, body, { headers });
+const rows = result.data.data.rows;
+const cols = result.data.data.cols.map(c => c.name);</pre>
+
+<p><strong>Key Tables:</strong> ad_funnel_daily (signups, trials, conversions, revenue per campaign/adset/tracker), cohort data (P0/P1 subscribers), time-series (daily conversions/revenue).</p>
+
+<hr>
+
+<h2>META API INTEGRATION</h2>
+<p><strong>Base URL:</strong> <code>https://graph.facebook.com/v21.0/</code></p>
+<p><strong>Auth:</strong> <code>access_token={META_ACCESS_TOKEN}</code> as query parameter.</p>
+
+<pre># Daily ad insights
+GET /act_{AD_ACCOUNT_ID}/insights
+  ?level=ad&amp;time_increment=1
+  &amp;fields=campaign_name,adset_name,ad_name,ad_id,spend,impressions,clicks,
+          actions,video_p25_watched_actions,video_p50_watched_actions,
+          video_p75_watched_actions,video_p100_watched_actions,
+          video_play_actions,video_3s_watched
+  &amp;time_range={"since":"YYYY-MM-DD","until":"YYYY-MM-DD"}
+  &amp;filtering=[{"field":"campaign.name","operator":"CONTAIN","value":"android"}]
+
+# Ad status
+GET /act_{AD_ACCOUNT_ID}/ads
+  ?fields=id,name,effective_status&amp;limit=500
+
+# Ad Library (competitor research)
+GET /ads_archive?search_terms={name}&amp;ad_reached_countries=IN&amp;limit=50
+
+# Media upload
+POST /{AD_ACCOUNT_ID}/advideos    (multipart/form-data)
+POST /{AD_ACCOUNT_ID}/adimages    (multipart/form-data)
+
+# Create objects
+POST /act_{AD_ACCOUNT_ID}/adcreatives
+POST /act_{AD_ACCOUNT_ID}/adsets
+POST /act_{AD_ACCOUNT_ID}/ads
+
+# Update ad status
+POST /{AD_ID} { status: "PAUSED" | "ACTIVE" }</pre>
+
+<hr>
+
+<h2>STYLING GUIDELINES</h2>
+<pre>--bg-primary: #0a0a1a;
+--bg-secondary: #1a1a2e;
+--bg-card: #16213e;
+--text-primary: #e0e0e0;
+--text-secondary: #a0a0b0;
+--accent-purple: #6c5ce7;
+--accent-teal: #00d4aa;
+--accent-red: #ff4757;
+--accent-yellow: #ffa502;
+--accent-green: #2ed573;
+--border: rgba(255,255,255,0.08);</pre>
+<p>Layout: Sidebar navigation (collapsible) + main content area, responsive CSS Grid. Sortable tables with sticky headers. Rounded card corners with hover shadow.</p>
+
+<hr>
+
+<h2>FILE STRUCTURE</h2>
+<pre>creative-portal/
++-- .env
++-- package.json
++-- index.html                          # Tab shell (7 iframes)
++-- creative.html                       # Meta portal frontend
++-- google-creative.html                # Google Ads portal frontend
++-- feedback.html                       # Self-learning frontend
++-- trend-scanner.html                  # Trend scanner frontend
++-- styles.css                          # Shared styles
++-- app.js                              # Meta portal logic
++-- ai-cache.js                         # AI result caching (4hr TTL)
++-- ai-context.js                       # AI context builder
++-- optimizer.js                        # Scan/Plan/Execute optimizer
++-- competitor-meta-fetcher.js          # Meta Ad Library fetcher
++-- competitor-classifier.js            # Ad classification
++-- competitor-trends.js                # Trend signals
++-- competitor-radar.js                 # Competitor radar
++-- competitor-scheduler.js             # Competitor scan cron
++-- competitor-routes.js                # Competitor API routes
++-- uploader/
+|   +-- server.js                       # Main Express server (port 3000)
+|   +-- upload.html                     # Upload frontend
+|   +-- meta-write.js                   # Meta API write helpers
++-- creative-intelligence/
+|   +-- db.js, engine.js, predictor.js, routes.js
++-- feedback-engine/
+|   +-- server.js                       # Express server (port 3002)
+|   +-- agents/ (8 agents), db/, public/
++-- google-creative/
+|   +-- server.js                       # Express server (port 3003)
+|   +-- agents/ (7 agents), db/, public/
++-- inventory-scanner/
+|   +-- server.js                       # Express server (port 3004)
+|   +-- routes.js, agents.js, database/, public/
++-- trend-scanner/
+    +-- routes.js, cache.js, agents/ (9 agents)</pre>
+
+<hr>
+
+<h2>BUILD ORDER</h2>
+<ol>
+  <li><code>.env</code> + <code>package.json</code> - Environment setup</li>
+  <li><code>uploader/server.js</code> - Main Express server with Meta API proxy + Metabase proxy</li>
+  <li><code>index.html</code> + <code>styles.css</code> - Portal shell with 7 tabs</li>
+  <li><code>creative.html</code> + <code>app.js</code> + <code>ai-cache.js</code> + <code>ai-context.js</code> - Meta portal</li>
+  <li><code>uploader/upload.html</code> + <code>meta-write.js</code> - Ad uploader</li>
+  <li><code>creative-intelligence/</code> - CI pipeline</li>
+  <li><code>competitor-*.js</code> + <code>competitor-routes.js</code> - Competitor intel</li>
+  <li><code>inventory-scanner/</code> - Inventory scanner</li>
+  <li><code>google-creative/</code> - Google Ads portal</li>
+  <li><code>trend-scanner/</code> - Trend scanner</li>
+  <li><code>feedback-engine/</code> - Self-learning engine</li>
+  <li><code>optimizer.js</code> - Campaign optimizer</li>
+</ol>
+
+<hr>
+
+<h2>BUSINESS CONTEXT</h2>
+<ul>
+  <li><strong>Company:</strong> Univest - Indian fintech app for retail investors</li>
+  <li><strong>Product:</strong> Stock investing, mutual funds, IPOs, market insights</li>
+  <li><strong>Target Audience:</strong> Indian retail investors (age 18-45, Android-first)</li>
+  <li><strong>Campaign Filter:</strong> Only Android campaigns (filter by name containing "android")</li>
+  <li><strong>Currency:</strong> INR, all spend x1.18 for GST</li>
+  <li><strong>Primary KPI:</strong> D6 ROAS (revenue within 6 days of install / spend)</li>
+  <li><strong>Mature KPI:</strong> Overall ROAS (lifetime revenue / spend)</li>
+  <li><strong>Decision Threshold:</strong> Minimum 5K-10K spend before judging a creative</li>
+</ul>
+
+</body>
+</html>

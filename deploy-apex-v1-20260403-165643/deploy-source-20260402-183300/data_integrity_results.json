@@ -1,0 +1,49 @@
+{
+  "runAt": "2026-04-02T09:29:57.152Z",
+  "duration": 15606,
+  "summary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "warnings": 0,
+    "skipped": 0
+  },
+  "overallStatus": "OK",
+  "tests": [
+    {
+      "name": "Campaign ID extraction",
+      "pass": true,
+      "level": "OK",
+      "message": "All 10 rows have non-empty campaign ID extraction",
+      "durationMs": 429
+    },
+    {
+      "name": "Campaign ID <-> Meta API match rate",
+      "pass": true,
+      "level": "OK",
+      "message": "Campaign match rate 100.0% (3/3)",
+      "durationMs": 6896
+    },
+    {
+      "name": "ROAS sanity check",
+      "pass": true,
+      "level": "OK",
+      "message": "89 ads checked — ROAS values within expected ranges (avg D6: 30.6%)",
+      "durationMs": 6
+    },
+    {
+      "name": "Revenue window alignment",
+      "pass": true,
+      "level": "OK",
+      "message": "43 ads checked — all revenue windows correctly ordered (D6 <= D15 <= D30 <= D60 <= Overall)",
+      "durationMs": 2
+    },
+    {
+      "name": "Adset name normalization",
+      "pass": true,
+      "level": "OK",
+      "message": "Adset name match rate 100.0% (20/20)",
+      "durationMs": 8249
+    }
+  ]
+}

@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trend Scanner — Univest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-body: #08080d;
+  --bg-surface: #0f0f18;
+  --bg-card: #13131f;
+  --bg-card-hover: #1a1a2e;
+  --bg-active: #6c5ce7;
+  --bg-active-dim: rgba(108, 92, 231, 0.15);
+  --text: #e2e2e2;
+  --text-muted: #888;
+  --text-dim: #555;
+  --border: #2a2a3e;
+  --purple: #6c5ce7;
+  --teal: #00d4aa;
+  --red: #ef4444;
+  --orange: #f59e0b;
+  --green: #22c55e;
+  --blue: #3b82f6;
+}
+
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: var(--bg-body);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── TOP BAR ── */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.top-bar-left h1 {
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-bar-left h1 span.icon { font-size: 18px; }
+
+.top-bar-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.source-pills {
+  display: flex;
+  gap: 4px;
+}
+
+.source-pill {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(108, 92, 231, 0.12);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.source-pill.active { color: var(--teal); background: rgba(0, 212, 170, 0.1); }
+
+.last-scan-text {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.last-scan-text.stale { color: var(--orange); }
+
+.btn {
+  padding: 7px 16px;
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-primary {
+  background: var(--purple);
+  color: #fff;
+}
+
+.btn-primary:hover { background: #7c6ef0; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 11px;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:hover { background: var(--bg-card-hover); color: var(--text); }
+
+/* ── MOOD BANNER ── */
+.mood-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 20px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.mood-badge {
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mood-bullish { background: rgba(34,197,94,0.15); color: var(--green); }
+.mood-bearish { background: rgba(239,68,68,0.15); color: var(--red); }
+.mood-volatile { background: rgba(245,158,11,0.15); color: var(--orange); }
+.mood-sideways { background: rgba(59,130,246,0.15); color: var(--blue); }
+
+.mood-reason { color: var(--text-muted); }
+
+.mood-stats {
+  margin-left: auto;
+  display: flex;
+  gap: 16px;
+  color: var(--text-muted);
+}
+
+.mood-stats span { font-weight: 500; color: var(--text); }
+
+/* ── FILTERS ── */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: var(--bg-body);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.filter-bar label { color: var(--text-muted); font-weight: 500; }
+
+.filter-bar select {
+  background: var(--bg-surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+/* ── MAIN LAYOUT ── */
+.main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── LEFT PANEL — TRENDS ── */
+.panel-left {
+  width: 42%;
+  min-width: 360px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-left-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.panel-left-scroll::-webkit-scrollbar { width: 5px; }
+.panel-left-scroll::-webkit-scrollbar-track { background: transparent; }
+.panel-left-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  padding: 8px 4px 6px;
+}
+
+/* ── TREND CARD ── */
+.trend-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.trend-card:hover { background: var(--bg-card-hover); border-color: #3a3a5e; }
+.trend-card.selected { border-color: var(--purple); background: var(--bg-active-dim); }
+
+.trend-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.trend-rank {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-dim);
+  min-width: 24px;
+}
+
+.trend-title {
+  font-size: 13px;
+  font-weight: 600;
+  flex: 1;
+  line-height: 1.3;
+}
+
+.signal-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.signal-HIGH { background: rgba(239,68,68,0.15); color: var(--red); }
+.signal-MEDIUM { background: rgba(245,158,11,0.15); color: var(--orange); }
+.signal-LOW { background: rgba(34,197,94,0.15); color: var(--green); }
+
+.trend-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.trend-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.tag {
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.tag-source { background: rgba(108,92,231,0.12); color: #a99bff; }
+.tag-emotion { background: rgba(0,212,170,0.1); color: var(--teal); }
+.tag-longevity { background: rgba(59,130,246,0.1); color: var(--blue); }
+.tag-urgency-run_today { background: rgba(239,68,68,0.15); color: var(--red); }
+.tag-urgency-run_this_week { background: rgba(245,158,11,0.12); color: var(--orange); }
+.tag-urgency-plan_ahead { background: rgba(59,130,246,0.1); color: var(--blue); }
+
+.trend-angle {
+  font-size: 11px;
+  color: var(--teal);
+  font-style: italic;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.trend-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── EMERGING / AVOID CARDS ── */
+.emerging-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 6px;
+  border-left: 3px solid var(--orange);
+}
+
+.emerging-card .em-topic {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.emerging-card .em-detail {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.avoid-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 6px;
+  opacity: 0.6;
+  border-left: 3px solid var(--red);
+}
+
+.avoid-card .av-topic {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.avoid-card .av-reason {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ── RIGHT PANEL — CONCEPTS ── */
+.panel-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-right-header {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.concept-tab {
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.concept-tab:hover { color: var(--text); background: rgba(108,92,231,0.08); }
+.concept-tab.active { color: #fff; background: var(--purple); }
+
+.panel-right-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.panel-right-scroll::-webkit-scrollbar { width: 5px; }
+.panel-right-scroll::-webkit-scrollbar-track { background: transparent; }
+.panel-right-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.no-selection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-dim);
+  font-size: 13px;
+  gap: 8px;
+}
+
+.no-selection .icon { font-size: 32px; opacity: 0.4; }
+
+/* ── CONCEPT CARD — STATIC ── */
+.concept-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.concept-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.concept-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.concept-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--purple);
+}
+
+.concept-angle {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.concept-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.concept-stats span { font-weight: 600; color: var(--text); }
+
+.concept-body { padding: 16px; }
+
+/* Static ad preview */
+.ad-preview-static {
+  border-radius: 8px;
+  padding: 28px 24px;
+  text-align: center;
+  margin-bottom: 16px;
+  position: relative;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+
+.ad-preview-static .ad-headline {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.ad-preview-static .ad-subheadline {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.ad-preview-static .ad-body {
+  font-size: 11px;
+  opacity: 0.7;
+  line-height: 1.4;
+}
+
+.ad-preview-static .ad-cta-btn {
+  display: inline-block;
+  margin: 8px auto 0;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.color-swatches {
+  display: flex;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.copy-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.copy-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+
+.copy-label {
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 70px;
+  flex-shrink: 0;
+}
+
+.copy-value { color: var(--text); }
+
+.compliance-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 10px;
+  color: var(--green);
+}
+
+.compliance-row .flag { color: var(--red); }
+
+.concept-actions {
+  display: flex;
+  gap: 6px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── CONCEPT CARD — VIDEO ── */
+.script-timeline {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.script-segment {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.script-segment:last-child { border-bottom: none; }
+
+.script-segment-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.timestamp-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bg-active-dim);
+  color: var(--purple);
+  font-family: 'Inter', monospace;
+}
+
+.segment-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+.script-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.script-row-label {
+  font-weight: 600;
+  color: var(--text-dim);
+  min-width: 55px;
+  font-size: 10px;
+}
+
+.script-row-value {
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.video-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.video-meta strong { color: var(--text); font-weight: 600; }
+
+/* ── SCAN OVERLAY ── */
+.scan-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(8, 8, 13, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.scan-overlay.hidden { display: none; }
+
+.scan-box {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 32px;
+  min-width: 380px;
+}
+
+.scan-box h3 {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-card);
+  border-radius: 3px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--purple), var(--teal));
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.scan-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scan-source {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.scan-source .ss-icon {
+  width: 18px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.scan-source .ss-name { flex: 1; color: var(--text-muted); }
+.scan-source .ss-count { font-weight: 600; color: var(--teal); font-size: 11px; }
+.scan-source.pending .ss-name { color: var(--text-dim); }
+.scan-source.done .ss-name { color: var(--text); }
+.scan-source.failed .ss-name { color: var(--red); }
+
+.scan-footer {
+  margin-top: 16px;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 40px;
+}
+
+.empty-state .es-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+.empty-state h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+.empty-state p { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; max-width: 320px; line-height: 1.5; }
+
+/* ── SKELETON ── */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-card {
+  height: 140px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+}
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 18px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text);
+  z-index: 2000;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.3s;
+}
+
+.toast.show { transform: translateY(0); opacity: 1; }
+
+/* ── PRODUCTION CONTEXT BAR ── */
+.production-context-bar {
+  display: flex; align-items: center; gap: 8px; padding: 8px 20px;
+  background: rgba(108, 92, 231, 0.05); border-bottom: 1px solid var(--border);
+  flex-shrink: 0; font-size: 11px;
+}
+.production-context-bar label { color: var(--text-muted); font-weight: 500; }
+.production-context-bar select {
+  background: var(--bg-surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; padding: 4px 8px; font-family: inherit; font-size: 11px; cursor: pointer;
+}
+.toggle-label { display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-muted); }
+.toggle-label input[type="checkbox"] { accent-color: var(--purple); }
+
+/* ── PRODUCTION NOTES ── */
+.production-notes { margin-top: 12px; padding: 12px; background: rgba(108,92,231,0.05); border-radius: 8px; border: 1px solid var(--border); }
+.production-notes-title { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; letter-spacing: 0.5px; }
+.production-note-row { display: flex; gap: 8px; margin-bottom: 4px; font-size: 11px; }
+.production-note-label { font-weight: 600; color: var(--text-dim); min-width: 80px; }
+.production-note-value { color: var(--text-muted); }
+.brief-toggle { background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 4px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; font-family: inherit; }
+.brief-toggle:hover { border-color: var(--purple); color: var(--text); }
+.full-brief { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.full-brief.expanded { display: block; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  .main { flex-direction: column; }
+  .panel-left { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid var(--border); max-height: 50vh; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="top-bar-left">
+    <div>
+      <h1><span class="icon">&#128202;</span> Trend Scanner</h1>
+      <div class="top-bar-subtitle">Real-time social media trends &rarr; Univest creative concepts</div>
+    </div>
+  </div>
+  <div class="top-bar-right">
+    <div class="source-pills" id="sourcePills">
+      <span class="source-pill" data-src="reddit">Reddit</span>
+      <span class="source-pill" data-src="youtube">YouTube</span>
+      <span class="source-pill" data-src="news">News</span>
+      <span class="source-pill" data-src="twitter">X</span>
+      <span class="source-pill" data-src="google">G Trends</span>
+      <span class="source-pill" data-src="nse">NSE</span>
+    </div>
+    <span class="last-scan-text" id="lastScanText">No scans yet</span>
+    <button class="btn btn-primary" id="scanBtn" onclick="startScan()">&#128260; Scan Now</button>
+  </div>
+</div>
+
+<!-- MOOD BANNER -->
+<div class="mood-banner" id="moodBanner" style="display:none">
+  <span>Market Mood:</span>
+  <span class="mood-badge" id="moodBadge"></span>
+  <span class="mood-reason" id="moodReason"></span>
+  <div class="mood-stats">
+    <span id="trendCountStat"></span> trends found
+  </div>
+</div>
+
+<!-- FILTERS -->
+<div class="filter-bar">
+  <label>Signal:</label>
+  <select id="filterSignal" onchange="applyFilters()">
+    <option value="all">All</option>
+    <option value="HIGH">High</option>
+    <option value="MEDIUM">Medium</option>
+    <option value="LOW">Low</option>
+  </select>
+  <label>Format:</label>
+  <select id="filterFormat" onchange="applyFilters()">
+    <option value="all">All</option>
+    <option value="static">Static</option>
+    <option value="video">Video</option>
+    <option value="both">Both</option>
+  </select>
+  <label>Emotion:</label>
+  <select id="filterEmotion" onchange="applyFilters()">
+    <option value="all">All</option>
+    <option value="fear">Fear</option>
+    <option value="greed">Greed</option>
+    <option value="aspiration">Aspiration</option>
+    <option value="curiosity">Curiosity</option>
+    <option value="urgency">Urgency</option>
+    <option value="trust">Trust</option>
+  </select>
+  <label>Urgency:</label>
+  <select id="filterUrgency" onchange="applyFilters()">
+    <option value="all">All</option>
+    <option value="run_today">Run Today</option>
+    <option value="run_this_week">This Week</option>
+    <option value="plan_ahead">Plan Ahead</option>
+  </select>
+</div>
+
+<!-- PRODUCTION CONTEXT -->
+<div class="production-context-bar" id="productionContextBar">
+  <label>Style:</label>
+  <select id="scriptStyle">
+    <option value="ugc">UGC Testimonial</option>
+    <option value="talking_head">Talking Head + B-Roll</option>
+    <option value="screen_recording">Screen Recording</option>
+    <option value="motion_graphic">Motion Graphic</option>
+    <option value="meme">Meme Format</option>
+  </select>
+  <label>Talent:</label>
+  <select id="talentDirection">
+    <option value="male_25_35">Male 25-35</option>
+    <option value="female_25_35">Female 25-35</option>
+    <option value="no_talent">No Talent (Motion Graphic)</option>
+  </select>
+  <label>Setup:</label>
+  <select id="shootingSetup">
+    <option value="home">Home / Bedroom</option>
+    <option value="office">Office Desk</option>
+    <option value="outdoor">Outdoor</option>
+    <option value="stock">Stock Footage Only</option>
+  </select>
+  <label class="toggle-label">
+    <input type="checkbox" id="hinglishToggle" checked> Hinglish
+  </label>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="main">
+  <!-- LEFT PANEL -->
+  <div class="panel-left">
+    <div class="panel-left-scroll" id="leftPanel">
+      <div class="empty-state" id="emptyState">
+        <div class="es-icon">&#128202;</div>
+        <h3>No trend data yet</h3>
+        <p>Click "Scan Now" to scrape Reddit, YouTube, Twitter, Google Trends, and Indian financial news for the latest trending topics.</p>
+        <button class="btn btn-primary" onclick="startScan()">&#128260; Run First Scan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="panel-right">
+    <div class="panel-right-header">
+      <button class="concept-tab active" data-ctab="static" onclick="switchConceptTab('static')">&#128247; Static Ads</button>
+      <button class="concept-tab" data-ctab="video" onclick="switchConceptTab('video')">&#127916; Video Ads</button>
+    </div>
+    <div class="panel-right-scroll" id="rightPanel">
+      <div class="no-selection" id="noSelection">
+        <div class="icon">&#128072;</div>
+        <div>Click a trend to view creative concepts</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCAN OVERLAY -->
+<div class="scan-overlay hidden" id="scanOverlay">
+  <div class="scan-box">
+    <h3>&#128225; Scanning social media...</h3>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="scan-sources" id="scanSources">
+      <div class="scan-source pending" data-key="reddit"><span class="ss-icon">&#9203;</span><span class="ss-name">Reddit</span><span class="ss-count"></span></div>
+      <div class="scan-source pending" data-key="youtube"><span class="ss-icon">&#9203;</span><span class="ss-name">YouTube</span><span class="ss-count"></span></div>
+      <div class="scan-source pending" data-key="news"><span class="ss-icon">&#9203;</span><span class="ss-name">News feeds</span><span class="ss-count"></span></div>
+      <div class="scan-source pending" data-key="twitter_trends"><span class="ss-icon">&#9203;</span><span class="ss-name">Twitter/X</span><span class="ss-count"></span></div>
+      <div class="scan-source pending" data-key="google_trends"><span class="ss-icon">&#9203;</span><span class="ss-name">Google Trends</span><span class="ss-count"></span></div>
+      <div class="scan-source pending" data-key="india_finance"><span class="ss-icon">&#9203;</span><span class="ss-name">NSE / Moneycontrol</span><span class="ss-count"></span></div>
+    </div>
+    <div class="scan-footer" id="scanFooter">AI synthesis will begin automatically...</div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API_BASE = window.location.origin.includes('localhost') ? `http://localhost:${window.location.port || 3000}` : '';
+
+let state = {
+  synthesized: null,
+  concepts: null,
+  selectedTrendId: null,
+  conceptTab: 'static',
+  lastScraped: null,
+  savedConcepts: JSON.parse(localStorage.getItem('ts_saved') || '[]'),
+};
+
+// ═══════════════════════════════
+//  INIT
+// ═══════════════════════════════
+async function init() {
+  try {
+    const res = await fetch(`${API_BASE}/api/trends/data`);
+    const data = await res.json();
+    if (data.status === 'ok') {
+      state.synthesized = data.synthesized;
+      state.concepts = data.concepts;
+      state.lastScraped = data.last_scraped;
+      renderAll();
+    }
+  } catch (e) {
+    console.warn('Failed to load cached data:', e);
+  }
+}
+
+// ═══════════════════════════════
+//  SCAN
+// ═══════════════════════════════
+let scanPollTimer = null;
+
+async function startScan() {
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true;
+  btn.innerHTML = '&#9203; Scanning...';
+  showScanOverlay();
+
+  try {
+    await fetch(`${API_BASE}/api/trends/scan`, { method: 'POST' });
+    pollScanStatus();
+  } catch (e) {
+    hideScanOverlay();
+    btn.disabled = false;
+    btn.innerHTML = '&#128260; Scan Now';
+    showToast('Scan failed: ' + e.message);
+  }
+}
+
+function pollScanStatus() {
+  scanPollTimer = setInterval(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/trends/status`);
+      const status = await res.json();
+      updateScanProgress(status);
+
+      if (!status.is_scraping) {
+        clearInterval(scanPollTimer);
+        scanPollTimer = null;
+        hideScanOverlay();
+        document.getElementById('scanBtn').disabled = false;
+        document.getElementById('scanBtn').innerHTML = '&#128260; Scan Now';
+
+        // Reload data
+        const dataRes = await fetch(`${API_BASE}/api/trends/data`);
+        const data = await dataRes.json();
+        if (data.status === 'ok') {
+          state.synthesized = data.synthesized;
+          state.concepts = data.concepts;
+          state.lastScraped = data.last_scraped;
+          state.selectedTrendId = null;
+          renderAll();
+          showToast('Scan complete! ' + (state.synthesized?.top_trends?.length || 0) + ' trends found.');
+        }
+      }
+    } catch (e) {
+      // keep polling
+    }
+  }, 2000);
+}
+
+function updateScanProgress(status) {
+  const progress = status.scan_progress;
+  if (!progress) return;
+
+  const stepMap = { scraping: 33, synthesizing: 66, generating_concepts: 85, complete: 100, error: 0 };
+  document.getElementById('progressFill').style.width = (stepMap[progress.step] || 10) + '%';
+
+  if (progress.step === 'synthesizing') {
+    document.getElementById('scanFooter').textContent = 'AI is synthesizing trends...';
+  } else if (progress.step === 'generating_concepts') {
+    document.getElementById('scanFooter').textContent = 'Generating creative concepts...';
+  }
+
+  if (progress.sources) {
+    Object.entries(progress.sources).forEach(([key, info]) => {
+      const el = document.querySelector(`.scan-source[data-key="${key}"]`);
+      if (!el) return;
+      el.className = `scan-source ${info.status}`;
+      el.querySelector('.ss-icon').innerHTML = info.status === 'done' ? '&#9989;' : '&#10060;';
+      if (info.count) el.querySelector('.ss-count').textContent = `(${info.count})`;
+    });
+  }
+}
+
+function showScanOverlay() {
+  document.getElementById('scanOverlay').classList.remove('hidden');
+  // Reset sources
+  document.querySelectorAll('.scan-source').forEach(el => {
+    el.className = 'scan-source pending';
+    el.querySelector('.ss-icon').innerHTML = '&#9203;';
+    el.querySelector('.ss-count').textContent = '';
+  });
+  document.getElementById('progressFill').style.width = '5%';
+  document.getElementById('scanFooter').textContent = 'AI synthesis will begin automatically...';
+}
+
+function hideScanOverlay() {
+  document.getElementById('scanOverlay').classList.add('hidden');
+}
+
+// ═══════════════════════════════
+//  RENDER
+// ═══════════════════════════════
+function renderAll() {
+  renderMood();
+  renderLastScan();
+  renderSourcePills();
+  renderTrends();
+  renderConcepts();
+}
+
+function renderMood() {
+  const s = state.synthesized;
+  if (!s) { document.getElementById('moodBanner').style.display = 'none'; return; }
+  document.getElementById('moodBanner').style.display = 'flex';
+  const badge = document.getElementById('moodBadge');
+  badge.textContent = (s.market_mood || 'N/A').toUpperCase();
+  badge.className = 'mood-badge mood-' + (s.market_mood || 'sideways');
+  document.getElementById('moodReason').textContent = s.market_mood_reason || '';
+  document.getElementById('trendCountStat').textContent = (s.top_trends || []).length;
+}
+
+function renderLastScan() {
+  const el = document.getElementById('lastScanText');
+  if (!state.lastScraped) { el.textContent = 'No scans yet'; return; }
+  const ago = Math.round((Date.now() - new Date(state.lastScraped).getTime()) / 60000);
+  if (ago < 60) el.textContent = `Last scan: ${ago}m ago`;
+  else el.textContent = `Last scan: ${Math.round(ago / 60)}h ago`;
+  el.className = 'last-scan-text' + (ago > 120 ? ' stale' : '');
+}
+
+function renderSourcePills() {
+  const counts = state.synthesized?.raw_sources || {};
+  document.querySelectorAll('.source-pill').forEach(pill => {
+    const src = pill.dataset.src;
+    const countKey = src + '_count';
+    if (counts[countKey] > 0) pill.classList.add('active');
+    else pill.classList.remove('active');
+  });
+}
+
+function renderTrends() {
+  const container = document.getElementById('leftPanel');
+  const s = state.synthesized;
+  if (!s || !s.top_trends?.length) {
+    container.innerHTML = `<div class="empty-state" id="emptyState">
+      <div class="es-icon">&#128202;</div><h3>No trend data yet</h3>
+      <p>Click "Scan Now" to scrape social media for trending topics.</p>
+      <button class="btn btn-primary" onclick="startScan()">&#128260; Run First Scan</button>
+    </div>`;
+    return;
+  }
+
+  const filters = getFilters();
+  let trends = s.top_trends.filter(t => {
+    if (filters.signal !== 'all' && t.signal_strength !== filters.signal) return false;
+    if (filters.format !== 'all' && t.ad_opportunity !== filters.format) return false;
+    if (filters.emotion !== 'all' && t.audience_emotion !== filters.emotion) return false;
+    if (filters.urgency !== 'all' && t.urgency !== filters.urgency) return false;
+    return true;
+  });
+
+  let html = '<div class="section-label">TOP TRENDS</div>';
+  trends.forEach(t => {
+    const sel = state.selectedTrendId === t.trend_id ? ' selected' : '';
+    html += `<div class="trend-card${sel}" onclick="selectTrend('${t.trend_id}')">
+      <div class="trend-card-header">
+        <span class="trend-rank">#${t.rank}</span>
+        <span class="trend-title">${esc(t.topic)}</span>
+        <span class="signal-badge signal-${t.signal_strength}">${t.signal_strength}</span>
+      </div>
+      <div class="trend-desc">${esc(t.description)}</div>
+      <div class="trend-meta">
+        ${(t.sources || []).map(s => `<span class="tag tag-source">${esc(s)}</span>`).join('')}
+        <span class="tag tag-emotion">${esc(t.audience_emotion || '')}</span>
+        <span class="tag tag-longevity">${esc((t.trend_longevity || '').replace(/_/g, ' '))}</span>
+        <span class="tag tag-urgency-${t.urgency}">${esc((t.urgency || '').replace(/_/g, ' '))}</span>
+      </div>
+      <div class="trend-angle">&#128161; ${esc(t.univest_angle)}</div>
+      ${(t.hook_ideas && t.hook_ideas.length) ? '<div style="margin-bottom:8px;padding:8px 10px;background:rgba(108,92,231,0.08);border-radius:6px;font-size:10px;color:var(--text-muted);line-height:1.6"><strong style="color:var(--purple)">Hook Ideas:</strong> ' + t.hook_ideas.map(h => '&bull; ' + esc(h)).join(' ') + '</div>' : ''}
+      <div class="trend-actions">
+        <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation(); generateConcept('${t.trend_id}','static')">&#128247; Generate Static</button>
+        <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation(); generateConcept('${t.trend_id}','video')">&#127916; Generate Video</button>
+      </div>
+    </div>`;
+  });
+
+  // Emerging
+  if (s.emerging_topics?.length) {
+    html += '<div class="section-label" style="margin-top:16px">&#9889; EMERGING</div>';
+    s.emerging_topics.forEach(e => {
+      html += `<div class="emerging-card">
+        <div class="em-topic">&#9889; ${esc(e.topic)}</div>
+        <div class="em-detail"><strong>Why watch:</strong> ${esc(e.why_watch)}</div>
+        <div class="em-detail"><strong>Signal:</strong> ${esc(e.signal)}</div>
+      </div>`;
+    });
+  }
+
+  // Avoid
+  if (s.avoid_topics?.length) {
+    html += '<div class="section-label" style="margin-top:16px">&#9888;&#65039; AVOID</div>';
+    s.avoid_topics.forEach(a => {
+      html += `<div class="avoid-card">
+        <div class="av-topic">&#9888;&#65039; ${esc(a.topic)}</div>
+        <div class="av-reason">${esc(a.reason)}</div>
+      </div>`;
+    });
+  }
+
+  container.innerHTML = html;
+}
+
+function renderConcepts() {
+  const panel = document.getElementById('rightPanel');
+  if (!state.selectedTrendId) {
+    panel.innerHTML = `<div class="no-selection" id="noSelection">
+      <div class="icon">&#128072;</div><div>Click a trend to view creative concepts</div>
+    </div>`;
+    return;
+  }
+
+  const tab = state.conceptTab;
+  const conceptsList = state.concepts?.[tab] || [];
+  const trendConcepts = conceptsList.find(c => c.trend_id === state.selectedTrendId);
+
+  if (!trendConcepts || !trendConcepts.concepts?.length) {
+    panel.innerHTML = `<div class="no-selection">
+      <div class="icon">&#9889;</div>
+      <div>No ${tab} concepts generated yet for this trend</div>
+      <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="generateConcept('${state.selectedTrendId}','${tab}')">Generate Now</button>
+    </div>`;
+    return;
+  }
+
+  let html = '';
+  trendConcepts.concepts.forEach((c, i) => {
+    if (tab === 'static') {
+      html += renderStaticConcept(c, i, trendConcepts.trend_id);
+    } else {
+      html += renderVideoConcept(c, i, trendConcepts.trend_id);
+    }
+  });
+  panel.innerHTML = html;
+}
+
+function renderStaticConcept(c, idx, trendId) {
+  const vc = c.visual_concept || {};
+  const palette = vc.color_palette || ['#6c5ce7', '#00d4aa', '#ffffff'];
+  const bgColor = palette[0] || '#6c5ce7';
+  const textColor = palette[2] || '#ffffff';
+  const accentColor = palette[1] || '#00d4aa';
+  const saved = isSaved(trendId, c.concept_id);
+
+  return `<div class="concept-card">
+    <div class="concept-header">
+      <div class="concept-header-left">
+        <span class="concept-num">CONCEPT ${idx + 1}</span>
+        <span class="concept-angle">${esc(c.angle)} Angle</span>
+      </div>
+      <div class="concept-stats">
+        Hook: <span>${c.hook_score || '?'}/10</span> &nbsp;|&nbsp;
+        CTR: <span>${esc(c.predicted_ctr_range || '?')}</span> &nbsp;|&nbsp;
+        ${esc(c.aspect_ratio || '4:5')}
+      </div>
+    </div>
+    <div class="concept-body">
+      <div class="ad-preview-static" style="background: linear-gradient(135deg, ${bgColor}, ${bgColor}dd);">
+        <div class="ad-headline" style="color:${textColor}">${esc(c.headline || '')}</div>
+        <div class="ad-subheadline" style="color:${accentColor}">${esc(c.subheadline || '')}</div>
+        <div class="ad-body" style="color:${textColor}">${esc(c.body_copy || '')}</div>
+        <div class="ad-cta-btn" style="background:${bgColor};color:${textColor};border:2px solid ${accentColor}">${esc(c.cta_text || 'Start Free Trial')}</div>
+      </div>
+      <div class="color-swatches">
+        ${palette.map(color => `<div class="swatch" style="background:${color}" title="${color}"></div>`).join('')}
+      </div>
+      <div class="copy-section">
+        <div class="copy-row"><span class="copy-label">Headline</span><span class="copy-value">${esc(c.headline || '')}</span></div>
+        <div class="copy-row"><span class="copy-label">Sub</span><span class="copy-value">${esc(c.subheadline || '')}</span></div>
+        <div class="copy-row"><span class="copy-label">CTA</span><span class="copy-value">${esc(c.cta_text || '')}</span></div>
+        <div class="copy-row"><span class="copy-label">Body</span><span class="copy-value">${esc(c.body_copy || '')}</span></div>
+        <div class="copy-row"><span class="copy-label">Visual</span><span class="copy-value">${esc(vc.main_visual_element || '')}</span></div>
+        <div class="copy-row"><span class="copy-label">A/B Test</span><span class="copy-value">${esc(c.a_b_test_suggestion || '')}</span></div>
+      </div>
+      ${renderCompliance(c.compliance_check)}
+    </div>
+    <div class="concept-actions">
+      <button class="btn btn-sm btn-ghost" onclick="copyConceptText('static', '${trendId}', ${idx})">&#128203; Copy All Copy</button>
+      <button class="btn btn-sm btn-ghost" onclick="generateConcept('${trendId}', 'static')">&#128260; Regenerate</button>
+      <button class="btn btn-sm btn-ghost" onclick="toggleSave('${trendId}','${c.concept_id}')">${saved ? '&#11088; Saved' : '&#9734; Save'}</button>
+    </div>
+  </div>`;
+}
+
+function renderVideoConcept(c, idx, trendId) {
+  const saved = isSaved(trendId, c.concept_id);
+  const hook = c.hook_first_3_seconds || {};
+  const segments = c.full_script || [];
+
+  let segmentLabels = ['HOOK', 'PROBLEM + SOLUTION', 'PROOF', 'CTA'];
+
+  let timelineHtml = '';
+  segments.forEach((seg, si) => {
+    timelineHtml += `<div class="script-segment">
+      <div class="script-segment-header">
+        <span class="timestamp-badge">${esc(seg.timestamp)}</span>
+        <span class="segment-label">${segmentLabels[si] || ''}</span>
+      </div>
+      <div class="script-row"><span class="script-row-label">Visual</span><span class="script-row-value">${esc(seg.visual)}</span></div>
+      <div class="script-row"><span class="script-row-label">Audio</span><span class="script-row-value">${esc(seg.audio)}</span></div>
+      <div class="script-row"><span class="script-row-label">Text</span><span class="script-row-value">${esc(seg.text_overlay)}</span></div>
+    </div>`;
+  });
+
+  return `<div class="concept-card">
+    <div class="concept-header">
+      <div class="concept-header-left">
+        <span class="concept-num">CONCEPT ${idx + 1}</span>
+        <span class="concept-angle">${esc(c.angle)} Angle</span>
+      </div>
+      <div class="concept-stats">
+        Duration: <span>${c.duration || 15}s</span> &nbsp;|&nbsp;
+        Format: <span>${esc(c.format_type || 'video')}</span> &nbsp;|&nbsp;
+        Hook: <span>${c.hook_score || '?'}/10</span> &nbsp;|&nbsp;
+        CTR: <span>${esc(c.predicted_ctr_range || '?')}</span>
+      </div>
+    </div>
+    <div class="concept-body">
+      <div class="script-timeline">${timelineHtml}</div>
+      <div class="video-meta">
+        <div>&#127925; <strong>Music:</strong> ${esc(c.music_direction || 'N/A')}</div>
+        <div>&#128208; <strong>Aspect:</strong> ${esc(c.aspect_ratio || '9:16')}</div>
+        <div>&#128196; <strong>Subtitles:</strong> ${c.subtitles ? 'Yes' : 'No'}</div>
+        <div>&#128247; <strong>Best Thumbnail:</strong> ${esc(c.thumbnail_frame || 'N/A')}</div>
+      </div>
+      <div class="production-notes">
+        <div class="production-notes-title">Production Notes</div>
+        <div class="production-note-row"><span class="production-note-label">Music</span><span class="production-note-value">${esc(c.music_direction || 'N/A')}</span></div>
+        <div class="production-note-row"><span class="production-note-label">Editing Pace</span><span class="production-note-value">${esc(c.editing_pace || c.pacing || 'Medium — cut every 2-3s')}</span></div>
+        <div class="production-note-row"><span class="production-note-label">Shooting Loc</span><span class="production-note-value">${esc(c.shooting_location || c.location || 'Per setup selection')}</span></div>
+        <div class="production-note-row"><span class="production-note-label">Style</span><span class="production-note-value">${esc(c.script_style || 'N/A')}</span></div>
+        <div class="production-note-row"><span class="production-note-label">Talent</span><span class="production-note-value">${esc(c.talent_direction || 'N/A')}</span></div>
+        <div style="margin-top:8px; display:flex; gap:6px;">
+          <button class="brief-toggle" onclick="toggleBrief('brief_${trendId}_${idx}')">View Full Brief</button>
+        </div>
+        <div class="full-brief" id="brief_${trendId}_${idx}">
+          <div class="production-notes-title">Full Script</div>
+          ${segments.map((seg, si) => `<div style="margin-bottom:10px;font-size:11px;line-height:1.5;">
+            <div style="font-weight:700;color:var(--purple);margin-bottom:2px;">[${esc(seg.timestamp)}] ${segmentLabels[si] || ''}</div>
+            <div><span style="color:var(--text-dim);font-weight:600;">Visual:</span> ${esc(seg.visual)}</div>
+            <div><span style="color:var(--text-dim);font-weight:600;">Audio:</span> ${esc(seg.audio)}</div>
+            <div><span style="color:var(--text-dim);font-weight:600;">Text:</span> ${esc(seg.text_overlay)}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div class="copy-section">
+        <div class="copy-row"><span class="copy-label">A/B Test</span><span class="copy-value">${esc(c.a_b_test_suggestion || '')}</span></div>
+      </div>
+      ${renderCompliance(c.compliance_check)}
+    </div>
+    <div class="concept-actions">
+      <button class="btn btn-sm btn-ghost" onclick="copyConceptText('video', '${trendId}', ${idx})">&#128203; Copy Script</button>
+      <button class="btn btn-sm btn-ghost" onclick="copyForWhatsApp('${trendId}', ${idx})">&#128172; Copy for WhatsApp</button>
+      <button class="btn btn-sm btn-ghost" onclick="generateConcept('${trendId}', 'video')">&#128260; Regenerate</button>
+      <button class="btn btn-sm btn-ghost" onclick="toggleSave('${trendId}','${c.concept_id}')">${saved ? '&#11088; Saved' : '&#9734; Save'}</button>
+      <button class="btn btn-sm btn-ghost" onclick="exportBrief('${trendId}', ${idx})">&#128228; Export Brief</button>
+    </div>
+  </div>`;
+}
+
+function renderCompliance(check) {
+  if (!check) return '';
+  let html = '<div class="compliance-row">';
+  if (!check.makes_return_guarantee) html += '<span>&#9989; No return guarantees</span>';
+  else html += '<span class="flag">&#10060; Return guarantee detected!</span>';
+  if (check.mentions_sebi) html += '<span>&#9989; SEBI mentioned</span>';
+  if (check.flags?.length) check.flags.forEach(f => { html += `<span class="flag">&#9888; ${esc(f)}</span>`; });
+  html += '</div>';
+  return html;
+}
+
+// ═══════════════════════════════
+//  ACTIONS
+// ═══════════════════════════════
+function selectTrend(trendId) {
+  state.selectedTrendId = trendId;
+  renderTrends();
+  renderConcepts();
+}
+
+function switchConceptTab(tab) {
+  state.conceptTab = tab;
+  document.querySelectorAll('.concept-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.ctab === tab);
+  });
+  renderConcepts();
+}
+
+function getFilters() {
+  return {
+    signal: document.getElementById('filterSignal').value,
+    format: document.getElementById('filterFormat').value,
+    emotion: document.getElementById('filterEmotion').value,
+    urgency: document.getElementById('filterUrgency').value,
+  };
+}
+
+function applyFilters() { renderTrends(); }
+
+async function generateConcept(trendId, format) {
+  showToast(`Generating ${format} concepts...`);
+  try {
+    const res = await fetch(`${API_BASE}/api/trends/concepts/${trendId}/${format}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(getProductionContext())
+    });
+    const data = await res.json();
+    if (data.error) { showToast('Error: ' + data.error); return; }
+
+    // Update local state
+    if (!state.concepts) state.concepts = { static: [], video: [] };
+    const list = state.concepts[format] || [];
+    const existing = list.findIndex(c => c.trend_id === trendId);
+    if (existing >= 0) list[existing] = data;
+    else list.push(data);
+    state.concepts[format] = list;
+
+    state.selectedTrendId = trendId;
+    state.conceptTab = format;
+    document.querySelectorAll('.concept-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.ctab === format);
+    });
+    renderConcepts();
+    showToast(`${format} concepts generated!`);
+  } catch (e) {
+    showToast('Generation failed: ' + e.message);
+  }
+}
+
+function copyConceptText(format, trendId, idx) {
+  const list = state.concepts?.[format] || [];
+  const trendConcepts = list.find(c => c.trend_id === trendId);
+  if (!trendConcepts?.concepts?.[idx]) return;
+  const c = trendConcepts.concepts[idx];
+
+  let text = '';
+  if (format === 'static') {
+    text = `HEADLINE: ${c.headline || ''}\nSUBHEADLINE: ${c.subheadline || ''}\nBODY: ${c.body_copy || ''}\nCTA: ${c.cta_text || ''}\nVISUAL: ${c.visual_concept?.main_visual_element || ''}\nASPECT RATIO: ${c.aspect_ratio || ''}`;
+  } else {
+    (c.full_script || []).forEach(seg => {
+      text += `[${seg.timestamp}]\nVisual: ${seg.visual}\nAudio: ${seg.audio}\nText: ${seg.text_overlay}\n\n`;
+    });
+    text += `Music: ${c.music_direction || ''}\nAspect: ${c.aspect_ratio || ''}\nDuration: ${c.duration || 15}s`;
+  }
+
+  navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!')).catch(() => showToast('Copy failed'));
+}
+
+function toggleSave(trendId, conceptId) {
+  const key = `${trendId}_${conceptId}`;
+  const idx = state.savedConcepts.indexOf(key);
+  if (idx >= 0) state.savedConcepts.splice(idx, 1);
+  else state.savedConcepts.push(key);
+  localStorage.setItem('ts_saved', JSON.stringify(state.savedConcepts));
+  renderConcepts();
+  showToast(idx >= 0 ? 'Removed from saved' : 'Saved!');
+}
+
+function isSaved(trendId, conceptId) {
+  return state.savedConcepts.includes(`${trendId}_${conceptId}`);
+}
+
+function exportBrief(trendId, idx) {
+  const trend = state.synthesized?.top_trends?.find(t => t.trend_id === trendId);
+  const concepts = state.concepts?.[state.conceptTab]?.find(c => c.trend_id === trendId);
+  const concept = concepts?.concepts?.[idx];
+  if (!trend || !concept) return;
+
+  let brief = `UNIVEST CREATIVE BRIEF\n${'='.repeat(50)}\n\n`;
+  brief += `TREND: ${trend.topic}\n`;
+  brief += `DESCRIPTION: ${trend.description}\n`;
+  brief += `SIGNAL: ${trend.signal_strength} | URGENCY: ${trend.urgency}\n`;
+  brief += `UNIVEST ANGLE: ${trend.univest_angle}\n\n`;
+  brief += `CONCEPT: ${concept.angle} angle\n`;
+  brief += `FORMAT: ${state.conceptTab} | HOOK SCORE: ${concept.hook_score}/10\n`;
+  brief += `PREDICTED CTR: ${concept.predicted_ctr_range}\n\n`;
+
+  if (state.conceptTab === 'video') {
+    brief += `SCRIPT:\n${'-'.repeat(30)}\n`;
+    (concept.full_script || []).forEach(seg => {
+      brief += `\n[${seg.timestamp}]\nVisual: ${seg.visual}\nAudio: ${seg.audio}\nText Overlay: ${seg.text_overlay}\n`;
+    });
+    brief += `\nMusic: ${concept.music_direction || 'N/A'}`;
+    brief += `\nAspect: ${concept.aspect_ratio || '9:16'}`;
+  } else {
+    brief += `COPY:\n${'-'.repeat(30)}\n`;
+    brief += `Headline: ${concept.headline}\nSubheadline: ${concept.subheadline}\nBody: ${concept.body_copy}\nCTA: ${concept.cta_text}\n`;
+    brief += `\nVisual: ${concept.visual_concept?.main_visual_element || ''}`;
+    brief += `\nAspect: ${concept.aspect_ratio || '4:5'}`;
+  }
+
+  brief += `\n\n${'='.repeat(50)}\nGenerated by Univest Trend Scanner`;
+
+  const blob = new Blob([brief], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `brief_${trendId}_${concept.concept_id || idx}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Brief exported!');
+}
+
+// ═══════════════════════════════
+//  PRODUCTION CONTEXT
+// ═══════════════════════════════
+function getProductionContext() {
+  return {
+    script_style: document.getElementById('scriptStyle').value,
+    talent_direction: document.getElementById('talentDirection').value,
+    shooting_setup: document.getElementById('shootingSetup').value,
+    hinglish: document.getElementById('hinglishToggle').checked
+  };
+}
+
+function toggleBrief(briefId) {
+  const el = document.getElementById(briefId);
+  if (!el) return;
+  el.classList.toggle('expanded');
+  const btn = el.previousElementSibling?.querySelector('.brief-toggle') ||
+              el.parentElement.querySelector('.brief-toggle');
+  if (btn) btn.textContent = el.classList.contains('expanded') ? 'Hide Full Brief' : 'View Full Brief';
+}
+
+function copyForWhatsApp(trendId, idx) {
+  const tab = state.conceptTab;
+  const list = state.concepts?.[tab] || [];
+  const trendConcepts = list.find(c => c.trend_id === trendId);
+  if (!trendConcepts?.concepts?.[idx]) return;
+  const c = trendConcepts.concepts[idx];
+  const trend = state.synthesized?.top_trends?.find(t => t.trend_id === trendId);
+
+  let text = `*UNIVEST CREATIVE BRIEF*\n\n`;
+  text += `*Trend:* ${trend?.topic || 'N/A'}\n`;
+  text += `*Format:* ${tab} | *Signal:* ${trend?.signal_strength || 'N/A'}\n`;
+  text += `*Urgency:* ${(trend?.urgency || 'N/A').replace(/_/g, ' ')}\n`;
+  text += `*Angle:* ${c.angle || 'N/A'}\n\n`;
+
+  if (tab === 'video') {
+    text += `*Hook Score:* ${c.hook_score || '?'}/10 | *Duration:* ${c.duration || 15}s\n`;
+    text += `*Predicted CTR:* ${c.predicted_ctr_range || '?'}\n\n`;
+    text += `--- SCRIPT ---\n\n`;
+    const segLabels = ['HOOK', 'PROBLEM + SOLUTION', 'PROOF', 'CTA'];
+    (c.full_script || []).forEach((seg, si) => {
+      text += `*[${seg.timestamp}] ${segLabels[si] || ''}*\n`;
+      text += `Visual: ${seg.visual}\n`;
+      text += `Audio: ${seg.audio}\n`;
+      text += `Text: ${seg.text_overlay}\n\n`;
+    });
+    text += `*Music:* ${c.music_direction || 'N/A'}\n`;
+    text += `*Aspect:* ${c.aspect_ratio || '9:16'}\n`;
+    if (c.editing_pace || c.pacing) text += `*Editing Pace:* ${c.editing_pace || c.pacing}\n`;
+    if (c.shooting_location || c.location) text += `*Location:* ${c.shooting_location || c.location}\n`;
+  } else {
+    text += `*Headline:* ${c.headline || ''}\n`;
+    text += `*Subheadline:* ${c.subheadline || ''}\n`;
+    text += `*Body:* ${c.body_copy || ''}\n`;
+    text += `*CTA:* ${c.cta_text || ''}\n`;
+    text += `*Aspect:* ${c.aspect_ratio || '4:5'}\n`;
+  }
+
+  if (c.a_b_test_suggestion) text += `\n*A/B Test:* ${c.a_b_test_suggestion}\n`;
+  text += `\n_Generated by Univest Trend Scanner_`;
+
+  navigator.clipboard.writeText(text).then(() => showToast('Copied for WhatsApp!')).catch(() => showToast('Copy failed'));
+}
+
+// ═══════════════════════════════
+//  UTILS
+// ═══════════════════════════════
+function esc(str) {
+  if (!str) return '';
+  const d = document.createElement('div');
+  d.textContent = String(str);
+  return d.innerHTML;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Auto-refresh last scan time
+setInterval(renderLastScan, 60000);
+
+// Init
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-Learning Engine — Univest Creative Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="feedback-engine/public/fe-styles.css?v=100">
+</head>
+<body>
+    <div class="fe-app">
+        <!-- Critical alert banner (hidden by default) -->
+        <div id="feCriticalBanner" class="fe-banner" style="display:none"></div>
+
+        <!-- Sidebar -->
+        <aside class="fe-sidebar">
+            <div class="fe-sidebar-header">
+                <div class="fe-logo">
+                    <span class="fe-logo-icon">&#129504;</span>
+                    <span class="fe-logo-text">Self-Learning<br>Engine</span>
+                </div>
+            </div>
+            <nav class="fe-sidebar-nav">
+                <a href="#" class="fe-nav-item active" data-view="dashboard">
+                    <span class="fe-nav-icon">&#9673;</span> Live Feed
+                </a>
+                <a href="#" class="fe-nav-item" data-view="proposals">
+                    <span class="fe-nav-icon">&#9654;</span> Proposals
+                </a>
+                <a href="#" class="fe-nav-item" data-view="memory">
+                    <span class="fe-nav-icon">&#9670;</span> Knowledge Base
+                </a>
+                <a href="#" class="fe-nav-item" data-view="audit">
+                    <span class="fe-nav-icon">&#9733;</span> Accuracy Audit
+                </a>
+            </nav>
+            <div class="fe-sidebar-footer">
+                <div class="fe-system-status" id="feSystemStatus">
+                    <div class="fe-status-dot fe-status-green fe-pulse"></div>
+                    <span>System Active</span>
+                </div>
+                <p class="fe-last-updated">Last poll: <span id="feLastPoll">--</span></p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="fe-main">
+            <div id="feView-dashboard" class="fe-view active"></div>
+            <div id="feView-proposals" class="fe-view"></div>
+            <div id="feView-memory" class="fe-view"></div>
+            <div id="feView-audit" class="fe-view"></div>
+        </main>
+
+        <!-- Drawer overlay -->
+        <div id="feDrawer" class="fe-drawer"></div>
+        <!-- Modal overlay -->
+        <div id="feModal" class="fe-modal" style="display:none"></div>
+        <!-- Toast container -->
+        <div id="feToasts" class="fe-toast-container"></div>
+    </div>
+
+    <!-- Debug: verify scripts load -->
+    <script>console.log('[FE] Loading feedback.html scripts...');</script>
+    <script src="feedback-engine/public/fe-main.js?v=100"></script>
+    <script>console.log('[FE] fe-main.js loaded, FE =', typeof window.FE, window.FE ? 'ok' : 'MISSING');</script>
+    <script src="feedback-engine/public/fe-dashboard.js?v=100"></script>
+    <script>console.log('[FE] fe-dashboard.js loaded, refresh_dashboard =', typeof (window.FE && window.FE.refresh_dashboard));</script>
+    <script src="feedback-engine/public/fe-proposals.js?v=100"></script>
+    <script src="feedback-engine/public/fe-memory.js?v=100"></script>
+    <script src="feedback-engine/public/fe-audit.js?v=100"></script>
+    <script>console.log('[FE] All scripts loaded. Calling init...'); if(window.FE && window.FE.init) { /* init called by DOMContentLoaded */ } else { console.error('[FE] FE.init not found!'); }</script>
+</body>
+</html>

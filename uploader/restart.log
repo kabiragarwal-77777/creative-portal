@@ -1,0 +1,718 @@
+[dotenv@17.3.1] injecting env (17) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[Alert Cron] Scheduled daily at 9:00 AM IST
+[Scanner] Inventory scanner routes mounted
+[ci/engine] Scheduler started. Interval: 24h. Next run: 2026-04-10T13:07:21.907Z
+[CampaignSync] Ghost columns and sync_log table ensured
+[CampaignSync] Scheduler starting (every 24h)
+[CampaignSync] Ghost columns and sync_log table ensured
+[roas-tracker] Scheduler starting (every 1h)
+[Integrity] Scheduler armed — runs on start + every 6 hours
+[CI2] Creative Intelligence v2 routes mounted at /api/ci2
+[GC Scheduler] Initializing...
+[GC Scheduler] Cron jobs registered (6h fetch/classify/score, 12h recommendations, daily 6AM forecast+signals)
+[GC] Google Creative Intelligence routes mounted at /api/gc
+[MetaWrite] Meta write routes mounted at /api/meta-write
+[TrendScanner] Scheduler started — scans every 2h, concepts every 6h
+[TrendScanner] Trend scanner routes mounted at /api/trends
+[CompetitorScheduler] 2026-04-09T13:07:23.300Z — Starting scheduler
+[CompetitorScheduler] 2026-04-09T13:07:23.301Z — Cron jobs registered — pipeline every 6h, briefs every 12h
+[CompetitorIntel] All modules initialized, scheduler started
+[CompetitorIntel] Competitor intelligence routes mounted at /api/competitor
+[FeedbackEngine] Database initialized at C:\Users\Dell\Desktop\creative-portal\feedback-engine\feedback-engine.db
+[FE:Scheduler] Initializing scheduler with 11 jobs...
+[FE:Scheduler]   Registered: watcher-refresh (0 * * * *) — feWatcher incremental refresh
+[FE:Scheduler]   Registered: anomaly-check (0 */3 * * *) — feAnomalyDetector runAllChecks
+[FE:Scheduler]   Registered: data-quality-check (15 * * * *) — feDataQualityMonitor runAudit
+[FE:Scheduler]   Registered: proposal-generate (0 */6 * * *) — feProposalGenerator generateProposals
+[FE:Scheduler]   Registered: knowledge-crawl-tier1 (30 */6 * * *) — feKnowledgeCrawler crawlAll (Tier 1)
+[FE:Scheduler]   Registered: knowledge-crawl-all (0 */12 * * *) — feKnowledgeCrawler crawlAll (all tiers)
+[FE:Scheduler]   Registered: hypothesis-generate (0 0 * * *) — feSelfTester generateHypotheses
+[FE:Scheduler]   Registered: memory-consolidate (30 20 * * *) — feMemory nightly consolidation
+[FE:Scheduler]   Registered: accuracy-audit (0 3 * * 0) — feAccuracyAuditor runAudit
+[FE:Scheduler]   Registered: proposal-expiry (0 4 1 * *) — Expire old pending proposals (>30 days)
+[FE:Scheduler]   Registered: verify-applied-changes (0 5 * * 0) — feApprovalEngine verifyAppliedChanges
+[FE:Scheduler] Scheduler started. Initial checks will run in 30 seconds.
+[FeedbackEngine] Self-learning routes mounted at /api/fe
+[AudienceTesting] Routes mounted at /api/at, scheduler started
+Meta Ad Upload Server running on http://localhost:3000
+Ad Account: act_725019929189148
+API Version: v21.0
+[apex-breakdowns/age-gender] Fetching page 1...
+[apex-breakdowns/placement] Fetching page 1...
+[apex-breakdowns/device] Fetching page 1...
+[apex-breakdowns/geography] Fetching page 1...
+[apex-breakdowns/hourly] Fetching page 1...
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[gc-ad-funnel] Running Metabase query...
+
+============================================================
+[Integrity] Running 5 data integrity tests...
+============================================================
+  [PASS] Campaign ID extraction (1189ms) — All 10 rows have non-empty campaign ID extraction
+[Cache] Pre-warming insights cache (2026-03-10 to 2026-04-09)...
+[ad-insights] Serving from disk (11611 rows, 9min old)
+[ad-funnel] Serving from disk (3616 rows, 1min old)
+[ads-status] Serving from disk cache (4000 ads, 230min old)
+[Cache] Funnel pre-warmed: 3616 rows
+[Cache] Insights pre-warmed: 11611 rows
+[Cache] Ads-status pre-warmed: 4000 ads
+[gc-insights] 459 rows fetched (2026-03-10 to 2026-04-09)
+[apex-breakdowns/device] Fetching page 2... (500 rows so far)
+[CompetitorScheduler] 2026-04-09T13:07:33.411Z — Running initial pipeline + briefs
+[CompetitorScheduler] 2026-04-09T13:07:33.413Z — Pipeline started
+[CompetitorScheduler] 2026-04-09T13:07:33.414Z — fetch — started
+[competitor-meta-fetcher] 2026-04-09T13:07:33.415Z Fetching ads for competitor: Samco
+[apex-breakdowns/geography] Fetching page 2... (500 rows so far)
+[competitor-meta-fetcher] 2026-04-09T13:07:34.096Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AiHvkiqLRnJsBvFcE1dTnai"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:34.097Z Failed to fetch ads for Samco: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AiHvkiqLRnJsBvFcE1dTnai"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:34.624Z Fetching ads for competitor: StockGro
+[competitor-meta-fetcher] 2026-04-09T13:07:34.951Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AnAeBOX4NZFLnzFazZFfNR-"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:34.951Z Failed to fetch ads for StockGro: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AnAeBOX4NZFLnzFazZFfNR-"}}
+[apex-breakdowns/placement] Fetching page 2... (500 rows so far)
+[competitor-meta-fetcher] 2026-04-09T13:07:35.459Z Fetching ads for competitor: Sensibull
+[competitor-meta-fetcher] 2026-04-09T13:07:35.801Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AvEfXN5WLmG-xxDpOLV9d7Q"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:35.801Z Failed to fetch ads for Sensibull: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AvEfXN5WLmG-xxDpOLV9d7Q"}}
+[apex-breakdowns/age-gender] Fetching page 2... (500 rows so far)
+[competitor-meta-fetcher] 2026-04-09T13:07:36.321Z Fetching ads for competitor: Definedge
+[ad-insights] Fetching page 2... (500 rows so far)
+[competitor-meta-fetcher] 2026-04-09T13:07:36.692Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"A9piVo29Phhzpy3IcXA6FhF"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:36.693Z Failed to fetch ads for Definedge: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"A9piVo29Phhzpy3IcXA6FhF"}}
+  [PASS] Campaign ID <-> Meta API match rate (8414ms) — Campaign match rate 100.0% (3/3)
+  [PASS] ROAS sanity check (35ms) — 62 ads checked — ROAS values within expected ranges (avg D6: 25.2%)
+  [PASS] Revenue window alignment (5ms) — 31 ads checked — all revenue windows correctly ordered (D6 <= D15 <= D30 <= D60 <= Overall)
+[competitor-meta-fetcher] 2026-04-09T13:07:37.219Z Fetching ads for competitor: Weekend Investing
+[competitor-meta-fetcher] 2026-04-09T13:07:37.506Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AAAJ8nxE1yRtRtdbFwZeEEK"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:37.509Z Failed to fetch ads for Weekend Investing: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AAAJ8nxE1yRtRtdbFwZeEEK"}}
+[apex-breakdowns/device] Fetching page 3... (1000 rows so far)
+[competitor-meta-fetcher] 2026-04-09T13:07:38.083Z Fetching ads for competitor: Capitalmind
+[competitor-meta-fetcher] 2026-04-09T13:07:38.367Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"ACQe18g2i4YbPaFRXiTEH2I"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:38.401Z Failed to fetch ads for Capitalmind: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"ACQe18g2i4YbPaFRXiTEH2I"}}
+[apex-breakdowns/geography] Fetching page 3... (1000 rows so far)
+[competitor-meta-fetcher] 2026-04-09T13:07:38.930Z Fetching ads for competitor: Dhan
+[competitor-meta-fetcher] 2026-04-09T13:07:39.232Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"A-9cZXRtAV_PxTB2MogVuR8"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:39.233Z Failed to fetch ads for Dhan: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"A-9cZXRtAV_PxTB2MogVuR8"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:39.754Z Fetching ads for competitor: Zerodha
+[apex-breakdowns/placement] Fetching page 3... (1000 rows so far)
+[competitor-meta-fetcher] 2026-04-09T13:07:40.059Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"ArjLIYayIjlYQeb6JXS7IMy"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:40.066Z Failed to fetch ads for Zerodha: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"ArjLIYayIjlYQeb6JXS7IMy"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:40.595Z Fetching ads for competitor: Groww
+[competitor-meta-fetcher] 2026-04-09T13:07:40.952Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AhGYbimcRs22s-j8jWSCp56"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:40.952Z Failed to fetch ads for Groww: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AhGYbimcRs22s-j8jWSCp56"}}
+[apex-breakdowns/age-gender] Fetching page 3... (1000 rows so far)
+[competitor-meta-fetcher] 2026-04-09T13:07:41.504Z Fetching ads for competitor: Angel One
+[apex-breakdowns/device] Fetching page 4... (1500 rows so far)
+[competitor-meta-fetcher] 2026-04-09T13:07:41.809Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AyCZLCfEhh-pCfPzqkBuaWr"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:41.810Z Failed to fetch ads for Angel One: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AyCZLCfEhh-pCfPzqkBuaWr"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:42.386Z Fetching ads for competitor: Upstox
+[competitor-meta-fetcher] 2026-04-09T13:07:42.788Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AmLgQv7FJ8VsniuoLliybjq"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:42.790Z Failed to fetch ads for Upstox: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AmLgQv7FJ8VsniuoLliybjq"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:43.320Z Fetching ads for competitor: 5paisa
+[competitor-meta-fetcher] 2026-04-09T13:07:43.621Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"ApaHAq_Yp4o1uPQAGhsclH6"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:43.622Z Failed to fetch ads for 5paisa: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"ApaHAq_Yp4o1uPQAGhsclH6"}}
+[apex-breakdowns/geography] Fetching page 4... (1500 rows so far)
+  *** [FAIL] Adset name normalization (7131ms) — Exception: Meta API 400: {"error":{"message":"User request limit reached","type":"OAuthException","is_transient":false,"code":17,"error_subcode":2446079,"error_user_title":"Ad account has too many API calls","error_user_msg":
+============================================================
+[Integrity] Done in 16861ms — FAIL (4 pass, 1 fail, 0 warn, 0 skip)
+[Integrity] *** FAILURES DETECTED — review data_integrity_results.json ***
+============================================================
+
+[competitor-meta-fetcher] 2026-04-09T13:07:44.137Z Fetching ads for competitor: Paytm Money
+[apex-breakdowns/placement] Fetching page 4... (1500 rows so far)
+[competitor-meta-fetcher] 2026-04-09T13:07:44.415Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AfwR4X9EKA1RfjaMkVwbRjS"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:44.416Z Failed to fetch ads for Paytm Money: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AfwR4X9EKA1RfjaMkVwbRjS"}}
+[competitor-meta-fetcher] 2026-04-09T13:07:45.019Z API returned no ads — seeding cache with demo data for pipeline to work
+[competitor-meta-fetcher] 2026-04-09T13:07:45.059Z fetchAllCompetitorAds complete: 92 total ads from 13 competitors, 13 errors (DEMO DATA)
+[competitor-meta-fetcher] 2026-04-09T13:07:45.060Z Univest cache still valid, skipping fetch
+[CompetitorScheduler] 2026-04-09T13:07:45.065Z — fetch — done in 11651ms, records: 92
+[CompetitorScheduler] 2026-04-09T13:07:45.065Z — classify — started
+[apex-breakdowns/device] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[apex-breakdowns/placement] Fetching page 5... (2000 rows so far)
+[apex-breakdowns/age-gender] Fetching page 4... (1500 rows so far)
+[apex-breakdowns/geography] Fetching page 5... (2000 rows so far)
+[apex-breakdowns/device] Fetching page 6... (2500 rows so far)
+[CampaignSync] Running scheduled sync validation...
+[CampaignSync] Starting ghost campaign deduplication...
+[GC Scheduler] Running initial data fetch...
+[gc/dataFetcher] === Step 1/4: Fetching Metabase adset data ===
+[gc/dataFetcher] Fetching Metabase adset performance for last 90 days...
+[FE:Scheduler] Running initial startup checks...
+[FE:Scheduler] Starting job: watcher-refresh
+[FE:Watcher] Refreshing Meta prediction accuracy...
+[FE:Watcher] Meta predictions: 0 processed, 654 skipped
+[FE:Watcher] Refreshing Google prediction accuracy...
+[FE:Watcher] Google predictions: 0 processed, 0 skipped
+[FE:Watcher] Refreshing recommendation tracking...
+[FE:Watcher] ci_recommendations not found: no such table: ci_recommendations
+[FE:Watcher] Recommendation tracking: 0 processed
+[FE:Watcher] Refreshing competitor signal accuracy...
+[FE:Watcher] Competitor signals: 0 processed
+[FE:Watcher] Full refresh complete: 0 records processed
+[FE:Scheduler] Completed job: watcher-refresh (831ms, 1 records)
+[FE:Scheduler] Starting job: anomaly-check
+[FE:AnomalyDetector] Running all anomaly detection checks...
+[FE:AnomalyDetector] No competitor signal data available. Skipping competitor checks.
+[FE:AnomalyDetector] All checks complete. 0 new anomalies detected.
+[FE:Scheduler] Completed job: anomaly-check (61ms, 0 records)
+[FE:Scheduler] Starting job: data-quality-check
+[FE:DataQuality] Running audit (2026-03-10 -> 2026-04-09, forceFresh=false)
+[CampaignSync] Fetched 0 ad IDs from Meta API (1 pages)
+[ad-insights] Serving from memory (11611 rows)
+[ad-funnel] Serving from memory (3616 rows)
+[gc-ad-funnel] Serving from disk (640 rows, 13min old)
+[ads-status] Serving from memory cache (4000 ads)
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[apex-breakdowns/device] Done. 6 pages, 2992 total rows.
+[apex-breakdowns/geography] Fetching page 6... (2500 rows so far)
+[apex-breakdowns/placement] Fetching page 6... (2500 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[FE:DataQuality] Audit complete. status=FAIL findings=14
+[FE:Scheduler] Completed job: data-quality-check (5699ms, 14 records)
+[FE:Scheduler] Initial startup checks complete.
+[apex-breakdowns/age-gender] Fetching page 5... (2000 rows so far)
+[apex-breakdowns/geography] Fetching page 7... (3000 rows so far)
+[apex-breakdowns/placement] Fetching page 7... (3000 rows so far)
+[apex-breakdowns/age-gender] Fetching page 6... (2500 rows so far)
+[apex-breakdowns/placement] Fetching page 8... (3500 rows so far)
+[AT Scheduler] Bootstrap: 367 meta adsets, 26 google adgroups in DB
+[AT Scheduler] Running initial optimizer health check...
+[AT Scheduler] Starting optimizer-health...
+[AT Optimizer] === Starting health check ===
+[AT Optimizer] Fetching live ACTIVE Meta adsets...
+[apex-breakdowns/geography] Fetching page 8... (3500 rows so far)
+[AT Optimizer] Error fetching live Meta adsets: Meta API 400: {"error":{"message":"API calls from the server require an appsecret_proof argument","type":"GraphMethodException","code":100,"fbtrace_id":"Agwi6bRz3bd87RMSMWze6Tu"}}
+[AT Optimizer] Fetching live ENABLED Google adgroups from local DB (last 7 days)...
+[AT Optimizer] Found 26 enabled Google adgroups
+[AT Optimizer] Health check complete: 1 flags generated
+[AT Scheduler] optimizer-health completed
+[ad-insights] Fetching page 5... (2000 rows so far)
+[apex-breakdowns/age-gender] Fetching page 7... (3000 rows so far)
+[apex-breakdowns/placement] Fetching page 9... (4000 rows so far)
+[apex-breakdowns/geography] Fetching page 9... (4000 rows so far)
+[apex-breakdowns/age-gender] Fetching page 8... (3500 rows so far)
+[classifier] Classified 92 new ads (0 already cached)
+[CompetitorScheduler] 2026-04-09T13:08:19.193Z — classify — done in 34128ms, records: 92
+[CompetitorScheduler] 2026-04-09T13:08:19.194Z — trends — started
+[competitor-trends] Computed trends: 92 ads, 13 competitors, 6 themes
+[CompetitorScheduler] 2026-04-09T13:08:19.258Z — trends — done in 64ms, records: 0
+[CompetitorScheduler] 2026-04-09T13:08:19.258Z — radar — started
+[apex-breakdowns/geography] Fetching page 10... (4500 rows so far)
+[CompetitorScheduler] 2026-04-09T13:08:20.379Z — radar — done in 1121ms, records: 0
+[CompetitorScheduler] 2026-04-09T13:08:20.380Z — Pipeline finished in 46966ms
+[CompetitorScheduler] 2026-04-09T13:08:20.380Z — briefs — started
+[apex-breakdowns/placement] Fetching page 10... (4500 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[apex-breakdowns/age-gender] Fetching page 9... (4000 rows so far)
+[apex-breakdowns/geography] Fetching page 11... (5000 rows so far)
+[apex-breakdowns/placement] Fetching page 11... (5000 rows so far)
+[CompetitorScheduler] 2026-04-09T13:08:30.185Z — briefs — done in 9805ms, records: 0
+[apex-breakdowns/age-gender] Fetching page 10... (4500 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[apex-breakdowns/geography] Fetching page 12... (5500 rows so far)
+[apex-breakdowns/placement] Fetching page 12... (5500 rows so far)
+[apex-breakdowns/age-gender] Fetching page 11... (5000 rows so far)
+[apex-breakdowns/geography] Fetching page 13... (6000 rows so far)
+[apex-breakdowns/placement] Fetching page 13... (6000 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[apex-breakdowns/age-gender] Fetching page 12... (5500 rows so far)
+[apex-breakdowns/placement] Fetching page 14... (6500 rows so far)
+[apex-breakdowns/geography] Fetching page 14... (6500 rows so far)
+[gc-ad-funnel] Done. 640 rows returned. Truncated: false
+[apex-breakdowns/age-gender] Fetching page 13... (6000 rows so far)
+[apex-breakdowns/placement] Fetching page 15... (7000 rows so far)
+[apex-breakdowns/geography] Fetching page 15... (7000 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[apex-breakdowns/placement] Fetching page 16... (7500 rows so far)
+[apex-breakdowns/geography] Fetching page 16... (7500 rows so far)
+[apex-breakdowns/placement] Fetching page 17... (8000 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[apex-breakdowns/geography] Fetching page 17... (8000 rows so far)
+[apex-breakdowns/age-gender] Fetching page 14... (6500 rows so far)
+[apex-breakdowns/placement] Fetching page 18... (8500 rows so far)
+[apex-breakdowns/geography] Fetching page 18... (8500 rows so far)
+[apex-breakdowns/placement] Fetching page 19... (9000 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[apex-breakdowns/age-gender] Fetching page 15... (7000 rows so far)
+[apex-breakdowns/geography] Fetching page 19... (9000 rows so far)
+[apex-breakdowns/placement] Fetching page 20... (9500 rows so far)
+[apex-breakdowns/geography] Fetching page 20... (9500 rows so far)
+[apex-breakdowns/age-gender] Fetching page 16... (7500 rows so far)
+[ad-insights] Fetching page 12... (5500 rows so far)
+[apex-breakdowns/geography] Fetching page 21... (10000 rows so far)
+[apex-breakdowns/placement] Fetching page 21... (10000 rows so far)
+[apex-breakdowns/age-gender] Fetching page 17... (8000 rows so far)
+[apex-breakdowns/placement] Fetching page 22... (10500 rows so far)
+[apex-breakdowns/geography] Fetching page 22... (10500 rows so far)
+[ad-insights] Fetching page 13... (6000 rows so far)
+[apex-breakdowns/placement] Done. 22 pages, 10996 total rows.
+[apex-breakdowns/age-gender] Fetching page 18... (8500 rows so far)
+[apex-breakdowns/geography] Fetching page 23... (11000 rows so far)
+[apex-breakdowns/age-gender] Fetching page 19... (9000 rows so far)
+[ad-insights] Fetching page 14... (6500 rows so far)
+[apex-breakdowns/geography] Fetching page 24... (11500 rows so far)
+[apex-breakdowns/age-gender] Fetching page 20... (9500 rows so far)
+[ad-insights] Fetching page 15... (7000 rows so far)
+[apex-breakdowns/geography] Fetching page 25... (12000 rows so far)
+[apex-breakdowns/age-gender] Fetching page 21... (10000 rows so far)
+[apex-breakdowns/geography] Fetching page 26... (12500 rows so far)
+[apex-breakdowns/age-gender] Fetching page 22... (10500 rows so far)
+[ad-insights] Fetching page 16... (7500 rows so far)
+[apex-breakdowns/geography] Fetching page 27... (13000 rows so far)
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[apex-breakdowns/age-gender] Fetching page 23... (11000 rows so far)
+[ad-insights] Serving from disk (4314 rows, 98min old)
+[ad-funnel] Serving from disk (1468 rows, 37min old)
+[gc-ad-funnel] Serving from memory (640 rows)
+[ads-status] Serving from memory cache (4000 ads)
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[ad-insights] Serving from memory (4314 rows)
+[ad-funnel] Serving from memory (1468 rows)
+[ads-status] Serving from memory cache (4000 ads)
+[ad-insights] Serving from memory (4314 rows)
+[ad-funnel] Serving from memory (1468 rows)
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[ads-status] Serving from memory cache (4000 ads)
+[ad-insights] Serving from disk (496 rows, 97min old)
+[ad-funnel] Serving from disk (160 rows, 36min old)
+[ad-insights] Serving from memory (496 rows)
+[ad-funnel] Serving from memory (160 rows)
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[ad-insights] Serving from memory (496 rows)
+[ad-funnel] Serving from memory (160 rows)
+[apex-breakdowns/geography] Fetching page 28... (13500 rows so far)
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[apex-breakdowns/age-gender] Fetching page 24... (11500 rows so far)
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Serving from memory (11611 rows)
+[ad-funnel] Serving from memory (3616 rows)
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[roas-tracker] Fetched 8725 Meta rows, 3616 funnel rows.
+[roas-tracker] 1747 test campaign rows → 149 ads with go-live >= 2026-03-10 (751 daily rows).
+[ads-status] Serving from memory cache (4000 ads)
+[ad-insights] Fetching page 17... (8000 rows so far)
+[roas-tracker] 153 creatives since 2026-03-10 (28 with funnel data).
+[roas-tracker] 155 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 155 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":153,"tracked":155,"newAds":0,"updated":155,"predicted":0}
+[apex-breakdowns/geography] Fetching page 29... (14000 rows so far)
+[apex-breakdowns/age-gender] Fetching page 25... (12000 rows so far)
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 2... (500 rows so far)
+[FOLDER] Found 2 files in folder 1WZ5i_BLlUd5zG8QbGm482rNay9TCb2NZ: Kanika-Square.mp4, Kanika-Vertical.mp4
+[ad-insights] Fetching page 2... (500 rows so far)
+[FOLDER] Found 2 files in folder 1BjVS5J3cwiCXVU659sQgrdmbazbqk8Bv: Nupur-Square.mp4, Nupur-Vertical.mp4
+[apex-breakdowns/age-gender] Fetching page 26... (12500 rows so far)
+[FOLDER] Found 2 files in folder 13EWmmMIQr_vHVZH0rkauZdDhppF1hxyV: Telegram video-Square.mp4, Telegram video-Vertical.mp4
+[apex-breakdowns/geography] Fetching page 30... (14500 rows so far)
+[FOLDER] Found 2 files in folder 1CTGODRJKKoQKaMO4QvC46cgj-pqhMsa8: Garvit-Vertical.mp4, Garvit-Square.mp4
+[FOLDER] Found 2 files in folder 1WZ5i_BLlUd5zG8QbGm482rNay9TCb2NZ: Kanika-Square.mp4, Kanika-Vertical.mp4
+[FOLDER] Found 2 files in folder 1BjVS5J3cwiCXVU659sQgrdmbazbqk8Bv: Nupur-Square.mp4, Nupur-Vertical.mp4
+[FOLDER] Found 2 files in folder 13EWmmMIQr_vHVZH0rkauZdDhppF1hxyV: Telegram video-Square.mp4, Telegram video-Vertical.mp4
+[ad-insights] Fetching page 18... (8500 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[apex-breakdowns/age-gender] Fetching page 27... (13000 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[apex-breakdowns/geography] Fetching page 31... (15000 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[apex-breakdowns/age-gender] Fetching page 28... (13500 rows so far)
+[apex-breakdowns/geography] Fetching page 32... (15500 rows so far)
+[FOLDER] Found 2 files in folder 1BjVS5J3cwiCXVU659sQgrdmbazbqk8Bv: Nupur-Square.mp4, Nupur-Vertical.mp4
+[ad-insights] Fetching page 19... (9000 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[apex-breakdowns/age-gender] Fetching page 29... (14000 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[apex-breakdowns/geography] Fetching page 33... (16000 rows so far)
+[apex-breakdowns/age-gender] Fetching page 30... (14500 rows so far)
+[ad-insights] Fetching page 20... (9500 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[apex-breakdowns/geography] Fetching page 34... (16500 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[FOLDER] Found 2 files in folder 13EWmmMIQr_vHVZH0rkauZdDhppF1hxyV: Telegram video-Square.mp4, Telegram video-Vertical.mp4
+[apex-breakdowns/age-gender] Fetching page 31... (15000 rows so far)
+[apex-breakdowns/geography] Fetching page 35... (17000 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[ad-insights] Fetching page 21... (10000 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[apex-breakdowns/age-gender] Fetching page 32... (15500 rows so far)
+[ad-funnel] Done. 3616 rows returned. Truncated: false
+[apex-breakdowns/geography] Fetching page 36... (17500 rows so far)
+[apex-breakdowns/age-gender] Fetching page 33... (16000 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 22... (10500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[apex-breakdowns/geography] Fetching page 37... (18000 rows so far)
+[apex-breakdowns/age-gender] Fetching page 34... (16500 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[gc-ad-funnel] Serving from memory (640 rows)
+[ad-insights] Serving from memory (4314 rows)
+[ad-funnel] Serving from memory (1468 rows)
+[ads-status] Serving from memory cache (4000 ads)
+[ad-insights] Serving from memory (4314 rows)
+[ad-funnel] Serving from memory (1468 rows)
+[ads-status] Serving from memory cache (4000 ads)
+[ads-status] Serving from memory cache (4000 ads)
+[ad-insights] Serving from memory (4314 rows)
+[ad-funnel] Serving from memory (1468 rows)
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[apex-breakdowns/age-gender] Fetching page 35... (17000 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[apex-breakdowns/geography] Fetching page 38... (18500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[ad-insights] Serving from memory (496 rows)
+[ad-funnel] Serving from memory (160 rows)
+[ad-insights] Serving from memory (496 rows)
+[ad-funnel] Serving from memory (160 rows)
+[ad-insights] Serving from memory (496 rows)
+[ad-funnel] Serving from memory (160 rows)
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[ad-insights] Fetching page 8... (3500 rows so far)
+[apex-breakdowns/age-gender] Done. 35 pages, 17338 total rows.
+[ad-insights] Fetching page 23... (11000 rows so far)
+[apex-breakdowns/geography] Fetching page 39... (19000 rows so far)
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[apex-breakdowns/geography] Fetching page 40... (19500 rows so far)
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[ad-insights] Fetching page 24... (11500 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[apex-breakdowns/geography] Fetching page 41... (20000 rows so far)
+[ad-funnel] Done. 3617 rows returned. Truncated: false
+[ad-funnel] Done. 3617 rows returned. Truncated: false
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-funnel] Done. 3617 rows returned. Truncated: false
+[ad-insights] Done. 24 pages, 11614 total rows.
+[ad-insights] Saved to disk: 11614 rows
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[apex-breakdowns/geography] Fetching page 42... (20500 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[apex-breakdowns/geography] Fetching page 43... (21000 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[ad-funnel] Done. 3617 rows returned. Truncated: false
+[ad-insights] Fetching page 10... (4500 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[ad-funnel] Done. 3617 rows returned. Truncated: false
+[ad-funnel] Done. 3617 rows returned. Truncated: false
+[ad-insights] Fetching page 12... (5500 rows so far)
+[apex-breakdowns/geography] Fetching page 44... (21500 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[ad-insights] Fetching page 12... (5500 rows so far)
+[apex-breakdowns/geography] Fetching page 45... (22000 rows so far)
+[ad-insights] Fetching page 13... (6000 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[ad-insights] Fetching page 6... (2500 rows so far)
+[ad-insights] Fetching page 12... (5500 rows so far)
+[apex-breakdowns/geography] Fetching page 46... (22500 rows so far)
+[ad-insights] Fetching page 13... (6000 rows so far)
+[ad-insights] Fetching page 14... (6500 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[apex-breakdowns/geography] Fetching page 47... (23000 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 13... (6000 rows so far)
+[ad-insights] Fetching page 14... (6500 rows so far)
+[ad-insights] Fetching page 15... (7000 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[apex-breakdowns/geography] Fetching page 48... (23500 rows so far)
+[ad-insights] Fetching page 14... (6500 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[ad-insights] Fetching page 15... (7000 rows so far)
+[ad-insights] Fetching page 16... (7500 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[apex-breakdowns/geography] Fetching page 49... (24000 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[ad-insights] Fetching page 15... (7000 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[apex-breakdowns/geography] Fetching page 50... (24500 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[ad-insights] Fetching page 16... (7500 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[ad-insights] Fetching page 16... (7500 rows so far)
+[ad-insights] Fetching page 17... (8000 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[apex-breakdowns/geography] Fetching page 51... (25000 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[ad-insights] Fetching page 17... (8000 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[apex-breakdowns/geography] Fetching page 52... (25500 rows so far)
+[ad-insights] Fetching page 17... (8000 rows so far)
+[ad-insights] Fetching page 18... (8500 rows so far)
+[ad-insights] Done. 11 pages, 5000 total rows. WARNING: pagination broke — data may be truncated!
+[ad-insights] Disk cache has 11614 rows vs truncated 5000 — using disk cache.
+[roas-tracker] Fetched 8726 Meta rows, 3617 funnel rows.
+[roas-tracker] 1747 test campaign rows → 149 ads with go-live >= 2026-03-10 (751 daily rows).
+[ads-status] Serving from memory cache (4000 ads)
+[roas-tracker] 153 creatives since 2026-03-10 (28 with funnel data).
+[roas-tracker] 155 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 155 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":153,"tracked":155,"newAds":0,"updated":155,"predicted":0}
+[apex-breakdowns/geography] Fetching page 53... (26000 rows so far)
+[ad-insights] Fetching page 12... (5500 rows so far)
+[ad-insights] Fetching page 12... (5500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[ad-insights] Fetching page 19... (9000 rows so far)
+[ad-insights] Fetching page 18... (8500 rows so far)
+[apex-breakdowns/geography] Fetching page 54... (26500 rows so far)
+[ad-insights] Fetching page 13... (6000 rows so far)
+[apex-breakdowns/geography] Fetching page 55... (27000 rows so far)
+[ad-insights] Fetching page 13... (6000 rows so far)
+[ad-insights] Fetching page 18... (8500 rows so far)
+[ad-insights] Fetching page 19... (9000 rows so far)
+[ad-insights] Fetching page 20... (9500 rows so far)
+[ad-insights] Fetching page 14... (6500 rows so far)
+[apex-breakdowns/geography] Fetching page 56... (27500 rows so far)
+[ad-insights] Fetching page 14... (6500 rows so far)
+[ad-insights] Fetching page 19... (9000 rows so far)
+[ad-insights] Done. 19 pages, 9000 total rows. WARNING: pagination broke — data may be truncated!
+[ad-insights] Disk cache has 11614 rows vs truncated 9000 — using disk cache.
+[ad-insights] Done. 20 pages, 9500 total rows. WARNING: pagination broke — data may be truncated!
+[ad-insights] Disk cache has 11614 rows vs truncated 9500 — using disk cache.
+[roas-tracker] Fetched 8726 Meta rows, 3617 funnel rows.
+[roas-tracker] 1747 test campaign rows → 149 ads with go-live >= 2026-03-10 (751 daily rows).
+[roas-tracker] Fetched 8726 Meta rows, 3617 funnel rows.
+[roas-tracker] 1747 test campaign rows → 149 ads with go-live >= 2026-03-10 (751 daily rows).
+[ads-status] Serving from memory cache (4000 ads)
+[ads-status] Serving from memory cache (4000 ads)
+[roas-tracker] 153 creatives since 2026-03-10 (28 with funnel data).
+[roas-tracker] 155 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 155 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":153,"tracked":155,"newAds":0,"updated":155,"predicted":0}
+[roas-tracker] 153 creatives since 2026-03-10 (28 with funnel data).
+[roas-tracker] 155 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 155 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":153,"tracked":155,"newAds":0,"updated":155,"predicted":0}
+[apex-breakdowns/geography] Fetching page 57... (28000 rows so far)
+[ad-insights] Fetching page 15... (7000 rows so far)
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[ad-insights] Fetching page 15... (7000 rows so far)
+[apex-breakdowns/geography] Fetching page 58... (28500 rows so far)
+[ad-insights] Fetching page 20... (9500 rows so far)
+[ad-insights] Fetching page 16... (7500 rows so far)
+[ad-insights] Fetching page 16... (7500 rows so far)
+[apex-breakdowns/geography] Fetching page 59... (29000 rows so far)
+[ad-insights] Fetching page 21... (10000 rows so far)
+[ad-insights] Fetching page 17... (8000 rows so far)
+[apex-breakdowns/geography] Fetching page 60... (29500 rows so far)
+[ad-insights] Fetching page 17... (8000 rows so far)
+[ad-insights] Fetching page 22... (10500 rows so far)
+[apex-breakdowns/geography] Fetching page 61... (30000 rows so far)
+[ad-insights] Fetching page 18... (8500 rows so far)
+[apex-breakdowns/geography] Fetching page 62... (30500 rows so far)
+[ad-insights] Fetching page 18... (8500 rows so far)
+[ad-insights] Fetching page 23... (11000 rows so far)
+[apex-breakdowns/geography] Fetching page 63... (31000 rows so far)
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[ad-insights] Fetching page 19... (9000 rows so far)
+[ad-insights] Serving from memory (4314 rows)
+[ad-funnel] Serving from memory (1468 rows)
+[gc-ad-funnel] Serving from memory (640 rows)
+[ads-status] Serving from memory cache (4000 ads)
+[ad-insights] Serving from memory (4314 rows)
+[ad-funnel] Serving from memory (1468 rows)
+[ads-status] Serving from memory cache (4000 ads)
+[ad-insights] Serving from memory (4314 rows)
+[ad-funnel] Serving from memory (1468 rows)
+[ads-status] Serving from memory cache (4000 ads)
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[FE:ProposalGenerator] getProposals: returned 73 rows
+[FE:ProposalGenerator] getProposals: returned 83 rows
+[ad-insights] Serving from memory (496 rows)
+[ad-funnel] Serving from memory (160 rows)
+[apex-breakdowns/geography] Fetching page 64... (31500 rows so far)
+[ad-insights] Serving from memory (496 rows)
+[ad-funnel] Serving from memory (160 rows)
+[ad-insights] Serving from memory (496 rows)
+[ad-funnel] Serving from memory (160 rows)
+[FE:Scheduler] Starting job: data-quality-check
+[FE:DataQuality] Running audit (2026-03-10 -> 2026-04-09, forceFresh=false)
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Serving from memory (11614 rows)
+[ad-funnel] Serving from memory (3617 rows)
+[gc-ad-funnel] Serving from memory (640 rows)
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[ad-insights] Fetching page 19... (9000 rows so far)
+[ads-status] Serving from memory cache (4000 ads)
+[FE:DataQuality] Audit complete. status=FAIL findings=14
+[FE:Scheduler] Completed job: data-quality-check (4238ms, 14 records)
+[ad-insights] Fetching page 24... (11500 rows so far)
+[ad-insights] Fetching page 20... (9500 rows so far)
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[apex-breakdowns/geography] Fetching page 65... (32000 rows so far)
+[ad-insights] Done. 24 pages, 11614 total rows.
+[ad-insights] Saved to disk: 11614 rows
+[roas-tracker] Fetched 8726 Meta rows, 3617 funnel rows.
+[roas-tracker] 1747 test campaign rows → 149 ads with go-live >= 2026-03-10 (751 daily rows).
+[ads-status] Serving from memory cache (4000 ads)
+[roas-tracker] 153 creatives since 2026-03-10 (28 with funnel data).
+[roas-tracker] 155 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 155 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":153,"tracked":155,"newAds":0,"updated":155,"predicted":0}
+[ad-insights] Fetching page 2... (500 rows so far)
+[apex-breakdowns/geography] Fetching page 66... (32500 rows so far)
+[ad-insights] Fetching page 20... (9500 rows so far)
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 21... (10000 rows so far)
+[apex-breakdowns/geography] Fetching page 67... (33000 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-insights] Fetching page 21... (10000 rows so far)
+[apex-breakdowns/geography] Fetching page 68... (33500 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-insights] Fetching page 22... (10500 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[apex-breakdowns/geography] Fetching page 69... (34000 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[ad-funnel] Done. 3617 rows returned. Truncated: false
+[ad-funnel] Done. 3617 rows returned. Truncated: false
+[ad-insights] Fetching page 22... (10500 rows so far)
+[ad-funnel] Done. 3617 rows returned. Truncated: false
+[apex-breakdowns/geography] Fetching page 70... (34500 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[apex-breakdowns/geography] Fetching page 71... (35000 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 23... (11000 rows so far)
+[ad-insights] Fetching page 23... (11000 rows so far)
+[apex-breakdowns/geography] Fetching page 72... (35500 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[apex-breakdowns/geography] Fetching page 73... (36000 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[apex-breakdowns/geography] Fetching page 74... (36500 rows so far)
+[ad-insights] Fetching page 24... (11500 rows so far)
+[ad-insights] Fetching page 24... (11500 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Done. 24 pages, 11614 total rows.
+[ad-insights] Saved to disk: 11614 rows
+[ad-insights] Done. 24 pages, 11614 total rows.
+[ad-insights] Saved to disk: 11614 rows
+[roas-tracker] Fetched 8726 Meta rows, 3617 funnel rows.
+[roas-tracker] 1747 test campaign rows → 149 ads with go-live >= 2026-03-10 (751 daily rows).
+[roas-tracker] Fetched 8726 Meta rows, 3617 funnel rows.
+[roas-tracker] 1747 test campaign rows → 149 ads with go-live >= 2026-03-10 (751 daily rows).
+[ads-status] Serving from memory cache (4000 ads)
+[ads-status] Serving from memory cache (4000 ads)
+[roas-tracker] 153 creatives since 2026-03-10 (28 with funnel data).
+[roas-tracker] 155 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 155 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":153,"tracked":155,"newAds":0,"updated":155,"predicted":0}
+[roas-tracker] 153 creatives since 2026-03-10 (28 with funnel data).
+[roas-tracker] 155 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 155 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":153,"tracked":155,"newAds":0,"updated":155,"predicted":0}
+[apex-breakdowns/geography] Fetching page 75... (37000 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[apex-breakdowns/geography] Fetching page 76... (37500 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[apex-breakdowns/geography] Fetching page 77... (38000 rows so far)
+[apex-breakdowns/geography] Fetching page 78... (38500 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[apex-breakdowns/geography] Fetching page 79... (39000 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[apex-breakdowns/geography] Fetching page 80... (39500 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[apex-breakdowns/geography] Fetching page 81... (40000 rows so far)
+[ad-insights] Done. 11 pages, 5000 total rows. WARNING: pagination broke — data may be truncated!
+[ad-insights] Disk cache has 11614 rows vs truncated 5000 — using disk cache.
+[ad-insights] Done. 11 pages, 5000 total rows. WARNING: pagination broke — data may be truncated!
+[ad-insights] Disk cache has 11614 rows vs truncated 5000 — using disk cache.
+[roas-tracker] Fetched 8726 Meta rows, 3617 funnel rows.
+[roas-tracker] 1747 test campaign rows → 149 ads with go-live >= 2026-03-10 (751 daily rows).
+[roas-tracker] Fetched 8726 Meta rows, 3617 funnel rows.
+[roas-tracker] 1747 test campaign rows → 149 ads with go-live >= 2026-03-10 (751 daily rows).
+[ads-status] Serving from memory cache (4000 ads)
+[ads-status] Serving from memory cache (4000 ads)
+[roas-tracker] 153 creatives since 2026-03-10 (28 with funnel data).
+[roas-tracker] 155 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 155 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":153,"tracked":155,"newAds":0,"updated":155,"predicted":0}
+[roas-tracker] 153 creatives since 2026-03-10 (28 with funnel data).
+[roas-tracker] 155 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 155 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":153,"tracked":155,"newAds":0,"updated":155,"predicted":0}
+[ad-insights] Fetching page 12... (5500 rows so far)
+[apex-breakdowns/geography] Fetching page 82... (40500 rows so far)
+[ad-insights] Fetching page 13... (6000 rows so far)
+[apex-breakdowns/geography] Fetching page 83... (41000 rows so far)
+[apex-breakdowns/geography] Fetching page 84... (41500 rows so far)
+[ad-insights] Fetching page 14... (6500 rows so far)
+[apex-breakdowns/geography] Fetching page 85... (42000 rows so far)
+[ad-insights] Fetching page 15... (7000 rows so far)
+[apex-breakdowns/geography] Fetching page 86... (42500 rows so far)
+[apex-breakdowns/geography] Fetching page 87... (43000 rows so far)
+[apex-breakdowns/geography] Fetching page 88... (43500 rows so far)
+[ad-insights] Fetching page 16... (7500 rows so far)
+[apex-breakdowns/geography] Fetching page 89... (44000 rows so far)
+[apex-breakdowns/geography] Done. 89 pages, 44063 total rows.
+[ad-insights] Fetching page 17... (8000 rows so far)
+[ad-insights] Fetching page 18... (8500 rows so far)

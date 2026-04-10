@@ -208,6 +208,56 @@ body.standalone-module .main-content {
     color: var(--text-muted);
 }
 
+.context-chip-load {
+    min-width: 132px;
+    justify-content: center;
+}
+
+.portal-load-tab {
+    position: fixed;
+    left: 0;
+    top: 168px;
+    z-index: 1200;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    border-radius: 0 12px 12px 0;
+    min-width: 0;
+    padding: 14px 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    box-shadow: 8px 0 20px rgba(0, 0, 0, 0.28);
+}
+
+.context-chip-load-ok {
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.28);
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.context-chip-load-cached {
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.28);
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.context-chip-load-warn {
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.28);
+    background: rgba(245, 158, 11, 0.08);
+}
+
+@media (max-width: 900px) {
+    .portal-load-tab {
+        top: auto;
+        bottom: 14px;
+        left: 12px;
+        writing-mode: horizontal-tb;
+        transform: none;
+        padding: 8px 10px;
+        border-radius: 999px;
+    }
+}
+
 .header-right {
     display: flex;
     align-items: center;
@@ -361,6 +411,8 @@ body.standalone-module .main-content {
 
 .shared-optimizer-shell {
     padding: 20px 28px 28px;
+    position: relative;
+    z-index: 1;
 }
 
 .shared-platform-bar {
@@ -493,6 +545,10 @@ body.standalone-module .main-content {
 }
 
 .ai-dock-input button {
+    position: relative;
+    z-index: 1002;
+    pointer-events: auto;
+    flex-shrink: 0;
     border: none;
     background: var(--accent);
     color: #fff;
@@ -537,6 +593,8 @@ body.standalone-module .main-content {
 .inline-ai-panel {
     margin: 0 28px 14px;
     box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+    position: relative;
+    z-index: 1001;
 }
 
 .ai-dock-head {

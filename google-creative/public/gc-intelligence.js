@@ -8,6 +8,29 @@
     var _filterPerf = 'all';
     var _loaded = false;
     var _chartInstances = {};
+    var _lastPortalSignature = '';
+
+    function getSelectedDays() {
+        try {
+            var ctx = window.getPortalAssistantContext ? window.getPortalAssistantContext() : null;
+            var range = ctx && ctx.dateRange ? ctx.dateRange : null;
+            if (range && range.since && range.until) {
+                var start = new Date(range.since + 'T00:00:00');
+                var end = new Date(range.until + 'T23:59:59');
+                var days = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+                if (days > 0) return days;
+            }
+        } catch (e) {}
+        return 90;
+    }
+
+    function getSelectedRangeLabel() {
+        try {
+            var ctx = window.getPortalAssistantContext ? window.getPortalAssistantContext() : null;
+            if (ctx && ctx.dateRange && ctx.dateRange.label) return ctx.dateRange.label;
+        } catch (e) {}
+        return 'Selected Range';
+    }
 
     // Listen for tab activation
     document.addEventListener('gc-tab-activated', function(e) {
@@ -30,19 +53,20 @@
     }
 
     function buildShell() {
+        var rangeLabel = getSelectedRangeLabel();
         return '' +
             '<div class="gc-panel">' +
                 // Header
                 '<div class="gc-header">' +
                     '<h2>Google Ads Creative Intelligence</h2>' +
-                    '<p>Performance analysis of all Google ad creatives across RSA, Video, PMax, and Display formats</p>' +
+                    '<p>Performance analysis of Google ad creatives for ' + GC.esc(rangeLabel) + ' across RSA, Video, PMax, and Display formats</p>' +
                 '</div>' +
 
                 // KPI Strip
                 '<div id="gcIntKpis" class="gc-kpi-strip">' +
                     kpiPlaceholder('Total Creatives') +
                     kpiPlaceholder('Best Ad Type') +
-                    kpiPlaceholder('Avg ROAS (90d)') +
+                    kpiPlaceholder('Avg ROAS (Selected)') +
                     kpiPlaceholder('Top Campaign') +
                 '</div>' +
 
@@ -78,7 +102,7 @@
                         '<canvas id="gcChartPerfDist" class="gc-chart-canvas"></canvas>' +
                     '</div>' +
                     '<div class="gc-chart-card">' +
-                        '<h4>ROAS Trend (Last 90 Days)</h4>' +
+                        '<h4>ROAS Trend (Selected Range)</h4>' +
                         '<canvas id="gcChartRoasTrend" class="gc-chart-canvas"></canvas>' +
                     '</div>' +
                 '</div>' +
@@ -118,9 +142,10 @@
 
     function fetchData() {
         showCardsLoading();
+        var days = getSelectedDays();
 
         Promise.all([
-            fetch('/api/gc/creatives?days=90&type=all&performance=all')
+            fetch('/api/gc/creatives?days=' + days + '&type=all&performance=all')
                 .then(function(r) { return r.json(); }),
             fetch('/api/gc/learning/report')
                 .then(function(r) { return r.json(); })
@@ -148,6 +173,29 @@
             showCardsError('Network error: ' + err.message);
         });
     }
+
+    window.gcIntelligenceRefresh = fetchData;
+
+    window.addEventListener('portal-data-updated', function() {
+        var ctx = window.getPortalAssistantContext ? window.getPortalAssistantContext() : null;
+        var range = ctx && ctx.dateRange ? ctx.dateRange : {};
+        var diag = ctx && ctx.diagnostics ? ctx.diagnostics : {};
+        var signature = [
+            ctx && ctx.app || 'google',
+            ctx && ctx.view || 'gcIntelligence',
+            range.since || '',
+            range.until || '',
+            range.label || '',
+            diag.source || '',
+            diag.matchedKeys || 0,
+            diag.unmatchedKeys || 0
+        ].join('::');
+        if (signature === _lastPortalSignature) return;
+        _lastPortalSignature = signature;
+        if (_loaded && document.getElementById('gcIntelligenceView') && document.getElementById('gcIntelligenceView').classList.contains('active')) {
+            fetchData();
+        }
+    });
 
     function showCardsLoading() {
         var el = document.getElementById('gcIntCards');

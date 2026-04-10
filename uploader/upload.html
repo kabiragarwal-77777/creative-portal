@@ -1111,11 +1111,11 @@
     // CONSTANTS
     // =========================================================================
     const META_API_VERSION = 'v21.0';
-    const META_API_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
-    const DEFAULT_AD_ACCOUNT_ID = 'act_725019929189148';
-    const DEFAULT_PAGE_ID = '100391482646475';
-    const DEFAULT_INSTAGRAM_ACTOR_ID = '17841452244426405';
-    const DEFAULT_REGULATORY_ID = '1698107647490483';
+      const META_API_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
+      const DEFAULT_AD_ACCOUNT_ID = 'act_725019929189148';
+      const DEFAULT_PAGE_ID = '100391482646475';
+      const DEFAULT_INSTAGRAM_ACTOR_ID = '17841452244426405';
+      const DEFAULT_REGULATORY_ID = '1698107647490483';
     const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyKYm0aNJHvjAuc6KxrcZAzuIpc2qs_RT8sbngiwC5-m-6-2gPVY7uV2z4gSFLtVHTysw/exec';
 
     // =========================================================================
@@ -1270,7 +1270,18 @@
             throw new Error(data.error || 'Video upload failed');
         }
         if (!data.videoId) throw new Error('No video ID returned from Meta API');
-        return data.videoId;
+        let pictureUrl = '';
+        try {
+            const pictureResp = await metaGet(`/${data.videoId}`, { fields: 'picture' });
+            pictureUrl = typeof pictureResp.picture === 'string'
+                ? pictureResp.picture
+                : pictureResp.picture && pictureResp.picture.data && pictureResp.picture.data.url
+                    ? pictureResp.picture.data.url
+                    : '';
+        } catch (err) {
+            console.warn('[META] Video picture lookup failed:', err.message);
+        }
+        return { videoId: data.videoId, pictureUrl };
     }
 
     // Upload video file directly from browser (chunked upload)
@@ -1680,6 +1691,8 @@
                     const enrichedCount = sheetRows.filter(r => r._enriched).length;
                     console.log(`[ENRICH] Done. ${enrichedCount}/${sheetRows.length} rows enriched.`);
                     console.log('[ENRICH] Row 1 after enrich:', JSON.stringify(sheetRows[0]));
+                    await resolveSheetFoldersToAssets();
+                    console.log('[FOLDER] Done resolving folder assets in sheet preview.');
                     renderSheetTable();
                     $('sheetStatus').textContent = `Loaded ${sheetRows.length} row(s). ${enrichedCount} enriched from Meta.`;
                 } catch (enrichErr) {
@@ -1700,7 +1713,7 @@
     function findHeader(keys) {
         for (const k of keys) {
             for (const h of sheetHeaders) {
-                if (h.toLowerCase().replace(/[\s_-]/g, '') === k.toLowerCase().replace(/[\s_-]/g, '')) return h;
+                if (h.toLowerCase().replace(/[^a-z0-9]/g, '') === k.toLowerCase().replace(/[^a-z0-9]/g, '')) return h;
             }
         }
         return null;
@@ -1709,6 +1722,67 @@
     function getRowVal(row, keys) {
         const h = findHeader(keys);
         return h && row[h] !== undefined && row[h] !== null && row[h] !== '' ? String(row[h]) : '';
+    }
+
+    function splitSheetList(value) {
+        return String(value || '')
+            .split(/\s*[|,]\s*/g)
+            .map(s => s.trim())
+            .filter(Boolean);
+    }
+
+    function buildConfigFromSheetRow(row) {
+        const gendersRaw = splitSheetList(getRowVal(row, ['genders', 'gender']));
+        const genders = gendersRaw.length === 0 ? [] : gendersRaw.map(v => parseInt(v, 10)).filter(v => !Number.isNaN(v));
+        return {
+            campaign_id: getRowVal(row, ['campaignid', 'campaign_id']),
+            existing_adset_id: getRowVal(row, ['existingadsetid', 'existing_adset_id', 'adset_id', 'adsetid']) || null,
+            adset_name: getRowVal(row, ['adsetname', 'adset_name']),
+            adset_status: getRowVal(row, ['adsetstatus', 'adset_status']) || 'PAUSED',
+            budget_type: getRowVal(row, ['budgettype', 'budget_type']) || 'daily',
+            budget: getRowVal(row, ['budget', 'dailybudget', 'daily_budget', 'lifetimebudget', 'lifetime_budget']),
+            bid_strategy: getRowVal(row, ['bidstrategy', 'bid_strategy']),
+            bid_amount: getRowVal(row, ['bidamount', 'bid_amount']) || null,
+            billing_event: getRowVal(row, ['billingevent', 'billing_event']),
+            optimization_goal: getRowVal(row, ['optimizationgoal', 'optimization_goal']),
+            custom_event_type: getRowVal(row, ['customeventtype', 'custom_event_type']) || null,
+            start_time: getRowVal(row, ['starttime', 'start_time']),
+            end_time: getRowVal(row, ['endtime', 'end_time']) || null,
+            age_min: parseInt(getRowVal(row, ['agemin', 'age_min']) || '18', 10) || 18,
+            age_max: parseInt(getRowVal(row, ['agemax', 'age_max']) || '65', 10) || 65,
+            genders,
+            geo_countries: splitSheetList(getRowVal(row, ['countries', 'geocountries', 'geo_countries'])),
+            device_platforms: splitSheetList(getRowVal(row, ['deviceplatforms', 'device_platforms'])),
+            os_target: getRowVal(row, ['os', 'operatingsystem', 'os_target']) || 'Android',
+            min_os_version: getRowVal(row, ['minosversion', 'min_os_version']) || null,
+            publisher_platforms: splitSheetList(getRowVal(row, ['publisherplatforms', 'publisher_platforms'])),
+            facebook_positions: splitSheetList(getRowVal(row, ['facebookpositions', 'facebook_positions'])),
+            instagram_positions: splitSheetList(getRowVal(row, ['instagrampositions', 'instagram_positions'])),
+            custom_audiences: splitSheetList(getRowVal(row, ['customaudiences', 'custom_audiences'])),
+            excluded_audiences: splitSheetList(getRowVal(row, ['excludedaudiences', 'excluded_audiences'])),
+            excluded_countries: getRowVal(row, ['excludedcountries', 'excluded_countries']) || '',
+            excluded_regions: getRowVal(row, ['excludedregions', 'excluded_regions']) || '',
+            app_id: getRowVal(row, ['appid', 'application_id', 'app_id']),
+            object_store_url: getRowVal(row, ['objectstoreurl', 'object_store_url', 'storeurl', 'store_url']),
+            ad_name: getRowVal(row, ['adname', 'ad_name']),
+            ad_status: getRowVal(row, ['adstatus', 'ad_status']) || 'PAUSED',
+            creative_name: getRowVal(row, ['creativename', 'creative_name']),
+            primary_text: getRowVal(row, ['primarytext', 'primary_text', 'body', 'adcopy', 'ad_copy']),
+            headline: getRowVal(row, ['headline']),
+            description: getRowVal(row, ['description']),
+            cta: getRowVal(row, ['cta', 'calltoaction', 'call_to_action']) || 'SUBSCRIBE',
+            link_url: getRowVal(row, ['linkurl', 'link_url', 'link', 'deeplink']),
+            url_tags: getRowVal(row, ['urltags', 'url_tags', 'utmparams', 'utm']),
+            creative_type: getRowVal(row, ['creativetype', 'creative_type', 'type']) || 'VIDEO',
+            asset_folder: getRowVal(row, ['assetfolder', 'asset_folder', 'folder', 'folder_url', 'drive_folder', 'drivefolder']),
+            asset_horizontal: getRowVal(row, ['horizontalasset', 'horizontal_asset', 'asset_horizontal', 'landscape', '169']),
+            asset_vertical: getRowVal(row, ['verticalasset', 'vertical_asset', 'asset_vertical', 'portrait', '916']),
+            asset_square: getRowVal(row, ['squareasset', 'square_asset', 'asset_square', 'square', '11']),
+            thumb_horizontal: getRowVal(row, ['thumbhorizontal', 'thumbnail_horizontal', 'thumb_horizontal']) || null,
+            thumb_vertical: getRowVal(row, ['thumbvertical', 'thumbnail_vertical', 'thumb_vertical']) || null,
+            thumb_square: getRowVal(row, ['thumbsquare', 'thumbnail_square', 'thumb_square']) || null,
+            page_id: getRowVal(row, ['pageid', 'page_id', 'facebookpage', 'facebook_page']),
+        };
     }
 
     function setRowVal(row, keys, val) {
@@ -1866,6 +1940,41 @@
         await Promise.all(promises);
     }
 
+    async function resolveSheetFoldersToAssets() {
+        const folderHeader = findHeader(['assetfolder', 'asset_folder', 'folder', 'folder_url', 'drive_folder', 'drivefolder']);
+        if (!folderHeader) return;
+
+        for (const row of sheetRows) {
+            const folderUrl = row[folderHeader] ? String(row[folderHeader]).trim() : '';
+            if (!folderUrl) continue;
+
+            const hasHorizontal = !!getRowVal(row, ['horizontalasset', 'horizontal_asset', 'asset_horizontal', 'landscape', '169']);
+            const hasVertical = !!getRowVal(row, ['verticalasset', 'vertical_asset', 'asset_vertical', 'portrait', '916']);
+            const hasSquare = !!getRowVal(row, ['squareasset', 'square_asset', 'asset_square', 'square', '11']);
+            if (hasHorizontal && hasVertical && hasSquare) continue;
+
+            try {
+                const resp = await fetch('/api/resolve-folder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ folderUrl }),
+                });
+                const data = await resp.json();
+                if (!data.success) {
+                    console.warn('[FOLDER] Resolution failed:', data.error);
+                    continue;
+                }
+
+                if (data.horizontal && !hasHorizontal) setRowVal(row, ['horizontalasset', 'horizontal_asset', 'asset_horizontal', 'landscape', '169'], data.horizontal);
+                if (data.vertical && !hasVertical) setRowVal(row, ['verticalasset', 'vertical_asset', 'asset_vertical', 'portrait', '916'], data.vertical);
+                if (data.square && !hasSquare) setRowVal(row, ['squareasset', 'square_asset', 'asset_square', 'square', '11'], data.square);
+                row._folder_resolved = true;
+            } catch (err) {
+                console.warn('[FOLDER] API error:', err.message);
+            }
+        }
+    }
+
     function renderSheetTable() {
         const wrap = $('sheetTableWrap');
         wrap.classList.remove('hidden');
@@ -1895,6 +2004,54 @@
         const row = sheetRows[idx];
         if (!row) return;
         selectedSheetRowIndex = idx;
+
+        function resetFormForSheetRow() {
+            [
+                'existingAdsetId', 'adsetName', 'budget', 'bidAmount', 'startTime', 'endTime',
+                'ageMin', 'ageMax', 'geoCountries', 'minOsVersion', 'appId', 'objectStoreUrl',
+                'adName', 'creativeName', 'primaryText', 'headline', 'description', 'linkUrl',
+                'urlTags', 'assetHorizontal', 'assetVertical', 'assetSquare', 'assetFolder',
+                'thumbHorizontal', 'thumbVertical', 'thumbSquare', 'customAudiences',
+                'excludedAudiences'
+            ].forEach(id => {
+                const el = $(id);
+                if (el) el.value = '';
+            });
+            const pageIdEl = $('pageId');
+            if (pageIdEl) pageIdEl.value = pageIdEl.defaultValue || '100391482646475';
+            ['devicePlatform', 'publisherPlatform', 'fbPosition', 'igPosition'].forEach(nameAttr => {
+                document.querySelectorAll(`input[name="${nameAttr}"]`).forEach(cb => { cb.checked = false; });
+            });
+            ['creativeType', 'budgetType'].forEach(nameAttr => {
+                document.querySelectorAll(`input[name="${nameAttr}"]`).forEach(rb => { rb.checked = false; });
+            });
+            const defaultCreativeType = qs('input[name="creativeType"][value="VIDEO"]');
+            if (defaultCreativeType) defaultCreativeType.checked = true;
+            const defaultBudgetType = qs('input[name="budgetType"][value="daily"]');
+            if (defaultBudgetType) defaultBudgetType.checked = true;
+            [
+                ['adsetStatus', 'PAUSED'],
+                ['bidStrategy', 'LOWEST_COST_WITHOUT_CAP'],
+                ['billingEvent', 'IMPRESSIONS'],
+                ['optimizationGoal', 'APP_INSTALLS'],
+                ['customEventType', ''],
+                ['genders', '0'],
+                ['osTarget', 'Android'],
+                ['adStatus', 'PAUSED'],
+                ['cta', 'SUBSCRIBE'],
+            ].forEach(([id, value]) => {
+                const el = $(id);
+                if (el) el.value = value;
+            });
+            window._sheetExcludedCountries = '';
+            window._sheetExcludedRegions = '';
+            const wrapper = document.getElementById('adsetFieldsWrapper');
+            if (wrapper) wrapper.style.display = '';
+            toggleCreativeType();
+            toggleBudgetType();
+        }
+
+        resetFormForSheetRow();
 
         function val(keys) {
             for (const k of keys) {
@@ -2344,29 +2501,46 @@
         };
     }
 
+    function mergeDefinedSheetValues(sheetConfig, formConfig) {
+        const merged = { ...(sheetConfig || {}) };
+        for (const [key, value] of Object.entries(formConfig || {})) {
+            if (Array.isArray(value)) {
+                if (value.length > 0) merged[key] = value;
+                continue;
+            }
+            if (value === null || value === undefined) continue;
+            if (typeof value === 'string') {
+                if (value.trim() === '') continue;
+                merged[key] = value;
+                continue;
+            }
+            merged[key] = value;
+        }
+        return merged;
+    }
+
+    function buildExecutionConfigFromSheetRow(row) {
+        const sheetConfig = row ? buildConfigFromSheetRow(row) : {};
+        const formConfig = collectFormData();
+        return mergeDefinedSheetValues(sheetConfig, formConfig);
+    }
+
     // =========================================================================
     // VALIDATION
     // =========================================================================
     function validate() {
         const hasExistingAdset = !!$('existingAdsetId').value.trim();
-
         const required = [
             ['adName', 'Ad Name'],
             ['primaryText', 'Primary Text'],
+            ['headline', 'Headline'],
             ['pageId', 'Facebook Page ID'],
         ];
+
         const hasLandingTarget = !!($('linkUrl').value.trim() || $('objectStoreUrl').value.trim());
-        // Asset URLs required only if no folder URL provided
-        if (!($('assetFolder') && $('assetFolder').value.trim())) {
-            required.push(
-                ['assetHorizontal', 'Horizontal Asset'],
-                ['assetVertical', 'Vertical Asset'],
-                ['assetSquare', 'Square Asset'],
-            );
-        }
 
         if (!hasExistingAdset) {
-            // Adset creation fields only required when not reusing an existing adset
+            // Adset creation fields are only required when we are not reusing one.
             required.push(
                 ['campaignId', 'Campaign'],
                 ['adsetName', 'Adset Name'],
@@ -2380,6 +2554,15 @@
             }
         }
 
+        // Asset URLs are required only when no folder URL was provided.
+        if (!($('assetFolder') && $('assetFolder').value.trim())) {
+            required.push(
+                ['assetHorizontal', 'Horizontal Asset'],
+                ['assetVertical', 'Vertical Asset'],
+                ['assetSquare', 'Square Asset'],
+            );
+        }
+
         if (!META_ACCESS_TOKEN || !META_APPSECRET_PROOF) {
             alert('Please configure Meta API credentials in the Settings panel first.');
             return false;
@@ -2390,6 +2573,7 @@
         const missing = [];
         for (const [id, label] of required) {
             const el = $(id);
+            if (!el) continue;
             const val = el.tagName === 'SELECT' ? el.value : el.value.trim();
             if (!val) {
                 el.classList.add('invalid');
@@ -2721,11 +2905,12 @@
                         if (!driveUrls[size]) continue;
                         const logId = addLogEntry(`Uploading ${size} video via URL...`, 'pending');
                         try {
-                            const videoId = await uploadVideoByUrl(driveUrls[size], `${videoTitle} (${size})`);
-                            assets[size] = { videoId };
-                            updateLogEntry(logId, `${size} video uploaded (${videoId}), polling...`, 'success');
+                            const uploaded = await uploadVideoByUrl(driveUrls[size], `${videoTitle} (${size})`);
+                            assets[size] = { videoId: uploaded.videoId };
+                            if (uploaded.pictureUrl) assets[size].thumbnailUrl = uploaded.pictureUrl;
+                            updateLogEntry(logId, `${size} video uploaded (${uploaded.videoId}), polling...`, 'success');
                             const pollLogId = addLogEntry(`Polling ${size} video status...`, 'pending');
-                            const ready = await pollVideoStatus(videoId);
+                            const ready = await pollVideoStatus(uploaded.videoId);
                             updateLogEntry(pollLogId, ready ? `${size} video ready` : `${size} video may still be processing`, ready ? 'success' : 'info');
                         } catch (err) {
                             updateLogEntry(logId, `${size} video failed: ${err.message}`, 'error');
@@ -2754,7 +2939,7 @@
 
             const adsetLogId = addLogEntry('Creating adset...', 'pending');
             const adsetParams = {
-                name: config.adset_name,
+                name: safeAdsetName,
                 campaign_id: config.campaign_id,
                 status: config.adset_status || 'PAUSED',
                 billing_event: config.billing_event || 'IMPRESSIONS',
@@ -2801,22 +2986,65 @@
             // ------------------------------------------------------------------
             const creativeLogId = addLogEntry('Creating ad creative...', 'pending');
 
-            // When using asset_customization_rules with multiple texts, each text needs
-            // an adlabel and each rule needs body_label/title_label/link_url_label
+            const firstNonEmpty = (...values) => {
+                for (const value of values) {
+                    const text = String(value == null ? '' : value).trim();
+                    if (text) return text;
+                }
+                return '';
+            };
+            const safeAdsetName = firstNonEmpty(config.adset_name, config.creative_name, config.ad_name, 'Univest Adset');
+            const safeCreativeName = firstNonEmpty(config.creative_name, config.ad_name, config.adset_name, 'Univest Creative');
+            const safeAdName = firstNonEmpty(config.ad_name, config.creative_name, config.adset_name, 'Univest Ad');
+            const safePrimaryText = firstNonEmpty(
+                config.primary_text,
+                config.body_text,
+                config.headline,
+                config.description,
+                safeCreativeName,
+                safeAdName,
+                'SEBI-registered financial advisory support from Univest'
+            );
+            const safeHeadline = firstNonEmpty(config.headline, config.title_text, safeCreativeName, safeAdName, 'Univest');
+            const safeDescription = firstNonEmpty(config.description, config.description_text, safePrimaryText.split(/[.!?]/)[0], safeCreativeName);
+            const safeLinkUrl = firstNonEmpty(config.link_url, config.object_store_url);
+
+            // Split text variants so Meta can expose them as separate boxes/options.
             const sharedLabel = [{ name: 'all_placements' }];
-            const bodies = (config.primary_text || '').split('|').map(s => s.trim()).filter(Boolean).map(t => ({ text: t, adlabels: sharedLabel }));
-            const titles = (config.headline || '').split('|').map(s => s.trim()).filter(Boolean).map(t => ({ text: t, adlabels: sharedLabel }));
-            const descs = (config.description || '').split('|').map(s => s.trim()).filter(Boolean).map(t => ({ text: t, adlabels: sharedLabel }));
+            const textLabel = { name: 'all_placements' };
+            const parseCreativeTextVariants = (value) => String(value || '').split(/\s*(?:\||\n|\r\n)+\s*/g).map(s => s.trim()).filter(Boolean);
+            const bodies = parseCreativeTextVariants(safePrimaryText).map(t => ({ text: t, adlabels: sharedLabel }));
+            const titles = parseCreativeTextVariants(safeHeadline).map(t => ({ text: t, adlabels: sharedLabel }));
+            const descs = parseCreativeTextVariants(safeDescription).map(t => ({ text: t, adlabels: sharedLabel }));
             if (bodies.length === 0) bodies.push({ text: '', adlabels: sharedLabel });
             if (titles.length === 0) titles.push({ text: '', adlabels: sharedLabel });
             if (descs.length === 0) descs.push({ text: '', adlabels: sharedLabel });
-            const textLabel = { name: 'all_placements' };
-            const ctaType = config.cta || 'SUBSCRIBE';
-            const feedLinkUrl = storeUrl || linkUrl;
+            const ctaRaw = String(config.cta || 'SUBSCRIBE').trim().toUpperCase().replace(/\s+/g, '_');
+            const ctaType = ({
+                SIGNUP: 'SIGN_UP',
+                SIGN_UP: 'SIGN_UP',
+                LEARNMORE: 'LEARN_MORE',
+                LEARN_MORE: 'LEARN_MORE',
+                SHOPNOW: 'SHOP_NOW',
+                SHOP_NOW: 'SHOP_NOW',
+                APPLYNOW: 'APPLY_NOW',
+                APPLY_NOW: 'APPLY_NOW',
+                SUBSCRIBE: 'SUBSCRIBE',
+            })[ctaRaw] || 'SUBSCRIBE';
+            const feedLinkUrl = storeUrl || (linkUrl && /^https?:\/\//i.test(linkUrl) ? linkUrl : safeLinkUrl);
+            const deepLinkUrl = linkUrl && !/^https?:\/\//i.test(linkUrl) ? linkUrl : '';
             const pageId = config.page_id || DEFAULT_PAGE_ID;
+            if (!feedLinkUrl) {
+                throw new Error('Missing object_store_url or link_url after sheet enrichment. Re-open the row so Meta store URL can be populated.');
+            }
+            const primaryVideo = assets.square?.videoId ? assets.square : (assets.vertical?.videoId ? assets.vertical : assets.horizontal?.videoId ? assets.horizontal : null);
+            const primaryImage = assets.square?.imageHash ? assets.square : (assets.vertical?.imageHash ? assets.vertical : assets.horizontal?.imageHash ? assets.horizontal : null);
+            const videoPreviewImage = primaryVideo?.thumbnailHash || primaryVideo?.thumbnailUrl || primaryImage?.imageHash || '';
 
             try {
-                const creativeParams = { name: config.creative_name || `${config.adset_name} Creative` };
+                const creativeParams = { name: safeCreativeName };
+                const assetLink = { website_url: feedLinkUrl, display_url: '', adlabels: sharedLabel };
+                if (deepLinkUrl) assetLink.deeplink_url = deepLinkUrl;
 
                 if (assetType === 'video') {
                     const videos = [];
@@ -2835,9 +3063,7 @@
                         if (assets.square.thumbnailHash) entry.thumbnail_hash = assets.square.thumbnailHash;
                         videos.push(entry);
                     }
-
-                    const vidLinkUrl = { website_url: feedLinkUrl, display_url: '', adlabels: sharedLabel };
-                    if (linkUrl && linkUrl !== feedLinkUrl) vidLinkUrl.deeplink_url = linkUrl;
+                    if (!videos.length) throw new Error('No usable video asset was uploaded for this creative.');
 
                     const vidFeedSpec = {
                         videos,
@@ -2846,8 +3072,7 @@
                         titles,
                         descriptions: descs,
                         call_to_action_types: [ctaType],
-                        link_urls: [vidLinkUrl],
-                        optimization_type: 'PLACEMENT',
+                        link_urls: [assetLink],
                         asset_customization_rules: [
                             {
                                 customization_spec: { publisher_platforms: ['facebook', 'instagram'], facebook_positions: ['story', 'facebook_reels'], instagram_positions: ['story', 'reels', 'profile_reels', 'ig_search'] },
@@ -2868,10 +3093,10 @@
                                 priority: 3,
                             },
                         ],
+                        optimization_type: 'PLACEMENT',
                     };
                     creativeParams.asset_feed_spec = JSON.stringify(vidFeedSpec);
                 } else {
-                    // Image creative
                     const images = [];
                     if (assets.horizontal && assets.horizontal.imageHash) {
                         images.push({ hash: assets.horizontal.imageHash, adlabels: [{ name: 'horizontal' }] });
@@ -2882,9 +3107,7 @@
                     if (assets.square && assets.square.imageHash) {
                         images.push({ hash: assets.square.imageHash, adlabels: [{ name: 'square' }] });
                     }
-
-                    const imgLinkUrl = { website_url: feedLinkUrl, display_url: '', adlabels: sharedLabel };
-                    if (linkUrl && linkUrl !== feedLinkUrl) imgLinkUrl.deeplink_url = linkUrl;
+                    if (!images.length) throw new Error('No usable image asset was uploaded for this creative.');
 
                     const imgFeedSpec = {
                         images,
@@ -2893,8 +3116,7 @@
                         titles,
                         descriptions: descs,
                         call_to_action_types: [ctaType],
-                        link_urls: [imgLinkUrl],
-                        optimization_type: 'PLACEMENT',
+                        link_urls: [assetLink],
                         asset_customization_rules: [
                             {
                                 customization_spec: { publisher_platforms: ['facebook', 'instagram'], facebook_positions: ['story', 'facebook_reels'], instagram_positions: ['story', 'reels', 'profile_reels', 'ig_search'] },
@@ -2915,16 +3137,13 @@
                                 priority: 3,
                             },
                         ],
+                        optimization_type: 'PLACEMENT',
                     };
                     creativeParams.asset_feed_spec = JSON.stringify(imgFeedSpec);
                 }
 
-                // Object story spec with page and instagram actor
-                if (pageId) {
-                    const storySpec = { page_id: pageId };
-                    storySpec.instagram_user_id = DEFAULT_INSTAGRAM_ACTOR_ID;
-                    creativeParams.object_story_spec = JSON.stringify(storySpec);
-                }
+                const objectStorySpec = { page_id: pageId, instagram_user_id: DEFAULT_INSTAGRAM_ACTOR_ID };
+                creativeParams.object_story_spec = JSON.stringify(objectStorySpec);
 
                 const creativeData = await metaPost(`/${META_AD_ACCOUNT_ID}/adcreatives`, creativeParams);
                 creativeId = creativeData.id;
@@ -2941,12 +3160,11 @@
 
             try {
                 const adParams = {
-                    name: config.ad_name || `${config.adset_name} Ad`,
+                    name: safeAdName,
                     adset_id: adsetId,
                     creative: JSON.stringify({ creative_id: creativeId }),
                     status: config.ad_status || 'PAUSED',
                 };
-
                 if (config.app_id) {
                     adParams.tracking_specs = JSON.stringify([{
                         'action.type': ['mobile_app_install'],
@@ -3002,7 +3220,7 @@
 
     // Override browser-side orchestration with a single server-side pipeline call.
     // This avoids long-running asset-upload fetch chains in the browser.
-    executeSingleRow = async function (config, sheetRowIndex, sheetTabName, existingAdsetId) {
+    window.executeSingleRowServer = async function (config, sheetRowIndex, sheetTabName, existingAdsetId) {
         const payload = {
             ...config,
             existing_adset_id: existingAdsetId || config.existing_adset_id || config.adset_id || null,
@@ -3116,9 +3334,11 @@
                         await executeCampaignRow(config, rowIdx + 2, sheetTabName);
                         successCount++;
                     } else {
-                        selectRow(rowIdx);
-                        await new Promise(r => setTimeout(r, 300));
-                        const config = collectFormData();
+                        await selectRow(rowIdx);
+                        if (!validate()) {
+                            throw new Error('Row is missing required fields after sheet population. Check highlighted inputs.');
+                        }
+                        const config = buildExecutionConfigFromSheetRow(row);
                         for (const key of Object.keys(config)) {
                             if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
                         }
@@ -3168,13 +3388,21 @@
             }
         } else {
             // Ad mode — single row
-            const config = collectFormData();
             const sheetRowIndex = selectedSheetRowIndex != null ? selectedSheetRowIndex + 2 : null;
             addLogEntry('Starting ad creation pipeline...', 'info');
-            for (const key of Object.keys(config)) {
-                if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
-            }
             try {
+                if (selectedSheetRowIndex != null && sheetRows[selectedSheetRowIndex]) {
+                    await selectRow(selectedSheetRowIndex);
+                }
+                if (!validate()) {
+                    throw new Error('Row is missing required fields after sheet population. Check highlighted inputs.');
+                }
+                const config = buildExecutionConfigFromSheetRow(
+                    selectedSheetRowIndex != null ? sheetRows[selectedSheetRowIndex] : null
+                );
+                for (const key of Object.keys(config)) {
+                    if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
+                }
                 const existingAdsetId = config.existing_adset_id || null;
                 await executeSingleRow(config, sheetRowIndex, sheetTabName, existingAdsetId);
             } catch (err) {

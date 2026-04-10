@@ -308,6 +308,23 @@
         var regenBtn = document.getElementById('ciRegenerate');
         var statusEl = document.getElementById('ciAnalysisStatus');
         var resultsContainer = document.getElementById('ciResultsContainer');
+        var lastPortalSignature = '';
+
+        function portalSignature(ctx) {
+            ctx = ctx || (window.getPortalAssistantContext ? window.getPortalAssistantContext() : null) || {};
+            var range = ctx.dateRange || {};
+            var diag = ctx.diagnostics || {};
+            return [
+                ctx.app || 'meta',
+                ctx.view || 'intelligence',
+                range.since || '',
+                range.until || '',
+                range.label || '',
+                diag.source || '',
+                diag.matchedKeys || 0,
+                diag.unmatchedKeys || 0
+            ].join('::');
+        }
 
         function runAnalysis(forceRefresh) {
             // Check data
@@ -335,7 +352,7 @@
             window.callAI(
                 SYSTEM_PROMPT,
                 userPrompt,
-                'intelligence_v2',
+                window.getAIViewCacheKey ? window.getAIViewCacheKey('intelligence_v2') : 'intelligence_v2',
                 function(parsed, el) {
                     renderIntelligence(parsed, el || resultsContainer);
                     runBtn.disabled = false;
@@ -349,15 +366,29 @@
             );
         }
 
+        window.ciRunAnalysis = runAnalysis;
+
         runBtn.addEventListener('click', function() { runAnalysis(false); });
         regenBtn.addEventListener('click', function() {
-            if (window.AI_CACHE) window.AI_CACHE.clear('intelligence_v2');
+            if (window.AI_CACHE) window.AI_CACHE.clear(window.getAIViewCacheKey ? window.getAIViewCacheKey('intelligence_v2') : 'intelligence_v2');
             runAnalysis(true);
+        });
+
+        window.addEventListener('portal-data-updated', function() {
+            var view = document.getElementById('intelligenceView');
+            var ctx = window.getPortalAssistantContext ? window.getPortalAssistantContext() : null;
+            var signature = portalSignature(ctx);
+            if (signature === lastPortalSignature) return;
+            lastPortalSignature = signature;
+            if (view && view.classList.contains('active')) {
+                if (window.AI_CACHE) window.AI_CACHE.clear(window.getAIViewCacheKey ? window.getAIViewCacheKey('intelligence_v2') : 'intelligence_v2');
+                runAnalysis(true);
+            }
         });
 
         // Auto-render from cache if available
         if (window.AI_CACHE) {
-            var cached = window.AI_CACHE.get('intelligence_v2');
+            var cached = window.AI_CACHE.get(window.getAIViewCacheKey ? window.getAIViewCacheKey('intelligence_v2') : 'intelligence_v2');
             if (cached) {
                 renderIntelligence(cached, resultsContainer);
                 regenBtn.style.display = '';

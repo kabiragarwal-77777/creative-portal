@@ -2,7 +2,7 @@
     'use strict';
     window.ATMeta = window.ATMeta || {};
 
-    var _data = { flags: [], patterns: [], recommendations: [], adsets: [] };
+    var _data = { flags: [], patterns: [], recommendations: [], adsets: [], summary: null, brain: null, brainFeedback: '' };
     var _recTab = 'tests';
     var _sortCol = 'total_spend';
     var _sortDir = 'desc';
@@ -17,10 +17,11 @@
 
         // Load all data in parallel
         try {
-            await Promise.all([loadFlags(), loadPatterns(), loadRecommendations(), loadAdsets()]);
+            await Promise.all([loadFlags(), loadPatterns(), loadRecommendations(), loadAdsets(), loadSummary()]);
         } catch(e) { console.error('[ATMeta] data load error:', e); }
 
         renderAll();
+        loadBrain();
 
         // If completely empty, show a helpful empty state at top
         if (!_data.adsets.length && !_data.patterns.length && !_data.recommendations.tests?.length) {
@@ -36,8 +37,9 @@
     };
 
     ATMeta.refresh = async function() {
-        await Promise.all([loadFlags(), loadPatterns(), loadRecommendations(), loadAdsets()]);
+        await Promise.all([loadFlags(), loadPatterns(), loadRecommendations(), loadAdsets(), loadSummary()]);
         renderAll();
+        loadBrain();
     };
 
     function buildLayout() {
@@ -47,6 +49,12 @@
                 '<div class="at-section-title">Live Health Monitor</div>' +
                 '<div id="atMetaFlagsSummary" class="at-flags-strip"></div>' +
                 '<div id="atMetaFlags" class="at-flags-strip" style="margin-top:8px"></div>' +
+            '</div>' +
+
+            '<div class="at-section">' +
+                '<div class="at-section-title">Audience Strategy</div>' +
+                '<div id="atMetaBrain" class="at-insights-grid" style="margin-bottom:16px"></div>' +
+                '<div id="atMetaSummary" class="at-insights-grid"></div>' +
             '</div>' +
 
             '<!-- Section 2: Audience Intelligence -->' +
@@ -79,14 +87,96 @@
 
     async function loadFlags() { var r = await AT.api('/live/flags?platform=meta'); if (r.success) _data.flags = r.data || []; }
     async function loadPatterns() { var r = await AT.api('/patterns/meta'); if (r.success) _data.patterns = r.data || []; }
+    async function loadSummary() {
+        try {
+            var r = await AT.api('/audience/summary?platform=meta');
+            if (r.success && r.data) {
+                _data.summary = r.data;
+                return;
+            }
+        } catch (e) {}
+        _data.summary = buildLocalSummary();
+    }
     async function loadRecommendations() {
         var testsR = await AT.api('/recommendations/tests?platform=meta');
         var optsR = await AT.api('/recommendations/optimizations?platform=meta');
         _data.recommendations = { tests: (testsR.success ? testsR.data : []) || [], optimizations: (optsR.success ? optsR.data : []) || [] };
     }
     async function loadAdsets() { var r = await AT.api('/meta/adsets'); if (r.success) _data.adsets = r.data || []; }
+    function getBrainRequestScope() {
+        return { audience_only: true, minimum_test_spend: 20000, portal: 'meta' };
+    }
 
-    function renderAll() { renderFlags(); renderInsights(); renderCharts(); renderRecFilters(); renderRecs(); renderExplorer(); }
+    function getBrainRecommendationsSnapshot() {
+        var tests = (_data.recommendations && _data.recommendations.tests ? _data.recommendations.tests : []).slice(0, 6);
+        var opts = (_data.recommendations && _data.recommendations.optimizations ? _data.recommendations.optimizations : []).slice(0, 6);
+        return tests.concat(opts).map(function(r) {
+            return {
+                id: r.id,
+                title: r.title || '',
+                rec_type: r.rec_type || '',
+                priority: r.priority || '',
+                urgency: r.urgency || '',
+                action_type: r.action_type || '',
+                rationale: r.rationale || r.hypothesis || '',
+                specific_change: r.specific_change || '',
+                vertical: r.vertical || ''
+            };
+        });
+    }
+
+    async function loadBrain(feedback) {
+        _data.brain = { loading: true };
+        renderBrain();
+        try {
+            var r = await AT.apiPost('/audience/brain', {
+                platform: 'meta',
+                user_request: 'Optimizer-level audience insights and actions',
+                feedback: feedback || '',
+                request_scope: getBrainRequestScope(),
+                current_recommendations: getBrainRecommendationsSnapshot()
+            });
+            if (r && r.success && r.optimizer_plan) {
+                _data.brain = r;
+                _data.brainFeedback = feedback || '';
+                renderBrain();
+                return;
+            }
+        } catch (e) {}
+        _data.brain = null;
+        renderBrain();
+    }
+
+    ATMeta.loadBrain = loadBrain;
+
+    function renderAll() { renderFlags(); renderBrain(); renderSummary(); renderInsights(); renderCharts(); renderRecFilters(); renderRecs(); renderExplorer(); }
+
+    function getPortalDateLabel() {
+        var ctx = window.getPortalAssistantContext ? window.getPortalAssistantContext() : null;
+        var range = ctx && ctx.dateRange ? ctx.dateRange : null;
+        if (range && range.label) return range.label;
+        if (range && range.since && range.until) return range.since + ' → ' + range.until;
+        return 'Selected scan window';
+    }
+
+    function getSourceLabel() {
+        return 'Meta + Metabase';
+    }
+
+    function getCardMeta(item, kind) {
+        var spend = Number(item && (item.spend != null ? item.spend : item.total_spend));
+        var maturity = item && item.maturity_label ? item.maturity_label :
+            (kind === 'patterns' || kind === 'tests' ? 'Mature' : (spend >= 20000 ? 'Mature' : 'Immature'));
+        var sanity = item && item.sanity_status ? item.sanity_status :
+            (kind === 'patterns' || kind === 'tests' ? 'PASS' : ((spend > 0 && ((item.d6_roas || item.d6_cac || item.conversions || item.sample_conversions || 0) > 0)) ? 'PASS' : 'WATCH'));
+        return {
+            source: item && item.source_label ? item.source_label : getSourceLabel(),
+            date: item && item.date_label ? item.date_label : (kind === 'patterns' ? 'Historical pattern library' : getPortalDateLabel()),
+            maturity: maturity,
+            sanity: sanity,
+            detail: item && item.sanity_detail ? item.sanity_detail : (sanity === 'PASS' ? 'Source + metrics aligned' : 'Needs source/metric review')
+        };
+    }
 
     // ── Flags ──
     function renderFlags() {
@@ -112,6 +202,289 @@
                 '<div class="at-flag-card-title">' + AT.esc(f.flag_type || f.flag) + ': ' + AT.esc(f.adset_name) + '</div>' +
                 '<div class="at-flag-card-msg">' + AT.esc(f.message) + '</div></div>';
         }).join('');
+    }
+
+    function renderBrain() {
+        var container = document.getElementById('atMetaBrain');
+        if (!container) return;
+        var brain = _data.brain && _data.brain.optimizer_plan ? _data.brain.optimizer_plan : null;
+        if (_data.brain && _data.brain.loading) {
+            container.innerHTML = '<div class="at-insight-panel"><h3>Audience Brain</h3><div class="at-empty-sub" style="padding:20px">Building optimizer-level audience actions...</div></div>';
+            return;
+        }
+        if (!brain) {
+            container.innerHTML = '<div class="at-insight-panel"><h3>Audience Brain</h3><div class="at-empty-sub" style="padding:20px">Run the brain to get optimizer-level audience actions.</div><textarea id="atMetaBrainFeedback" placeholder="Add feedback if the answer is too vague or not actionable..." style="width:100%;min-height:72px;margin-top:10px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;font-size:12px"></textarea><button class="at-scan-btn" style="margin-top:10px" onclick="ATMeta.loadBrain((document.getElementById(\'atMetaBrainFeedback\') || {}).value || \'\')">Generate Brain</button></div>';
+            return;
+        }
+        var actions = Array.isArray(brain.audience_actions) ? brain.audience_actions : [];
+        container.innerHTML = '<div class="at-insight-panel"><h3>Audience Brain</h3>' +
+            '<div class="at-sweet-spot"><div class="at-sweet-spot-label">Executive Summary</div><div class="at-sweet-spot-value">' + AT.esc(brain.executive_summary || brain.operator_answer || '--') + '</div></div>' +
+            (brain.morning_brief && Array.isArray(brain.morning_brief.what_to_do_right_now) && brain.morning_brief.what_to_do_right_now.length ? '<div style="margin-top:12px;font-size:11px;color:var(--text-dim)">Do now: ' + AT.esc(brain.morning_brief.what_to_do_right_now.join(' • ')) + '</div>' : '') +
+            (brain.morning_brief && Array.isArray(brain.morning_brief.what_to_leave_alone) && brain.morning_brief.what_to_leave_alone.length ? '<div style="margin-top:6px;font-size:11px;color:var(--text-dim)">Leave alone: ' + AT.esc(brain.morning_brief.what_to_leave_alone.join(' • ')) + '</div>' : '') +
+            (brain.diagnostics ? '<div style="margin-top:12px;font-size:10px;color:var(--text-dim)"><b>Diagnostics</b> ' +
+                ['broad_vs_narrow','overlap_risk','saturation_risk','quality_vs_volume_tradeoff','creative_fit_issues','funnel_fit_issues'].map(function(k) {
+                    return brain.diagnostics[k] && brain.diagnostics[k].length ? k.replace(/_/g, ' ') + ': ' + brain.diagnostics[k].join(' • ') : '';
+                }).filter(Boolean).join(' | ') +
+            '</div>' : '') +
+            (brain.roadmap ? '<div style="margin-top:12px;font-size:10px;color:var(--text-dim)"><b>Roadmap</b> ' +
+                ['immediate_actions','this_week','next_test_cycle'].map(function(k) {
+                    return brain.roadmap[k] && brain.roadmap[k].length ? k.replace(/_/g, ' ') + ': ' + brain.roadmap[k].join(' • ') : '';
+                }).filter(Boolean).join(' | ') +
+            '</div>' : '') +
+            (brain.feedback_used ? '<div style="margin-top:6px;font-size:10px;color:var(--text-dim)">Feedback loop: ' + AT.esc(brain.feedback_used) + '</div>' : '') +
+            '<textarea id="atMetaBrainFeedback" placeholder="Add feedback if the answer is too vague or not actionable..." style="width:100%;min-height:72px;margin-top:10px;background:var(--panel-2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:10px;font-size:12px">' + AT.esc(_data.brainFeedback || '') + '</textarea><button class="at-scan-btn" style="margin-top:10px" onclick="ATMeta.loadBrain((document.getElementById(\'atMetaBrainFeedback\') || {}).value || \'\')">Refine with Feedback</button></div>' +
+            (actions.length ? '<div class="at-insight-panel"><h3>Audience Actions</h3>' + actions.slice(0, 5).map(function(a) {
+                return '<div class="at-insight-item" style="align-items:flex-start;gap:10px"><div style="flex:1;min-width:0"><div class="at-insight-name">' + AT.esc((a.action_type || 'ACTION') + ': ' + (a.audience_label || a.adset_name || a.entity_name || '--')) + '</div><div style="font-size:10px;color:var(--text-dim);margin-top:4px;">' + AT.esc((a.audience_bucket || '--') + ' | ' + (a.intent_cluster || '--') + ' | ' + (a.strategic_role || '--')) + '</div><div style="font-size:10px;color:var(--text-dim);margin-top:2px;">' + AT.esc('Quality: ' + (a.quality_score != null ? a.quality_score : '--') + ' | ' + (a.quality_tier || '--') + ' | Overlap: ' + (a.overlap_risk || '--') + ' | Fragmentation: ' + (a.fragmentation_risk || '--')) + '</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">' + AT.esc(a.diagnosis || '') + '</div><div style="font-size:11px;color:var(--accent);margin-top:4px;">' + AT.esc(a.action_detail || '') + '</div><div style="font-size:11px;color:var(--accent);margin-top:4px;">Change: ' + AT.esc(a.what_to_change || '--') + ' | Why: ' + AT.esc(a.why_this_change || '--') + '</div><div style="font-size:10px;color:var(--text-dim);margin-top:4px;">Impact: ' + AT.esc(a.expected_impact || '--') + ' | Risk: ' + AT.esc(a.risk || '--') + ' | Metric: ' + AT.esc(a.success_metric || '--') + '</div><div style="font-size:10px;color:var(--text-dim);margin-top:4px;">Source: ' + AT.esc(a.source_label || getSourceLabel()) + ' | Data: ' + AT.esc(a.date_label || getPortalDateLabel()) + ' | ' + AT.esc(a.maturity_label || 'Mature') + ' | Sanity: ' + AT.esc(a.sanity_status || 'WATCH') + (a.sanity_detail ? ' | ' + AT.esc(a.sanity_detail) : '') + (a.sample_count != null ? ' | Based on ' + AT.esc(a.sample_count) + ' adsets' : '') + '</div></div><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;white-space:nowrap">' + (a.confidence ? '<span class="at-confidence ' + String(a.confidence).toLowerCase() + '">' + AT.esc(a.confidence) + '</span>' : '') + '</div></div>';
+            }).join('') + '</div>' : '');
+    }
+
+    function renderSummary() {
+        var container = document.getElementById('atMetaSummary');
+        if (!container) return;
+
+        var summary = _data.summary || {};
+        var winners = summary.best_audiences || [];
+        var losers = summary.weak_audiences || [];
+        var tests = summary.test_ideas || [];
+        var formulas = summary.learned_formulas || [];
+        var families = summary.family_signals || [];
+
+        function panel(title, items, emptyText, toneClass, kind) {
+            var html = '<div class="at-insight-panel"><h3>' + AT.esc(title) + '</h3>';
+            if (!items.length) {
+                html += '<div class="at-empty-sub" style="padding:20px">' + AT.esc(emptyText) + '</div>';
+            } else {
+                html += items.slice(0, 3).map(function(item) {
+                    var meta = getCardMeta(item, kind);
+                    var exactLabel = item.exact_bucket_label || (item.exact_bucket_id ? ((item.label || item.title || '--') + ' [' + item.exact_bucket_id + ']') : '');
+                    return '<div class="at-insight-item" style="align-items:flex-start;gap:10px">' +
+                        '<div style="flex:1;min-width:0">' +
+                            '<div class="at-insight-name">' + AT.esc(exactLabel || item.label || item.title || '--') + '</div>' +
+                            (item.audience_lineage ? '<div style="font-size:10px;color:var(--text-dim);margin-top:3px;">' + AT.esc(item.audience_lineage) + '</div>' : '') +
+                            '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">' + AT.esc(item.reason || ('Spend ' + AT.fmtINR(item.spend || 0))) + '</div>' +
+                            (item.action ? '<div style="font-size:11px;color:var(--accent);margin-top:4px;">' + AT.esc(item.action) + '</div>' : '') +
+                            '<div style="font-size:10px;color:var(--text-dim);margin-top:4px;">' + AT.esc((item.audience_bucket || '--') + ' | ' + (item.intent_cluster || '--') + ' | ' + (item.strategic_role || '--')) + '</div>' +
+                            '<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">' + AT.esc('Quality: ' + (item.quality_score != null ? item.quality_score : '--') + ' | ' + (item.quality_tier || '--') + ' | Overlap: ' + (item.overlap_risk || '--') + ' | Fragmentation: ' + (item.fragmentation_risk || '--')) + '</div>' +
+                            (item.members && item.members.length ? '<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Used in: ' + AT.esc(item.members.slice(0, 2).join(' • ')) + '</div>' : '') +
+                            (Array.isArray(item.merge_candidates) && item.merge_candidates.length ? '<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Merge with: ' + AT.esc(item.merge_candidates.slice(0, 2).join(' • ')) + '</div>' : '') +
+                            '<div style="font-size:10px;color:var(--text-dim);margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">' +
+                                '<span>Source: ' + AT.esc(meta.source) + '</span>' +
+                                '<span>Data: ' + AT.esc(meta.date) + '</span>' +
+                                '<span>' + AT.esc(meta.maturity) + '</span>' +
+                                '<span>Sanity: ' + AT.esc(meta.sanity) + '</span>' +
+                                (item.sample_count ? '<span>Based on ' + AT.esc(item.sample_count) + ' adsets</span>' : '') +
+                            '</div>' +
+                            (meta.detail ? '<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">' + AT.esc(meta.detail) + '</div>' : '') +
+                        '</div>' +
+                        '<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;white-space:nowrap">' +
+                            (item.d6_cac ? '<span class="at-insight-metric ' + toneClass + '">' + AT.fmtINR(item.d6_cac) + '</span>' : '') +
+                            (item.d6_roas ? '<span class="at-insight-metric" style="color:var(--teal)">' + AT.fmtROAS(item.d6_roas) + '</span>' : '') +
+                            (item.conversions != null ? AT.confidenceBadge(item.conversions) : '') +
+                        '</div>' +
+                    '</div>';
+                }).join('');
+            }
+            html += '</div>';
+            return html;
+        }
+
+        var concentrationHtml = '';
+        if (summary.spend_concentration && summary.spend_concentration >= 0.9 && summary.dominant_audience) {
+            concentrationHtml = '<div class="at-insight-panel"><h3>Spend Concentration</h3>' +
+                '<div class="at-empty-sub" style="padding:20px">' + AT.esc((summary.dominant_audience.exact_bucket_label || summary.dominant_audience.audience || '--') + ' owns ' + Math.round(summary.spend_concentration * 100) + '% of spend. Use adjacent audience tests, not the same bucket again.') + '</div>' +
+            '</div>';
+        }
+
+        container.innerHTML =
+            concentrationHtml +
+            (families.length ? '<div class="at-insight-panel"><h3>Exact Audience Buckets Used</h3>' +
+                families.slice(0, 4).map(function(f) {
+                    return '<div class="at-insight-item"><span class="at-insight-name">' + AT.esc(f.label || f.key || '--') + '</span>' +
+                        '<div style="font-size:10px;color:var(--text-dim);margin-top:4px;">Bucket: ' + AT.esc(f.key || '--') + ' | Count: ' + AT.esc(f.count != null ? f.count : '--') + ' | Spend: ' + AT.fmtINR(f.spend || 0) + ' | Overlap: ' + AT.esc(f.overlap_risk || '--') + ' | Fragmentation: ' + AT.esc(f.fragmentation_risk || '--') + '</div>' +
+                        (Array.isArray(f.merge_candidates) && f.merge_candidates.length ? '<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Members: ' + AT.esc(f.merge_candidates.slice(0, 3).join(' • ')) + '</div>' : '') +
+                    '</div>';
+                }).join('') + '</div>' : '') +
+            panel('What Worked Best', winners, 'No strong pockets yet. Run scan and learning to build winners.', 'good', 'winners') +
+            panel('What Is Weak', losers, 'No weak pockets found yet.', 'bad', 'losers') +
+            panel('New Tests To Try', tests, 'No test ideas yet.', 'good', 'tests');
+
+        if (formulas.length) {
+            container.insertAdjacentHTML('beforeend',
+                '<div class="at-insight-panel"><h3>Winning Formula Library</h3>' +
+                formulas.slice(0, 4).map(function(p) {
+                var meta = getCardMeta({ source_label: getSourceLabel(), date_label: 'Historical pattern library', maturity_label: 'Mature', sanity_status: 'PASS' }, 'patterns');
+                return '<div class="at-insight-item">' +
+                    '<span class="at-insight-name">' + AT.esc(p.pattern_key) + '</span>' +
+                    '<span class="at-insight-metric good">' + AT.fmtINR(p.avg_d6_cac) + '</span>' +
+                    '<span class="at-insight-metric" style="color:var(--teal)">' + AT.fmtROAS(p.avg_d6_roas) + '</span>' +
+                        AT.confidenceBadge(p.sample_conversions) +
+                        '<div style="font-size:10px;color:var(--text-dim);margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">' +
+                            '<span>Source: ' + AT.esc(meta.source) + '</span>' +
+                            '<span>Data: ' + AT.esc(meta.date) + '</span>' +
+                            '<span>' + AT.esc(meta.maturity) + '</span>' +
+                            '<span>Sanity: ' + AT.esc(meta.sanity) + '</span>' +
+                        '</div></div>';
+                }).join('') + '</div>');
+        }
+    }
+
+    function buildLocalSummary() {
+        var rows = (_data.adsets || []).slice().filter(function(a) { return (a.total_spend || 0) >= 20000; });
+        var patterns = (_data.patterns || []).filter(function(p) { return p.pattern_type === 'top_combo'; }).slice().sort(function(a, b) {
+            var roas = (b.avg_d6_roas || 0) - (a.avg_d6_roas || 0);
+            if (Math.abs(roas) > 0.0001) return roas;
+            return (a.avg_d6_cac || 0) - (b.avg_d6_cac || 0);
+        });
+        var flags = _data.flags || [];
+        function audienceLabel(a) {
+            var lookalikes = JSON.parse(a.lookalike_audiences_json || '[]');
+            var customs = JSON.parse(a.custom_audiences_json || '[]');
+            var interests = JSON.parse(a.interests_json || '[]');
+            var geo = JSON.parse(a.geo_locations_json || '[]');
+            var genders = JSON.parse(a.genders_json || '[]');
+            var genderLabel = (!genders.length || (genders.indexOf(1) >= 0 && genders.indexOf(2) >= 0)) ? 'All Genders' : (genders.indexOf(1) >= 0 ? 'Male' : 'Female');
+            var audienceKind = a.is_advantage_plus ? 'Advantage+' : (lookalikes.length ? 'Lookalike' : customs.length ? 'Custom' : interests.length ? 'Interest' : (a.is_broad ? 'Broad' : 'Targeted'));
+            return [
+                'Age ' + (a.age_min || 18) + '-' + (a.age_max || 65),
+                genderLabel,
+                geo.length ? geo.slice(0, 2).join(', ') : 'India',
+                audienceKind,
+                lookalikes[0] || customs[0] || interests[0] || null
+            ].filter(Boolean).join(' | ');
+        }
+        function exactKey(a) {
+            function norm(v) { return String(v == null ? '' : v).trim().toLowerCase(); }
+            function arr(v) { try { return JSON.parse(v || '[]') || []; } catch (e) { return []; } }
+            return JSON.stringify({
+                age_min: Number(a.age_min || 18),
+                age_max: Number(a.age_max || 65),
+                genders: arr(a.genders_json).map(norm).filter(Boolean).sort(),
+                geo_locations: arr(a.geo_locations_json).map(norm).filter(Boolean).sort(),
+                interests: arr(a.interests_json).map(norm).filter(Boolean).sort(),
+                behaviors: arr(a.behaviors_json).map(norm).filter(Boolean).sort(),
+                custom_audiences: arr(a.custom_audiences_json).map(norm).filter(Boolean).sort(),
+                lookalike_audiences: arr(a.lookalike_audiences_json).map(norm).filter(Boolean).sort(),
+                excluded_audiences: arr(a.excluded_audiences_json).map(norm).filter(Boolean).sort(),
+                device_platforms: arr(a.device_platforms_json).map(norm).filter(Boolean).sort(),
+                publisher_platforms: arr(a.publisher_platforms_json).map(norm).filter(Boolean).sort(),
+                facebook_positions: arr(a.facebook_positions_json).map(norm).filter(Boolean).sort(),
+                instagram_positions: arr(a.instagram_positions_json).map(norm).filter(Boolean).sort(),
+                is_broad: !!Number(a.is_broad),
+                is_advantage_plus: !!Number(a.is_advantage_plus)
+            });
+        }
+
+        function aggregateByAudience(items) {
+            var groups = {};
+            (items || []).forEach(function(a) {
+                var label = audienceLabel(a);
+                var lineage = [a.campaign_name || 'Unknown campaign', a.name || a.adset_name || a.entity_name || 'Unknown audience', 'Meta adset'].join(' > ');
+                var key = exactKey(a);
+                if (!groups[key]) {
+                    groups[key] = { label: label, audience: label, audience_lineage: lineage, spend: 0, d6_cac_spend: 0, d6_roas_spend: 0, conversions: 0, sample_count: 0, members: [] };
+                }
+                groups[key].spend += (a.total_spend || 0);
+                groups[key].conversions += (a.d6_conversions || a.metabase_signups || 0);
+                groups[key].d6_cac_spend += ((a.total_spend || 0) * (a.d6_conversions || a.metabase_signups || 0));
+                groups[key].d6_roas_spend += ((a.total_spend || 0) * (a.d6_roas || 0));
+                groups[key].sample_count += 1;
+                var member = a.name || a.adset_name || a.entity_name || a.campaign_name || '';
+                if (member && groups[key].members.indexOf(member) === -1) groups[key].members.push(member);
+            });
+            return Object.keys(groups).map(function(k) {
+                var g = groups[k];
+            return {
+                label: g.label,
+                audience: g.label,
+                audience_lineage: g.audience_lineage,
+                exact_bucket_id: String(k).slice(0, 10),
+                exact_bucket_label: g.label + ' [' + String(k).slice(0, 10) + ']',
+                spend: g.spend,
+                d6_cac: g.conversions > 0 ? (g.spend / g.conversions) : 0,
+                d6_roas: g.sample_count > 0 ? (g.d6_roas_spend / g.spend) : 0,
+                conversions: g.conversions,
+                sample_count: g.sample_count,
+                    members: g.members
+                };
+            }).filter(function(g) { return g.spend >= 20000; });
+        }
+
+        var grouped = aggregateByAudience(rows);
+        var totalSpend = grouped.reduce(function(sum, a) { return sum + (a.spend || 0); }, 0);
+        var dominant = grouped.slice().sort(function(a, b) { return (b.spend || 0) - (a.spend || 0); })[0] || null;
+        var spendConcentration = totalSpend > 0 && dominant ? (dominant.spend || 0) / totalSpend : 0;
+        var winners = grouped.slice().sort(function(a, b) {
+            var roas = (b.d6_roas || 0) - (a.d6_roas || 0);
+            if (Math.abs(roas) > 0.0001) return roas;
+            return (a.d6_cac || 0) - (b.d6_cac || 0);
+        }).slice(0, 5).map(function(a) {
+                return {
+                    label: a.label,
+                    audience: a.label,
+                    audience_lineage: a.audience_lineage,
+                    exact_bucket_id: a.exact_bucket_id,
+                    exact_bucket_label: a.exact_bucket_label,
+                    reason: 'Best current audience pocket by D6 CAC / D6 ROAS.',
+                    action: 'Keep the audience shape and test one new creative angle.',
+                    spend: a.spend || 0,
+                    d6_cac: a.d6_cac || 0,
+                    d6_roas: a.d6_roas || 0,
+                    conversions: a.conversions || 0,
+                    sample_count: a.sample_count || 0,
+                    members: a.members || [],
+                    source_label: 'Meta + Metabase',
+                    date_label: 'Selected scan window',
+                    maturity_label: 'Mature',
+                    sanity_status: 'PASS'
+                };
+        });
+        var losers = grouped.slice().sort(function(a, b) {
+            var convA = (a.conversions || 0) > 0 ? 0 : 1;
+            var convB = (b.conversions || 0) > 0 ? 0 : 1;
+            if (convA !== convB) return convB - convA;
+            var roas = (a.d6_roas || 0) - (b.d6_roas || 0);
+            if (Math.abs(roas) > 0.0001) return roas;
+            return (b.spend || 0) - (a.spend || 0);
+        }).slice(0, 5).map(function(a) {
+                return {
+                    label: a.label,
+                    audience: a.label,
+                    audience_lineage: a.audience_lineage,
+                    exact_bucket_id: a.exact_bucket_id,
+                    exact_bucket_label: a.exact_bucket_label,
+                    reason: 'Weak pocket with lower D6 output and spend to fix.',
+                    action: 'Pause the weakest pocket or replace it with a cleaner variant.',
+                    spend: a.spend || 0,
+                    d6_cac: a.d6_cac || 0,
+                    d6_roas: a.d6_roas || 0,
+                    conversions: a.conversions || 0,
+                    sample_count: a.sample_count || 0,
+                    members: a.members || [],
+                    source_label: 'Meta + Metabase',
+                    date_label: 'Selected scan window',
+                    maturity_label: 'Mature',
+                    sanity_status: 'PASS'
+                };
+        });
+        var tests = [];
+        if (winners[0]) tests.push({ title: 'Clone the current winner with one new creative angle', reason: winners[0].exact_bucket_label || winners[0].audience || winners[0].label, action: 'Keep the audience shape, change the hook/creative angle, and test one challenger against the winner.', conversions: winners[0].conversions, exact_bucket_id: winners[0].exact_bucket_id, exact_bucket_label: winners[0].exact_bucket_label });
+        if (patterns[0]) tests.push({ title: 'Test the winning formula on an adjacent audience slice', reason: patterns[0].pattern_key, action: 'Keep the creative theme and move to the nearest adjacent audience bucket.', conversions: patterns[0].sample_conversions || 0, exact_bucket_id: patterns[0].pattern_key ? String(patterns[0].pattern_key).slice(0, 10) : '', exact_bucket_label: patterns[0].pattern_key });
+        if (losers[0]) tests.push({ title: 'Replace the weakest live audience pocket', reason: losers[0].exact_bucket_label || losers[0].audience || losers[0].label, action: 'Pause the weakest pocket and launch a cleaner audience variant.', conversions: losers[0].conversions, exact_bucket_id: losers[0].exact_bucket_id, exact_bucket_label: losers[0].exact_bucket_label });
+        if ((flags || []).some(function(f) { return f.flag_type === 'SCALE_SIGNAL'; })) tests.push({ title: 'Scale the current scale candidate carefully', reason: 'Live scale signal is present.', action: 'Increase budget only on the scale candidate by a small step.', conversions: 30, exact_bucket_id: '', exact_bucket_label: '' });
+        return {
+            best_audiences: winners,
+            weak_audiences: losers,
+            test_ideas: tests.slice(0, 5),
+            learned_formulas: patterns.filter(function(p) { return (p.total_spend || 0) >= 20000; }).slice(0, 4),
+            spend_concentration: Math.round(spendConcentration * 1000) / 1000,
+            dominant_audience: dominant ? {
+                audience: dominant.audience || dominant.label || '--',
+                exact_bucket_id: dominant.exact_bucket_id || '',
+                exact_bucket_label: dominant.exact_bucket_label || dominant.label || dominant.audience || '--',
+                spend: dominant.spend || 0,
+                spend_share: Math.round(spendConcentration * 1000) / 1000
+            } : null
+        };
     }
 
     // ── Insights ──
@@ -239,7 +612,7 @@
         if (_recTab === 'optimizations' && _filters.urgency !== 'all') items = items.filter(function(r) { return (r.urgency || '').toLowerCase() === _filters.urgency; });
 
         if (!items.length) {
-            container.innerHTML = '<div class="at-empty"><div class="at-empty-icon">' + (_recTab === 'tests' ? '\uD83E\uDDEA' : '\u26A1') + '</div><div class="at-empty-text">No ' + _recTab + ' yet</div><div class="at-empty-sub">Generate recommendations to see actionable insights</div><button class="at-scan-btn" onclick="AT.apiPost(\'/recommendations/generate\').then(function(){ATMeta.refresh()})">Generate Recommendations</button></div>';
+            container.innerHTML = '<div class="at-empty"><div class="at-empty-icon">' + (_recTab === 'tests' ? '\uD83E\uDDEA' : '\u26A1') + '</div><div class="at-empty-text">No ' + _recTab + ' yet</div><div class="at-empty-sub">Generate brain output to see actionable insights</div><button class="at-scan-btn" onclick="AT.apiPost(\'/audience/brain\', { platform: \'meta\', user_request: \'Optimizer-level audience insights and actions\' }).then(function(){ATMeta.refresh()})">Generate Brain</button></div>';
             return;
         }
 

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ROAS Backtest Report</title>
+  <style>
+    :root { --bg:#09090f; --panel:#11111a; --panel2:#151521; --line:#2a2a3a; --text:#e9e9f6; --muted:#9ea0b7; --good:#31d07f; --warn:#ffb84d; --bad:#ff5b67; --p0:#7c6cff; --p2:#4da3ff; --p8:#ffb000; --p14:#ff5c5c; }
+    body { margin:0; font-family: Inter, Segoe UI, Arial, sans-serif; background:linear-gradient(180deg,#09090f,#07070c); color:var(--text); }
+    .wrap { max-width: 1500px; margin:0 auto; padding:24px; }
+    h1 { margin:0 0 6px; font-size:30px; }
+    .sub { color:var(--muted); margin-bottom:18px; }
+    .summary { display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:18px; }
+    .card { background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--line); border-radius:18px; padding:14px 16px; }
+    .k { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.08em; }
+    .v { font-size:26px; font-weight:700; margin-top:6px; }
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:14px; }
+    .creative { background:linear-gradient(180deg,var(--panel),#12121c); border:1px solid var(--line); border-radius:18px; padding:14px; }
+    .title { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:8px; }
+    .title h2 { font-size:16px; margin:0; }
+    .title .meta { color:var(--muted); font-size:12px; }
+    svg { width:100%; height:240px; overflow:visible; }
+    .legend { display:flex; gap:10px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin-top:6px; }
+    .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+    .foot { margin-top:18px; color:var(--muted); font-size:12px; }
+    .stage { background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:12px; padding:10px; }
+    .stage h3 { margin:0 0 8px; font-size:14px; }
+    pre { white-space:pre-wrap; word-break:break-word; margin:0; color:#d9dcff; font-size:12px; line-height:1.5; }
+    @media (max-width: 980px){ .summary,.grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ROAS Backtest Report</h1>
+    <div class="sub">11 creatives, weekly ROAS curves across D6 / D15 / D30 / D60 / D180. Open this file locally in Chrome.</div>
+    <div class="summary" id="summary"></div>
+    <div class="stage card">
+      <h3>Proxy backtest summary</h3>
+      <pre id="backtest"></pre>
+    </div>
+    <div style="height:14px"></div>
+    <div class="grid" id="grid"></div>
+    <div class="foot">Data source: tmp_roas_weekly_match.csv and tmp_roas_weekly_backtest_proxy.json. This is a local analysis artifact only; no portal data was changed.</div>
+  </div>
+  <script>
+    const DATA = {"weekly":{"FB_MOF_Baby-AI_V0_211125":[{"week_start":"2025-11-17","spend":40223.19,"D6":9.63,"D15":14.35,"D30":14.35,"D60":18.82,"D180":26.28},{"week_start":"2025-11-24","spend":155547.81,"D6":10.46,"D15":14.48,"D30":18.38,"D60":20.68,"D180":22.67},{"week_start":"2025-12-01","spend":137682.97,"D6":7.6,"D15":9.05,"D30":11.6,"D60":14.14,"D180":29.51},{"week_start":"2025-12-08","spend":144910.89,"D6":13.5,"D15":16.6,"D30":20.4,"D60":33.3,"D180":40.74},{"week_start":"2025-12-15","spend":9343.32,"D6":0,"D15":0,"D30":0,"D60":0,"D180":0}],"FB_MOF_Black-Friday-AI_V1_201125":[{"week_start":"2025-11-17","spend":28489.18,"D6":32.81,"D15":73.43,"D30":73.43,"D60":73.43,"D180":85.01},{"week_start":"2025-11-24","spend":222077.19,"D6":30.58,"D15":39.39,"D30":50.65,"D60":65.84,"D180":97.22},{"week_start":"2025-12-01","spend":1760.31,"D6":0,"D15":0,"D30":0,"D60":0,"D180":0}],"FB_MOF_Black-Friday-Fire_0_201125":[{"week_start":"2025-11-17","spend":617056.86,"D6":28.48,"D15":36.9,"D30":39.47,"D60":42.75,"D180":55.16},{"week_start":"2025-11-24","spend":811027.89,"D6":19.36,"D15":20.17,"D30":23.29,"D60":30.32,"D180":35.27}],"FB_MOF_Election-Day_V1_261125":[{"week_start":"2025-11-24","spend":34102.52,"D6":26.24,"D15":26.24,"D30":26.24,"D60":26.24,"D180":114.21}],"FB_MOF_Selfie-Girl-BlackF_0_261125":[{"week_start":"2025-11-24","spend":76656.22,"D6":4.43,"D15":7.04,"D30":12.91,"D60":12.91,"D180":41.73},{"week_start":"2025-12-01","spend":587.38,"D6":0,"D15":0,"D30":0,"D60":0,"D180":0}],"FB_MOF_Static_Performance-20th-Nov_V0_261125":[{"week_start":"2025-11-24","spend":33072.2,"D6":25.69,"D15":25.69,"D30":55.92,"D60":55.92,"D180":74.06},{"week_start":"2025-12-01","spend":21555,"D6":13.91,"D15":13.91,"D30":13.91,"D60":13.91,"D180":41.74}],"FB_MOF_Video_AS-Anchor_V0_161125":[{"week_start":"2025-11-24","spend":115753.52,"D6":7.99,"D15":9.63,"D30":9.63,"D60":11.85,"D180":13.58}],"FB_MOF_Video_AS-Sebi_V0_171125":[{"week_start":"2025-11-17","spend":100062.09,"D6":21.88,"D15":32.6,"D30":32.6,"D60":32.6,"D180":57.35},{"week_start":"2025-11-24","spend":383115.78,"D6":14.29,"D15":15.17,"D30":15.17,"D60":16.21,"D180":24.32},{"week_start":"2025-12-01","spend":187137.63,"D6":4.62,"D15":5.69,"D30":7.18,"D60":8.41,"D180":12.31},{"week_start":"2025-12-08","spend":155442.76,"D6":5.79,"D15":9.26,"D30":12.99,"D60":12.99,"D180":18.75}],"FB_MOF_Video_Buddhu-Ladki-Test_V0_131125":[{"week_start":"2025-11-17","spend":173274.52,"D6":9.65,"D15":18.19,"D30":18.19,"D60":18.19,"D180":24.24},{"week_start":"2025-11-24","spend":440525.87,"D6":12.66,"D15":16.07,"D30":20.05,"D60":22.77,"D180":39.93},{"week_start":"2025-12-01","spend":573122.4,"D6":7,"D15":9.23,"D30":10.45,"D60":11.67,"D180":12.94},{"week_start":"2025-12-08","spend":408027.96,"D6":22.79,"D15":25.49,"D30":27.97,"D60":29.88,"D180":30.99},{"week_start":"2025-12-15","spend":37757.7,"D6":0,"D15":0,"D30":0,"D60":0,"D180":0}],"FB_MOF_Video_Monkey-AI_V1_181125":[{"week_start":"2025-11-17","spend":144736.17,"D6":21.36,"D15":26.81,"D30":29.01,"D60":35.95,"D180":53.08},{"week_start":"2025-11-24","spend":518039.35,"D6":16.78,"D15":20.63,"D30":24.45,"D60":25.11,"D180":31.81},{"week_start":"2025-12-01","spend":493611.52,"D6":12.06,"D15":14.45,"D30":16.27,"D60":17.2,"D180":22.02},{"week_start":"2025-12-08","spend":283270.21,"D6":12.38,"D15":14.18,"D30":15.17,"D60":15.17,"D180":23.24},{"week_start":"2025-12-15","spend":71389.93,"D6":20.72,"D15":22.82,"D30":22.82,"D60":26.32,"D180":38.22}],"FB_MOF_Video_Monkey-AI_V2_181125":[{"week_start":"2025-11-17","spend":139686.94,"D6":20.1,"D15":25.9,"D30":27.17,"D60":32.02,"D180":37.39},{"week_start":"2025-11-24","spend":736183.07,"D6":11.63,"D15":12.77,"D30":17,"D60":21.07,"D180":28.77},{"week_start":"2025-12-01","spend":605283.78,"D6":9.23,"D15":21.34,"D30":22.53,"D60":26.98,"D180":39.4},{"week_start":"2025-12-08","spend":263861.32,"D6":6.38,"D15":8.75,"D30":15.33,"D60":16.27,"D180":18.41},{"week_start":"2025-12-15","spend":53379.68,"D6":9.36,"D15":9.36,"D30":9.36,"D60":12.17,"D180":15.91}]},"backtest":{"P0":{"D6":{"n":7,"mape":49.59,"smape":57.11},"D15":{"n":7,"mape":45.87,"smape":56.42},"D30":{"n":7,"mape":52.27,"smape":59.43},"D60":{"n":7,"mape":53.14,"smape":58.52},"D180":{"n":7,"mape":42.6,"smape":54.07}},"P2":{"D6":{"n":5,"mape":75.27,"smape":82.59},"D15":{"n":5,"mape":54.14,"smape":69.31},"D30":{"n":5,"mape":40.34,"smape":54.48},"D60":{"n":5,"mape":43.13,"smape":58.83},"D180":{"n":5,"mape":46.63,"smape":65.22}},"P8":{"D6":{"n":3,"mape":28.52,"smape":37.27},"D15":{"n":3,"mape":85.11,"smape":79.14},"D30":{"n":3,"mape":90.76,"smape":83.26},"D60":{"n":3,"mape":79.76,"smape":77.5},"D180":{"n":3,"mape":95.27,"smape":85.41}},"P14":{"D6":{"n":3,"mape":31.73,"smape":40.73},"D15":{"n":3,"mape":28.34,"smape":36.31},"D30":{"n":3,"mape":40.52,"smape":47.46},"D60":{"n":3,"mape":33.43,"smape":42.35},"D180":{"n":3,"mape":26.81,"smape":36.68}}}};
+    const COLORS = { D6: '#7c6cff', D15: '#4da3ff', D30: '#31d07f', D60: '#ffb000', D180: '#ff5c5c' };
+    const summary = document.getElementById('summary');
+    const avg = Object.values(DATA.backtest).flatMap(stage => Object.values(stage)).reduce((a, b) => { a.n += b.n; a.m += b.mape * b.n; return a; }, { n:0, m:0 });
+    const cards = [
+      ['Creatives', Object.keys(DATA.weekly).length],
+      ['Total Weeks', Object.values(DATA.weekly).reduce((s, v) => s + v.length, 0)],
+      ['Proxy Checks', avg.n],
+      ['Proxy Avg MAPE', avg.n ? (avg.m / avg.n).toFixed(2) + '%' : '--'],
+    ];
+    summary.innerHTML = cards.map(function(pair) {
+      return '<div class="card"><div class="k">' + pair[0] + '</div><div class="v">' + pair[1] + '</div></div>';
+    }).join('');
+    document.getElementById('backtest').textContent = JSON.stringify(DATA.backtest, null, 2);
+
+    function linePath(points, w, h, pad) {
+      const xs = points.map(p => p.x), ys = points.map(p => p.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = 0, maxY = Math.max(1, ...ys);
+      const sx = x => pad + (x - minX) / Math.max(1, maxX - minX) * (w - pad * 2);
+      const sy = y => h - pad - (y - minY) / Math.max(1, maxY - minY) * (h - pad * 2);
+      return points.map(function(p, i) {
+        return (i ? 'L' : 'M') + sx(p.x).toFixed(1) + ',' + sy(p.y).toFixed(1);
+      }).join(' ');
+    }
+    function renderChart(el, rows) {
+      const w = 680, h = 240, pad = 30;
+      const xs = rows.map((r, i) => i);
+      const series = ['D6','D15','D30','D60','D180'].map(k => ({ k, pts: rows.map((r,i)=>({x:i,y:r[k]})) }));
+      const maxY = Math.max(1, ...series.flatMap(s => s.pts.map(p => p.y)));
+      const minY = 0;
+      const sx = x => pad + x / Math.max(1, xs.length - 1) * (w - pad * 2);
+      const sy = y => h - pad - (y - minY) / Math.max(1, maxY - minY) * (h - pad * 2);
+      const grid = [];
+      for (let i = 0; i <= 4; i++) {
+        const y = pad + (i / 4) * (h - pad * 2);
+        const val = (maxY * (1 - i / 4)).toFixed(0);
+        grid.push('<line x1="' + pad + '" y1="' + y + '" x2="' + (w - pad) + '" y2="' + y + '" stroke="#232334" />');
+        grid.push('<text x="4" y="' + (y + 4) + '" fill="#8b8da6" font-size="10">' + val + '</text>');
+      }
+      const xlabels = rows.map(function(r, i) { return '<text x="' + sx(i) + '" y="' + (h - 8) + '" text-anchor="middle" fill="#8b8da6" font-size="10">' + r.week_start + '</text>'; }).join('');
+      const paths = series.map(function(s) { return '<path d="' + linePath(s.pts, w, h, pad) + '" fill="none" stroke="' + COLORS[s.k] + '" stroke-width="2.5" />'; }).join('');
+      const dots = series.map(function(s) { return s.pts.map(function(p) { return '<circle cx="' + sx(p.x) + '" cy="' + sy(p.y) + '" r="2.7" fill="' + COLORS[s.k] + '" />'; }).join(''); }).join('');
+      el.innerHTML = '<svg viewBox="0 0 ' + w + ' ' + h + '"><rect x="0" y="0" width="' + w + '" height="' + h + '" rx="16" fill="rgba(255,255,255,0.02)" stroke="#262639"/>' + grid.join('') + paths + dots + xlabels + '</svg>';
+    }
+    const grid = document.getElementById('grid');
+    for (const [creative, rows] of Object.entries(DATA.weekly)) {
+      const div = document.createElement('div');
+      div.className = 'creative';
+      const last = rows[rows.length - 1];
+      const first = rows[0];
+      div.innerHTML = '<div class="title"><h2>' + creative + '</h2><div class="meta">' + rows.length + ' weekly points | D180 ' + first.D180.toFixed(2) + ' → ' + last.D180.toFixed(2) + '</div></div><div class="chart"></div><div class="legend">' + Object.keys(COLORS).map(function(k){ return '<span><span class="dot" style="background:' + COLORS[k] + '"></span>' + k + '</span>'; }).join('') + '</div>';
+      grid.appendChild(div);
+      renderChart(div.querySelector('.chart'), rows);
+    }
+  </script>
+</body>
+</html>

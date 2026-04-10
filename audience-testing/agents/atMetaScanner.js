@@ -18,7 +18,7 @@ module.exports = function (config) {
     const glob = require('path');
 
     const CI_DIR = path.join(__dirname, '..', '..', 'creative-intelligence');
-    const UPLOADER_BASE = config.uploaderBase || process.env.UPLOADER_BASE || 'http://localhost:4000';
+    const UPLOADER_BASE = config.uploaderBase || process.env.UPLOADER_BASE || `http://127.0.0.1:${process.env.PORT || 3000}`;
 
     // --------------- helpers ---------------
 

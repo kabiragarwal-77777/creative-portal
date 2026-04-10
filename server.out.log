@@ -1,0 +1,39 @@
+[dotenv@17.3.1] injecting env (17) from uploader\.env -- tip: ⚙️  enable debug logging with { debug: true }
+[Alert Cron] Scheduled daily at 9:00 AM IST
+[Scanner] Inventory scanner routes mounted
+[ci/engine] Scheduler started. Interval: 24h. Next run: 2026-04-02T07:32:05.155Z
+[CampaignSync] Ghost columns and sync_log table ensured
+[CampaignSync] Scheduler starting (every 24h)
+[CampaignSync] Ghost columns and sync_log table ensured
+[roas-tracker] Scheduler starting (every 1h)
+[Integrity] Scheduler armed — runs on start + every 6 hours
+[CI2] Creative Intelligence v2 routes mounted at /api/ci2
+[GC Scheduler] Initializing...
+[GC Scheduler] Cron jobs registered (6h fetch/classify/score, 12h recommendations, daily 6AM forecast+signals)
+[GC] Google Creative Intelligence routes mounted at /api/gc
+[MetaWrite] Meta write routes mounted at /api/meta-write
+[TrendScanner] Scheduler started — scans every 2h, concepts every 6h
+[TrendScanner] Trend scanner routes mounted at /api/trends
+[CompetitorScheduler] 2026-04-01T07:32:05.372Z — Starting scheduler
+[CompetitorScheduler] 2026-04-01T07:32:05.373Z — Cron jobs registered — pipeline every 6h, briefs every 12h
+[CompetitorIntel] All modules initialized, scheduler started
+[CompetitorIntel] Competitor intelligence routes mounted at /api/competitor
+[FeedbackEngine] Database initialized at C:\Users\Dell\Desktop\creative-portal\feedback-engine\feedback-engine.db
+[FE:Scheduler] Initializing scheduler with 11 jobs...
+[FE:Scheduler]   Registered: watcher-refresh (0 * * * *) — feWatcher incremental refresh
+[FE:Scheduler]   Registered: anomaly-check (0 */3 * * *) — feAnomalyDetector runAllChecks
+[FE:Scheduler]   Registered: data-quality-check (15 * * * *) — feDataQualityMonitor runAudit
+[FE:Scheduler]   Registered: proposal-generate (0 */6 * * *) — feProposalGenerator generateProposals
+[FE:Scheduler]   Registered: knowledge-crawl-tier1 (30 */6 * * *) — feKnowledgeCrawler crawlAll (Tier 1)
+[FE:Scheduler]   Registered: knowledge-crawl-all (0 */12 * * *) — feKnowledgeCrawler crawlAll (all tiers)
+[FE:Scheduler]   Registered: hypothesis-generate (0 0 * * *) — feSelfTester generateHypotheses
+[FE:Scheduler]   Registered: memory-consolidate (30 20 * * *) — feMemory nightly consolidation
+[FE:Scheduler]   Registered: accuracy-audit (0 3 * * 0) — feAccuracyAuditor runAudit
+[FE:Scheduler]   Registered: proposal-expiry (0 4 1 * *) — Expire old pending proposals (>30 days)
+[FE:Scheduler]   Registered: verify-applied-changes (0 5 * * 0) — feApprovalEngine verifyAppliedChanges
+[FE:Scheduler] Scheduler started. Initial checks will run in 30 seconds.
+[FeedbackEngine] Self-learning routes mounted at /api/fe
+[AudienceTesting] Routes mounted at /api/at, scheduler started
+Meta Ad Upload Server running on http://localhost:3000
+Ad Account: act_725019929189148
+API Version: v21.0

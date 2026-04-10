@@ -539,8 +539,11 @@ module.exports = function (config) {
 
     // ==================== ROAS SIMULATOR V2 ====================
 
-    router.get('/roas-simulator/dashboard', (req, res) => {
+    router.get('/roas-simulator/dashboard', async (req, res) => {
         try {
+            if (roasSimulatorV2.ensureCheckpointRuns) {
+                await roasSimulatorV2.ensureCheckpointRuns(false);
+            }
             const data = roasSimulatorV2.getDashboardData();
 
             try {
@@ -566,8 +569,11 @@ module.exports = function (config) {
         }
     });
 
-    router.get('/roas-simulator/trendline/:adId', (req, res) => {
+    router.get('/roas-simulator/trendline/:adId', async (req, res) => {
         try {
+            if (roasSimulatorV2.ensureCheckpointRunsForAd) {
+                await roasSimulatorV2.ensureCheckpointRunsForAd(req.params.adId);
+            }
             const data = roasSimulatorV2.getTrendlineData(req.params.adId);
             if (!data) return res.status(404).json(fail({ message: 'Ad not found in simulator' }));
             res.json(ok(data));
@@ -580,7 +586,7 @@ module.exports = function (config) {
     router.post('/roas-simulator/refresh', async (req, res) => {
         try {
             const snapshots = await engine.snapshotAndTrackLiveAds(true);
-            const checkpoints = await roasSimulatorV2.ensureCheckpointRuns();
+            const checkpoints = await roasSimulatorV2.ensureCheckpointRuns(true);
             res.json(ok({ snapshots, checkpoints }));
         } catch (err) {
             console.error('[CI] roas-simulator/refresh error:', err.message);

@@ -89,6 +89,16 @@ CREATE TABLE IF NOT EXISTS at_google_campaigns (
     bidding_strategy TEXT,
     target_cpa REAL,
     target_roas REAL,
+    budget_amount REAL,
+    budget_type TEXT,
+    start_date TEXT,
+    end_date TEXT,
+    geo_targeting_json TEXT DEFAULT '[]',
+    language_targeting_json TEXT DEFAULT '[]',
+    network_settings_json TEXT DEFAULT '{}',
+    search_impression_share REAL,
+    search_rank_lost_impression_share REAL,
+    search_budget_lost_impression_share REAL,
     total_spend REAL DEFAULT 0,
     impressions INTEGER DEFAULT 0,
     clicks INTEGER DEFAULT 0,
@@ -114,6 +124,13 @@ CREATE TABLE IF NOT EXISTS at_google_adgroups (
     ctr REAL DEFAULT 0,
     avg_cpc REAL DEFAULT 0,
     cost_per_conversion REAL,
+    quality_score REAL,
+    expected_ctr TEXT,
+    ad_relevance TEXT,
+    landing_page_experience TEXT,
+    search_impression_share REAL,
+    search_rank_lost_impression_share REAL,
+    search_budget_lost_impression_share REAL,
     d6_cac REAL,
     d6_roas REAL,
     d6_conversions INTEGER DEFAULT 0,
@@ -149,6 +166,56 @@ CREATE TABLE IF NOT EXISTS at_google_breakdowns (
     clicks INTEGER DEFAULT 0,
     conversions REAL DEFAULT 0,
     ctr REAL DEFAULT 0,
+    synced_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS at_google_keywords (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    google_adgroup_id TEXT,
+    google_campaign_id TEXT,
+    keyword_text TEXT,
+    match_type TEXT,
+    status TEXT,
+    quality_score REAL,
+    expected_ctr TEXT,
+    ad_relevance TEXT,
+    landing_page_experience TEXT,
+    search_impression_share REAL,
+    search_rank_lost_impression_share REAL,
+    search_budget_lost_impression_share REAL,
+    spend REAL DEFAULT 0,
+    impressions INTEGER DEFAULT 0,
+    clicks INTEGER DEFAULT 0,
+    conversions REAL DEFAULT 0,
+    conversion_value REAL DEFAULT 0,
+    synced_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS at_google_search_terms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    google_adgroup_id TEXT,
+    google_campaign_id TEXT,
+    search_term TEXT,
+    keyword_text TEXT,
+    match_type TEXT,
+    spend REAL DEFAULT 0,
+    impressions INTEGER DEFAULT 0,
+    clicks INTEGER DEFAULT 0,
+    conversions REAL DEFAULT 0,
+    conversion_value REAL DEFAULT 0,
+    ctr REAL DEFAULT 0,
+    avg_cpc REAL DEFAULT 0,
+    synced_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS at_google_asset_groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset_group_id TEXT UNIQUE,
+    google_campaign_id TEXT,
+    name TEXT,
+    status TEXT,
+    primary_status TEXT,
+    strength TEXT,
     synced_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -239,5 +306,7 @@ CREATE INDEX IF NOT EXISTS idx_at_meta_adsets_campaign ON at_meta_adsets(meta_ca
 CREATE INDEX IF NOT EXISTS idx_at_meta_breakdowns_adset ON at_meta_breakdowns(adset_id);
 CREATE INDEX IF NOT EXISTS idx_at_google_adgroups_campaign ON at_google_adgroups(google_campaign_id);
 CREATE INDEX IF NOT EXISTS idx_at_google_audiences_adgroup ON at_google_audiences(adgroup_id);
+CREATE INDEX IF NOT EXISTS idx_at_google_keywords_adgroup ON at_google_keywords(google_adgroup_id);
+CREATE INDEX IF NOT EXISTS idx_at_google_search_terms_adgroup ON at_google_search_terms(google_adgroup_id);
 CREATE INDEX IF NOT EXISTS idx_at_recommendations_platform ON at_recommendations(platform, rec_type, status);
 CREATE INDEX IF NOT EXISTS idx_at_live_flags_severity ON at_live_flags(severity, is_resolved);

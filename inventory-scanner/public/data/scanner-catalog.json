@@ -1,0 +1,1497 @@
+{
+    "inventories":  [
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Angel One",
+                                                       "Zerodha",
+                                                       "Upstox"
+                                                   ],
+                            "benchmark_confidence":  "medium",
+                            "inventory_id":  "google-search",
+                            "name":  "Google Search",
+                            "platform":  "Google",
+                            "buy_type":  "self-serve",
+                            "primary_cost_model":  "CPC",
+                            "cost_model":  [
+                                               "CPC",
+                                               "CPL"
+                                           ],
+                            "pricing":  {
+                                            "CPC":  {
+                                                        "low":  28,
+                                                        "mid":  55,
+                                                        "high":  120
+                                                    }
+                                        },
+                            "min_budget":  10000,
+                            "ctr_benchmark":  {
+                                                  "low":  4.5,
+                                                  "mid":  6.5,
+                                                  "high":  8.5
+                                              },
+                            "audience_quality_score":  10,
+                            "pricing_source_note":  "India PPC benchmark plus finance-category economics.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital?pricingModels=CPC",
+                                                        "https://backlinko.com/how-much-does-google-ads-cost"
+                                                    ],
+                            "sebi_compliance_note":  "Google may require financial-services verification; keep ad and landing-page disclosures aligned.",
+                            "how_to_start":  "Create a Search campaign in Google Ads; target advisory-intent keywords; add disclosure assets; complete verification if prompted; send traffic to a compliant lead page.",
+                            "start_url":  "https://ads.google.com/aw/campaigns",
+                            "access_notes":  "Self-serve in Google Ads.",
+                            "time_to_go_live":  "24-48 hours",
+                            "google_networks":  [
+                                                    "SEARCH",
+                                                    "SEARCH_PARTNERS"
+                                                ],
+                            "google_campaign_types":  [
+                                                          "SEARCH"
+                                                      ]
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Angel One",
+                                                       "Groww",
+                                                       "Axis Direct"
+                                                   ],
+                            "benchmark_confidence":  "medium",
+                            "inventory_id":  "google-demand-gen",
+                            "name":  "Google Discovery / Demand Gen",
+                            "platform":  "Google",
+                            "buy_type":  "self-serve",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "CPC",
+                                               "CPL"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  60,
+                                                        "mid":  110,
+                                                        "high":  180
+                                                    }
+                                        },
+                            "min_budget":  15000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.8,
+                                                  "mid":  1.2,
+                                                  "high":  1.8
+                                              },
+                            "audience_quality_score":  8,
+                            "pricing_source_note":  "Demand Gen inferred from Google visual surfaces and India display/video benchmarks.",
+                            "pricing_source_urls":  [
+                                                        "https://support.google.com/google-ads/answer/13695777?hl=en-IN",
+                                                        "https://www.themediaant.com/digital/google-display-advertising",
+                                                        "https://www.themediaant.com/blog/how-much-do-youtube-ads-cost/"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Google visual-surface policy review still applies.",
+                            "how_to_start":  "Create a Demand Gen campaign; upload image and short video assets; seed investor lookalikes; exclude rival interests; point traffic to a compliant lead page.",
+                            "start_url":  "https://ads.google.com/aw/campaigns",
+                            "access_notes":  "Self-serve in Google Ads.",
+                            "time_to_go_live":  "24-48 hours",
+                            "google_networks":  [
+                                                    "DISCOVER",
+                                                    "GMAIL"
+                                                ],
+                            "google_campaign_types":  [
+                                                          "DEMAND_GEN"
+                                                      ]
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Angel One",
+                                                       "Groww",
+                                                       "Axis Direct"
+                                                   ],
+                            "benchmark_confidence":  "medium",
+                            "inventory_id":  "google-display-network",
+                            "name":  "Google Display Network (financial content placements only)",
+                            "platform":  "Google",
+                            "buy_type":  "self-serve",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "CPC",
+                                               "CPL"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  80,
+                                                        "mid":  150,
+                                                        "high":  300
+                                                    }
+                                        },
+                            "min_budget":  15000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.35,
+                                                  "mid":  0.6,
+                                                  "high":  0.9
+                                              },
+                            "audience_quality_score":  7,
+                            "pricing_source_note":  "India Google Display and programmatic CPM guidance.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/google-display-advertising",
+                                                        "https://www.themediaant.com/digital/programmatic-platforms-advertising"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Restrict placements to approved finance/business inventory only.",
+                            "how_to_start":  "Create a Display campaign; use managed placements for finance publishers; exclude low-quality inventory; start with lead-form or landing-page optimization.",
+                            "start_url":  "https://ads.google.com/aw/campaigns",
+                            "access_notes":  "Self-serve in Google Ads.",
+                            "time_to_go_live":  "24-48 hours",
+                            "google_networks":  [
+                                                    "CONTENT"
+                                                ],
+                            "google_campaign_types":  [
+                                                          "DISPLAY"
+                                                      ]
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Angel One",
+                                                       "Groww",
+                                                       "Axis Direct"
+                                                   ],
+                            "benchmark_confidence":  "medium",
+                            "inventory_id":  "youtube-skippable",
+                            "name":  "YouTube Skippable In-Stream",
+                            "platform":  "Google",
+                            "buy_type":  "self-serve",
+                            "primary_cost_model":  "CPV",
+                            "cost_model":  [
+                                               "CPV",
+                                               "CPM",
+                                               "CPL"
+                                           ],
+                            "pricing":  {
+                                            "CPV":  {
+                                                        "low":  0.75,
+                                                        "mid":  1.5,
+                                                        "high":  3
+                                                    },
+                                            "CPM":  {
+                                                        "low":  50,
+                                                        "mid":  90,
+                                                        "high":  140
+                                                    }
+                                        },
+                            "min_budget":  15000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.45,
+                                                  "mid":  0.7,
+                                                  "high":  1.1
+                                              },
+                            "audience_quality_score":  8,
+                            "pricing_source_note":  "India YouTube skippable CPV and CPM guidance.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/blog/how-much-do-youtube-ads-cost/",
+                                                        "https://www.themediaant.com/digital/youtube-advertising/video"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Video disclaimer should remain readable on-screen.",
+                            "how_to_start":  "Build a Video Reach or Demand Gen campaign; upload a 15-30 second explainer; add a compliant CTA; retarget viewers who watched at least 25 percent.",
+                            "start_url":  "https://ads.google.com/aw/campaigns",
+                            "access_notes":  "Self-serve in Google Ads.",
+                            "time_to_go_live":  "24-48 hours",
+                            "google_networks":  [
+                                                    "YOUTUBE"
+                                                ],
+                            "google_campaign_types":  [
+                                                          "VIDEO"
+                                                      ]
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Angel One",
+                                                       "Groww",
+                                                       "Axis Direct"
+                                                   ],
+                            "benchmark_confidence":  "medium",
+                            "inventory_id":  "youtube-bumper",
+                            "name":  "YouTube Non-Skippable (6s Bumper)",
+                            "platform":  "Google",
+                            "buy_type":  "self-serve",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "CPV"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  70,
+                                                        "mid":  120,
+                                                        "high":  180
+                                                    },
+                                            "CPV":  {
+                                                        "low":  0.6,
+                                                        "mid":  1.2,
+                                                        "high":  2.2
+                                                    }
+                                        },
+                            "min_budget":  20000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.15,
+                                                  "mid":  0.25,
+                                                  "high":  0.4
+                                              },
+                            "audience_quality_score":  7,
+                            "pricing_source_note":  "India bumper and non-skippable video guidance.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/blog/how-much-do-youtube-ads-cost/",
+                                                        "https://www.themediaant.com/digital/youtube-advertising/video"
+                                                    ],
+                            "sebi_compliance_note":  "Use a short brand or reminder message only; disclaimer text still needs to be legible.",
+                            "how_to_start":  "Launch a bumper sequence for recall; use a compliance-safe supers template; pair it with Search or Demand Gen retargeting to capture demand.",
+                            "start_url":  "https://ads.google.com/aw/campaigns",
+                            "access_notes":  "Self-serve in Google Ads.",
+                            "time_to_go_live":  "24-48 hours",
+                            "google_networks":  [
+                                                    "YOUTUBE"
+                                                ],
+                            "google_campaign_types":  [
+                                                          "VIDEO"
+                                                      ]
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Angel One",
+                                                       "Groww",
+                                                       "Axis Direct"
+                                                   ],
+                            "benchmark_confidence":  "medium",
+                            "inventory_id":  "youtube-shorts",
+                            "name":  "YouTube Shorts",
+                            "platform":  "Google",
+                            "buy_type":  "self-serve",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "CPC",
+                                               "CPV",
+                                               "CPL"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  40,
+                                                        "mid":  70,
+                                                        "high":  110
+                                                    }
+                                        },
+                            "min_budget":  15000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.5,
+                                                  "mid":  0.8,
+                                                  "high":  1.2
+                                              },
+                            "audience_quality_score":  6,
+                            "pricing_source_note":  "Shorts benchmark inferred from Demand Gen reach notes and India video CPM ranges.",
+                            "pricing_source_urls":  [
+                                                        "https://support.google.com/google-ads/answer/13695777?hl=en-IN",
+                                                        "https://www.themediaant.com/blog/how-much-do-youtube-ads-cost/"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Use educational hooks, not sensational outcome claims.",
+                            "how_to_start":  "Upload vertical 9:16 assets; keep the first two seconds strong; use lead-focused landing pages or retargeting paths after engagement.",
+                            "start_url":  "https://ads.google.com/aw/campaigns",
+                            "access_notes":  "Self-serve in Google Ads.",
+                            "time_to_go_live":  "24-48 hours",
+                            "google_networks":  [
+                                                    "YOUTUBE"
+                                                ],
+                            "google_campaign_types":  [
+                                                          "VIDEO",
+                                                          "DEMAND_GEN"
+                                                      ]
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Axis MF",
+                                                       "SBI MF",
+                                                       "Nippon India MF"
+                                                   ],
+                            "benchmark_confidence":  "high",
+                            "inventory_id":  "facebook-feed",
+                            "name":  "Meta Facebook Feed",
+                            "platform":  "Meta",
+                            "buy_type":  "self-serve",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "CPC",
+                                               "CPL"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  90,
+                                                        "mid":  130,
+                                                        "high":  220
+                                                    }
+                                        },
+                            "min_budget":  10000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.7,
+                                                  "mid":  1,
+                                                  "high":  1.4
+                                              },
+                            "audience_quality_score":  8,
+                            "pricing_source_note":  "Blend of India Meta benchmark guidance and Univest live Facebook Feed CPMs.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/facebook-advertising",
+                                                        "https://www.themediaant.com/digital/digital-advertising-under-40k-budget-advertising/meta-ads"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Meta may reject exaggerated returns or vague finance claims.",
+                            "how_to_start":  "Open Ads Manager; use Feed-only placement; set a lead objective; upload compliant image or video creative; route to a disclosure-complete landing page or instant form.",
+                            "start_url":  "https://adsmanager.facebook.com/",
+                            "access_notes":  "Self-serve in Meta Ads Manager.",
+                            "time_to_go_live":  "24-48 hours",
+                            "meta_placements":  [
+                                                    "facebook_feed"
+                                                ]
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Axis MF",
+                                                       "SBI MF",
+                                                       "Nippon India MF"
+                                                   ],
+                            "benchmark_confidence":  "high",
+                            "inventory_id":  "instagram-feed",
+                            "name":  "Meta Instagram Feed",
+                            "platform":  "Meta",
+                            "buy_type":  "self-serve",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "CPC",
+                                               "CPL"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  110,
+                                                        "mid":  150,
+                                                        "high":  240
+                                                    }
+                                        },
+                            "min_budget":  10000,
+                            "ctr_benchmark":  {
+                                                  "low":  1.1,
+                                                  "mid":  1.5,
+                                                  "high":  1.9
+                                              },
+                            "audience_quality_score":  7,
+                            "pricing_source_note":  "Blend of India Instagram benchmark guidance and Univest live Instagram Feed CPMs.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/instagram-advertising",
+                                                        "https://www.themediaant.com/digital/digital-advertising-under-40k-budget-advertising/meta-ads"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Keep the disclaimer visible inside the creative because feed consumption is fast.",
+                            "how_to_start":  "Use Ads Manager with Instagram Feed placement; start with a concise educational creative; connect to a form or landing page that repeats the regulatory disclosure.",
+                            "start_url":  "https://adsmanager.facebook.com/",
+                            "access_notes":  "Self-serve in Meta Ads Manager.",
+                            "time_to_go_live":  "24-48 hours",
+                            "meta_placements":  [
+                                                    "instagram_feed"
+                                                ]
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Axis MF",
+                                                       "SBI MF",
+                                                       "Nippon India MF"
+                                                   ],
+                            "benchmark_confidence":  "high",
+                            "inventory_id":  "instagram-reels",
+                            "name":  "Instagram Reels",
+                            "platform":  "Meta",
+                            "buy_type":  "self-serve",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "CPC",
+                                               "CPL"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  85,
+                                                        "mid":  110,
+                                                        "high":  180
+                                                    }
+                                        },
+                            "min_budget":  10000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.35,
+                                                  "mid":  0.6,
+                                                  "high":  0.9
+                                              },
+                            "audience_quality_score":  7,
+                            "pricing_source_note":  "Blend of India Instagram benchmark guidance and Univest live Reels CPMs.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/instagram-advertising",
+                                                        "https://www.themediaant.com/digital/digital-advertising-under-40k-budget-advertising/meta-ads"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Use educational hooks and avoid sensational before-versus-after wealth narratives.",
+                            "how_to_start":  "Run vertical 9:16 video through Ads Manager; keep Reels placement only; pair the creative with clear disclosure overlays and a clean lead capture experience.",
+                            "start_url":  "https://adsmanager.facebook.com/",
+                            "access_notes":  "Self-serve in Meta Ads Manager.",
+                            "time_to_go_live":  "24-48 hours",
+                            "meta_placements":  [
+                                                    "instagram_instagram_reels"
+                                                ]
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Axis MF",
+                                                       "SBI MF",
+                                                       "Nippon India MF"
+                                                   ],
+                            "benchmark_confidence":  "high",
+                            "inventory_id":  "meta-audience-network",
+                            "name":  "Meta Audience Network (whitelisted placements only)",
+                            "platform":  "Meta",
+                            "buy_type":  "self-serve",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "CPC",
+                                               "CPL"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  150,
+                                                        "mid":  220,
+                                                        "high":  360
+                                                    }
+                                        },
+                            "min_budget":  10000,
+                            "ctr_benchmark":  {
+                                                  "low":  2.5,
+                                                  "mid":  5,
+                                                  "high":  8.5
+                                              },
+                            "audience_quality_score":  5,
+                            "pricing_source_note":  "Anchored to Univest live Audience Network CPM and CPC data with whitelist-only use.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/facebook-advertising"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Use a strict whitelist and exclude low-intent inventory to avoid bad context.",
+                            "how_to_start":  "Activate Audience Network only inside a monitored Meta ad set; use a safe publisher allowlist; shut off placements that generate cheap but low-intent traffic.",
+                            "start_url":  "https://adsmanager.facebook.com/",
+                            "access_notes":  "Managed inside Meta Ads Manager with whitelist discipline.",
+                            "time_to_go_live":  "24-48 hours",
+                            "meta_placements":  [
+                                                    "audience_network_an_classic",
+                                                    "audience_network_rewarded_video"
+                                                ]
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "HDFC Securities",
+                                                       "ICICI Direct",
+                                                       "Kotak Securities",
+                                                       "Motilal Oswal",
+                                                       "Groww"
+                                                   ],
+                            "benchmark_confidence":  "medium",
+                            "inventory_id":  "linkedin-sponsored-content",
+                            "name":  "LinkedIn Sponsored Content",
+                            "platform":  "LinkedIn",
+                            "buy_type":  "self-serve",
+                            "primary_cost_model":  "CPC",
+                            "cost_model":  [
+                                               "CPM",
+                                               "CPC",
+                                               "CPL"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  200,
+                                                        "mid":  440,
+                                                        "high":  550
+                                                    },
+                                            "CPC":  {
+                                                        "low":  70,
+                                                        "mid":  100,
+                                                        "high":  150
+                                                    },
+                                            "CPL":  {
+                                                        "low":  1800,
+                                                        "mid":  2400,
+                                                        "high":  3200
+                                                    }
+                                        },
+                            "min_budget":  10000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.45,
+                                                  "mid":  0.7,
+                                                  "high":  1
+                                              },
+                            "audience_quality_score":  9,
+                            "pricing_source_note":  "LinkedIn India rates from Media Ant and professional-targeting benchmarks.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/linkedin-advertising"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Keep copy factual and targeted to education or consultation, not trading-style urgency.",
+                            "how_to_start":  "Open Campaign Manager; choose Sponsored Content; target finance professionals and high-income business audiences; use a form or landing page with advisory credentials up front.",
+                            "start_url":  "https://www.linkedin.com/campaignmanager/",
+                            "access_notes":  "Self-serve in LinkedIn Campaign Manager.",
+                            "time_to_go_live":  "24-48 hours"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "HDFC Securities",
+                                                       "ICICI Direct",
+                                                       "Kotak Securities",
+                                                       "Motilal Oswal",
+                                                       "Groww"
+                                                   ],
+                            "benchmark_confidence":  "medium",
+                            "inventory_id":  "linkedin-message-ads",
+                            "name":  "LinkedIn Message Ads (InMail)",
+                            "platform":  "LinkedIn",
+                            "buy_type":  "self-serve",
+                            "primary_cost_model":  "CPC",
+                            "cost_model":  [
+                                               "CPC",
+                                               "CPL"
+                                           ],
+                            "pricing":  {
+                                            "CPC":  {
+                                                        "low":  60,
+                                                        "mid":  66,
+                                                        "high":  110
+                                                    },
+                                            "CPL":  {
+                                                        "low":  2200,
+                                                        "mid":  3200,
+                                                        "high":  4800
+                                                    }
+                                        },
+                            "min_budget":  10000,
+                            "ctr_benchmark":  {
+                                                  "low":  1.2,
+                                                  "mid":  2,
+                                                  "high":  3
+                                              },
+                            "audience_quality_score":  8,
+                            "pricing_source_note":  "LinkedIn Sponsored InMail benchmark from Media Ant plus India professional lead-gen pricing.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/linkedin-advertising"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Message copy must stay consultative and avoid personalized return promises.",
+                            "how_to_start":  "Use Message Ads or Conversation Ads in Campaign Manager; target a narrow professional segment; send a compliance-safe consultation offer with explicit firm credentials.",
+                            "start_url":  "https://www.linkedin.com/campaignmanager/",
+                            "access_notes":  "Self-serve in LinkedIn Campaign Manager.",
+                            "time_to_go_live":  "24-48 hours"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "HDFC Mutual Fund",
+                                                       "ICICI Prudential AMC",
+                                                       "SBI MF",
+                                                       "Axis MF",
+                                                       "Nippon India MF"
+                                                   ],
+                            "benchmark_confidence":  "high",
+                            "inventory_id":  "moneycontrol",
+                            "name":  "Moneycontrol Display \u0026 Native",
+                            "platform":  "Direct Buy",
+                            "buy_type":  "direct",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "Fixed"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  87,
+                                                        "mid":  174,
+                                                        "high":  348
+                                                    },
+                                            "Fixed":  {
+                                                          "low":  348000,
+                                                          "mid":  464500,
+                                                          "high":  581000
+                                                      }
+                                        },
+                            "min_budget":  348000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.45,
+                                                  "mid":  0.7,
+                                                  "high":  1
+                                              },
+                            "audience_quality_score":  10,
+                            "pricing_source_note":  "Moneycontrol banner, video, roadblock, and article rates from Media Ant.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/money-control-advertising"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Native content must be clearly labeled sponsored and should not read like unverified stock advice.",
+                            "how_to_start":  "Request the Moneycontrol media kit; choose banner or sponsored-content inventory; submit compliance-cleared creative; confirm business-news adjacency before launch.",
+                            "start_url":  "https://www.themediaant.com/digital/money-control-advertising",
+                            "access_notes":  "Direct buy or managed marketplace booking.",
+                            "time_to_go_live":  "3-5 business days"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "HDFC Mutual Fund",
+                                                       "ICICI Prudential AMC",
+                                                       "SBI MF",
+                                                       "Axis MF",
+                                                       "Nippon India MF"
+                                                   ],
+                            "benchmark_confidence":  "high",
+                            "inventory_id":  "economic-times",
+                            "name":  "Economic Times (ET) Display \u0026 Sponsored Content",
+                            "platform":  "Direct Buy",
+                            "buy_type":  "direct",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "Fixed"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  103,
+                                                        "mid":  180,
+                                                        "high":  260
+                                                    },
+                                            "Fixed":  {
+                                                          "low":  139700,
+                                                          "mid":  258500,
+                                                          "high":  658350
+                                                      }
+                                        },
+                            "min_budget":  139700,
+                            "ctr_benchmark":  {
+                                                  "low":  0.35,
+                                                  "mid":  0.55,
+                                                  "high":  0.8
+                                              },
+                            "audience_quality_score":  9,
+                            "pricing_source_note":  "ET banner, article, listicle, and roadblock rates from Media Ant.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/economic-times-advertising"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Sponsored content should stay educational and prominently labeled.",
+                            "how_to_start":  "Request ET digital inventory; pick banner or sponsored article units; share approved claims and disclaimers; ask for business or markets adjacency.",
+                            "start_url":  "https://www.themediaant.com/digital/economic-times-advertising",
+                            "access_notes":  "Managed or direct-buy placement.",
+                            "time_to_go_live":  "3-5 business days"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "HDFC Mutual Fund",
+                                                       "ICICI Prudential AMC",
+                                                       "SBI MF",
+                                                       "Axis MF",
+                                                       "Nippon India MF"
+                                                   ],
+                            "benchmark_confidence":  "medium",
+                            "inventory_id":  "mint-display",
+                            "name":  "Mint (HT Media) Display",
+                            "platform":  "Direct Buy",
+                            "buy_type":  "direct",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "Fixed"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  94,
+                                                        "mid":  140,
+                                                        "high":  220
+                                                    },
+                                            "Fixed":  {
+                                                          "low":  69000,
+                                                          "mid":  348000,
+                                                          "high":  1040000
+                                                      }
+                                        },
+                            "min_budget":  69000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.4,
+                                                  "mid":  0.65,
+                                                  "high":  0.9
+                                              },
+                            "audience_quality_score":  9,
+                            "pricing_source_note":  "Livemint marketplace rates used as the HT Media digital benchmark for Mint display.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/livemint-advertising/social-media-post",
+                                                        "https://www.themediaant.com/digital/livemint-advertising/article"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Keep premium-publisher creatives conservative and evidence-based.",
+                            "how_to_start":  "Request HT Media digital placements for Mint; choose banner inventory; provide approved creative and disclaimer copy; ask for business-news section priority.",
+                            "start_url":  "https://www.themediaant.com/digital/livemint-advertising/social-media-post",
+                            "access_notes":  "Direct HT Media buy or managed marketplace booking.",
+                            "time_to_go_live":  "3-5 business days"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "HDFC Mutual Fund",
+                                                       "ICICI Prudential AMC",
+                                                       "SBI MF",
+                                                       "Axis MF",
+                                                       "Nippon India MF"
+                                                   ],
+                            "benchmark_confidence":  "high",
+                            "inventory_id":  "business-standard",
+                            "name":  "Business Standard Digital",
+                            "platform":  "Direct Buy",
+                            "buy_type":  "direct",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "Fixed"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  94,
+                                                        "mid":  103,
+                                                        "high":  160
+                                                    },
+                                            "Fixed":  {
+                                                          "low":  197000,
+                                                          "mid":  216700,
+                                                          "high":  697000
+                                                      }
+                                        },
+                            "min_budget":  197000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.35,
+                                                  "mid":  0.5,
+                                                  "high":  0.75
+                                              },
+                            "audience_quality_score":  8,
+                            "pricing_source_note":  "Business Standard digital banner, article, and roadblock rates from Media Ant.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/business-standard-advertising"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Sponsored content should be plainly marked and fact-based.",
+                            "how_to_start":  "Request Business Standard digital inventory; select banner or article inventory; send approved creative and landing page; confirm finance-news adjacency.",
+                            "start_url":  "https://www.themediaant.com/digital/business-standard-advertising",
+                            "access_notes":  "Direct or managed marketplace buy.",
+                            "time_to_go_live":  "3-5 business days"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "HDFC Mutual Fund",
+                                                       "ICICI Prudential AMC",
+                                                       "SBI MF",
+                                                       "Axis MF",
+                                                       "Nippon India MF"
+                                                   ],
+                            "benchmark_confidence":  "medium",
+                            "inventory_id":  "ndtv-profit",
+                            "name":  "NDTV Profit Display",
+                            "platform":  "Direct Buy",
+                            "buy_type":  "direct",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "Fixed"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  94,
+                                                        "mid":  103,
+                                                        "high":  217
+                                                    },
+                                            "Fixed":  {
+                                                          "low":  209000,
+                                                          "mid":  325000,
+                                                          "high":  357500
+                                                      }
+                                        },
+                            "min_budget":  209000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.3,
+                                                  "mid":  0.45,
+                                                  "high":  0.7
+                                              },
+                            "audience_quality_score":  8,
+                            "pricing_source_note":  "NDTV digital benchmark used as the NDTV Profit proxy due shared premium news inventory.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/ndtv-advertising"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Use business-news-safe messaging and no speculative trading claims.",
+                            "how_to_start":  "Request NDTV Profit or NDTV business inventory; lock banner or video inventory; submit approved creative; confirm finance or markets adjacency.",
+                            "start_url":  "https://www.themediaant.com/digital/ndtv-advertising",
+                            "access_notes":  "Direct buy with publisher or managed marketplace.",
+                            "time_to_go_live":  "3-5 business days"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "HDFC Mutual Fund",
+                                                       "ICICI Prudential AMC",
+                                                       "SBI MF",
+                                                       "Axis MF",
+                                                       "Nippon India MF"
+                                                   ],
+                            "benchmark_confidence":  "low",
+                            "inventory_id":  "value-research-online",
+                            "name":  "Value Research Online (direct buy)",
+                            "platform":  "Direct Buy",
+                            "buy_type":  "direct",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "Fixed"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  120,
+                                                        "mid":  180,
+                                                        "high":  260
+                                                    },
+                                            "Fixed":  {
+                                                          "low":  100000,
+                                                          "mid":  175000,
+                                                          "high":  300000
+                                                      }
+                                        },
+                            "min_budget":  100000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.6,
+                                                  "mid":  0.9,
+                                                  "high":  1.3
+                                              },
+                            "audience_quality_score":  10,
+                            "pricing_source_note":  "No public Value Research rate card surfaced; pricing inferred from premium finance-publisher display bands.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/money-control-advertising",
+                                                        "https://www.themediaant.com/digital/economic-times-advertising",
+                                                        "https://www.themediaant.com/digital/livemint-advertising/social-media-post"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Keep copy educational and avoid stock-tip framing on a research-led audience environment.",
+                            "how_to_start":  "Reach out through Value Research commercial or editorial contacts for sponsorship availability; request desktop and newsletter options; confirm legal review before launch.",
+                            "start_url":  "https://www.valueresearchonline.com/",
+                            "access_notes":  "Direct publisher outreach required.",
+                            "time_to_go_live":  "5-7 business days"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "HDFC Mutual Fund",
+                                                       "SBI MF",
+                                                       "Kotak Mutual Fund"
+                                                   ],
+                            "benchmark_confidence":  "low",
+                            "inventory_id":  "livemint-newsletter",
+                            "name":  "Livemint Newsletter Sponsorship",
+                            "platform":  "Direct Buy",
+                            "buy_type":  "direct",
+                            "primary_cost_model":  "Fixed",
+                            "cost_model":  [
+                                               "Fixed",
+                                               "CPM"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  180,
+                                                        "mid":  260,
+                                                        "high":  420
+                                                    },
+                                            "Fixed":  {
+                                                          "low":  90000,
+                                                          "mid":  175000,
+                                                          "high":  325000
+                                                      }
+                                        },
+                            "min_budget":  90000,
+                            "ctr_benchmark":  {
+                                                  "low":  1.2,
+                                                  "mid":  2,
+                                                  "high":  3
+                                              },
+                            "audience_quality_score":  9,
+                            "pricing_source_note":  "Newsletter sponsorship benchmark inferred from Livemint premium rates plus India email/newsletter entry pricing.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/livemint-advertising/social-media-post",
+                                                        "https://www.themediaant.com/digital?categories=Advertising+And+Marketing"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Newsletter copy must disclose the advisory identity immediately.",
+                            "how_to_start":  "Request the Livemint newsletter sponsorship menu; choose a markets or business slot; supply a disclaimer-safe sponsor block; link to a compliant lead page.",
+                            "start_url":  "https://www.themediaant.com/digital/livemint-advertising/social-media-post",
+                            "access_notes":  "Direct publisher or managed marketplace booking.",
+                            "time_to_go_live":  "3-5 business days"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Angel One",
+                                                       "HDFC Securities",
+                                                       "SBI MF"
+                                                   ],
+                            "benchmark_confidence":  "medium",
+                            "inventory_id":  "jiocinema-preroll",
+                            "name":  "JioCinema Pre-Roll",
+                            "platform":  "Direct Buy",
+                            "buy_type":  "direct",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "CPV",
+                                               "Fixed"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  125,
+                                                        "mid":  175,
+                                                        "high":  225
+                                                    },
+                                            "CPV":  {
+                                                        "low":  0.8,
+                                                        "mid":  1.6,
+                                                        "high":  2.8
+                                                    }
+                                        },
+                            "min_budget":  100000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.2,
+                                                  "mid":  0.35,
+                                                  "high":  0.6
+                                              },
+                            "audience_quality_score":  6,
+                            "pricing_source_note":  "JioCinema video benchmark from JioHotstar/JioCinema planning pages and IPL inventory guidance.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/blog/advertisers-leverage-ad-options-jiocinema-app-wpl-ipl-2024/",
+                                                        "https://www.themediaant.com/digital/star-maa-jiohotstar-advertising"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Keep messaging educational and avoid live-trading style claims.",
+                            "how_to_start":  "Request pre-roll inventory on relevant finance, business, or premium-content clusters; submit a six to fifteen second compliance-safe video; confirm contextual adjacency.",
+                            "start_url":  "https://www.themediaant.com/blog/advertisers-leverage-ad-options-jiocinema-app-wpl-ipl-2024/",
+                            "access_notes":  "Publisher-managed video buy.",
+                            "time_to_go_live":  "3-5 business days"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Angel One",
+                                                       "HDFC Securities",
+                                                       "SBI MF"
+                                                   ],
+                            "benchmark_confidence":  "high",
+                            "inventory_id":  "hotstar-preroll",
+                            "name":  "Hotstar / Disney+ Hotstar Pre-Roll",
+                            "platform":  "Direct Buy",
+                            "buy_type":  "direct",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "CPV",
+                                               "Fixed"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  125,
+                                                        "mid":  175,
+                                                        "high":  225
+                                                    },
+                                            "CPV":  {
+                                                        "low":  0.8,
+                                                        "mid":  1.6,
+                                                        "high":  2.8
+                                                    }
+                                        },
+                            "min_budget":  100000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.2,
+                                                  "mid":  0.32,
+                                                  "high":  0.55
+                                              },
+                            "audience_quality_score":  7,
+                            "pricing_source_note":  "JioHotstar video rates from official Jiostar terms/contact path and Media Ant rate cards.",
+                            "pricing_source_urls":  [
+                                                        "https://ads.hotstar.com/advertising-services-agreement-march-21-2025",
+                                                        "https://ads.hotstar.com/contact-us/",
+                                                        "https://www.themediaant.com/digital/star-maa-jiohotstar-advertising"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Use awareness or education creative, not speculative trading language.",
+                            "how_to_start":  "Contact Jiostar ad sales; reserve pre-roll inventory; align the video cut to the selected content cluster; clear the disclaimer treatment before launch.",
+                            "start_url":  "https://ads.hotstar.com/contact-us/",
+                            "access_notes":  "Publisher-managed Jiostar inventory.",
+                            "time_to_go_live":  "3-5 business days"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Angel One",
+                                                       "HDFC Securities",
+                                                       "SBI MF"
+                                                   ],
+                            "benchmark_confidence":  "high",
+                            "inventory_id":  "spotify-audio",
+                            "name":  "Spotify Audio Ads (India)",
+                            "platform":  "Direct Buy",
+                            "buy_type":  "direct",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "CPV"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  113,
+                                                        "mid":  124,
+                                                        "high":  200
+                                                    },
+                                            "CPV":  {
+                                                        "low":  0.6,
+                                                        "mid":  1.2,
+                                                        "high":  2
+                                                    }
+                                        },
+                            "min_budget":  100000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.15,
+                                                  "mid":  0.25,
+                                                  "high":  0.4
+                                              },
+                            "audience_quality_score":  6,
+                            "pricing_source_note":  "Spotify India audio and video CPM ranges from Media Ant marketplace listing.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/spotify-advertising"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Audio scripts must avoid exaggerated income claims and clearly name the advisory brand.",
+                            "how_to_start":  "Book Spotify audio inventory; upload a 30-second compliance-safe script; pair the audio slot with a clickable banner or landing page for response.",
+                            "start_url":  "https://www.themediaant.com/digital/spotify-advertising",
+                            "access_notes":  "Spotify Ads Studio or managed marketplace booking.",
+                            "time_to_go_live":  "3-5 business days"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "HDFC Mutual Fund",
+                                                       "ICICI Prudential AMC",
+                                                       "SBI MF",
+                                                       "Axis MF",
+                                                       "Nippon India MF"
+                                                   ],
+                            "benchmark_confidence":  "high",
+                            "inventory_id":  "times-of-india",
+                            "name":  "Times of India Digital Display",
+                            "platform":  "Direct Buy",
+                            "buy_type":  "direct",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "Fixed"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  94,
+                                                        "mid":  140,
+                                                        "high":  220
+                                                    },
+                                            "Fixed":  {
+                                                          "low":  162000,
+                                                          "mid":  232000,
+                                                          "high":  255200
+                                                      }
+                                        },
+                            "min_budget":  162000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.2,
+                                                  "mid":  0.35,
+                                                  "high":  0.55
+                                              },
+                            "audience_quality_score":  6,
+                            "pricing_source_note":  "Times of India digital banner, article, and roadblock rates from Media Ant.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/times-of-india-advertising"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Use TOI as top-funnel reach or broad credibility inventory, not aggressive response copy.",
+                            "how_to_start":  "Request TOI digital placements; select high-visibility display inventory; confirm premium-news or business adjacency if available; send approved creative assets.",
+                            "start_url":  "https://www.themediaant.com/digital/times-of-india-advertising",
+                            "access_notes":  "Managed marketplace or direct publisher buy.",
+                            "time_to_go_live":  "3-5 business days"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Angel One",
+                                                       "Zerodha",
+                                                       "Kotak Securities"
+                                                   ],
+                            "benchmark_confidence":  "low",
+                            "inventory_id":  "bse-nse-investor-portal",
+                            "name":  "BSE/NSE Investor Portal (if available for direct buy)",
+                            "platform":  "Direct Buy",
+                            "buy_type":  "direct",
+                            "primary_cost_model":  "Fixed",
+                            "cost_model":  [
+                                               "Fixed",
+                                               "CPM"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  150,
+                                                        "mid":  220,
+                                                        "high":  320
+                                                    },
+                                            "Fixed":  {
+                                                          "low":  125000,
+                                                          "mid":  250000,
+                                                          "high":  500000
+                                                      }
+                                        },
+                            "min_budget":  125000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.7,
+                                                  "mid":  1,
+                                                  "high":  1.4
+                                              },
+                            "audience_quality_score":  10,
+                            "pricing_source_note":  "No public exchange website rate card was confirmed; pricing inferred from premium investor-publisher display bands.",
+                            "pricing_source_urls":  [
+                                                        "https://www.nseindia.com/trade/members-code-of-advertisement",
+                                                        "https://www.bseindia.com/downloads1/Advertisement_FAQ.pdf",
+                                                        "https://www.themediaant.com/digital/money-control-advertising"
+                                                    ],
+                            "sebi_compliance_note":  "Exchange-facing creative may require exchange-specific advertisement approval or legal review before publication.",
+                            "how_to_start":  "Confirm whether the exchange or portal accepts sponsorship; route the creative through compliance review; obtain any required exchange approval before booking.",
+                            "start_url":  "https://www.nseindia.com/trade/members-code-of-advertisement",
+                            "access_notes":  "Availability must be confirmed directly with the exchange or portal partner.",
+                            "time_to_go_live":  "5-7 business days"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Angel One",
+                                                       "Groww",
+                                                       "Axis Direct"
+                                                   ],
+                            "benchmark_confidence":  "medium",
+                            "inventory_id":  "google-performance-max",
+                            "name":  "Google Performance Max",
+                            "platform":  "Google",
+                            "buy_type":  "self-serve",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "CPC",
+                                               "CPL"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  70,
+                                                        "mid":  130,
+                                                        "high":  220
+                                                    }
+                                        },
+                            "min_budget":  15000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.7,
+                                                  "mid":  1.1,
+                                                  "high":  1.6
+                                              },
+                            "audience_quality_score":  8,
+                            "pricing_source_note":  "Performance Max inferred from blended Search, Display, and Demand Gen market ranges.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/google-display-advertising",
+                                                        "https://www.themediaant.com/digital?pricingModels=CPC",
+                                                        "https://support.google.com/google-ads/answer/13695777?hl=en-IN"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Keep asset groups tightly controlled and review spillover frequently.",
+                            "how_to_start":  "Create a Performance Max campaign with strict asset groups, finance-safe audience signals, compliant creative assets, and a qualified lead conversion goal.",
+                            "start_url":  "https://ads.google.com/aw/campaigns",
+                            "access_notes":  "Self-serve in Google Ads.",
+                            "time_to_go_live":  "24-48 hours",
+                            "google_campaign_types":  [
+                                                          "PERFORMANCE_MAX"
+                                                      ]
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Axis MF",
+                                                       "SBI MF",
+                                                       "Nippon India MF"
+                                                   ],
+                            "benchmark_confidence":  "medium",
+                            "inventory_id":  "meta-advantage-plus",
+                            "name":  "Meta Advantage+ Shopping (configured for lead gen)",
+                            "platform":  "Meta",
+                            "buy_type":  "self-serve",
+                            "primary_cost_model":  "CPM",
+                            "cost_model":  [
+                                               "CPM",
+                                               "CPC",
+                                               "CPL"
+                                           ],
+                            "pricing":  {
+                                            "CPM":  {
+                                                        "low":  80,
+                                                        "mid":  120,
+                                                        "high":  200
+                                                    }
+                                        },
+                            "min_budget":  10000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.8,
+                                                  "mid":  1.2,
+                                                  "high":  1.8
+                                              },
+                            "audience_quality_score":  7,
+                            "pricing_source_note":  "Advantage+ lead benchmark inferred from Meta feed/reels auction ranges and India Meta guidance.",
+                            "pricing_source_urls":  [
+                                                        "https://www.themediaant.com/digital/facebook-advertising",
+                                                        "https://www.themediaant.com/digital/instagram-advertising",
+                                                        "https://www.themediaant.com/digital/digital-advertising-under-40k-budget-advertising/meta-ads"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Advantage+ can expand quickly, so claims should stay conservative and pre-approved.",
+                            "how_to_start":  "Create an Advantage+ campaign using compliant product-style creative, a lead objective or form integration, and exclusions for weak placements or audiences.",
+                            "start_url":  "https://adsmanager.facebook.com/",
+                            "access_notes":  "Self-serve in Meta Ads Manager.",
+                            "time_to_go_live":  "24-48 hours"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Angel One",
+                                                       "SBI MF",
+                                                       "Axis MF"
+                                                   ],
+                            "benchmark_confidence":  "medium",
+                            "inventory_id":  "taboola",
+                            "name":  "Taboola (financial content sites whitelist)",
+                            "platform":  "Programmatic",
+                            "buy_type":  "programmatic",
+                            "primary_cost_model":  "CPC",
+                            "cost_model":  [
+                                               "CPC",
+                                               "CPM",
+                                               "CPL"
+                                           ],
+                            "pricing":  {
+                                            "CPC":  {
+                                                        "low":  8,
+                                                        "mid":  15,
+                                                        "high":  25
+                                                    },
+                                            "CPM":  {
+                                                        "low":  80,
+                                                        "mid":  120,
+                                                        "high":  180
+                                                    }
+                                        },
+                            "min_budget":  20000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.35,
+                                                  "mid":  0.6,
+                                                  "high":  0.9
+                                              },
+                            "audience_quality_score":  7,
+                            "pricing_source_note":  "Taboola uses CPC or CPM pricing; India benchmark inferred from native/programmatic marketplace ranges with finance whitelisting.",
+                            "pricing_source_urls":  [
+                                                        "https://www.taboola.com/help/en/articles/3878003-pricing-and-billing-basics",
+                                                        "https://www.themediaant.com/digital/native-advertising/banner",
+                                                        "https://www.themediaant.com/digital/programmatic-platforms-advertising"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Run only on an approved finance and business publisher whitelist.",
+                            "how_to_start":  "Create a Taboola campaign; upload native creative; whitelist finance publishers only; add compliance-safe headlines; optimize on qualified leads rather than cheap clicks.",
+                            "start_url":  "https://ads.taboola.com/",
+                            "access_notes":  "Programmatic self-serve with strict whitelist controls.",
+                            "time_to_go_live":  "24-48 hours"
+                        },
+                        {
+                            "currency":  "INR",
+                            "financial_advisory_eligible":  true,
+                            "competitors_active":  [
+                                                       "Motilal Oswal",
+                                                       "ICICI Direct",
+                                                       "Angel One",
+                                                       "SBI MF",
+                                                       "Axis MF"
+                                                   ],
+                            "benchmark_confidence":  "medium",
+                            "inventory_id":  "outbrain",
+                            "name":  "OutBrain (financial content sites whitelist)",
+                            "platform":  "Programmatic",
+                            "buy_type":  "programmatic",
+                            "primary_cost_model":  "CPC",
+                            "cost_model":  [
+                                               "CPC",
+                                               "CPM",
+                                               "CPL"
+                                           ],
+                            "pricing":  {
+                                            "CPC":  {
+                                                        "low":  7,
+                                                        "mid":  14,
+                                                        "high":  24
+                                                    },
+                                            "CPM":  {
+                                                        "low":  75,
+                                                        "mid":  115,
+                                                        "high":  175
+                                                    }
+                                        },
+                            "min_budget":  20000,
+                            "ctr_benchmark":  {
+                                                  "low":  0.3,
+                                                  "mid":  0.55,
+                                                  "high":  0.85
+                                              },
+                            "audience_quality_score":  7,
+                            "pricing_source_note":  "Outbrain CPC benchmark inferred from native/programmatic marketplace ranges; official help confirms CPC add-on pricing.",
+                            "pricing_source_urls":  [
+                                                        "https://www.outbrain.com/help/advertisers/advanced-audience-targeting-options/",
+                                                        "https://www.themediaant.com/digital/native-advertising/banner",
+                                                        "https://www.themediaant.com/digital/programmatic-platforms-advertising"
+                                                    ],
+                            "sebi_compliance_note":  "Show SEBI registration details, fair-risk language, and no assured-return claims. Use a finance-safe publisher whitelist and plain-language native headlines only.",
+                            "how_to_start":  "Launch through Outbrain; whitelist premium finance and business publishers; connect only compliant editorial-style creatives; optimize to qualified lead events.",
+                            "start_url":  "https://my.outbrain.com/",
+                            "access_notes":  "Programmatic self-serve with whitelist discipline.",
+                            "time_to_go_live":  "24-48 hours"
+                        }
+                    ],
+    "watchlist":  [
+                      {
+                          "id":  "cnbctv18",
+                          "name":  "CNBC TV18 Digital",
+                          "url":  "https://www.cnbctv18.com/",
+                          "keywords":  [
+                                           "business",
+                                           "markets",
+                                           "investors",
+                                           "advertis"
+                                       ]
+                      },
+                      {
+                          "id":  "financial-express",
+                          "name":  "Financial Express Digital",
+                          "url":  "https://www.financialexpress.com/",
+                          "keywords":  [
+                                           "markets",
+                                           "finance",
+                                           "investor",
+                                           "advertis"
+                                       ]
+                      },
+                      {
+                          "id":  "forbes-india",
+                          "name":  "Forbes India Digital",
+                          "url":  "https://www.forbesindia.com/",
+                          "keywords":  [
+                                           "business",
+                                           "investing",
+                                           "advertis",
+                                           "brand"
+                                       ]
+                      },
+                      {
+                          "id":  "dsij",
+                          "name":  "DSIJ Digital",
+                          "url":  "https://www.dsij.in/advertise-with-us",
+                          "keywords":  [
+                                           "stock market",
+                                           "digital ads",
+                                           "website banner",
+                                           "newsletter"
+                                       ]
+                      },
+                      {
+                          "id":  "jiosaavn",
+                          "name":  "JioSaavn Audio",
+                          "url":  "https://www.themediaant.com/digital?pricingModels=Others",
+                          "keywords":  [
+                                           "audio",
+                                           "banner",
+                                           "music",
+                                           "jio saavn"
+                                       ]
+                      },
+                      {
+                          "id":  "et-markets",
+                          "name":  "ET Markets Sponsorship",
+                          "url":  "https://economictimes.indiatimes.com/markets",
+                          "keywords":  [
+                                           "markets",
+                                           "investing",
+                                           "business",
+                                           "advertis"
+                                       ]
+                      }
+                  ]
+}

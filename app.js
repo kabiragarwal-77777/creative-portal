@@ -19,11 +19,63 @@ const TEST_CAMPAIGNS = [
 let currentDateRange = { since: null, until: null, label: '--' };
 let currentDataMode = { type: 'na', label: 'Mode: --', detail: '' };
 let currentDiagnostics = { source: 'Meta + Metabase', matchedKeys: 0, unmatchedKeys: 0 };
+window.__portalExplicitDateRange = false;
+window.__portalSelectedDateRange = null;
 const APP_URL_PARAMS = new URLSearchParams(window.location.search || '');
 const APP_INITIAL_VIEW = APP_URL_PARAMS.get('view') || 'dashboard';
 const APP_STANDALONE_MODE = APP_URL_PARAMS.get('standalone') === '1';
 let CURRENT_VIEW = APP_INITIAL_VIEW || 'dashboard';
 window.OPTIMIZER_PLATFORM = window.OPTIMIZER_PLATFORM || 'meta';
+const PORTAL_DASHBOARD_CACHE_KEY = 'creativePortal.dashboard.cache.v2';
+const PORTAL_VIEW_CACHE_TTL_MS = 10 * 60 * 1000;
+
+function storageAvailable() {
+    try {
+        return typeof localStorage !== 'undefined';
+    } catch (err) {
+        return false;
+    }
+}
+
+function readJsonCache(key) {
+    if (!storageAvailable()) return null;
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch (err) {
+        return null;
+    }
+}
+
+function writeJsonCache(key, value) {
+    if (!storageAvailable()) return;
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch (err) {}
+}
+
+function cacheIsFresh(entry, ttlMs) {
+    return !!(entry && entry.savedAt && (Date.now() - entry.savedAt) < (ttlMs || PORTAL_VIEW_CACHE_TTL_MS));
+}
+
+function setPortalLoadState(state, text) {
+    const el = document.getElementById('portalLoadState');
+    if (!el) return;
+    const nextState = ['loading', 'cached', 'fresh'].includes(state) ? state : 'fresh';
+    el.classList.remove('context-chip-load-ok', 'context-chip-load-warn', 'context-chip-load-cached');
+    el.classList.add('context-chip-load');
+    if (nextState === 'loading') {
+        el.classList.add('context-chip-load-warn');
+        el.textContent = text || 'Loading cached data...';
+    } else if (nextState === 'cached') {
+        el.classList.add('context-chip-load-cached');
+        el.textContent = text || 'Cached';
+    } else {
+        el.classList.add('context-chip-load-ok');
+        el.textContent = text || 'Fresh';
+    }
+}
 
 // =========================================================================
 // SHARED DATA PIPELINE — Raw summable metrics + derived formulated metrics
@@ -85,6 +137,22 @@ function buildJoinKey(dateStr, campaignName, adsetName, trackerName) {
     ].join('|||');
 }
 
+function buildCampaignJoinKey(dateStr, campaignName) {
+    return [String(dateStr || '').substring(0, 10), normalizeCampaignName(campaignName)].join('|||');
+}
+
+function buildAdsetJoinKey(dateStr, adsetName) {
+    return [String(dateStr || '').substring(0, 10), normalizeAdsetName(adsetName)].join('|||');
+}
+
+function buildAdsetTrackerCoverageKey(campaignName, adsetName, trackerName) {
+    return [
+        normalizeCampaignName(campaignName),
+        normalizeAdsetName(adsetName),
+        normalizeTrackerName(trackerName)
+    ].join('|||');
+}
+
 function formatAbsDate(dateStr) {
     if (!dateStr) return '--';
     const dt = new Date(String(dateStr).substring(0, 10) + 'T00:00:00');
@@ -95,6 +163,11 @@ function formatAbsDate(dateStr) {
 function buildDateRangeLabel(since, until) {
     if (!since || !until) return '--';
     return `${formatAbsDate(since)} -> ${formatAbsDate(until)}`;
+}
+
+function currentRangeBasisText(prefix) {
+    const label = currentDateRange && currentDateRange.label ? currentDateRange.label : '--';
+    return `${prefix || 'Range'}: ${label}`;
 }
 
 function summarizeMaturity(items) {
@@ -205,8 +278,88 @@ function publishPortalContext(extra) {
             window.parent.postMessage({ type: 'portal-context', context }, '*');
         }
     } catch (err) {}
+    try {
+        window.dispatchEvent(new CustomEvent('portal-data-updated', { detail: context }));
+    } catch (err) {}
 }
 window.__publishPortalContext = publishPortalContext;
+
+function hydratePortalDashboard(cacheEntry) {
+    if (!cacheEntry || !cacheEntry.data) return false;
+    setPortalLoadState('cached', 'Cached dashboard');
+    const payload = cacheEntry.data;
+    allData = payload.allData || [];
+    filteredData = payload.filteredData || [];
+    currentDateRange = payload.currentDateRange || currentDateRange;
+    currentDataMode = payload.currentDataMode || currentDataMode;
+    currentDiagnostics = payload.currentDiagnostics || currentDiagnostics;
+    window.allData = allData;
+    window.filteredData = filteredData;
+    if (payload.lastUpdated && document.getElementById('lastUpdated')) {
+        document.getElementById('lastUpdated').textContent = payload.lastUpdated;
+    }
+    applyFilters();
+    publishPortalContext();
+    renderCurrentView();
+    return true;
+}
+
+function runEmbeddedGoogleOptimizerQuery(prompt, timeoutMs) {
+    return new Promise((resolve, reject) => {
+        const frame = document.getElementById('googleOptimizerFrame');
+        const frameWin = frame && frame.contentWindow ? frame.contentWindow : null;
+        const debugEl = document.getElementById('viewAssistantDebug');
+        if (!frameWin) {
+            if (debugEl) debugEl.textContent = 'Debug: google frame unavailable';
+            reject(new Error('Google optimizer frame is not available yet.'));
+            return;
+        }
+        const requestId = 'gc-opt-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+        if (debugEl) debugEl.textContent = `Debug: posted to google iframe (${requestId})`;
+        const timeout = setTimeout(() => {
+            window.removeEventListener('message', onMessage);
+            if (debugEl) debugEl.textContent = 'Debug: google iframe timed out';
+            reject(new Error('Google optimizer did not respond. Retry after the embedded view finishes loading.'));
+        }, timeoutMs || 12000);
+        function onMessage(event) {
+            const data = event && event.data ? event.data : {};
+            if (data.type !== 'gc-optimizer-query-result' || data.requestId !== requestId) return;
+            clearTimeout(timeout);
+            window.removeEventListener('message', onMessage);
+            if (debugEl) debugEl.textContent = 'Debug: google iframe responded';
+            if (data.error) reject(new Error(data.error));
+            else resolve(data.result || null);
+        }
+        window.addEventListener('message', onMessage);
+        try {
+            frameWin.postMessage({ type: 'gc-optimizer-query', requestId, prompt }, '*');
+        } catch (err) {
+            clearTimeout(timeout);
+            window.removeEventListener('message', onMessage);
+            if (debugEl) debugEl.textContent = `Debug: postMessage failed (${err.message})`;
+            reject(err);
+        }
+    });
+}
+
+function resetViewAssistantControls() {
+    const button = document.getElementById('viewPromptAskBtn');
+    const input = document.getElementById('viewPromptInput');
+    const debugEl = document.getElementById('viewAssistantDebug');
+    if (viewAssistantQueryInFlight) return;
+    if (button) {
+        button.disabled = false;
+        button.style.pointerEvents = 'auto';
+    }
+    if (input) {
+        input.disabled = false;
+    }
+    if (debugEl && debugEl.textContent === 'Debug: idle') {
+        debugEl.textContent = 'Debug: controls reset';
+    }
+}
+
+let viewAssistantQueryInFlight = false;
 
 async function runViewAssistantQuery() {
     const input = document.getElementById('viewPromptInput');
@@ -217,9 +370,12 @@ async function runViewAssistantQuery() {
     const checksEl = document.getElementById('viewAssistantChecks');
     const nextEl = document.getElementById('viewAssistantNextSteps');
     const reopenBtn = document.getElementById('viewAssistantReopenBtn');
+    const debugEl = document.getElementById('viewAssistantDebug');
     if (!input || !button) return;
     const prompt = input.value.trim();
     if (!prompt) return;
+    if (debugEl) debugEl.textContent = 'Debug: shared handler entered';
+    viewAssistantQueryInFlight = true;
     button.disabled = true;
     const context = window.getPortalAssistantContext ? window.getPortalAssistantContext() : null;
     if (panel) panel.hidden = false;
@@ -229,6 +385,28 @@ async function runViewAssistantQuery() {
     if (checksEl) checksEl.innerHTML = '<div class="ai-dock-item">Reading current filters, date range, and diagnostics.</div>';
     if (nextEl) nextEl.innerHTML = '<div class="ai-dock-item">Preparing focused next steps.</div>';
     try {
+        if (getCurrentView() === 'optimizer' && (window.OPTIMIZER_PLATFORM || 'meta') === 'google') {
+            const result = await runEmbeddedGoogleOptimizerQuery(prompt, 15000);
+            if (answerEl) answerEl.textContent = result.summary || 'No answer returned.';
+            if (checksEl) {
+                const checks = Array.isArray(result.rows) && result.rows.length
+                    ? result.rows.slice(0, 8).map(row => {
+                        const bits = [row.label || '--'];
+                        if (row.statusText) bits.push(`Status: ${row.statusText}`);
+                        if (row.prevText) bits.push(`Prev: ${row.prevText}`);
+                        if (row.currentText) bits.push(`Current: ${row.currentText}`);
+                        if (row.deltaText) bits.push(`Delta: ${row.deltaText}`);
+                        return bits.join(' | ');
+                    })
+                    : ['No structured rows returned.'];
+                checksEl.innerHTML = checks.map(item => `<div class="ai-dock-item">${esc(item)}</div>`).join('');
+            }
+            if (nextEl) {
+                const next = Array.isArray(result.insights) && result.insights.length ? result.insights : ['No next steps returned.'];
+                nextEl.innerHTML = next.map(item => `<div class="ai-dock-item">${esc(item)}</div>`).join('');
+            }
+            return;
+        }
         const res = await fetch('/api/ai/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -251,11 +429,16 @@ async function runViewAssistantQuery() {
             nextEl.innerHTML = next.map(item => `<div class="ai-dock-item">${esc(item)}</div>`).join('');
         }
     } catch (err) {
+        if (debugEl) debugEl.textContent = `Debug: handler error (${err.message})`;
         if (answerEl) answerEl.textContent = 'Assistant error: ' + err.message;
         if (checksEl) checksEl.innerHTML = `<div class="ai-dock-item">Context view: ${esc(context && context.view || 'unknown')}</div>`;
         if (nextEl) nextEl.innerHTML = '<div class="ai-dock-item">Retry after the current view finishes loading.</div>';
     } finally {
+        viewAssistantQueryInFlight = false;
         button.disabled = false;
+        if (debugEl && !String(debugEl.textContent || '').includes('error') && !String(debugEl.textContent || '').includes('timed out')) {
+            debugEl.textContent = 'Debug: handler completed';
+        }
     }
 }
 
@@ -264,6 +447,7 @@ function closeViewAssistantPanel() {
     const reopenBtn = document.getElementById('viewAssistantReopenBtn');
     if (panel) panel.hidden = true;
     if (reopenBtn) reopenBtn.hidden = false;
+    resetViewAssistantControls();
 }
 
 function reopenViewAssistantPanel() {
@@ -271,6 +455,7 @@ function reopenViewAssistantPanel() {
     const reopenBtn = document.getElementById('viewAssistantReopenBtn');
     if (panel) panel.hidden = false;
     if (reopenBtn) reopenBtn.hidden = true;
+    resetViewAssistantControls();
 }
 
 // ROAS validity check — null if invalid, percentage if valid
@@ -286,6 +471,8 @@ function deriveMetrics(r) {
     const p0p1 = (r.p0_signup || 0) + (r.p1_signup || 0);
     const d6Rev = r.d6_overall_revenue || 0;
     const d6Con = r.d6 || 0;
+    const creativeType = String((r && (r.creative_type || r.type)) || '').toLowerCase();
+    const videoEligible = creativeType === 'video';
     return {
         ...r,
         // Delivery
@@ -293,9 +480,9 @@ function deriveMetrics(r) {
         ctr: r.impressions > 0 ? (r.clicks / r.impressions) * 100 : null,
         cpi: r.installs > 0 ? r.spend / r.installs : null,
         // Video
-        hook: r.impressions > 0 ? (r.p25 / r.impressions) * 100 : null,
-        hold: r.p25 > 0 ? (r.thruplay / r.p25) * 100 : null,
-        fullPlay: r.impressions > 0 ? (r.p100 / r.impressions) * 100 : null,
+        hook: videoEligible && r.impressions > 0 ? (r.p25 / r.impressions) * 100 : null,
+        hold: videoEligible && r.p25 > 0 ? (r.thruplay / r.p25) * 100 : null,
+        fullPlay: videoEligible && r.impressions > 0 ? (r.p100 / r.impressions) * 100 : null,
         // Funnel
         signupCost: r.signups > 0 ? r.spend / r.signups : null,
         signupPct: r.installs > 0 ? (r.signups / r.installs) * 100 : null,
@@ -331,7 +518,8 @@ window.forceRefresh = async function() {
 };
 
 async function fetchLiveData(customDateFrom, customDateTo) {
-    showLoading(true);
+    const useDashboardCache = !customDateFrom && !customDateTo;
+    setPortalLoadState('loading', 'Loading fresh data...');
     try {
         // Keep the default load window smaller and avoid "today" so the portal opens fast
         // even when the current-day range has not been warmed yet.
@@ -341,6 +529,13 @@ async function fetchLiveData(customDateFrom, customDateTo) {
         const dateFrom = customDateFrom || defaultDateFrom;
         currentDateRange = { since: dateFrom, until: dateTo, label: buildDateRangeLabel(dateFrom, dateTo) };
         console.log(`[fetchLiveData] Fetching ${dateFrom} to ${dateTo}...`);
+
+        const cachedDashboard = useDashboardCache ? readJsonCache(PORTAL_DASHBOARD_CACHE_KEY) : null;
+        const hasFreshDashboardCache = cacheIsFresh(cachedDashboard, PORTAL_VIEW_CACHE_TTL_MS) && cachedDashboard.data;
+        if (hasFreshDashboardCache) {
+            hydratePortalDashboard(cachedDashboard);
+        }
+        showLoading(!hasFreshDashboardCache);
 
         // Parallel fetch: Meta insights + Metabase funnel (required) + Ad statuses (optional)
         const [metaRes, funnelRes, adsStatusRes] = await Promise.all([
@@ -377,11 +572,20 @@ async function fetchLiveData(customDateFrom, customDateTo) {
 
         // Canonical join: date|||campaign_name|||adset_name|||tracker_name
         const mbDaily = {};
+        const mbCoverage = {};
+        const mbCampaign = {};
+        const mbAdset = {};
         for (const row of funnelRows) {
             const key = buildJoinKey(row.date, row.campaign_name, row.ad_set_name, row.tracker_name);
             if (!mbDaily[key]) {
                 mbDaily[key] = { signups: 0, d0_trial: 0, d0: 0, d0_revenue: 0, d6: 0, d6_revenue: 0, overall_revenue: 0, p0_signup: 0, p1_signup: 0, total_trial: 0, d6_overall_con: 0, d6_overall_revenue: 0, d15_overall_con: 0, d15_overall_revenue: 0, d30_overall_con: 0, d30_overall_revenue: 0, d60_overall_con: 0, d60_overall_revenue: 0 };
             }
+            const covKey = buildAdsetTrackerCoverageKey(row.campaign_name, row.ad_set_name, row.tracker_name);
+            if (!mbCoverage[covKey]) mbCoverage[covKey] = true;
+            const campKey = normalizeCampaignName(row.campaign_name || '');
+            const adsetKey = campKey + '|||' + normalizeAdsetName(row.ad_set_name || '');
+            if (!mbCampaign[campKey]) mbCampaign[campKey] = true;
+            if (!mbAdset[adsetKey]) mbAdset[adsetKey] = true;
             const m = mbDaily[key];
             m.signups += Number(row.signups) || 0;
             m.d0_trial += Number(row.d0_trial) || 0;
@@ -407,6 +611,10 @@ async function fetchLiveData(customDateFrom, customDateTo) {
         const adAgg = {};
         let matchedKeys = 0;
         let unmatchedKeys = 0;
+        let dateShiftMisses = 0;
+        let adsetCoverageMisses = 0;
+        let campaignCoverageMisses = 0;
+        let spendOnlyMisses = 0;
         for (const row of metaRows) {
             const adUid = (row.campaign_name || '') + '|||' + (row.adset_name || '') + '|||' + (row.ad_name || '');
             if (!adAgg[adUid]) {
@@ -462,6 +670,13 @@ async function fetchLiveData(customDateFrom, customDateTo) {
                 a.total_trial += mb.total_trial;
             } else {
                 unmatchedKeys++;
+                const covKey = buildAdsetTrackerCoverageKey(row.campaign_name, row.adset_name, row.ad_name);
+                const campKey = normalizeCampaignName(row.campaign_name || '');
+                const adsetKey = campKey + '|||' + normalizeAdsetName(row.adset_name || '');
+                if (mbCoverage[covKey]) dateShiftMisses++;
+                else if (mbAdset[adsetKey]) adsetCoverageMisses++;
+                else if (mbCampaign[campKey]) campaignCoverageMisses++;
+                else spendOnlyMisses++;
             }
         }
 
@@ -608,10 +823,24 @@ async function fetchLiveData(customDateFrom, customDateTo) {
         if (metaAge || funnelAge) freshness += ` (cached: Meta ${metaAge || 0}m, Funnel ${funnelAge || 0}m ago)`;
         if (staleWarning) freshness += ' ⚠️ STALE';
         document.getElementById('lastUpdated').textContent = freshness;
+        if (useDashboardCache) {
+            writeJsonCache(PORTAL_DASHBOARD_CACHE_KEY, {
+                savedAt: Date.now(),
+                data: {
+                    allData,
+                    filteredData,
+                    currentDateRange,
+                    currentDataMode,
+                    currentDiagnostics,
+                    lastUpdated: freshness,
+                }
+            });
+        }
         applyFilters();
         publishPortalContext();
         renderCurrentView();
         showLoading(false);
+        setPortalLoadState('fresh', 'Fresh');
 
         // Cross-verification disabled — sheet has all-time data, API has 30 days
         crossVerifyWithSheet();
@@ -629,6 +858,11 @@ async function fetchLiveData(customDateFrom, customDateTo) {
             else document.body.prepend(errBanner);
         }
         errBanner.innerHTML = `<span style="flex:1;">Failed to load data: ${err.message}</span><button onclick="fetchLiveData();this.parentElement.remove();" style="padding:6px 16px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;cursor:pointer;font-size:12px;">Retry</button>`;
+        if (cacheIsFresh(readJsonCache(PORTAL_DASHBOARD_CACHE_KEY), PORTAL_VIEW_CACHE_TTL_MS)) {
+            setPortalLoadState('cached', 'Cached dashboard');
+        } else {
+            setPortalLoadState('fresh', 'Fresh');
+        }
     }
 }
 
@@ -1546,6 +1780,22 @@ function getCurrentView() {
     return CURRENT_VIEW || 'dashboard';
 }
 
+function syncSharedAssistantVisibility() {
+    const view = getCurrentView();
+    const panel = document.getElementById('viewAssistantPanel');
+    const reopenBtn = document.getElementById('viewAssistantReopenBtn');
+    const platform = window.OPTIMIZER_PLATFORM || 'meta';
+    const isOptimizer = view === 'optimizer';
+    const hideAssistant = isOptimizer && platform === 'google';
+    if (panel) {
+        panel.style.display = hideAssistant ? 'none' : '';
+        panel.hidden = hideAssistant;
+    }
+    if (reopenBtn) {
+        reopenBtn.style.display = hideAssistant ? 'none' : '';
+    }
+}
+
 function renderCurrentView() {
     applyFilters();
     const view = getCurrentView();
@@ -1559,6 +1809,7 @@ function renderCurrentView() {
     else if (view === 'accounts') renderAccountsView();
     else if (view === 'campaignTree') { /* rendered on-demand via fetchCampaignTree */ }
     else if (view === 'optimizer') { renderSharedOptimizerView(); }
+    syncSharedAssistantVisibility();
     publishPortalContext();
 }
 
@@ -1566,19 +1817,23 @@ function renderSharedOptimizerView() {
     const platform = window.OPTIMIZER_PLATFORM || 'meta';
     const metaPanel = document.querySelector('[data-platform-panel="meta"]');
     const googlePanel = document.querySelector('[data-platform-panel="google"]');
+    const content = document.getElementById('gcOptimizerContent');
     document.querySelectorAll('.shared-platform-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.platform === platform);
     });
     if (metaPanel) metaPanel.classList.toggle('active', platform === 'meta');
     if (googlePanel) googlePanel.classList.toggle('active', platform === 'google');
+    resetViewAssistantControls();
 
     if (platform === 'meta') {
+        if (content) content.innerHTML = '';
         if (typeof renderOptimizer === 'function') renderOptimizer();
     } else {
-        const frame = document.getElementById('googleOptimizerFrame');
-        if (frame && !frame.src) {
-            frame.src = '/google-creative.html?view=gcOptimizer&embed=optimizer';
+        if (content && !document.getElementById('googleOptimizerFrame')) {
+            content.innerHTML = '<iframe id="googleOptimizerFrame" title="Google Optimizer" style="width:100%;height:calc(100vh - 180px);min-height:760px;border:0;border-radius:12px;background:transparent;" loading="eager" referrerpolicy="no-referrer"></iframe>';
         }
+        const frame = document.getElementById('googleOptimizerFrame');
+        if (frame && !frame.src) frame.src = '/google-creative.html?view=gcOptimizer&embed=optimizer&v=41';
     }
 }
 
@@ -1623,35 +1878,35 @@ function renderDashboard() {
     const sheetsOnlyCount = data.filter(d => d._source === 'sheets').length;
 
     document.getElementById('kpiTotal').textContent = data.length;
-    document.getElementById('kpiTotalSub').textContent = mergedCount
+    document.getElementById('kpiTotalSub').textContent = (mergedCount
         ? `${mergedCount} merged, ${metaOnlyCount} meta, ${sheetsOnlyCount} sheets`
-        : `${data.filter(d => d.type === 'Video').length} video, ${data.filter(d => d.type === 'Static').length} static`;
+        : `${data.filter(d => d.type === 'Video').length} video, ${data.filter(d => d.type === 'Static').length} static`) + ` • ${currentRangeBasisText()}`;
     document.getElementById('kpiLive').textContent = liveCount;
-    document.getElementById('kpiLiveSub').textContent = `${data.length - liveCount} paused`;
+    document.getElementById('kpiLiveSub').textContent = `${data.length - liveCount} paused • ${currentRangeBasisText()}`;
     document.getElementById('kpiSpend').textContent = formatINR(totalSpend);
-    document.getElementById('kpiSpendSub').textContent = `Avg ${formatINR(totalSpend / (data.length || 1))} per creative`;
+    document.getElementById('kpiSpendSub').textContent = `Avg ${formatINR(totalSpend / (data.length || 1))} per creative • ${currentRangeBasisText()}`;
     document.getElementById('kpiInstalls').textContent = formatNum(totalInstalls);
-    document.getElementById('kpiInstallsSub').textContent = `${formatNum(totalSignups)} signups`;
+    document.getElementById('kpiInstallsSub').textContent = `${formatNum(totalSignups)} signups • ${currentRangeBasisText()}`;
     document.getElementById('kpiCPI').textContent = '₹' + Math.round(avgCPI);
-    document.getElementById('kpiCPISub').textContent = `Across ${rawAds.length} creatives`;
+    document.getElementById('kpiCPISub').textContent = `Across ${rawAds.length} creatives • ${currentRangeBasisText()}`;
     document.getElementById('kpiCTR').textContent = avgCTR.toFixed(2) + '%';
-    document.getElementById('kpiCTRSub').textContent = `Across ${rawAds.length} creatives`;
+    document.getElementById('kpiCTRSub').textContent = `Across ${rawAds.length} creatives • ${currentRangeBasisText()}`;
     document.getElementById('kpiSignups').textContent = formatNum(totalSignups);
-    document.getElementById('kpiSignupsSub').textContent = `${totalInstalls ? ((totalSignups / totalInstalls) * 100).toFixed(1) : 0}% of installs`;
+    document.getElementById('kpiSignupsSub').textContent = `${totalInstalls ? ((totalSignups / totalInstalls) * 100).toFixed(1) : 0}% of installs • ${currentRangeBasisText()}`;
     document.getElementById('kpiROAS').textContent = avgROAS.toFixed(1) + '%';
-    document.getElementById('kpiROASSub').textContent = `Across ${rawAds.length} creatives`;
+    document.getElementById('kpiROASSub').textContent = `Across ${rawAds.length} creatives • ${currentRangeBasisText()}`;
     document.getElementById('kpiOverallROAS').textContent = avgOverallROAS.toFixed(1) + '%';
-    document.getElementById('kpiOverallROASSub').textContent = `Across ${rawAds.length} creatives`;
+    document.getElementById('kpiOverallROASSub').textContent = `Across ${rawAds.length} creatives • ${currentRangeBasisText()}`;
     document.getElementById('kpiSignupCost').textContent = '₹' + Math.round(avgSignupCost);
-    document.getElementById('kpiSignupCostSub').textContent = `Across ${rawAds.length} creatives`;
+    document.getElementById('kpiSignupCostSub').textContent = `Across ${rawAds.length} creatives • ${currentRangeBasisText()}`;
     document.getElementById('kpiP0P1Cost').textContent = '₹' + Math.round(avgP0P1Cost);
-    document.getElementById('kpiP0P1CostSub').textContent = `Across ${rawAds.length} creatives`;
+    document.getElementById('kpiP0P1CostSub').textContent = `Across ${rawAds.length} creatives • ${currentRangeBasisText()}`;
     document.getElementById('kpiD0CAC').textContent = '₹' + Math.round(avgD0CAC);
-    document.getElementById('kpiD0CACSub').textContent = `Across ${rawAds.length} creatives`;
+    document.getElementById('kpiD0CACSub').textContent = `Across ${rawAds.length} creatives • ${currentRangeBasisText()}`;
     document.getElementById('kpiD0TrialCost').textContent = '₹' + Math.round(avgD0TrialCost);
-    document.getElementById('kpiD0TrialCostSub').textContent = `Across ${rawAds.length} creatives`;
+    document.getElementById('kpiD0TrialCostSub').textContent = `Across ${rawAds.length} creatives • ${currentRangeBasisText()}`;
     document.getElementById('kpiD6CAC').textContent = '₹' + Math.round(avgD6CAC);
-    document.getElementById('kpiD6CACSub').textContent = `Across ${rawAds.length} creatives`;
+    document.getElementById('kpiD6CACSub').textContent = `Across ${rawAds.length} creatives • ${currentRangeBasisText()}`;
 
     // Performance distribution
     const perfCounts = {};
@@ -2204,6 +2459,7 @@ function renderScorecard(d) {
         <div class="sc-overall" style="margin-bottom:20px;">
             <div class="sc-overall-score" style="color:${gradeColor}">${Math.round(score)}/100</div>
             <div class="sc-overall-label">${grade} | ${d.type} | Spend: ${formatINR(d.spent)}</div>
+            <div style="margin-top:6px;font-size:11px;color:var(--text-dim);">Data Range: ${d._dateRange ? d._dateRange.label : currentDateRange.label}</div>
         </div>
         <div class="scorecard-grid">
             ${metrics.map(m => {
@@ -2345,6 +2601,9 @@ document.getElementById('viewPromptAskBtn')?.addEventListener('click', runViewAs
 document.getElementById('viewPromptInput')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') runViewAssistantQuery(); });
 document.getElementById('viewAssistantCloseBtn')?.addEventListener('click', closeViewAssistantPanel);
 document.getElementById('viewAssistantReopenBtn')?.addEventListener('click', reopenViewAssistantPanel);
+window.setInterval(() => {
+    if (getCurrentView() === 'optimizer' && !viewAssistantQueryInFlight) resetViewAssistantControls();
+}, 1200);
 document.querySelectorAll('.ai-dock-chip[data-ai-prompt]').forEach(btn => {
     btn.addEventListener('click', () => {
         const input = document.getElementById('viewPromptInput');
@@ -2364,6 +2623,8 @@ function onDateFilterChange() {
     if (dateFrom && dateTo) {
         const from = dateFrom instanceof Date ? dateFrom.toISOString().slice(0, 10) : dateFrom;
         const to = dateTo instanceof Date ? dateTo.toISOString().slice(0, 10) : dateTo;
+        window.__portalExplicitDateRange = true;
+        window.__portalSelectedDateRange = { since: from, until: to };
         fetchLiveData(from, to);
     }
 }
@@ -2390,6 +2651,8 @@ document.getElementById('clearDates').addEventListener('click', () => {
     const toEl = document.getElementById('dateTo');
     if (fromEl._flatpickr) { fromEl._flatpickr.clear(); } else { fromEl.value = ''; }
     if (toEl._flatpickr) { toEl._flatpickr.clear(); } else { toEl.value = ''; }
+    window.__portalExplicitDateRange = false;
+    window.__portalSelectedDateRange = null;
     fetchLiveData(); // Reset to default 30-day range
 });
 document.getElementById('refreshBtn').addEventListener('click', () => fetchLiveData());
@@ -2655,7 +2918,7 @@ init();
 // =========================================================================
 // CAMPAIGN TREE — Hierarchical campaign → adset → ad analysis
 // =========================================================================
-const TREE_SERVER = 'http://localhost:3000';
+const TREE_SERVER = window.location.origin || `${window.location.protocol}//${window.location.host}`;
 
 function dateToExcelSerial(dateStr) {
     const [y, m, d] = dateStr.split('-').map(Number);
@@ -2679,6 +2942,7 @@ function buildMetabaseKey(dateStr, campaignName, adsetName, trackerName) {
 window.fetchCampaignTree = async function () {
     const dateFrom = document.getElementById('treeDateFrom').value;
     const dateTo = document.getElementById('treeDateTo').value;
+    const spendOnly = document.getElementById('treeSpendFilter').checked;
     const status = document.getElementById('treeStatus');
     const container = document.getElementById('treeContainer');
     const summaryEl = document.getElementById('treeSummary');
@@ -2688,8 +2952,14 @@ window.fetchCampaignTree = async function () {
 
     btn.disabled = true;
     status.textContent = 'Fetching data from Meta API + Metabase...';
+    setPortalLoadState('loading', 'Loading fresh data...');
     container.innerHTML = '';
     summaryEl.style.display = 'none';
+    const treeCacheKey = `creativePortal.tree.cache.v1.${dateFrom}.${dateTo}.${spendOnly ? 'spend' : 'all'}`;
+    const cachedTree = readJsonCache(treeCacheKey);
+    if (cacheIsFresh(cachedTree, PORTAL_VIEW_CACHE_TTL_MS) && cachedTree.data) {
+        renderCachedCampaignTree(cachedTree.data, container, summaryEl, status);
+    }
 
     try {
         // Fetch both sources in parallel
@@ -2868,7 +3138,7 @@ window.fetchCampaignTree = async function () {
         }
 
         const totalMbKeys = Object.keys(mbDaily).length;
-        console.log(`[Tree] Meta rows: ${metaRows.length} | MB daily keys: ${totalMbKeys} | Matched: ${matchedKeys}/${matchedKeys + unmatchedKeys} | Unmatched MB: ${totalMbKeys - matchedMbKeys.size}`);
+        console.log(`[Tree] Meta rows: ${metaRows.length} | MB daily keys: ${totalMbKeys} | Matched: ${matchedKeys}/${matchedKeys + unmatchedKeys} | Date-shift: ${dateShiftMisses} | Adset coverage: ${adsetCoverageMisses} | Campaign coverage: ${campaignCoverageMisses} | Spend-only: ${spendOnlyMisses} | Unmatched MB: ${totalMbKeys - matchedMbKeys.size}`);
 
         const spendOnly = document.getElementById('treeSpendFilter').checked;
         const ads = Object.values(adAgg)
@@ -3035,7 +3305,8 @@ window.fetchCampaignTree = async function () {
                 <div class="tree-summary-card"><div class="val" style="color:#ef4444;">${redCount}</div><div class="lbl">Red Alerts</div></div>
                 <div class="tree-summary-card"><div class="val" style="color:#10b981;">${greenCount}</div><div class="lbl">Green Alerts</div></div>
                 <div class="tree-summary-card"><div class="val" style="color:#888;">${matchedKeys}/${matchedKeys + unmatchedKeys}</div><div class="lbl">Keys Matched</div></div>
-            </div>`;
+            </div>
+            <div style="margin-top:10px;font-size:11px;color:var(--text-dim);">Data Range: ${buildDateRangeLabel(dateFrom, dateTo)}</div>`;
 
         // Render tree
         const sortedCampaigns = sortCampaignsPinnedLast(Object.values(tree), c => c.totals.spend);
@@ -3062,27 +3333,75 @@ window.fetchCampaignTree = async function () {
         }
         container.innerHTML = html;
 
-        status.textContent = `Done. ${Object.keys(tree).length} campaigns, ${ads.length} ads. ${matchedKeys} key matches, ${unmatchedKeys} unmatched.`;
+        status.textContent = `Done. ${Object.keys(tree).length} campaigns, ${ads.length} ads. ${matchedKeys} exact matches, ${dateShiftMisses} date-shift, ${adsetCoverageMisses} adset coverage, ${campaignCoverageMisses} campaign coverage, ${spendOnlyMisses} spend-only.`;
         currentDateRange = { since: dateFrom, until: dateTo, label: buildDateRangeLabel(dateFrom, dateTo) };
         currentDataMode = summarizeMaturity(ads.map(ad => ({ isMatured: ad.isMatured })));
-        currentDiagnostics = { source: 'Meta + Metabase • Campaign Tree', matchedKeys, unmatchedKeys };
+        currentDiagnostics = { source: 'Meta + Metabase • Campaign Tree', matchedKeys, unmatchedKeys, dateShiftMisses, adsetCoverageMisses, campaignCoverageMisses, spendOnlyMisses };
+        writeJsonCache(treeCacheKey, {
+            savedAt: Date.now(),
+            data: {
+                summaryHtml: summaryEl.innerHTML,
+                treeHtml: container.innerHTML,
+                statusText: status.textContent,
+                currentDateRange,
+                currentDataMode,
+                currentDiagnostics,
+            }
+        });
         publishPortalContext({
             view: 'campaignTree',
             diagnostics: {
                 source: 'Meta + Metabase • Campaign Tree',
                 matchedKeys,
                 unmatchedKeys,
+                dateShiftMisses,
+                adsetCoverageMisses,
+                campaignCoverageMisses,
+                spendOnlyMisses,
                 lastUpdated: document.getElementById('lastUpdated')?.textContent || '--',
             }
         });
+        setPortalLoadState('fresh', 'Fresh');
 
     } catch (err) {
         status.textContent = 'Error: ' + err.message;
         console.error('Campaign tree error:', err);
+        if (cacheIsFresh(readJsonCache(treeCacheKey), PORTAL_VIEW_CACHE_TTL_MS)) {
+            setPortalLoadState('cached', 'Cached campaign tree');
+        } else {
+            setPortalLoadState('fresh', 'Fresh');
+        }
     } finally {
         btn.disabled = false;
     }
 };
+
+function renderCachedCampaignTree(payload, container, summaryEl, statusEl) {
+    if (!payload) return false;
+    setPortalLoadState('cached', 'Cached campaign tree');
+    if (summaryEl && payload.summaryHtml) {
+        summaryEl.innerHTML = payload.summaryHtml;
+        summaryEl.style.display = 'block';
+    }
+    if (container && payload.treeHtml) {
+        container.innerHTML = payload.treeHtml;
+    }
+    if (statusEl && payload.statusText) {
+        statusEl.textContent = payload.statusText + ' (cached)';
+    }
+    currentDateRange = payload.currentDateRange || currentDateRange;
+    currentDataMode = payload.currentDataMode || currentDataMode;
+    currentDiagnostics = payload.currentDiagnostics || currentDiagnostics;
+    publishPortalContext({
+        view: 'campaignTree',
+        diagnostics: {
+            ...(currentDiagnostics || {}),
+            source: 'Meta + Metabase • Campaign Tree (cached)',
+            lastUpdated: document.getElementById('lastUpdated')?.textContent || '--',
+        }
+    });
+    return true;
+}
 
 function getTreeAlertReasons(m, alertType) {
     const reasons = [];
@@ -3282,25 +3601,36 @@ function localDateStr(d) {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
-function getWeekBuckets() {
+function getWeekBuckets(dateFrom, dateTo) {
     const today = new Date(); today.setHours(12, 0, 0, 0); // noon to avoid DST issues
     const buckets = [];
-    // Bucket 0: Today
     const todayStr = localDateStr(today);
-    buckets.push({ label: 'Today', from: todayStr, to: todayStr, dates: new Set([todayStr]) });
-    // Buckets 1-4: last 4 weeks (7 days each, going backwards from yesterday)
-    for (let w = 0; w < 4; w++) {
-        const endDay = new Date(today); endDay.setDate(endDay.getDate() - 1 - (w * 7));
-        const startDay = new Date(endDay); startDay.setDate(startDay.getDate() - 6);
+    const fromStr = String(dateFrom || '').slice(0, 10) || localDateStr(new Date(today.getTime() - 28 * 86400000));
+    const toStr = String(dateTo || '').slice(0, 10) || todayStr;
+    const startBoundary = new Date(fromStr + 'T12:00:00');
+    let cursorEnd = new Date(toStr + 'T12:00:00');
+
+    if (toStr === todayStr) {
+        buckets.push({ label: 'Today', from: todayStr, to: todayStr, dates: new Set([todayStr]) });
+        cursorEnd.setDate(cursorEnd.getDate() - 1);
+    }
+
+    while (cursorEnd >= startBoundary) {
+        const bucketEnd = new Date(cursorEnd);
+        const bucketStart = new Date(cursorEnd);
+        bucketStart.setDate(bucketStart.getDate() - 6);
+        if (bucketStart < startBoundary) bucketStart.setTime(startBoundary.getTime());
         const dates = new Set();
-        for (const dt = new Date(startDay); dt <= endDay; dt.setDate(dt.getDate() + 1)) {
+        for (const dt = new Date(bucketStart); dt <= bucketEnd; dt.setDate(dt.getDate() + 1)) {
             dates.add(localDateStr(dt));
         }
-        const fromStr = localDateStr(startDay);
-        const toStr = localDateStr(endDay);
-        const fmtFrom = startDay.getDate() + ' ' + startDay.toLocaleString('en', { month: 'short' });
-        const fmtTo = endDay.getDate() + ' ' + endDay.toLocaleString('en', { month: 'short' });
-        buckets.push({ label: fmtFrom + ' - ' + fmtTo, from: fromStr, to: toStr, dates });
+        const fromBucket = localDateStr(bucketStart);
+        const toBucket = localDateStr(bucketEnd);
+        const fmtFrom = bucketStart.getDate() + ' ' + bucketStart.toLocaleString('en', { month: 'short' });
+        const fmtTo = bucketEnd.getDate() + ' ' + bucketEnd.toLocaleString('en', { month: 'short' });
+        buckets.push({ label: fmtFrom + ' - ' + fmtTo, from: fromBucket, to: toBucket, dates });
+        cursorEnd = new Date(bucketStart);
+        cursorEnd.setDate(cursorEnd.getDate() - 1);
     }
     return buckets;
 }
@@ -3333,15 +3663,27 @@ window.fetchWeeklyBreakdown = async function () {
     document.getElementById('treeSummary').style.display = 'none';
     status.textContent = 'Fetching last 28 days + today...';
 
-    const buckets = getWeekBuckets();
-    const dateFrom = buckets[buckets.length - 1].from; // oldest week start
-    const dateTo = buckets[0].to; // today
+    const explicitWeeklyRange = !!(window.__portalExplicitDateRange && window.__portalSelectedDateRange && window.__portalSelectedDateRange.since && window.__portalSelectedDateRange.until);
+    const defaultDateTo = localDateStr(new Date());
+    const defaultDateFrom = localDateStr(new Date(Date.now() - 28 * 86400000));
+    const weeklyFrom = explicitWeeklyRange ? window.__portalSelectedDateRange.since : defaultDateFrom;
+    const weeklyTo = explicitWeeklyRange ? window.__portalSelectedDateRange.until : defaultDateTo;
+    const buckets = getWeekBuckets(weeklyFrom, weeklyTo);
+    const dateFrom = weeklyFrom;
+    const dateTo = weeklyTo;
+    const spendOnly = document.getElementById('treeSpendFilter').checked;
     const asOfDate = localDateStr(new Date());
+    const weeklyCacheKey = `creativePortal.weekly.cache.v1.${dateFrom}.${dateTo}.${spendOnly ? 'spend' : 'all'}`;
+    setPortalLoadState('loading', 'Loading fresh data...');
+    const cachedWeekly = readJsonCache(weeklyCacheKey);
+    if (cacheIsFresh(cachedWeekly, PORTAL_VIEW_CACHE_TTL_MS) && cachedWeekly.data) {
+        renderCachedWeeklyBreakdown(cachedWeekly.data, treeContainer, weeklyContainer, status);
+    }
 
     try {
         // Fetch buckets sequentially to avoid hammering Meta/Metabase with 10 concurrent calls.
         // This is slower in theory, but much more reliable on local startup.
-        status.textContent = 'Fetching 5 weekly buckets from Meta + Metabase...';
+        status.textContent = explicitWeeklyRange ? 'Fetching weekly buckets for selected date range from Meta + Metabase...' : 'Fetching 5 weekly buckets from Meta + Metabase...';
         const bucketResults = [];
         for (let idx = 0; idx < buckets.length; idx++) {
             const bkt = buckets[idx];
@@ -3441,7 +3783,6 @@ window.fetchWeeklyBreakdown = async function () {
         }
 
         // Filter spend-only if checked
-        const spendOnly = document.getElementById('treeSpendFilter').checked;
         const adList = Object.values(adWeekly).filter(a => !spendOnly || a.buckets.some(b => b.spend > 0));
 
         // Build tree: campaign → adset → ad
@@ -3524,6 +3865,16 @@ window.fetchWeeklyBreakdown = async function () {
         currentDateRange = { since: dateFrom, until: dateTo, label: buildDateRangeLabel(dateFrom, dateTo) };
         currentDataMode = summarizeMaturity(adList.map(ad => ({ isMatured: ad.isMatured })));
         currentDiagnostics = { source: 'Meta + Metabase • Weekly Breakdown', matchedKeys: matched, unmatchedKeys: unmatched };
+        writeJsonCache(weeklyCacheKey, {
+            savedAt: Date.now(),
+            data: {
+                html,
+                statusText: status.textContent,
+                currentDateRange,
+                currentDataMode,
+                currentDiagnostics,
+            }
+        });
         publishPortalContext({
             view: 'campaignTree',
             diagnostics: {
@@ -3533,10 +3884,16 @@ window.fetchWeeklyBreakdown = async function () {
                 lastUpdated: document.getElementById('lastUpdated')?.textContent || '--',
             }
         });
+        setPortalLoadState('fresh', 'Fresh');
 
     } catch (err) {
         status.textContent = 'Error: ' + err.message;
         console.error('Weekly breakdown error:', err);
+        if (cacheIsFresh(readJsonCache(weeklyCacheKey), PORTAL_VIEW_CACHE_TTL_MS)) {
+            setPortalLoadState('cached', 'Cached weekly breakdown');
+        } else {
+            setPortalLoadState('fresh', 'Fresh');
+        }
     } finally {
         btn.disabled = false;
     }
@@ -3579,4 +3936,29 @@ function wkTable(rawBuckets, bucketDefs, metricCols) {
     }
     html += '</tbody></table>';
     return html;
+}
+
+function renderCachedWeeklyBreakdown(payload, treeContainer, weeklyContainer, statusEl) {
+    if (!payload) return false;
+    setPortalLoadState('cached', 'Cached weekly breakdown');
+    if (treeContainer) treeContainer.style.display = 'none';
+    if (weeklyContainer) {
+        weeklyContainer.style.display = 'block';
+        weeklyContainer.innerHTML = payload.html || '';
+    }
+    if (statusEl && payload.statusText) {
+        statusEl.textContent = payload.statusText + ' (cached)';
+    }
+    currentDateRange = payload.currentDateRange || currentDateRange;
+    currentDataMode = payload.currentDataMode || currentDataMode;
+    currentDiagnostics = payload.currentDiagnostics || currentDiagnostics;
+    publishPortalContext({
+        view: 'campaignTree',
+        diagnostics: {
+            ...(currentDiagnostics || {}),
+            source: 'Meta + Metabase • Weekly Breakdown (cached)',
+            lastUpdated: document.getElementById('lastUpdated')?.textContent || '--',
+        }
+    });
+    return true;
 }

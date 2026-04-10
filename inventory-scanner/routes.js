@@ -6,6 +6,9 @@
 const express = require('express');
 const { getDb } = require('./database/db');
 const agents = require('./agents');
+const scannerService = require('./scanner-service');
+
+scannerService.ensureInventoryScannerScheduler();
 
 // ==================== BUDGET ROUTES ====================
 const budgetRouter = express.Router();
@@ -16,6 +19,13 @@ budgetRouter.get('/compare', (req, res) => {
     if (ids.length === 0) return res.status(400).json({ success: false, data: null, error: 'Missing ids query parameter (comma-separated)', timestamp: new Date().toISOString() });
     const comparison = agents.compareBudgets(ids);
     res.json({ success: true, data: comparison, error: null, timestamp: new Date().toISOString() });
+  } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
+});
+
+budgetRouter.post('/plan', async (req, res) => {
+  try {
+    const plan = await scannerService.generateBudgetPlan(req.body || {});
+    res.json({ success: true, data: plan, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 
@@ -258,6 +268,20 @@ inventoriesRouter.get('/stats', (req, res) => {
       data: { total, active, newThisWeek, avgCpm: Math.round(avgCpm || 0), competitorCount, categories },
       error: null, timestamp: new Date().toISOString()
     });
+  } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
+});
+
+inventoriesRouter.get('/discovery', async (req, res) => {
+  try {
+    const snapshot = await scannerService.getDiscoverySnapshot();
+    res.json({ success: true, data: snapshot, error: null, timestamp: new Date().toISOString() });
+  } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
+});
+
+inventoriesRouter.post('/sync', async (req, res) => {
+  try {
+    const snapshot = await scannerService.syncDiscoverySnapshot({ reason: 'manual' });
+    res.json({ success: true, data: snapshot, error: null, timestamp: new Date().toISOString() });
   } catch (err) { res.status(500).json({ success: false, data: null, error: err.message, timestamp: new Date().toISOString() }); }
 });
 

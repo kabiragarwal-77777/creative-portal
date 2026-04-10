@@ -8,9 +8,23 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { pipeline } = require('stream/promises');
+let sharp = null;
+try { sharp = require('sharp'); } catch (_) { /* optional for image normalization */ }
 
 // Load .env for local development
 try { require('dotenv').config({ path: path.join(__dirname, '.env') }); } catch(e) { /* dotenv not installed, use env vars directly */ }
+
+// Detached local launches can lose their stdout/stderr pipe after startup.
+// Ignore broken-pipe writes so the web server stays alive instead of crashing
+// on the next background scheduler log line.
+for (const stream of [process.stdout, process.stderr]) {
+    if (stream && typeof stream.on === 'function') {
+        stream.on('error', (err) => {
+            if (err && err.code === 'EPIPE') return;
+            throw err;
+        });
+    }
+}
 
 // =============================================================================
 // CONFIGURATION
@@ -20,12 +34,18 @@ const META_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN || '';
 const META_APP_SECRET = process.env.META_APP_SECRET || '';
 const META_APP_SECRET_PROOF = process.env.META_APP_SECRET_PROOF || '';
 const META_AD_ACCOUNT_ID = process.env.META_AD_ACCOUNT_ID || 'act_725019929189148';
+const DEFAULT_META_PAGE_ID = process.env.DEFAULT_META_PAGE_ID || '100391482646475';
+const DEFAULT_META_INSTAGRAM_ACTOR_ID = process.env.DEFAULT_META_INSTAGRAM_ACTOR_ID || '17841452244426405';
 const META_API_VERSION = 'v21.0';
 const META_API_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 let OpenAI;
 try { OpenAI = require('openai'); } catch(e) { console.warn('OpenAI SDK not installed — analyser will not work. Run: npm install openai'); }
+
+const OPTIMIZER_BRAIN_CACHE = new Map();
+const OPTIMIZER_BRAIN_CACHE_TTL_MS = 15 * 60 * 1000;
+const OPTIMIZER_BRAIN_CACHE_VERSION = 3;
 
 const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID || '';
 const GOOGLE_SHEET_TAB = process.env.GOOGLE_SHEET_TAB || '';
@@ -37,6 +57,9 @@ const ANALYTICS_SHEET_GID = '1655578542';
 
 const METABASE_SESSION_TOKEN = process.env.METABASE_SESSION_TOKEN || '';
 const METABASE_URL = 'https://analytics.univest.in';
+const ASSET_UPLOAD_CACHE_PATH = path.join(__dirname, 'asset-upload-cache.json');
+const ASSET_UPLOAD_CACHE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+let assetUploadCache = null;
 
 function parseGvizResponse(text) {
     const start = text.indexOf('setResponse(');
@@ -49,8 +72,151 @@ function stripJsonFences(text) {
     return String(text || '').replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
 }
 
+function loadAssetUploadCache() {
+    if (assetUploadCache) return assetUploadCache;
+    try {
+        if (fs.existsSync(ASSET_UPLOAD_CACHE_PATH)) {
+            const parsed = JSON.parse(fs.readFileSync(ASSET_UPLOAD_CACHE_PATH, 'utf8'));
+            assetUploadCache = parsed && parsed.items ? parsed : { items: {} };
+        } else {
+            assetUploadCache = { items: {} };
+        }
+    } catch (err) {
+        console.warn(`[AssetCache] Failed to load cache: ${err.message}`);
+        assetUploadCache = { items: {} };
+    }
+    pruneAssetUploadCache();
+    return assetUploadCache;
+}
+
+function saveAssetUploadCache() {
+    if (!assetUploadCache) return;
+    try {
+        pruneAssetUploadCache();
+        fs.writeFileSync(ASSET_UPLOAD_CACHE_PATH, JSON.stringify(assetUploadCache, null, 2));
+    } catch (err) {
+        console.warn(`[AssetCache] Failed to save cache: ${err.message}`);
+    }
+}
+
+function pruneAssetUploadCache() {
+    const cache = assetUploadCache || { items: {} };
+    const now = Date.now();
+    const items = cache.items || {};
+    Object.keys(items).forEach(key => {
+        const entry = items[key];
+        if (!entry || !entry.cachedAt || (now - entry.cachedAt) > ASSET_UPLOAD_CACHE_TTL_MS) {
+            delete items[key];
+        }
+    });
+    cache.items = items;
+    assetUploadCache = cache;
+}
+
 function safeJsonParse(text, fallback = null) {
     try { return JSON.parse(stripJsonFences(text)); } catch (e) { return fallback; }
+}
+
+function normalizeCtaType(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return 'SUBSCRIBE';
+    const first = raw.split(/\s*[|,]\s*/g)[0].trim();
+    const normalized = first.toUpperCase().replace(/[\s-]+/g, '_');
+    const aliasMap = {
+        'SIGNUP': 'SIGN_UP',
+        'SIGN_UP': 'SIGN_UP',
+        'LEARNMORE': 'LEARN_MORE',
+        'GETOFFER': 'GET_OFFER',
+        'SHOPNOW': 'SHOP_NOW',
+        'INSTALLMOBILEAPP': 'INSTALL_MOBILE_APP',
+        'USEMOBILEAPP': 'USE_MOBILE_APP',
+        'MOBILEDOWNLOAD': 'MOBILE_DOWNLOAD',
+        'CALLNOW': 'CALL_NOW',
+        'CALLME': 'CALL_ME',
+        'BOOKNOW': 'BOOK_NOW',
+        'DOWNLOADNOW': 'DOWNLOAD',
+        'VISITWEBSITE': 'VISIT_WEBSITE',
+        'MESSAGEPAGE': 'MESSAGE_PAGE',
+        'CONTACTUS': 'CONTACT_US',
+        'ORDERNOW': 'ORDER_NOW',
+        'STARTORDER': 'START_ORDER',
+        'WATCHMORE': 'WATCH_MORE',
+        'SEEMORE': 'SEE_MORE',
+        'SUBSCRIBE': 'SUBSCRIBE',
+        'OPEN_LINK': 'OPEN_LINK',
+        'NO_BUTTON': 'NO_BUTTON',
+    };
+    return aliasMap[normalized] || normalized;
+}
+
+function stableStringify(value) {
+    const seen = new WeakSet();
+    return JSON.stringify(value, function(key, val) {
+        if (val && typeof val === 'object') {
+            if (seen.has(val)) return;
+            seen.add(val);
+            if (Array.isArray(val)) return val;
+            return Object.keys(val).sort().reduce((acc, k) => {
+                acc[k] = val[k];
+                return acc;
+            }, {});
+        }
+        return val;
+    });
+}
+
+function hashString(value) {
+    return require('crypto').createHash('sha1').update(String(value || '')).digest('hex');
+}
+
+function buildOptimizerBrainCacheKey(runtimeContext, userRequest) {
+    const requestScope = runtimeContext && runtimeContext.request_scope ? runtimeContext.request_scope : {};
+    const performanceSummary = runtimeContext && runtimeContext.performance_summary ? runtimeContext.performance_summary : {};
+    const summary = performanceSummary.selected_window || {};
+    const payload = {
+        version: OPTIMIZER_BRAIN_CACHE_VERSION,
+        platform: String((runtimeContext && runtimeContext.platform) || 'meta').toLowerCase(),
+        session_mode: runtimeContext && runtimeContext.session_mode || '',
+        command_type: runtimeContext && runtimeContext.command_type || '',
+        user_request: String(userRequest || '').trim().toLowerCase(),
+        request_scope: {
+            target_type: requestScope.target_type || '',
+            target_query: requestScope.target_query || '',
+            audience_filter: requestScope.audience_filter || '',
+            status_filter: requestScope.status_filter || ''
+        },
+        target_scope: runtimeContext && runtimeContext.target_scope ? runtimeContext.target_scope : null,
+        date_range: runtimeContext && runtimeContext.date_range ? runtimeContext.date_range : null,
+        performance_fingerprint: {
+            spend: summary.spend || 0,
+            signups: summary.signups || 0,
+            d6_roas: summary.d6_roas || null,
+            d6_cac: summary.d6_cac || null,
+            d15_roas: summary.d15_roas || null,
+            d30_roas: summary.d30_roas || null
+        },
+        integrity: runtimeContext && runtimeContext.data_integrity_gate ? {
+            entity_match_rate_pct: runtimeContext.data_integrity_gate.entity_match_rate_pct || 0,
+            spend_match_rate_pct: runtimeContext.data_integrity_gate.spend_match_rate_pct || 0,
+            fresh_status_verified_pct: runtimeContext.data_integrity_gate.fresh_status_verified_pct || 0,
+            safe_for_actioning: !!runtimeContext.data_integrity_gate.safe_for_actioning
+        } : null
+    };
+    return hashString(stableStringify(payload));
+}
+
+function getOptimizerBrainCache(cacheKey) {
+    const cached = OPTIMIZER_BRAIN_CACHE.get(cacheKey);
+    if (!cached) return null;
+    if ((Date.now() - cached.ts) > OPTIMIZER_BRAIN_CACHE_TTL_MS) {
+        OPTIMIZER_BRAIN_CACHE.delete(cacheKey);
+        return null;
+    }
+    return cached.value;
+}
+
+function setOptimizerBrainCache(cacheKey, value) {
+    OPTIMIZER_BRAIN_CACHE.set(cacheKey, { ts: Date.now(), value });
 }
 
 function topItems(list, sortKey, limit) {
@@ -86,10 +252,64 @@ function inferOptimizerUseCaseFallback(userRequest, runtimeContext) {
     };
 }
 
+function getOptimizerPlatform(runtimeContext) {
+    const platform = String((runtimeContext && runtimeContext.platform) || '').toLowerCase().trim();
+    return platform === 'google' ? 'google' : 'meta';
+}
+
+function getOptimizerBrainConfig(runtimeContext) {
+    const platform = getOptimizerPlatform(runtimeContext);
+    if (platform === 'google') {
+        return {
+            platform,
+            operatorAuditKey: 'google_operator_audit',
+            classifierEntityTypes: 'account, campaign, adgroup, creative, keyword',
+            strategistSystem: [
+                'You are an expert performance marketer with 20+ years of experience working in a financial advisory brand.',
+                'You are APEX, a world-class performance marketer operating a Google Ads account like it is your own money.',
+                'Return JSON only.',
+                'Use the user_request first, then the evidence, then the playbook rules.',
+                'Do not be vague. Give specific actions with exact entities and exact numbers where evidence allows.',
+                'If evidence is insufficient for an exact numeric change, say what data is missing and still give the next best concrete action.',
+                'You must factor: campaign settings, adgroup settings, ad or asset issues, search-term quality, geo or device waste, bid strategy, budget discipline, historical winners, external context, and risks not present in historical data.',
+                'Prioritize google_operator_audit and data_integrity_gate before making any recommendation that depends on ROAS, CAC, or Google conversions.',
+                'Campaign budget shifts are allowed. Do not recommend adgroup budget shifts.',
+                'For campaign deep dives, cover active adgroups and active ads or assets explicitly. Say which particular adgroups or assets are not working and why.',
+                'Keep the final answer operator-friendly, not analyst-style.'
+            ].join('\n')
+        };
+    }
+    return {
+        platform,
+        operatorAuditKey: 'meta_operator_audit',
+        classifierEntityTypes: 'account, campaign, adset, ad, audience',
+        strategistSystem: [
+            'You are an expert performance marketer with 20+ years of experience working in a financial advisory brand.',
+            'You are APEX, a world-class performance marketer operating a Meta account like it is your own money.',
+            'Return JSON only.',
+            'Use the user_request first, then the evidence, then the playbook rules.',
+            'Do not be vague. Give specific actions with exact entities and exact numbers where evidence allows.',
+            'If evidence is insufficient for an exact numeric change, say what data is missing and still give the next best concrete action.',
+            'You must factor: campaign settings, adset settings, ad issues, audiences, location settings, placements, bid strategy, optimization event, historical winners, external context, and risks not present in historical data.',
+            'Prioritize meta_operator_audit and data_integrity_gate before making any recommendation that depends on ROAS/CAC.',
+            'If Meta-side evidence says CPI, CTR, CPM, audience concentration, placement waste, geo inefficiency, or bid/learning issues are the real problem, say that directly.',
+            'For campaign deep dives, cover active adsets and active ads explicitly. Say which particular ads are not working and why.',
+            'Keep the final answer operator-friendly, not analyst-style.'
+        ].join('\n')
+    };
+}
+
 function buildOptimizerBrainEvidence(runtimeContext) {
-    const campaigns = Array.isArray(runtimeContext && runtimeContext.campaigns) ? runtimeContext.campaigns : [];
-    const adSets = Array.isArray(runtimeContext && runtimeContext.ad_sets) ? runtimeContext.ad_sets : [];
-    const ads = Array.isArray(runtimeContext && runtimeContext.ads) ? runtimeContext.ads : [];
+    const platform = getOptimizerPlatform(runtimeContext);
+    const campaigns = Array.isArray(runtimeContext && runtimeContext.campaigns)
+        ? runtimeContext.campaigns
+        : (Array.isArray(runtimeContext && runtimeContext.top_campaigns) ? runtimeContext.top_campaigns : []);
+    const adSets = Array.isArray(runtimeContext && runtimeContext.ad_sets)
+        ? runtimeContext.ad_sets
+        : (Array.isArray(runtimeContext && runtimeContext.top_adgroups) ? runtimeContext.top_adgroups : []);
+    const ads = Array.isArray(runtimeContext && runtimeContext.ads)
+        ? runtimeContext.ads
+        : (Array.isArray(runtimeContext && runtimeContext.top_ads) ? runtimeContext.top_ads : []);
     const requestScope = runtimeContext && runtimeContext.request_scope ? runtimeContext.request_scope : {};
     const targetQuery = String(requestScope.target_query || '').toLowerCase();
     const targetType = requestScope.target_type || 'account';
@@ -149,17 +369,22 @@ function buildOptimizerBrainEvidence(runtimeContext) {
         best_hours: topItems(hourly.filter(h => Number(h && h.conversions) > 0), 'conversions', 8)
     };
 
-    const metaOperatorAudit = runtimeContext && runtimeContext.meta_operator_audit ? runtimeContext.meta_operator_audit : null;
+    const operatorAudit = runtimeContext && (runtimeContext.google_operator_audit || runtimeContext.meta_operator_audit)
+        ? (runtimeContext.google_operator_audit || runtimeContext.meta_operator_audit)
+        : null;
     const dataIntegrity = runtimeContext && runtimeContext.data_integrity_gate ? runtimeContext.data_integrity_gate : ((runtimeContext && runtimeContext.performance_summary && runtimeContext.performance_summary.data_integrity_gate) || null);
 
     return {
+        platform,
         user_request: runtimeContext && runtimeContext.user_request || '',
         request_scope: requestScope,
         target_slice: targetSlice,
         historical_winners: historicalWinners,
         weak_points: weakPoints,
         dimensional_highlights: dimensionalHighlights,
-        meta_operator_audit: metaOperatorAudit,
+        operator_audit: operatorAudit,
+        meta_operator_audit: platform === 'meta' ? operatorAudit : null,
+        google_operator_audit: platform === 'google' ? operatorAudit : null,
         data_integrity_gate: dataIntegrity,
         external_context: runtimeContext && runtimeContext.external_context ? runtimeContext.external_context : null,
         playbook_rules: Array.isArray(runtimeContext && runtimeContext.playbook_rules) ? runtimeContext.playbook_rules.slice(0, 20) : [],
@@ -390,7 +615,17 @@ setInterval(() => {
 // Static files — serve both uploader and parent creative-portal directory
 const parentDir = path.join(__dirname, '..');
 app.use((req, res, next) => {
-    if (req.path === '/upload.html' || req.path === '/uploader/upload.html') {
+    if (
+        req.path === '/' ||
+        req.path === '/index.html' ||
+        req.path === '/creative.html' ||
+        req.path === '/google-creative.html' ||
+        req.path === '/app.js' ||
+        req.path === '/google-creative/public/gc-app.js' ||
+        req.path === '/google-creative/public/gc-optimizer.js' ||
+        req.path === '/upload.html' ||
+        req.path === '/uploader/upload.html'
+    ) {
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
@@ -488,10 +723,77 @@ async function metaPostForm(endpoint, filePath, filename, contentType, extraFiel
     return data;
 }
 
+function isMetaUnsupportedImageError(err) {
+    const meta = err && err.metaError ? err.metaError : {};
+    const title = String(meta.error_user_title || '');
+    const userMsg = String(meta.error_user_msg || '');
+    const message = String(err && err.message || '');
+    return meta.code === 100 && (
+        meta.error_subcode === 1487411 ||
+        /filetypenotsupported/i.test(title) ||
+        /type of file is not supported/i.test(userMsg) ||
+        /type of file is not supported/i.test(message)
+    );
+}
+
+function assertDriveAssetMatchesType(file, expectedAssetType, contextLabel) {
+    const contentType = String(file && file.contentType || '').toLowerCase();
+    const filename = file && file.filename ? file.filename : 'unknown file';
+    if (!contentType) return;
+    if (expectedAssetType === 'image' && contentType.startsWith('video/')) {
+        throw new Error(`${contextLabel} is a video file (${filename}, ${contentType}) but creative_type is IMAGE. Change the row to VIDEO or replace the asset with an image file.`);
+    }
+    if (expectedAssetType === 'video' && contentType.startsWith('image/')) {
+        throw new Error(`${contextLabel} is an image file (${filename}, ${contentType}) but creative_type is VIDEO. Change the row to IMAGE or replace the asset with a video file.`);
+    }
+}
+
+async function normalizeImageForMeta(file) {
+    if (!sharp) {
+        throw new Error('Image normalization is unavailable because sharp is not installed');
+    }
+    const srcExt = path.extname(file.filename || '');
+    const baseName = path.basename(file.filename || `drive_${Date.now()}`, srcExt);
+    const normalizedName = `${baseName || 'image'}.jpg`;
+    const normalizedPath = path.join(os.tmpdir(), `meta_upload_normalized_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`);
+    await sharp(file.tmpPath)
+        .rotate()
+        .flatten({ background: { r: 255, g: 255, b: 255 } })
+        .jpeg({ quality: 92, mozjpeg: true })
+        .toFile(normalizedPath);
+    return {
+        ...file,
+        tmpPath: normalizedPath,
+        filename: normalizedName,
+        contentType: 'image/jpeg',
+        normalizedFrom: file.filename,
+    };
+}
+
+async function uploadMetaImageWithFallback(file) {
+    let workingFile = file;
+    try {
+        const data = await metaPostForm(`/${META_AD_ACCOUNT_ID}/adimages`, workingFile.tmpPath, workingFile.filename, workingFile.contentType);
+        return { data, file: workingFile };
+    } catch (err) {
+        if (!isMetaUnsupportedImageError(err) || !sharp) {
+            throw err;
+        }
+        console.warn(`[META IMAGE] Unsupported file type from Drive (${workingFile.filename || 'unknown'}). Normalizing to JPEG and retrying once.`);
+        const normalizedFile = await normalizeImageForMeta(workingFile);
+        cleanupTempFile(workingFile.tmpPath);
+        workingFile = normalizedFile;
+        const data = await metaPostForm(`/${META_AD_ACCOUNT_ID}/adimages`, workingFile.tmpPath, workingFile.filename, workingFile.contentType);
+        return { data, file: workingFile };
+    }
+}
+
 // =============================================================================
 // CHUNKED VIDEO UPLOAD (for files > 50MB)
 // =============================================================================
 const CHUNK_SIZE = 20 * 1024 * 1024; // 20MB chunks
+const DRIVE_FETCH_TIMEOUT_MS = 10 * 60 * 1000; // 10 min for large Drive-hosted videos
+const EXECUTE_FULL_VIDEO_READY_TIMEOUT_MS = 5 * 60 * 1000; // 5 min processing wait
 
 async function metaChunkedVideoUpload(filePath, filename, extraFields = {}) {
     const fileSize = fs.statSync(filePath).size;
@@ -589,6 +891,39 @@ function extractDriveFileId(urlOrId) {
     return null;
 }
 
+function getAssetUploadCacheKey(driveUrl, assetType) {
+    const fileId = extractDriveFileId(driveUrl);
+    if (!fileId) return null;
+    return `${assetType}:${fileId}`;
+}
+
+function getCachedUploadedAsset(driveUrl, assetType) {
+    const key = getAssetUploadCacheKey(driveUrl, assetType);
+    if (!key) return null;
+    const cache = loadAssetUploadCache();
+    const entry = cache.items[key];
+    if (!entry) return null;
+    if (!entry.cachedAt || (Date.now() - entry.cachedAt) > ASSET_UPLOAD_CACHE_TTL_MS) {
+        delete cache.items[key];
+        saveAssetUploadCache();
+        return null;
+    }
+    return entry;
+}
+
+function setCachedUploadedAsset(driveUrl, assetType, payload) {
+    const key = getAssetUploadCacheKey(driveUrl, assetType);
+    if (!key) return;
+    const cache = loadAssetUploadCache();
+    cache.items[key] = {
+        ...payload,
+        assetType,
+        driveFileId: extractDriveFileId(driveUrl),
+        cachedAt: Date.now(),
+    };
+    saveAssetUploadCache();
+}
+
 function extractDriveFolderId(urlOrId) {
     if (!urlOrId) return null;
     // Pattern: /folders/FOLDER_ID
@@ -612,11 +947,20 @@ async function downloadDriveFile(driveUrl, retries = 3) {
                 err.message.includes('fetch failed') ||
                 err.message.includes('ECONNRESET') ||
                 err.message.includes('ETIMEDOUT') ||
-                err.message.includes('UND_ERR')
+                err.message.includes('UND_ERR') ||
+                err.message.includes('aborted due to timeout') ||
+                err.message.includes('This operation was aborted')
             );
+            const isTimeoutError = err.name === 'TimeoutError';
             if ((is429 || isTransientFetch) && attempt < retries) {
                 const delay = attempt * 5000; // 5s, 10s
                 console.log(`[DRIVE] ${is429 ? 'rate limit' : 'transient fetch error'} retrying in ${delay / 1000}s (attempt ${attempt}/${retries})`);
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+            }
+            if (isTimeoutError && attempt < retries) {
+                const delay = attempt * 5000;
+                console.log(`[DRIVE] timeout retrying in ${delay / 1000}s (attempt ${attempt}/${retries})`);
                 await new Promise(r => setTimeout(r, delay));
                 continue;
             }
@@ -631,7 +975,7 @@ async function _downloadDriveFileOnce(driveUrl) {
 
     // Step 1: Hit the download URL to get cookies + confirm token
     let downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-    let resp = await fetch(downloadUrl, { redirect: 'manual', signal: AbortSignal.timeout(120000) });
+    let resp = await fetch(downloadUrl, { redirect: 'manual', signal: AbortSignal.timeout(DRIVE_FETCH_TIMEOUT_MS) });
 
     if (resp.status === 429) {
         throw new Error(`Failed to download image from Drive (status 429)`);
@@ -644,7 +988,7 @@ async function _downloadDriveFileOnce(driveUrl) {
     while (resp.status >= 300 && resp.status < 400) {
         const location = resp.headers.get('location');
         if (!location) break;
-        resp = await fetch(location, { redirect: 'manual', headers: cookies ? { cookie: cookies } : {}, signal: AbortSignal.timeout(120000) });
+        resp = await fetch(location, { redirect: 'manual', headers: cookies ? { cookie: cookies } : {}, signal: AbortSignal.timeout(DRIVE_FETCH_TIMEOUT_MS) });
         const newCookies = resp.headers.getSetCookie?.() || [];
         if (newCookies.length) {
             const existing = new Map(cookies.split('; ').filter(Boolean).map(c => { const [k,...v] = c.split('='); return [k, v.join('=')]; }));
@@ -668,7 +1012,7 @@ async function _downloadDriveFileOnce(driveUrl) {
         let retryUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=${confirmMatch ? confirmMatch[1] : 't'}`;
         if (uuidMatch) retryUrl += `&uuid=${uuidMatch[1]}`;
         console.log(`[DRIVE] Large file detected, retrying with confirm token + cookies`);
-        resp = await fetch(retryUrl, { redirect: 'follow', headers: cookies ? { cookie: cookies } : {}, signal: AbortSignal.timeout(120000) });
+        resp = await fetch(retryUrl, { redirect: 'follow', headers: cookies ? { cookie: cookies } : {}, signal: AbortSignal.timeout(DRIVE_FETCH_TIMEOUT_MS) });
         contentType = resp.headers.get('content-type') || 'application/octet-stream';
         contentDisp = resp.headers.get('content-disposition') || '';
 
@@ -678,7 +1022,7 @@ async function _downloadDriveFileOnce(driveUrl) {
             resp = await fetch(`https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`, {
                 redirect: 'follow',
                 headers: cookies ? { cookie: cookies } : {},
-                signal: AbortSignal.timeout(120000),
+                signal: AbortSignal.timeout(DRIVE_FETCH_TIMEOUT_MS),
             });
             contentType = resp.headers.get('content-type') || 'application/octet-stream';
             contentDisp = resp.headers.get('content-disposition') || '';
@@ -721,6 +1065,41 @@ async function _downloadDriveFileOnce(driveUrl) {
     }
 
     return { tmpPath, contentType, filename };
+}
+
+async function downloadRemoteFile(remoteUrl, filenameHint = 'remote_asset') {
+    const resp = await fetch(remoteUrl, { redirect: 'follow', signal: AbortSignal.timeout(DRIVE_FETCH_TIMEOUT_MS) });
+    if (!resp.ok) {
+        throw new Error(`Failed to download remote asset (${resp.status})`);
+    }
+
+    const contentType = resp.headers.get('content-type') || 'application/octet-stream';
+    const contentDisp = resp.headers.get('content-disposition') || '';
+    let filename = filenameHint;
+    const filenameMatch = contentDisp.match(/filename="?([^";]+)"?/);
+    if (filenameMatch) {
+        filename = filenameMatch[1];
+    } else {
+        try {
+            const parsed = new URL(remoteUrl);
+            const tail = parsed.pathname.split('/').filter(Boolean).pop();
+            if (tail && tail.includes('.')) filename = tail;
+        } catch (_) {
+            // ignore URL parsing errors
+        }
+        if (!path.extname(filename)) {
+            const extMap = {
+                'image/jpeg': '.jpg', 'image/png': '.png', 'image/gif': '.gif', 'image/webp': '.webp',
+                'video/mp4': '.mp4', 'video/quicktime': '.mov', 'video/x-msvideo': '.avi',
+            };
+            filename += extMap[contentType] || '';
+        }
+    }
+
+    const tmpPath = path.join(os.tmpdir(), `meta_upload_${Date.now()}_${filename}`);
+    const fileStream = fs.createWriteStream(tmpPath);
+    await pipeline(resp.body, fileStream);
+    return { tmpPath, filename, contentType };
 }
 
 function cleanupTempFile(tmpPath) {
@@ -969,16 +1348,27 @@ app.post('/api/upload-image', async (req, res) => {
         const { driveUrl } = req.body;
         if (!driveUrl) return res.status(400).json({ success: false, error: 'driveUrl is required' });
 
-        const file = await downloadDriveFile(driveUrl);
-        tmpPath = file.tmpPath;
+        const cached = getCachedUploadedAsset(driveUrl, 'image');
+        if (cached && cached.imageHash) {
+            return res.json({ success: true, imageHash: cached.imageHash, cached: true });
+        }
 
-        const data = await metaPostForm(`/${META_AD_ACCOUNT_ID}/adimages`, tmpPath, file.filename, file.contentType);
+        const file = await downloadDriveFile(driveUrl);
+        assertDriveAssetMatchesType(file, 'image', 'Drive asset');
+        tmpPath = file.tmpPath;
+        const uploaded = await uploadMetaImageWithFallback(file);
+        tmpPath = uploaded.file.tmpPath;
+        const data = uploaded.data;
 
         // Response format: { images: { filename: { hash: "...", ... } } }
         let imageHash = null;
         if (data.images) {
             const key = Object.keys(data.images)[0];
             if (key) imageHash = data.images[key].hash;
+        }
+
+        if (imageHash) {
+            setCachedUploadedAsset(driveUrl, 'image', { imageHash, filename: file.filename, contentType: file.contentType });
         }
 
         res.json({ success: true, imageHash, raw: data });
@@ -996,7 +1386,18 @@ app.post('/api/upload-video', async (req, res) => {
         const { driveUrl, title } = req.body;
         if (!driveUrl) return res.status(400).json({ success: false, error: 'driveUrl is required' });
 
+        const cached = getCachedUploadedAsset(driveUrl, 'video');
+        if (cached && cached.videoId) {
+            return res.json({
+                success: true,
+                videoId: cached.videoId,
+                status: { video_status: 'ready', source: 'cache' },
+                cached: true,
+            });
+        }
+
         const file = await downloadDriveFile(driveUrl);
+        assertDriveAssetMatchesType(file, 'video', 'Drive asset');
         tmpPath = file.tmpPath;
 
         const extraFields = {};
@@ -1021,6 +1422,7 @@ app.post('/api/upload-video', async (req, res) => {
             videoStatus = statusResp.status;
 
             if (videoStatus && videoStatus.video_status === 'ready') {
+                setCachedUploadedAsset(driveUrl, 'video', { videoId, filename: file.filename, contentType: file.contentType });
                 return res.json({ success: true, videoId, status: videoStatus });
             }
             if (videoStatus && videoStatus.video_status === 'error') {
@@ -1310,6 +1712,14 @@ app.post('/api/execute-full', async (req, res) => {
             square: config.thumb_square || config.square_thumb_drive_url || null,
         };
 
+        function buildAvailableAssetMap(sourceAssets) {
+            return {
+                horizontal: !!(sourceAssets.horizontal && (sourceAssets.horizontal.videoId || sourceAssets.horizontal.imageHash)),
+                vertical: !!(sourceAssets.vertical && (sourceAssets.vertical.videoId || sourceAssets.vertical.imageHash)),
+                square: !!(sourceAssets.square && (sourceAssets.square.videoId || sourceAssets.square.imageHash)),
+            };
+        }
+
         // Creative type
         const assetType = (config.creative_type || config.asset_type || 'VIDEO').toLowerCase(); // 'video' or 'image'
 
@@ -1424,13 +1834,25 @@ app.post('/api/execute-full', async (req, res) => {
                     {
                         let tmpPath = null;
                         try {
+                            const cached = getCachedUploadedAsset(driveUrl, 'image');
+                            if (cached && cached.imageHash) {
+                                assets[size] = { imageHash: cached.imageHash };
+                                logStep(`upload_image_${size}`, true, { imageHash: cached.imageHash, cached: true });
+                                continue;
+                            }
                             const file = await downloadDriveFile(driveUrl);
+                            assertDriveAssetMatchesType(file, 'image', `${size} asset`);
                             tmpPath = file.tmpPath;
-                            const data = await metaPostForm(`/${META_AD_ACCOUNT_ID}/adimages`, tmpPath, file.filename, file.contentType);
+                            const uploaded = await uploadMetaImageWithFallback(file);
+                            tmpPath = uploaded.file.tmpPath;
+                            const data = uploaded.data;
                             let imageHash = null;
                             if (data.images) {
                                 const key = Object.keys(data.images)[0];
                                 if (key) imageHash = data.images[key].hash;
+                            }
+                            if (imageHash) {
+                                setCachedUploadedAsset(driveUrl, 'image', { imageHash, filename: file.filename, contentType: file.contentType });
                             }
                             assets[size] = { imageHash };
                             logStep(`upload_image_${size}`, true, { imageHash });
@@ -1454,7 +1876,15 @@ app.post('/api/execute-full', async (req, res) => {
                 }
                 let tmpPath = null;
                 try {
+                    const cached = getCachedUploadedAsset(driveUrl, 'video');
+                    if (cached && cached.videoId) {
+                        assets[size] = { videoId: cached.videoId };
+                        logStep(`upload_video_${size}`, true, { videoId: cached.videoId, cached: true });
+                        uploadedVideos.push({ size, videoId: cached.videoId, cached: true });
+                        continue;
+                    }
                     const file = await downloadDriveFile(driveUrl);
+                    assertDriveAssetMatchesType(file, 'video', `${size} asset`);
                     tmpPath = file.tmpPath;
                     const videoTitle = config.creative_name || config.adset_name || 'Ad Video';
                     const fileSize = fs.statSync(tmpPath).size;
@@ -1480,7 +1910,13 @@ app.post('/api/execute-full', async (req, res) => {
             for (const { size, videoId } of uploadedVideos) {
                 pollPromises.push(
                     (async () => {
-                        const timeoutMs = 90000;
+                        const cachedVideo = uploadedVideos.find(item => item.size === size && item.videoId === videoId && item.cached);
+                        if (cachedVideo) {
+                            assets[size] = { videoId };
+                            logStep(`poll_video_${size}`, true, { videoId, ready: true, cached: true });
+                            return;
+                        }
+                        const timeoutMs = EXECUTE_FULL_VIDEO_READY_TIMEOUT_MS;
                         const pollInterval = 5000;
                         const startTime = Date.now();
                         let ready = false;
@@ -1490,6 +1926,10 @@ app.post('/api/execute-full', async (req, res) => {
                             const statusResp = await metaGet(`/${videoId}`, { fields: 'status' });
                             if (statusResp.status && statusResp.status.video_status === 'ready') {
                                 ready = true;
+                                const sourceDriveUrl = driveUrls[size];
+                                if (sourceDriveUrl) {
+                                    setCachedUploadedAsset(sourceDriveUrl, 'video', { videoId });
+                                }
                                 break;
                             }
                             if (statusResp.status && statusResp.status.video_status === 'error') {
@@ -1506,19 +1946,55 @@ app.post('/api/execute-full', async (req, res) => {
             // Upload thumbnail images for videos sequentially
             for (const size of sizes) {
                 const thumbUrl = thumbUrls[size];
-                if (!thumbUrl) continue;
                 let tmpPath = null;
                 try {
-                    const file = await downloadDriveFile(thumbUrl);
-                    tmpPath = file.tmpPath;
-                    const data = await metaPostForm(`/${META_AD_ACCOUNT_ID}/adimages`, tmpPath, file.filename, file.contentType);
                     let thumbHash = null;
-                    if (data.images) {
-                        const key = Object.keys(data.images)[0];
-                        if (key) thumbHash = data.images[key].hash;
+                    if (thumbUrl) {
+                        const cached = getCachedUploadedAsset(thumbUrl, 'image');
+                        if (cached && cached.imageHash) {
+                            if (assets[size]) assets[size].thumbnailHash = cached.imageHash;
+                            logStep(`upload_thumbnail_${size}`, true, { thumbHash: cached.imageHash, cached: true });
+                            continue;
+                        }
+                        const file = await downloadDriveFile(thumbUrl);
+                        assertDriveAssetMatchesType(file, 'image', `${size} thumbnail`);
+                        tmpPath = file.tmpPath;
+                        const uploaded = await uploadMetaImageWithFallback(file);
+                        tmpPath = uploaded.file.tmpPath;
+                        const data = uploaded.data;
+                        if (data.images) {
+                            const key = Object.keys(data.images)[0];
+                            if (key) thumbHash = data.images[key].hash;
+                        }
+                        if (thumbHash) {
+                            setCachedUploadedAsset(thumbUrl, 'image', { imageHash: thumbHash, filename: file.filename, contentType: file.contentType });
+                        }
+                    } else if (assets[size] && assets[size].videoId) {
+                        const videoInfo = await metaGet(`/${assets[size].videoId}`, { fields: 'picture' });
+                        const pictureUrl = typeof videoInfo.picture === 'string'
+                            ? videoInfo.picture
+                            : videoInfo.picture && videoInfo.picture.data && videoInfo.picture.data.url
+                                ? videoInfo.picture.data.url
+                                : null;
+                        if (pictureUrl) {
+                            const file = await downloadRemoteFile(pictureUrl, `${size}_thumbnail`);
+                            tmpPath = file.tmpPath;
+                            const uploaded = await uploadMetaImageWithFallback(file);
+                            tmpPath = uploaded.file.tmpPath;
+                            const data = uploaded.data;
+                            if (data.images) {
+                                const key = Object.keys(data.images)[0];
+                                if (key) thumbHash = data.images[key].hash;
+                            }
+                            logStep(`upload_thumbnail_${size}`, true, { thumbHash, fallback: 'video_picture' });
+                        }
                     }
                     if (assets[size]) assets[size].thumbnailHash = thumbHash;
-                    logStep(`upload_thumbnail_${size}`, true, { thumbHash });
+                    if (thumbHash) {
+                        logStep(`upload_thumbnail_${size}`, true, { thumbHash });
+                    } else {
+                        logStep(`upload_thumbnail_${size}`, false, { error: `${size} thumbnail unavailable` });
+                    }
                 } catch (err) {
                     logStep(`upload_thumbnail_${size}`, false, { error: err.message });
                 } finally {
@@ -1527,11 +2003,67 @@ app.post('/api/execute-full', async (req, res) => {
             }
         }
 
+        const hasAnyMediaAsset = Object.values(assets).some(asset => (
+            asset && (asset.videoId || asset.imageHash)
+        ));
+        if (!hasAnyMediaAsset) {
+            logStep('validate_assets', false, {
+                error: 'No media assets were resolved or uploaded for this row',
+                assetType,
+                driveUrls,
+                asset_folder: config.asset_folder || null,
+            });
+            throw new Error('No media assets were resolved or uploaded for this row. Check asset folder/asset URLs.');
+        }
+
         // ------------------------------------------------------------------
         // Step 2: Create adset
         // ------------------------------------------------------------------
+        const availableAssets = buildAvailableAssetMap(assets);
+
+        function firstNonEmpty(...values) {
+            for (const value of values) {
+                const text = String(value == null ? '' : value).trim();
+                if (text) return text;
+            }
+            return '';
+        }
+
+        const safeAdsetName = firstNonEmpty(config.adset_name, config.creative_name, config.ad_name, 'Univest Adset');
+        const safeCreativeName = firstNonEmpty(config.creative_name, config.ad_name, config.adset_name, 'Univest Creative');
+        const safeAdName = firstNonEmpty(config.ad_name, config.creative_name, config.adset_name, 'Univest Ad');
+        const safePrimaryText = firstNonEmpty(
+            config.primary_text,
+            config.body_text,
+            config.headline,
+            config.description,
+            safeCreativeName,
+            safeAdName,
+            'SEBI-registered financial advisory support from Univest'
+        );
+        const safeHeadline = firstNonEmpty(
+            config.headline,
+            config.title_text,
+            safeCreativeName,
+            safeAdName,
+            'Univest'
+        );
+        const safeDescription = firstNonEmpty(
+            config.description,
+            config.description_text,
+            safePrimaryText.split(/[.!?]/)[0],
+            safeCreativeName
+        );
+
+        config.adset_name = safeAdsetName;
+        config.creative_name = safeCreativeName;
+        config.ad_name = safeAdName;
+        config.primary_text = safePrimaryText;
+        config.headline = safeHeadline;
+        config.description = safeDescription;
+
         const adsetParams = {
-            name: config.adset_name,
+            name: safeAdsetName,
             campaign_id: config.campaign_id,
             status: config.adset_status || 'PAUSED',
             billing_event: config.billing_event || 'IMPRESSIONS',
@@ -1576,17 +2108,44 @@ app.post('/api/execute-full', async (req, res) => {
         // ------------------------------------------------------------------
         // Step 3: Create ad creative with asset customization
         // ------------------------------------------------------------------
-        const bodyText = config.primary_text || config.body_text || '';
-        const titleText = config.headline || config.title_text || '';
-        const descText = config.description || config.description_text || '';
-        const ctaType = config.cta || config.call_to_action || 'SUBSCRIBE';
+        const parseCreativeTextVariants = (value) => (
+            String(value || '')
+                .split(/\s*(?:\||\n|\r\n)+\s*/g)
+                .map(s => s.trim())
+                .filter(Boolean)
+        );
+        const sharedLabel = [{ name: 'all_placements' }];
+        const textLabel = { name: 'all_placements' };
+        const bodyVariants = parseCreativeTextVariants(config.primary_text || config.body_text || '');
+        const titleVariants = parseCreativeTextVariants(config.headline || config.title_text || '');
+        const descVariants = parseCreativeTextVariants(config.description || config.description_text || '');
+        const bodies = (bodyVariants.length ? bodyVariants : ['']).map(text => ({ text, adlabels: sharedLabel }));
+        const titles = (titleVariants.length ? titleVariants : ['']).map(text => ({ text, adlabels: sharedLabel }));
+        const descriptions = (descVariants.length ? descVariants : ['']).map(text => ({ text, adlabels: sharedLabel }));
+        const ctaType = normalizeCtaType(config.cta || config.call_to_action || 'SUBSCRIBE');
         // For app install campaigns, asset_feed_spec link_urls must use the store URL
         const feedLinkUrl = storeUrl || linkUrl;
-        const pageId = config.page_id || '';
+        if (!feedLinkUrl) {
+            throw new Error('Missing object_store_url or link_url after sheet enrichment. Re-open the row so Meta store URL can be populated.');
+        }
+        const deepLinkUrl = linkUrl && /^([a-z][a-z0-9+.-]*:\/\/)/i.test(linkUrl) && !linkUrl.startsWith('http')
+            ? linkUrl
+            : null;
+        const pageId = config.page_id || DEFAULT_META_PAGE_ID;
+        const activeFbPositions = Array.isArray(targeting.facebook_positions) ? targeting.facebook_positions : [];
+        const activeIgPositions = Array.isArray(targeting.instagram_positions) ? targeting.instagram_positions : [];
+        const excludedCreativePlacements = {
+            facebook_positions: [
+                ...[],
+            ],
+            instagram_positions: [
+                ...[],
+            ],
+        };
 
         let creativeId;
         try {
-            const creativeParams = { name: config.creative_name || `${config.adset_name} Creative` };
+            const creativeParams = { name: safeCreativeName };
 
             if (assetType === 'video') {
                 const videos = [];
@@ -1606,48 +2165,42 @@ app.post('/api/execute-full', async (req, res) => {
                     videos.push(entry);
                 }
 
-                // Build link_urls with deeplink if provided
-                // Only set deeplink_url for actual deep links (app schemes or verified app links)
-                const vidLinkUrl = { website_url: feedLinkUrl, display_url: '' };
-                if (linkUrl && linkUrl !== feedLinkUrl) {
-                    // Check if it's a real deep link (custom scheme like univest://) vs regular web URL
-                    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(linkUrl) && !linkUrl.startsWith('http')) {
-                        vidLinkUrl.deeplink_url = linkUrl;
-                    } else {
-                        // Regular web URL — use as website_url instead of deeplink_url
-                        vidLinkUrl.website_url = linkUrl;
-                    }
+                const vidLinkUrl = { website_url: feedLinkUrl, display_url: '', adlabels: sharedLabel };
+                if (deepLinkUrl) {
+                    vidLinkUrl.deeplink_url = deepLinkUrl;
+                } else if (linkUrl && linkUrl !== feedLinkUrl) {
+                    vidLinkUrl.website_url = linkUrl;
                 }
 
                 const vidFeedSpec = {
                     videos,
                     ad_formats: ['AUTOMATIC_FORMAT'],
-                    bodies: [{ text: bodyText }],
-                    titles: [{ text: titleText }],
-                    descriptions: [{ text: descText }],
+                    bodies,
+                    titles,
+                    descriptions,
                     call_to_action_types: [ctaType],
                     link_urls: [vidLinkUrl],
-                    optimization_type: 'PLACEMENT',
                     asset_customization_rules: [
                         {
-                            // Vertical placements (FB + IG combined)
                             customization_spec: { publisher_platforms: ['facebook', 'instagram'], facebook_positions: ['story', 'facebook_reels'], instagram_positions: ['story', 'reels', 'profile_reels', 'ig_search'] },
                             video_label: { name: 'vertical' },
+                            body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
                             priority: 1,
                         },
                         {
-                            // Horizontal placements
                             customization_spec: { publisher_platforms: ['facebook'], facebook_positions: ['search'] },
                             video_label: { name: 'horizontal' },
+                            body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
                             priority: 2,
                         },
                         {
-                            // Catch-all: square for everything else (feed, profile_feed, marketplace, reels_overlay, IG stream, explore, etc.)
                             customization_spec: {},
                             video_label: { name: 'square' },
+                            body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
                             priority: 3,
                         },
                     ],
+                    optimization_type: 'PLACEMENT',
                 };
                 creativeParams.asset_feed_spec = JSON.stringify(vidFeedSpec);
             } else {
@@ -1663,57 +2216,48 @@ app.post('/api/execute-full', async (req, res) => {
                     images.push({ hash: assets.square.imageHash, adlabels: [{ name: 'square' }] });
                 }
 
-                // Build link_urls with deeplink if provided
-                // Only set deeplink_url for actual deep links (custom scheme), not regular web URLs
-                const imgLinkUrl = { website_url: feedLinkUrl, display_url: '' };
-                if (linkUrl && linkUrl !== feedLinkUrl) {
-                    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(linkUrl) && !linkUrl.startsWith('http')) {
-                        imgLinkUrl.deeplink_url = linkUrl;
-                    } else {
-                        imgLinkUrl.website_url = linkUrl;
-                    }
+                const imgLinkUrl = { website_url: feedLinkUrl, display_url: '', adlabels: sharedLabel };
+                if (deepLinkUrl) {
+                    imgLinkUrl.deeplink_url = deepLinkUrl;
+                } else if (linkUrl && linkUrl !== feedLinkUrl) {
+                    imgLinkUrl.website_url = linkUrl;
                 }
 
                 const imgFeedSpec = {
                     images,
                     ad_formats: ['AUTOMATIC_FORMAT'],
-                    bodies: [{ text: bodyText }],
-                    titles: [{ text: titleText }],
-                    descriptions: [{ text: descText }],
+                    bodies,
+                    titles,
+                    descriptions,
                     call_to_action_types: [ctaType],
                     link_urls: [imgLinkUrl],
-                    optimization_type: 'PLACEMENT',
                     asset_customization_rules: [
                         {
-                            // Vertical placements (FB + IG combined)
                             customization_spec: { publisher_platforms: ['facebook', 'instagram'], facebook_positions: ['story', 'facebook_reels'], instagram_positions: ['story', 'reels', 'profile_reels', 'ig_search'] },
                             image_label: { name: 'vertical' },
+                            body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
                             priority: 1,
                         },
                         {
-                            // Horizontal placements
                             customization_spec: { publisher_platforms: ['facebook'], facebook_positions: ['search'] },
                             image_label: { name: 'horizontal' },
+                            body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
                             priority: 2,
                         },
                         {
-                            // Catch-all: square for everything else (feed, profile_feed, marketplace, reels_overlay, IG stream, explore, etc.)
                             customization_spec: {},
                             image_label: { name: 'square' },
+                            body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
                             priority: 3,
                         },
                     ],
+                    optimization_type: 'PLACEMENT',
                 };
                 creativeParams.asset_feed_spec = JSON.stringify(imgFeedSpec);
             }
 
-            if (pageId) {
-                const storySpec = { page_id: pageId };
-                // Add Instagram actor if placing on Instagram
-                const igActorId = config.instagram_actor_id || '17841452244426405';
-                storySpec.instagram_user_id = igActorId;
-                creativeParams.object_story_spec = JSON.stringify(storySpec);
-            }
+            const objectStorySpec = { page_id: pageId, instagram_user_id: config.instagram_actor_id || DEFAULT_META_INSTAGRAM_ACTOR_ID };
+            creativeParams.object_story_spec = JSON.stringify(objectStorySpec);
 
             const creativeData = await metaPost(`/${META_AD_ACCOUNT_ID}/adcreatives`, creativeParams);
             creativeId = creativeData.id;
@@ -1728,12 +2272,11 @@ app.post('/api/execute-full', async (req, res) => {
         // ------------------------------------------------------------------
         try {
             const adParams = {
-                name: config.ad_name || `${config.adset_name} Ad`,
+                name: safeAdName,
                 adset_id: adsetId,
                 creative: JSON.stringify({ creative_id: creativeId }),
                 status: config.ad_status || 'PAUSED',
             };
-
             // Auto-add tracking specs for app install campaigns
             if (config.app_id) {
                 adParams.tracking_specs = JSON.stringify([{
@@ -4841,36 +5384,17 @@ app.post('/api/optimizer/brain', async (req, res) => {
             return res.status(500).json({ success: false, error: 'OpenAI not configured. Set OPENAI_API_KEY env var.' });
         }
 
+        const cacheKey = buildOptimizerBrainCacheKey(runtimeContext, userRequest);
+        const cached = getOptimizerBrainCache(cacheKey);
+        if (cached) {
+            return res.json(Object.assign({ success: true, cached: true }, cached));
+        }
+
         const openai = new OpenAI({ apiKey: OPENAI_API_KEY, timeout: 240000 });
+        const brainConfig = getOptimizerBrainConfig(runtimeContext);
         const evidence = buildOptimizerBrainEvidence(runtimeContext);
 
-        const classifierSystem = [
-            'You classify a performance marketer operator request.',
-            'Return JSON only.',
-            'Use one use_case from: account_revamp, campaign_overview, root_cause, scale_decision, creative_actionables, queue_validation, clarification_needed.',
-            'Keep it concise.'
-        ].join('\n');
-        const classifierPrompt = JSON.stringify({
-            user_request: userRequest,
-            request_scope: runtimeContext.request_scope || {},
-            target_scope: runtimeContext.target_scope || null
-        });
-
         let useCase = inferOptimizerUseCaseFallback(userRequest, runtimeContext);
-        try {
-            const classify = await openai.chat.completions.create({
-                model: 'gpt-4.1',
-                max_completion_tokens: 700,
-                response_format: { type: 'json_object' },
-                messages: [
-                    { role: 'system', content: classifierSystem },
-                    { role: 'user', content: classifierPrompt }
-                ]
-            });
-            useCase = safeJsonParse(classify.choices[0].message.content, useCase) || useCase;
-        } catch (e) {
-            console.warn('[optimizer/brain] classifier fallback:', e.message);
-        }
 
         if (useCase && useCase.needs_clarification) {
             return res.json({
@@ -4888,21 +5412,10 @@ app.post('/api/optimizer/brain', async (req, res) => {
             });
         }
 
-        const strategistSystem = [
-            'You are an expert performance marketer with 20+ years of experience working in a financial advisory brand.',
-            'You are APEX, a world-class performance marketer operating a Meta account like it is your own money.',
-            'Return JSON only.',
-            'Use the user_request first, then the evidence, then the playbook rules.',
-            'Do not be vague. Give specific actions with exact entities and exact numbers where evidence allows.',
-            'If evidence is insufficient for an exact numeric change, say what data is missing and still give the next best concrete action.',
-            'You must factor: campaign settings, adset settings, ad issues, audiences, location settings, placements, bid strategy, optimization event, historical winners, external context, and risks not present in historical data.',
-            'Prioritize meta_operator_audit and data_integrity_gate before making any recommendation that depends on ROAS/CAC.',
-            'If Meta-side evidence says CPI, CTR, CPM, audience concentration, placement waste, geo inefficiency, or bid/learning issues are the real problem, say that directly.',
-            'For campaign deep dives, cover active adsets and active ads explicitly. Say which particular ads are not working and why.',
-            'Keep the final answer operator-friendly, not analyst-style.'
-        ].join('\n');
+        const strategistSystem = brainConfig.strategistSystem;
 
         const strategistPrompt = JSON.stringify({
+            platform: brainConfig.platform,
             user_request: userRequest,
             use_case: useCase,
             evidence,
@@ -4915,7 +5428,7 @@ app.post('/api/optimizer/brain', async (req, res) => {
                             action_id: 'ACT-001',
                             priority: 'P1|P2|P3',
                             action_type: 'PAUSE_AD|ACTIVATE_AD|ACTIVATE_ADSET|PAUSE_ADSET|ACTIVATE_CAMPAIGN|PAUSE_CAMPAIGN|UPDATE_ADSET_BUDGET|UPDATE_CAMPAIGN_BUDGET|MONITOR|CREATIVE_CHANGE',
-                            entity_type: 'campaign|adset|ad|account',
+                            entity_type: 'account|campaign|adset|ad|adgroup|creative|keyword',
                             entity_id: 'meta id if known',
                             entity_name: 'entity name',
                             campaign_name: '',
@@ -5021,24 +5534,28 @@ app.post('/api/optimizer/brain', async (req, res) => {
                     console.warn('[optimizer/brain] repair fallback:', repairErr.message);
                 }
             }
-            return res.json({
+            const payload = {
                 success: true,
                 use_case: useCase,
                 evidence,
                 qa: qaJson,
                 qa_gate: qaGate,
                 ...strategyJson
-            });
+            };
+            setOptimizerBrainCache(cacheKey, payload);
+            return res.json(payload);
         } catch (e) {
             console.warn('[optimizer/brain] qa fallback:', e.message);
             const qaGate = analyzeOptimizerDraftQuality(strategyJson);
-            return res.json({
+            const payload = {
                 success: true,
                 use_case: useCase,
                 evidence,
                 qa_gate: qaGate,
                 ...strategyJson
-            });
+            };
+            setOptimizerBrainCache(cacheKey, payload);
+            return res.json(payload);
         }
     } catch (err) {
         console.error('[optimizer/brain] Error:', err.message);
@@ -5850,7 +6367,6 @@ app.post('/api/google/ad-insights-daily', async (req, res) => {
                 metrics.all_conversions_value
             FROM ad_group
             WHERE segments.date BETWEEN '${dateFrom}' AND '${dateTo}'
-              AND campaign.status = 'ENABLED'
             ORDER BY segments.date DESC
         `);
 
@@ -5866,7 +6382,7 @@ app.post('/api/google/ad-insights-daily', async (req, res) => {
             clicks: r.metrics.clicks || 0,
             conversions: r.metrics.conversions || 0,
             conversion_value: r.metrics.all_conversions_value || 0,
-        }));
+        })).filter(r => !/ios/i.test(r.campaign_name || ''));
 
         setCache(cacheKey, data);
         try { fs.writeFileSync(diskFile, JSON.stringify({ ts: Date.now(), data })); } catch(e) {}
@@ -6005,6 +6521,7 @@ SELECT
   sm.event_date AS date,
   sm.tracker_campaign_name AS campaign_name,
   sm.tracker_sub_campaign_name AS ad_set_name,
+  sm.tracker_name AS adgroup_name,
   sm.tracker_name,
   SUM(sm.total_signup) AS signups,
   SUM(sm.p0_signup) AS p0_signup,

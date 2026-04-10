@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html><head><title>Test</title></head>
+<body style="background:#111;color:#eee;font-family:sans-serif;padding:20px;">
+<h2>App.js Load Test</h2>
+<div id="log" style="font-size:12px;white-space:pre-wrap;"></div>
+<script>
+function log(msg) {
+    document.getElementById('log').textContent += msg + '\n';
+    console.log(msg);
+}
+log('Step 1: Loading app.js...');
+</script>
+<script src="app.js?v=31" onerror="log('SCRIPT LOAD ERROR')"></script>
+<script>
+log('Step 2: app.js loaded. Checking functions...');
+log('  fetchLiveData: ' + (typeof fetchLiveData));
+log('  applyFilters: ' + (typeof applyFilters));
+log('  getCurrentView: ' + (typeof getCurrentView));
+log('  renderCurrentView: ' + (typeof renderCurrentView));
+log('  showLoading: ' + (typeof showLoading));
+log('  detectType: ' + (typeof detectType));
+log('  allData length: ' + (typeof allData !== 'undefined' ? allData.length : 'UNDEFINED'));
+log('Step 3: All OK - app.js works fine');
+</script>
+</body></html>

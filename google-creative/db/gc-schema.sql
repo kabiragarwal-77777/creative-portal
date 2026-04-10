@@ -35,6 +35,11 @@ CREATE TABLE IF NOT EXISTS gc_ads_raw (
     asset_performance_label TEXT, -- BEST, GOOD, LOW, LEARNING
     ad_status TEXT,
     final_url TEXT,
+    impressions INTEGER DEFAULT 0,
+    clicks INTEGER DEFAULT 0,
+    cost_micros INTEGER DEFAULT 0,
+    conversions REAL DEFAULT 0,
+    conversion_value REAL DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -52,7 +57,34 @@ CREATE TABLE IF NOT EXISTS gc_creatives (
     adset_spend REAL DEFAULT 0,
     adset_conversions REAL DEFAULT 0,
     adset_ctr REAL DEFAULT 0,
+    ad_impressions INTEGER DEFAULT 0,
+    ad_clicks INTEGER DEFAULT 0,
+    ad_spend REAL DEFAULT 0,
+    ad_conversions REAL DEFAULT 0,
+    ad_conversion_value REAL DEFAULT 0,
+    ad_ctr REAL DEFAULT 0,
+    ad_cpc REAL DEFAULT 0,
+    ad_cpa REAL DEFAULT 0,
     merged_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS gc_ad_daily (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ad_id TEXT,
+    campaign_id TEXT,
+    campaign_name TEXT,
+    adgroup_id TEXT,
+    adgroup_name TEXT,
+    ad_type TEXT,
+    date TEXT,
+    impressions INTEGER DEFAULT 0,
+    clicks INTEGER DEFAULT 0,
+    cost_micros INTEGER DEFAULT 0,
+    conversions REAL DEFAULT 0,
+    conversion_value REAL DEFAULT 0,
+    asset_performance_label TEXT,
+    ad_status TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS gc_creative_signals (
@@ -157,6 +189,7 @@ CREATE TABLE IF NOT EXISTS gc_pipeline_runs (
 CREATE INDEX IF NOT EXISTS idx_gc_adset_perf_campaign ON gc_adset_performance(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_gc_adset_perf_date ON gc_adset_performance(date);
 CREATE INDEX IF NOT EXISTS idx_gc_ads_raw_ad_id ON gc_ads_raw(ad_id);
+CREATE INDEX IF NOT EXISTS idx_gc_ad_daily_ad_date ON gc_ad_daily(ad_id, date);
 CREATE INDEX IF NOT EXISTS idx_gc_creatives_ad_id ON gc_creatives(ad_id);
 CREATE INDEX IF NOT EXISTS idx_gc_creatives_type ON gc_creatives(ad_type);
 CREATE INDEX IF NOT EXISTS idx_gc_scores_creative ON gc_creative_scores(creative_id);

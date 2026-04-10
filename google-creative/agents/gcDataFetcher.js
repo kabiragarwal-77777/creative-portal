@@ -183,6 +183,7 @@ module.exports = function (config) {
                     ad_group_ad.ad.responsive_search_ad.descriptions,
                     ad_group_ad.ad.final_urls,
                     ad_group_ad.status,
+                    segments.date,
                     campaign.id, campaign.name,
                     ad_group.id, ad_group.name,
                     metrics.impressions, metrics.clicks, metrics.cost_micros,
@@ -194,6 +195,7 @@ module.exports = function (config) {
 
             rsaAds = rsaResults.map(r => ({
                 ad_id: String(r.ad_group_ad.ad.id),
+                date: r.segments?.date || r.segments_date || r.date || null,
                 campaign_id: String(r.campaign.id),
                 campaign_name: r.campaign.name,
                 adgroup_id: String(r.ad_group.id),
@@ -224,6 +226,7 @@ module.exports = function (config) {
                     asset.image_asset.full_size.url,
                     asset.text_asset.text,
                     ad_group_asset.performance_label, ad_group_asset.status,
+                    segments.date,
                     campaign.id, campaign.name,
                     ad_group.id, ad_group.name,
                     metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions
@@ -241,6 +244,7 @@ module.exports = function (config) {
 
                 return {
                     ad_id: String(r.asset.id),
+                    date: r.segments?.date || r.segments_date || r.date || null,
                     campaign_id: String(r.campaign.id),
                     campaign_name: r.campaign.name,
                     adgroup_id: String(r.ad_group.id),
@@ -263,6 +267,31 @@ module.exports = function (config) {
             console.error('[gc/dataFetcher] Error fetching assets:', err.message);
         }
 
+        const rsaAdsRaw = Object.values(rsaAds.reduce((acc, row) => {
+            if (!acc[row.ad_id]) {
+                acc[row.ad_id] = Object.assign({}, row);
+            } else {
+                acc[row.ad_id].impressions += row.impressions || 0;
+                acc[row.ad_id].clicks += row.clicks || 0;
+                acc[row.ad_id].cost_micros += row.cost_micros || 0;
+                acc[row.ad_id].conversions += row.conversions || 0;
+                acc[row.ad_id].conversion_value += row.conversion_value || 0;
+            }
+            return acc;
+        }, {}));
+
+        const assetsRaw = Object.values(assets.reduce((acc, row) => {
+            if (!acc[row.ad_id]) {
+                acc[row.ad_id] = Object.assign({}, row);
+            } else {
+                acc[row.ad_id].impressions += row.impressions || 0;
+                acc[row.ad_id].clicks += row.clicks || 0;
+                acc[row.ad_id].cost_micros += row.cost_micros || 0;
+                acc[row.ad_id].conversions += row.conversions || 0;
+            }
+            return acc;
+        }, {}));
+
         // --- Store RSAs into gc_ads_raw ---
         const db = getGcDb();
         const upsertAd = db.prepare(`
@@ -270,8 +299,9 @@ module.exports = function (config) {
                 (ad_id, campaign_id, adgroup_id, ad_type,
                  headlines_json, descriptions_json, image_url,
                  youtube_video_id, video_title, video_thumbnail_url,
-                 asset_performance_label, ad_status, final_url)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 asset_performance_label, ad_status, final_url,
+                 impressions, clicks, cost_micros, conversions, conversion_value)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(ad_id) DO UPDATE SET
                 campaign_id = excluded.campaign_id,
                 adgroup_id = excluded.adgroup_id,
@@ -284,7 +314,12 @@ module.exports = function (config) {
                 video_thumbnail_url = excluded.video_thumbnail_url,
                 asset_performance_label = excluded.asset_performance_label,
                 ad_status = excluded.ad_status,
-                final_url = excluded.final_url
+                final_url = excluded.final_url,
+                impressions = excluded.impressions,
+                clicks = excluded.clicks,
+                cost_micros = excluded.cost_micros,
+                conversions = excluded.conversions,
+                conversion_value = excluded.conversion_value
         `);
 
         const insertRSAs = db.transaction((ads) => {
@@ -295,11 +330,12 @@ module.exports = function (config) {
                     null, // image_url — RSAs don't have images
                     null, null, null, // youtube fields — RSAs don't have video
                     null, // performance_label is at asset level, not RSA level
-                    ad.ad_status, ad.final_url
+                    ad.ad_status, ad.final_url,
+                    ad.impressions || 0, ad.clicks || 0, ad.cost_micros || 0, ad.conversions || 0, ad.conversion_value || 0
                 );
             }
         });
-        insertRSAs(rsaAds);
+        insertRSAs(rsaAdsRaw);
 
         // --- Store Assets into gc_ads_raw ---
         const insertAssets = db.transaction((items) => {
@@ -312,14 +348,34 @@ module.exports = function (config) {
                     a.youtube_video_id || null,
                     null, null, // video_title, video_thumbnail_url — filled by fetchYouTubeMetadata
                     a.performance_label, a.ad_status,
-                    null // final_url — assets don't have final URLs
+                    null, // final_url — assets don't have final URLs
+                    a.impressions || 0, a.clicks || 0, a.cost_micros || 0, a.conversions || 0, 0
                 );
             }
         });
-        insertAssets(assets);
+        insertAssets(assetsRaw);
 
-        console.log(`[gc/dataFetcher] Upserted ${rsaAds.length} RSA ads + ${assets.length} assets into gc_ads_raw`);
-        return { rsaAds, assets };
+        db.prepare('DELETE FROM gc_ad_daily').run();
+        const insertAdDaily = db.prepare(`
+            INSERT INTO gc_ad_daily
+                (ad_id, campaign_id, campaign_name, adgroup_id, adgroup_name, ad_type, date,
+                 impressions, clicks, cost_micros, conversions, conversion_value, asset_performance_label, ad_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        const insertAdDailyTx = db.transaction((items) => {
+            for (const row of items) {
+                if (!row.date) continue;
+                insertAdDaily.run(
+                    row.ad_id, row.campaign_id, row.campaign_name, row.adgroup_id, row.adgroup_name, row.ad_type, row.date,
+                    row.impressions || 0, row.clicks || 0, row.cost_micros || 0, row.conversions || 0, row.conversion_value || 0,
+                    row.performance_label || null, row.ad_status || null
+                );
+            }
+        });
+        insertAdDailyTx(rsaAds.concat(assets));
+
+        console.log(`[gc/dataFetcher] Upserted ${rsaAdsRaw.length} RSA ads + ${assetsRaw.length} assets into gc_ads_raw and stored ${rsaAds.length + assets.length} ad-daily rows`);
+        return { rsaAds: rsaAdsRaw, assets: assetsRaw };
     }
 
     // ---------------------------------------------------------------------------
@@ -444,8 +500,9 @@ module.exports = function (config) {
             INSERT INTO gc_creatives
                 (ad_id, campaign_id, campaign_name, adgroup_id, adgroup_name,
                  ad_type, creative_content_json, asset_performance_label,
-                 adset_roas, adset_spend, adset_conversions, adset_ctr)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 adset_roas, adset_spend, adset_conversions, adset_ctr,
+                 ad_impressions, ad_clicks, ad_spend, ad_conversions, ad_conversion_value, ad_ctr, ad_cpc, ad_cpa)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         const merged = [];
@@ -484,7 +541,15 @@ module.exports = function (config) {
                     perf.overall_roas || 0,
                     perf.total_spend || 0,
                     perf.total_conversions || 0,
-                    perf.overall_ctr || 0
+                    perf.overall_ctr || 0,
+                    ad.impressions || 0,
+                    ad.clicks || 0,
+                    (Number(ad.cost_micros) || 0) / 1000000,
+                    ad.conversions || 0,
+                    ad.conversion_value || 0,
+                    (ad.impressions || 0) > 0 ? ((ad.clicks || 0) / ad.impressions) * 100 : 0,
+                    (ad.clicks || 0) > 0 ? ((Number(ad.cost_micros) || 0) / 1000000) / ad.clicks : 0,
+                    (ad.conversions || 0) > 0 ? ((Number(ad.cost_micros) || 0) / 1000000) / ad.conversions : 0
                 );
 
                 merged.push({

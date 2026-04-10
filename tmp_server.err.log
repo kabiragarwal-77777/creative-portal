@@ -1,0 +1,10 @@
+[gc/dataFetcher] Pipeline error: Metabase query failed (403): You don't have permissions to do that.
+[GC Scheduler] Initial cycle error: Metabase query failed (403): You don't have permissions to do that.
+[CampaignSync] Meta API error: User request limit reached
+[CampaignSync] Validation error: no such column: "" - should this be a string literal in single-quotes?
+[apex-breakdowns/placement] Pagination error on page 5: Application request limit reached
+[ad-insights] Pagination error on page 10 : Application request limit reached
+[roas-tracker] Excluded 118 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 118 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 118 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 118 ads with truncated API data (too few daily rows).

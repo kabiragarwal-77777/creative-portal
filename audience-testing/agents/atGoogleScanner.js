@@ -337,11 +337,21 @@ module.exports = function (config) {
                 campaign.bidding_strategy_type,
                 campaign.start_date,
                 campaign.end_date,
+                campaign.target_roas.target_roas,
+                campaign.network_settings.target_google_search,
+                campaign.network_settings.target_search_network,
+                campaign.network_settings.target_content_network,
+                campaign.network_settings.target_partner_search_network,
+                campaign_budget.amount_micros,
+                campaign_budget.type,
                 metrics.cost_micros,
                 metrics.impressions,
                 metrics.clicks,
                 metrics.conversions,
-                metrics.all_conversions_value
+                metrics.all_conversions_value,
+                metrics.search_impression_share,
+                metrics.search_rank_lost_impression_share,
+                metrics.search_budget_lost_impression_share
             FROM campaign
             WHERE segments.date DURING LAST_365_DAYS
                 AND campaign.status IN ('ENABLED', 'PAUSED')
@@ -353,14 +363,25 @@ module.exports = function (config) {
         const upsert = db.prepare(`
             INSERT INTO at_google_campaigns
                 (google_campaign_id, name, status, channel_type, vertical, bidding_strategy,
+                 target_roas, budget_amount, budget_type, start_date, end_date,
+                 network_settings_json, search_impression_share, search_rank_lost_impression_share, search_budget_lost_impression_share,
                  total_spend, impressions, clicks, conversions, conversion_value, synced_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             ON CONFLICT(google_campaign_id) DO UPDATE SET
                 name = excluded.name,
                 status = excluded.status,
                 channel_type = excluded.channel_type,
                 vertical = excluded.vertical,
                 bidding_strategy = excluded.bidding_strategy,
+                target_roas = excluded.target_roas,
+                budget_amount = excluded.budget_amount,
+                budget_type = excluded.budget_type,
+                start_date = excluded.start_date,
+                end_date = excluded.end_date,
+                network_settings_json = excluded.network_settings_json,
+                search_impression_share = excluded.search_impression_share,
+                search_rank_lost_impression_share = excluded.search_rank_lost_impression_share,
+                search_budget_lost_impression_share = excluded.search_budget_lost_impression_share,
                 total_spend = excluded.total_spend,
                 impressions = excluded.impressions,
                 clicks = excluded.clicks,
@@ -380,14 +401,32 @@ module.exports = function (config) {
                 const biddingStrategy = typeof r.campaign.bidding_strategy_type === 'number'
                     ? String(r.campaign.bidding_strategy_type)
                     : (r.campaign.bidding_strategy_type || '');
+                const targetRoas = Number(r.campaign.target_roas && r.campaign.target_roas.target_roas) || null;
+                const budgetAmount = micros(r.campaign_budget && r.campaign_budget.amount_micros);
+                const budgetType = r.campaign_budget && r.campaign_budget.type
+                    ? (typeof r.campaign_budget.type === 'number' ? String(r.campaign_budget.type) : r.campaign_budget.type)
+                    : '';
+                const networkSettings = JSON.stringify({
+                    google_search: !!(r.campaign.network_settings && r.campaign.network_settings.target_google_search),
+                    search_network: !!(r.campaign.network_settings && r.campaign.network_settings.target_search_network),
+                    content_network: !!(r.campaign.network_settings && r.campaign.network_settings.target_content_network),
+                    partner_search: !!(r.campaign.network_settings && r.campaign.network_settings.target_partner_search_network)
+                });
                 const spend = micros(r.metrics.cost_micros);
                 const impressions = r.metrics.impressions || 0;
                 const clicks = r.metrics.clicks || 0;
                 const conversions = r.metrics.conversions || 0;
                 const conversionValue = r.metrics.all_conversions_value || 0;
+                const searchImpressionShare = Number(r.metrics.search_impression_share) || null;
+                const searchRankLostImpressionShare = Number(r.metrics.search_rank_lost_impression_share) || null;
+                const searchBudgetLostImpressionShare = Number(r.metrics.search_budget_lost_impression_share) || null;
                 const vertical = inferVertical(name);
-                upsert.run(cid, name, status, channelType, vertical, biddingStrategy,
-                    spend, impressions, clicks, conversions, conversionValue);
+                upsert.run(
+                    cid, name, status, channelType, vertical, biddingStrategy,
+                    targetRoas, budgetAmount, budgetType, r.campaign.start_date || null, r.campaign.end_date || null,
+                    networkSettings, searchImpressionShare, searchRankLostImpressionShare, searchBudgetLostImpressionShare,
+                    spend, impressions, clicks, conversions, conversionValue
+                );
             }
         });
         insertMany(rows);
@@ -599,6 +638,201 @@ module.exports = function (config) {
         return rows.length;
     }
 
+    async function fetchCampaignCriteriaFromAPI() {
+        log('Fetching campaign criteria (locations/languages) from Google Ads API...');
+        const customer = getCustomer();
+        const rows = await customer.query(`
+            SELECT
+                campaign.id,
+                campaign_criterion.type,
+                campaign_criterion.negative,
+                campaign_criterion.location.geo_target_constant,
+                campaign_criterion.language.language_constant
+            FROM campaign_criterion
+            WHERE campaign.status IN ('ENABLED', 'PAUSED')
+              AND campaign_criterion.type IN ('LOCATION', 'LANGUAGE')
+        `);
+
+        const db = getAtDb();
+        const grouped = new Map();
+        rows.forEach(r => {
+            const cid = String(r.campaign.id);
+            if (!grouped.has(cid)) grouped.set(cid, { geo: [], lang: [] });
+            const bucket = grouped.get(cid);
+            const criterion = r.campaign_criterion || {};
+            const type = criterion.type ? (typeof criterion.type === 'number' ? String(criterion.type) : criterion.type) : '';
+            if (type === 'LOCATION' && criterion.location && criterion.location.geo_target_constant) {
+                bucket.geo.push({ value: criterion.location.geo_target_constant, negative: !!criterion.negative });
+            }
+            if (type === 'LANGUAGE' && criterion.language && criterion.language.language_constant) {
+                bucket.lang.push({ value: criterion.language.language_constant, negative: !!criterion.negative });
+            }
+        });
+
+        const update = db.prepare(`
+            UPDATE at_google_campaigns
+            SET geo_targeting_json = ?, language_targeting_json = ?, synced_at = datetime('now')
+            WHERE google_campaign_id = ?
+        `);
+        const tx = db.transaction(() => {
+            for (const [cid, bucket] of grouped.entries()) {
+                update.run(JSON.stringify(bucket.geo), JSON.stringify(bucket.lang), cid);
+            }
+        });
+        tx();
+        log(`Stored location/language targeting for ${grouped.size} campaigns`);
+        return grouped.size;
+    }
+
+    async function fetchKeywordSignalsFromAPI() {
+        log('Fetching keyword signals from Google Ads API...');
+        const customer = getCustomer();
+        const rows = await customer.query(`
+            SELECT
+                campaign.id,
+                ad_group.id,
+                ad_group_criterion.keyword.text,
+                ad_group_criterion.keyword.match_type,
+                ad_group_criterion.status,
+                ad_group_criterion.quality_info.quality_score,
+                ad_group_criterion.quality_info.expected_clickthrough_rate,
+                ad_group_criterion.quality_info.ad_relevance,
+                ad_group_criterion.quality_info.landing_page_experience,
+                metrics.cost_micros,
+                metrics.impressions,
+                metrics.clicks,
+                metrics.conversions,
+                metrics.all_conversions_value,
+                metrics.search_impression_share,
+                metrics.search_rank_lost_impression_share,
+                metrics.search_budget_lost_impression_share
+            FROM keyword_view
+            WHERE segments.date DURING LAST_365_DAYS
+              AND ad_group.status IN ('ENABLED', 'PAUSED')
+        `);
+
+        const db = getAtDb();
+        db.prepare(`DELETE FROM at_google_keywords`).run();
+        const insert = db.prepare(`
+            INSERT INTO at_google_keywords
+                (google_adgroup_id, google_campaign_id, keyword_text, match_type, status,
+                 quality_score, expected_ctr, ad_relevance, landing_page_experience,
+                 search_impression_share, search_rank_lost_impression_share, search_budget_lost_impression_share,
+                 spend, impressions, clicks, conversions, conversion_value, synced_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        `);
+        const tx = db.transaction((items) => {
+            for (const r of items) {
+                const criterion = r.ad_group_criterion || {};
+                const keyword = criterion.keyword || {};
+                const qualityInfo = criterion.quality_info || {};
+                insert.run(
+                    String(r.ad_group.id), String(r.campaign.id), keyword.text || '',
+                    keyword.match_type ? (typeof keyword.match_type === 'number' ? String(keyword.match_type) : keyword.match_type) : '',
+                    criterion.status ? (typeof criterion.status === 'number' ? String(criterion.status) : criterion.status) : '',
+                    Number(qualityInfo.quality_score) || null,
+                    qualityInfo.expected_clickthrough_rate ? String(qualityInfo.expected_clickthrough_rate) : null,
+                    qualityInfo.ad_relevance ? String(qualityInfo.ad_relevance) : null,
+                    qualityInfo.landing_page_experience ? String(qualityInfo.landing_page_experience) : null,
+                    Number(r.metrics.search_impression_share) || null,
+                    Number(r.metrics.search_rank_lost_impression_share) || null,
+                    Number(r.metrics.search_budget_lost_impression_share) || null,
+                    micros(r.metrics.cost_micros), r.metrics.impressions || 0, r.metrics.clicks || 0,
+                    r.metrics.conversions || 0, r.metrics.all_conversions_value || 0
+                );
+            }
+        });
+        tx(rows);
+        log(`Stored ${rows.length} keyword rows`);
+        return rows.length;
+    }
+
+    async function fetchSearchTermsFromAPI() {
+        log('Fetching search terms from Google Ads API...');
+        const customer = getCustomer();
+        const rows = await customer.query(`
+            SELECT
+                campaign.id,
+                ad_group.id,
+                search_term_view.search_term,
+                ad_group_criterion.keyword.text,
+                ad_group_criterion.keyword.match_type,
+                metrics.cost_micros,
+                metrics.impressions,
+                metrics.clicks,
+                metrics.conversions,
+                metrics.all_conversions_value,
+                metrics.ctr,
+                metrics.average_cpc
+            FROM search_term_view
+            WHERE segments.date DURING LAST_365_DAYS
+              AND campaign.status IN ('ENABLED', 'PAUSED')
+        `);
+
+        const db = getAtDb();
+        db.prepare(`DELETE FROM at_google_search_terms`).run();
+        const insert = db.prepare(`
+            INSERT INTO at_google_search_terms
+                (google_adgroup_id, google_campaign_id, search_term, keyword_text, match_type,
+                 spend, impressions, clicks, conversions, conversion_value, ctr, avg_cpc, synced_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        `);
+        const tx = db.transaction((items) => {
+            for (const r of items) {
+                const keyword = r.ad_group_criterion && r.ad_group_criterion.keyword ? r.ad_group_criterion.keyword : {};
+                insert.run(
+                    String(r.ad_group.id), String(r.campaign.id), r.search_term_view.search_term || '',
+                    keyword.text || '',
+                    keyword.match_type ? (typeof keyword.match_type === 'number' ? String(keyword.match_type) : keyword.match_type) : '',
+                    micros(r.metrics.cost_micros), r.metrics.impressions || 0, r.metrics.clicks || 0,
+                    r.metrics.conversions || 0, r.metrics.all_conversions_value || 0,
+                    r.metrics.ctr || 0, micros(r.metrics.average_cpc)
+                );
+            }
+        });
+        tx(rows);
+        log(`Stored ${rows.length} search term rows`);
+        return rows.length;
+    }
+
+    async function fetchAssetGroupsFromAPI() {
+        log('Fetching asset groups from Google Ads API...');
+        const customer = getCustomer();
+        const rows = await customer.query(`
+            SELECT
+                asset_group.id,
+                asset_group.name,
+                asset_group.status,
+                asset_group.primary_status,
+                campaign.id
+            FROM asset_group
+            WHERE campaign.status IN ('ENABLED', 'PAUSED')
+        `);
+
+        const db = getAtDb();
+        db.prepare(`DELETE FROM at_google_asset_groups`).run();
+        const insert = db.prepare(`
+            INSERT INTO at_google_asset_groups
+                (asset_group_id, google_campaign_id, name, status, primary_status, strength, synced_at)
+            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+        `);
+        const tx = db.transaction((items) => {
+            for (const r of items) {
+                insert.run(
+                    String(r.asset_group.id),
+                    String(r.campaign.id),
+                    r.asset_group.name || '',
+                    r.asset_group.status ? (typeof r.asset_group.status === 'number' ? String(r.asset_group.status) : r.asset_group.status) : '',
+                    r.asset_group.primary_status ? (typeof r.asset_group.primary_status === 'number' ? String(r.asset_group.primary_status) : r.asset_group.primary_status) : '',
+                    ''
+                );
+            }
+        });
+        tx(rows);
+        log(`Stored ${rows.length} asset groups`);
+        return rows.length;
+    }
+
     // -----------------------------------------------------------------------
     // Orchestrator
     // -----------------------------------------------------------------------
@@ -614,6 +848,10 @@ module.exports = function (config) {
             adgroups: 0,
             audiences: 0,
             breakdowns: 0,
+            targeting: 0,
+            keywords: 0,
+            searchTerms: 0,
+            assetGroups: 0,
             funnelMatched: 0,
             errors: [],
         };
@@ -663,12 +901,36 @@ module.exports = function (config) {
                     logErr('Error fetching breakdowns (API fallback):', err.message);
                     result.errors.push({ step: 'breakdowns_api', error: err.message });
                 }
+                try {
+                    result.targeting = await fetchCampaignCriteriaFromAPI();
+                } catch (err) {
+                    logErr('Error fetching campaign criteria (API fallback):', err.message);
+                    result.errors.push({ step: 'campaign_criteria_api', error: err.message });
+                }
+                try {
+                    result.keywords = await fetchKeywordSignalsFromAPI();
+                } catch (err) {
+                    logErr('Error fetching keyword signals (API fallback):', err.message);
+                    result.errors.push({ step: 'keywords_api', error: err.message });
+                }
+                try {
+                    result.searchTerms = await fetchSearchTermsFromAPI();
+                } catch (err) {
+                    logErr('Error fetching search terms (API fallback):', err.message);
+                    result.errors.push({ step: 'search_terms_api', error: err.message });
+                }
+                try {
+                    result.assetGroups = await fetchAssetGroupsFromAPI();
+                } catch (err) {
+                    logErr('Error fetching asset groups (API fallback):', err.message);
+                    result.errors.push({ step: 'asset_groups_api', error: err.message });
+                }
             } else {
                 log('No Google Ads creds — skipping audience criteria & breakdowns (not in cache)');
             }
 
             if (result.errors.length > 0) result.success = false;
-            log(`Cache scan complete: ${result.campaigns} campaigns, ${result.adgroups} adgroups, ${result.funnelMatched} funnel-enriched, ${result.audiences} audiences, ${result.breakdowns} breakdowns, ${result.errors.length} errors`);
+            log(`Cache scan complete: ${result.campaigns} campaigns, ${result.adgroups} adgroups, ${result.funnelMatched} funnel-enriched, ${result.audiences} audiences, ${result.breakdowns} breakdowns, ${result.targeting} targeting groups, ${result.keywords} keywords, ${result.searchTerms} search terms, ${result.assetGroups} asset groups, ${result.errors.length} errors`);
             return result;
         }
 
@@ -680,7 +942,7 @@ module.exports = function (config) {
                 skipped: true,
                 source: 'none',
                 reason: 'No cache files and no Google Ads credentials',
-                campaigns: 0, adgroups: 0, audiences: 0, breakdowns: 0, funnelMatched: 0,
+                campaigns: 0, adgroups: 0, audiences: 0, breakdowns: 0, targeting: 0, keywords: 0, searchTerms: 0, assetGroups: 0, funnelMatched: 0,
             };
         }
 
@@ -710,9 +972,29 @@ module.exports = function (config) {
             logErr('Error fetching breakdowns:', err.message);
             result.errors.push({ step: 'breakdowns', error: err.message });
         }
+        try { result.targeting = await fetchCampaignCriteriaFromAPI(); }
+        catch (err) {
+            logErr('Error fetching campaign criteria:', err.message);
+            result.errors.push({ step: 'campaign_criteria', error: err.message });
+        }
+        try { result.keywords = await fetchKeywordSignalsFromAPI(); }
+        catch (err) {
+            logErr('Error fetching keyword signals:', err.message);
+            result.errors.push({ step: 'keywords', error: err.message });
+        }
+        try { result.searchTerms = await fetchSearchTermsFromAPI(); }
+        catch (err) {
+            logErr('Error fetching search terms:', err.message);
+            result.errors.push({ step: 'search_terms', error: err.message });
+        }
+        try { result.assetGroups = await fetchAssetGroupsFromAPI(); }
+        catch (err) {
+            logErr('Error fetching asset groups:', err.message);
+            result.errors.push({ step: 'asset_groups', error: err.message });
+        }
 
         if (result.errors.length > 0) result.success = false;
-        log(`API scan complete: ${result.campaigns} campaigns, ${result.adgroups} adgroups, ${result.audiences} audiences, ${result.breakdowns} breakdowns, ${result.errors.length} errors`);
+        log(`API scan complete: ${result.campaigns} campaigns, ${result.adgroups} adgroups, ${result.audiences} audiences, ${result.breakdowns} breakdowns, ${result.targeting} targeting groups, ${result.keywords} keywords, ${result.searchTerms} search terms, ${result.assetGroups} asset groups, ${result.errors.length} errors`);
         return result;
     }
 
@@ -727,6 +1009,9 @@ module.exports = function (config) {
         const adgroups = db.prepare(`SELECT COUNT(*) as count, MAX(synced_at) as last_sync FROM at_google_adgroups`).get();
         const audiences = db.prepare(`SELECT COUNT(*) as count, MAX(synced_at) as last_sync FROM at_google_audiences`).get();
         const breakdowns = db.prepare(`SELECT COUNT(*) as count, MAX(synced_at) as last_sync FROM at_google_breakdowns`).get();
+        const keywords = db.prepare(`SELECT COUNT(*) as count, MAX(synced_at) as last_sync FROM at_google_keywords`).get();
+        const searchTerms = db.prepare(`SELECT COUNT(*) as count, MAX(synced_at) as last_sync FROM at_google_search_terms`).get();
+        const assetGroups = db.prepare(`SELECT COUNT(*) as count, MAX(synced_at) as last_sync FROM at_google_asset_groups`).get();
 
         const topCampaigns = db.prepare(`
             SELECT google_campaign_id, name, status, channel_type, vertical,
@@ -751,6 +1036,9 @@ module.exports = function (config) {
             adgroups: { count: adgroups.count, lastSync: adgroups.last_sync },
             audiences: { count: audiences.count, lastSync: audiences.last_sync },
             breakdowns: { count: breakdowns.count, lastSync: breakdowns.last_sync },
+            keywords: { count: keywords.count, lastSync: keywords.last_sync },
+            searchTerms: { count: searchTerms.count, lastSync: searchTerms.last_sync },
+            assetGroups: { count: assetGroups.count, lastSync: assetGroups.last_sync },
             topCampaigns,
         };
     }

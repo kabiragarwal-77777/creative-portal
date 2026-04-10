@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Google Ads API - Tool Design Document</title>
+<style>
+body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; color: #333; line-height: 1.6; }
+h1 { color: #1a73e8; border-bottom: 2px solid #1a73e8; padding-bottom: 10px; }
+h2 { color: #333; margin-top: 30px; }
+h3 { color: #555; }
+table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+th { background: #f5f5f5; }
+.section { margin-bottom: 30px; }
+.highlight { background: #e8f0fe; padding: 15px; border-radius: 5px; margin: 10px 0; }
+</style>
+</head>
+<body>
+
+<h1>Google Ads API - Tool Design Document</h1>
+<p><strong>Company:</strong> Univest Communication Technologies Private Limited</p>
+<p><strong>Application:</strong> Creative Performance Analytics Portal</p>
+<p><strong>Date:</strong> March 25, 2026</p>
+<p><strong>Version:</strong> 1.0</p>
+
+<div class="section">
+<h2>1. Tool Overview</h2>
+<p>The Creative Performance Analytics Portal is an internal tool built by Univest to monitor and optimize Google Ads campaign performance. It is used exclusively by Univest's in-house performance marketing team to analyze creative assets, track conversion funnels, and make data-driven budget allocation decisions.</p>
+<p>The tool is a web-based dashboard (Node.js + Express) that runs on internal infrastructure and is not publicly accessible. It serves approximately 5-10 internal users (marketing team members).</p>
+</div>
+
+<div class="section">
+<h2>2. Purpose of Google Ads API Usage</h2>
+<p>The tool uses the Google Ads API exclusively for <strong>read-only</strong> access to Univest's own Google Ads account data. Specifically:</p>
+<ul>
+<li><strong>Campaign & Ad Group Performance:</strong> Daily spend, impressions, clicks, conversions, and conversion value at the campaign and ad group level.</li>
+<li><strong>Campaign Metadata:</strong> Campaign names, statuses, channel types, and bidding strategies for display in the dashboard.</li>
+</ul>
+<p>No write operations are performed. The tool does not modify campaigns, budgets, bids, ads, or any account settings via the API.</p>
+</div>
+
+<div class="section">
+<h2>3. Google Ads API Endpoints Used</h2>
+<table>
+<tr><th>Endpoint</th><th>Method</th><th>Purpose</th><th>Frequency</th></tr>
+<tr><td>GoogleAdsService.SearchStream</td><td>POST</td><td>Fetch campaign + ad group daily metrics (spend, impressions, clicks, conversions)</td><td>Every 6 hours</td></tr>
+<tr><td>GoogleAdsService.SearchStream</td><td>POST</td><td>Fetch campaign list with status and metadata</td><td>On-demand (user clicks refresh)</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h2>4. GAQL Queries Used</h2>
+<div class="highlight">
+<h3>Query 1: Campaign + Ad Group Daily Performance</h3>
+<pre>
+SELECT
+    segments.date,
+    campaign.id, campaign.name, campaign.status,
+    campaign.advertising_channel_type,
+    ad_group.id, ad_group.name,
+    metrics.cost_micros, metrics.impressions,
+    metrics.clicks, metrics.conversions,
+    metrics.all_conversions_value
+FROM ad_group
+WHERE segments.date BETWEEN '{dateFrom}' AND '{dateTo}'
+    AND campaign.status = 'ENABLED'
+ORDER BY segments.date DESC
+</pre>
+</div>
+<div class="highlight">
+<h3>Query 2: Campaign List</h3>
+<pre>
+SELECT
+    campaign.id, campaign.name, campaign.status,
+    campaign.advertising_channel_type,
+    campaign.bidding_strategy_type,
+    campaign_budget.amount_micros
+FROM campaign
+WHERE campaign.status != 'REMOVED'
+ORDER BY campaign.name
+</pre>
+</div>
+</div>
+
+<div class="section">
+<h2>5. Data Handling & Storage</h2>
+<ul>
+<li>API responses are cached locally for 24 hours to minimize API calls.</li>
+<li>Data is stored in local JSON cache files and an SQLite database on the server.</li>
+<li>No Google Ads data is shared externally or with third parties.</li>
+<li>No personally identifiable information (PII) is accessed or stored.</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>6. Rate Limiting & Compliance</h2>
+<ul>
+<li>The tool queries the API at most every 6 hours via automated scheduler, plus occasional on-demand refreshes.</li>
+<li>Estimated daily API calls: 4-10 requests per day.</li>
+<li>The tool accesses only Univest's own Google Ads account (Customer ID: 324-865-9401).</li>
+<li>No third-party accounts are accessed.</li>
+<li>OAuth 2.0 is used for authentication with offline refresh tokens.</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>7. Technical Architecture</h2>
+<table>
+<tr><th>Component</th><th>Technology</th></tr>
+<tr><td>Backend</td><td>Node.js 20 + Express.js</td></tr>
+<tr><td>Google Ads API Client</td><td>google-ads-api (npm package)</td></tr>
+<tr><td>Authentication</td><td>OAuth 2.0 with refresh token</td></tr>
+<tr><td>Data Storage</td><td>SQLite (local) + JSON file cache</td></tr>
+<tr><td>Frontend</td><td>Vanilla HTML/CSS/JavaScript</td></tr>
+<tr><td>Hosting</td><td>Internal server (localhost / private network)</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h2>8. Access Scope</h2>
+<p>The tool requests the following OAuth scope:</p>
+<ul>
+<li><code>https://www.googleapis.com/auth/adwords</code> — Required for read-only access to Google Ads reporting data.</li>
+</ul>
+</div>
+
+<div class="section">
+<h2>9. Contact Information</h2>
+<table>
+<tr><th>Field</th><th>Value</th></tr>
+<tr><td>Company</td><td>Univest Communication Technologies Private Limited</td></tr>
+<tr><td>Google Ads MCC</td><td>Univest Group</td></tr>
+<tr><td>Customer ID</td><td>324-865-9401</td></tr>
+<tr><td>Application Type</td><td>Internal analytics tool</td></tr>
+<tr><td>Users</td><td>5-10 internal marketing team members</td></tr>
+</table>
+</div>
+
+</body>
+</html>

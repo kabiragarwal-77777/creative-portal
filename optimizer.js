@@ -104,13 +104,27 @@ function buildApexBusinessConstants() {
 
 function buildOptimizerSkillContracts() {
     return [
+        { id: 'skill-router', path: 'skills/skill-router/SKILL.md' },
         { id: 'optimizer-prompt-brain', path: 'skills/optimizer-prompt-brain/SKILL.md' },
         { id: 'performance-marketer-final-qa', path: 'skills/performance-marketer-final-qa/SKILL.md' },
         { id: 'advanced-performance-trend-analysis', path: 'skills/advanced-performance-trend-analysis/SKILL.md' },
         { id: 'prompt-to-delivery-optimizer', path: 'skills/prompt-to-delivery-optimizer/SKILL.md' },
+        { id: 'cpa-diagnostics', path: 'skills/cpa-diagnostics/SKILL.md' },
+        { id: 'wasted-spend-finder', path: 'skills/wasted-spend-finder/SKILL.md' },
+        { id: 'anomaly-detection', path: 'skills/anomaly-detection/SKILL.md' },
+        { id: 'pacing-monitor', path: 'skills/pacing-monitor/SKILL.md' },
+        { id: 'performance-benchmarking', path: 'skills/performance-benchmarking/SKILL.md' },
+        { id: 'geo-performance-analysis', path: 'skills/geo-performance-analysis/SKILL.md' },
+        { id: 'device-performance-analysis', path: 'skills/device-performance-analysis/SKILL.md' },
+        { id: 'attribution-model-comparison', path: 'skills/attribution-model-comparison/SKILL.md' },
+        { id: 'account-structure-review', path: 'skills/account-structure-review/SKILL.md' },
+        { id: 'roas-forecasting', path: 'skills/roas-forecasting/SKILL.md' },
         { id: 'meta-account-learning', path: 'skills/meta-account-learning/SKILL.md' },
         { id: 'breakdown-action-engine', path: 'skills/breakdown-action-engine/SKILL.md' },
         { id: 'meta-structure-audit', path: 'skills/meta-structure-audit/SKILL.md' },
+        { id: 'meta-creative-fatigue-detection', path: 'skills/meta-creative-fatigue-detection/SKILL.md' },
+        { id: 'meta-frequency-cap-audit', path: 'skills/meta-frequency-cap-audit/SKILL.md' },
+        { id: 'meta-retargeting-window-audit', path: 'skills/meta-retargeting-window-audit/SKILL.md' },
         { id: 'market-posture-engine', path: 'skills/market-posture-engine/SKILL.md' },
         { id: 'change-impact-lite', path: 'skills/change-impact-lite/SKILL.md' },
         { id: 'morning-brief-operator', path: 'skills/morning-brief-operator/SKILL.md' },
@@ -119,6 +133,222 @@ function buildOptimizerSkillContracts() {
         { id: 'delivery-attribution-reasoner', path: 'skills/delivery-attribution-reasoner/SKILL.md' },
         { id: 'unified-output-governor', path: 'skills/unified-output-governor/SKILL.md' }
     ];
+}
+
+function buildImportedOptimizerAuditSummary(scanData) {
+    var ads = scanData && scanData.ads ? scanData.ads : [];
+    var tree = scanData && scanData.tree ? scanData.tree : {};
+    var redAds = 0;
+    var greenAds = 0;
+    var benchmarkPositiveCount = 0;
+    var benchmarkNegativeCount = 0;
+    var estimatedWastedSpend = 0;
+    var benchmarkWinningSpend = 0;
+    var topCampaignSpendSharePct = 0;
+    var topGeoPocket = null;
+    var topPlacementPocket = null;
+    var geoSpend = {};
+    var placementSpend = {};
+
+    Object.keys(tree).forEach(function(campaignName) {
+        var camp = tree[campaignName];
+        Object.keys((camp && camp.adsets) || {}).forEach(function(adsetName) {
+            var adset = camp.adsets[adsetName];
+            (adset.ads || []).forEach(function(ad) {
+                var spend = Number(ad.spend || 0);
+                if (ad.alertStatus === 'red') {
+                    redAds++;
+                    estimatedWastedSpend += spend;
+                }
+                if (ad.alertStatus === 'green') {
+                    greenAds++;
+                    benchmarkWinningSpend += spend;
+                }
+                if (ad.recommendation && (ad.recommendation.action === 'SCALE' || ad.recommendation.action === 'MAINTAIN')) benchmarkPositiveCount++;
+                if (ad.recommendation && (ad.recommendation.action === 'PAUSE' || ad.recommendation.action === 'REDUCE BUDGET')) benchmarkNegativeCount++;
+            });
+        });
+    });
+
+    var campaignSpends = Object.keys(tree).map(function(name) {
+        return Number(tree[name] && tree[name].totals && tree[name].totals.spend || 0);
+    }).sort(function(a, b) { return b - a; });
+    var totalCampaignSpend = campaignSpends.reduce(function(sum, value) { return sum + value; }, 0);
+    if (totalCampaignSpend > 0 && campaignSpends.length) topCampaignSpendSharePct = (campaignSpends[0] / totalCampaignSpend) * 100;
+
+    ads.forEach(function(ad) {
+        var spend = Number(ad.spend || 0);
+        (ad.placements_active || []).forEach(function(placement) {
+            placementSpend[String(placement || '--')] = (placementSpend[String(placement || '--')] || 0) + spend;
+        });
+        var geo = String(ad.location_targeting || '--');
+        geoSpend[geo] = (geoSpend[geo] || 0) + spend;
+    });
+
+    function topPocket(map) {
+        var best = null;
+        Object.keys(map || {}).forEach(function(key) {
+            if (!best || map[key] > best.value) best = { key: key, value: map[key] };
+        });
+        return best;
+    }
+
+    topGeoPocket = topPocket(geoSpend);
+    topPlacementPocket = topPocket(placementSpend);
+
+    return {
+        red_ad_count: redAds,
+        green_ad_count: greenAds,
+        benchmark_positive_count: benchmarkPositiveCount,
+        benchmark_negative_count: benchmarkNegativeCount,
+        estimated_wasted_spend: estimatedWastedSpend,
+        benchmark_winning_spend: benchmarkWinningSpend,
+        top_campaign_spend_share_pct: topCampaignSpendSharePct,
+        top_geo_spend_pocket: topGeoPocket,
+        top_placement_spend_pocket: topPlacementPocket,
+        pacing_risk: topCampaignSpendSharePct >= 45 ? 'high concentration' : (topCampaignSpendSharePct >= 30 ? 'moderate concentration' : 'distributed')
+    };
+}
+
+function buildImportedSkillContextBlocks(scanData, benchmarks, breakdownContext, importedAuditSummary, trendSummary, advancedTrendIntelligence) {
+    var ads = (scanData && scanData.ads) || [];
+    var tree = (scanData && scanData.tree) || {};
+    var totals = (scanData && scanData.evaluatedTotals) || {};
+    var rows = breakdownContext && breakdownContext.breakdowns ? breakdownContext.breakdowns : {};
+    var benchmarkCPA = Number(benchmarks && (benchmarks.weighted_benchmark_cpa || benchmarks.benchmark_cpa || benchmarks.median_signup_cost) || 0);
+    var benchmarkD6 = Number(benchmarks && (benchmarks.weighted_benchmark_d6_roas || benchmarks.benchmark_d6_roas || benchmarks.median_d6_roas) || 0);
+    var spend = Number(totals.spend || 0);
+    var sortedAds = ads.slice().sort(function(a, b) { return (b.spend || 0) - (a.spend || 0); });
+    var redAds = sortedAds.filter(function(ad) { return ad.alertStatus === 'red'; });
+    var greenAds = sortedAds.filter(function(ad) { return ad.alertStatus === 'green'; });
+    var cpaPressureAds = sortedAds.filter(function(ad) {
+        var signupCost = Number(ad.signupCost || 0);
+        return (ad.spend || 0) >= 5000 && signupCost > 0 && ((benchmarkCPA > 0 && signupCost > benchmarkCPA * 1.25) || signupCost > 1000);
+    }).slice(0, 3).map(function(ad) {
+        return (ad.ad_name || '--') + ' | SU ' + fmtINR(ad.signupCost || 0) + ' | Spend ' + fmtINR(ad.spend || 0);
+    });
+    var wastedSpendShare = spend > 0 && importedAuditSummary ? +Number(((Number(importedAuditSummary.estimated_wasted_spend || 0) / spend) * 100)).toFixed(1) : 0;
+
+    var geoRows = Array.isArray(rows.geography) ? rows.geography.slice() : [];
+    var deviceRows = Array.isArray(rows.device) ? rows.device.slice() : [];
+    var bestGeo = geoRows.slice().sort(function(a, b) { return (a.cpi_7d || Infinity) - (b.cpi_7d || Infinity); })[0] || null;
+    var worstGeo = geoRows.slice().sort(function(a, b) { return (b.cpi_7d || 0) - (a.cpi_7d || 0); })[0] || null;
+    var bestDevice = deviceRows.slice().sort(function(a, b) { return (a.cpi_7d || Infinity) - (b.cpi_7d || Infinity); })[0] || null;
+    var worstDevice = deviceRows.slice().sort(function(a, b) { return (b.cpi_7d || 0) - (a.cpi_7d || 0); })[0] || null;
+
+    var campaigns = Object.keys(tree).map(function(name) {
+        return {
+            name: name,
+            spend: Number(tree[name] && tree[name].totals && tree[name].totals.spend || 0),
+            d6ROAS: Number(tree[name] && tree[name].totals && tree[name].totals.d6ROAS || 0)
+        };
+    }).sort(function(a, b) { return b.spend - a.spend; });
+    var topCampaign = campaigns[0] || null;
+    var topCampaignShare = Number(importedAuditSummary && importedAuditSummary.top_campaign_spend_share_pct || 0);
+    var campaignCount = campaigns.length;
+    var adsetCount = 0;
+    var adCount = 0;
+    Object.keys(tree).forEach(function(campaignName) {
+        var camp = tree[campaignName];
+        var adsets = Object.keys((camp && camp.adsets) || {});
+        adsetCount += adsets.length;
+        adsets.forEach(function(adsetName) {
+            adCount += ((camp.adsets[adsetName] && camp.adsets[adsetName].ads) || []).length;
+        });
+    });
+
+    var decliningSpendShare = Number(trendSummary && trendSummary.declining_spend_share_pct || 0);
+    var improvingSpendShare = Number(trendSummary && trendSummary.improving_spend_share_pct || 0);
+    var forecastBase = decliningSpendShare > improvingSpendShare
+        ? 'Near-term mix is fragile because declining spend share exceeds improving spend share.'
+        : 'Near-term mix is steadier because improving spend share is keeping pace with declining share.';
+    var forecastUpside = (greenAds.slice(0, 2).map(function(ad) { return ad.ad_name || '--'; }).join(', ') || 'the strongest live winners') + ' can support careful scale if concentration does not rise further.';
+    var forecastDownside = (redAds.slice(0, 2).map(function(ad) { return ad.ad_name || '--'; }).join(', ') || 'the main red ads') + ' remain the main risk if budget is not concentrated away from them.';
+
+    var attribution = buildAttributionBreakdownSummary(scanData);
+    var anomalyHeadline = (topCampaignShare >= 45 ? 'Concentration anomaly: the top campaign owns ' + topCampaignShare.toFixed(1) + '% of spend.' : 'No severe concentration anomaly, but watch the red / green balance.') +
+        (redAds.length ? ' Red ads: ' + redAds.length + '.' : '') +
+        (greenAds.length ? ' Green ads: ' + greenAds.length + '.' : '');
+    var pacingHeadline = importedAuditSummary && importedAuditSummary.pacing_risk ? ('Pacing risk: ' + importedAuditSummary.pacing_risk + '.') : 'Pacing risk could not be isolated cleanly.';
+    var geoDetail = [];
+    if (bestGeo && worstGeo) geoDetail.push('Geo gap: ' + (bestGeo.region || '--') + ' CPI ' + fmtINR(bestGeo.cpi_7d || 0) + ' vs ' + (worstGeo.region || '--') + ' CPI ' + fmtINR(worstGeo.cpi_7d || 0));
+    if (bestDevice && worstDevice) geoDetail.push('Device gap: ' + titleCaseWords(String(bestDevice.device || '').replace(/_/g, ' ')) + ' vs ' + titleCaseWords(String(worstDevice.device || '').replace(/_/g, ' ')));
+    var structureDetail = 'Campaigns: ' + campaignCount + ' | Adsets: ' + adsetCount + ' | Ads: ' + adCount + (topCampaign ? ' | Top campaign: ' + topCampaign.name + ' (' + topCampaignShare.toFixed(1) + '% spend)' : '');
+    var cpaDetail = (benchmarkCPA > 0 ? 'Weighted CPA benchmark: ' + fmtINR(benchmarkCPA) + '.' : 'Weighted CPA benchmark not available.') + (benchmarkD6 > 0 ? ' Weighted D6 ROAS benchmark: ' + fmtPct(benchmarkD6) + '.' : '');
+
+    return {
+        cpa: {
+            headline: cpaPressureAds.length ? ('CPA pressure is concentrated in ' + cpaPressureAds.length + ' high-spend ads.') : 'No strong CPA pressure pocket isolated beyond the current benchmark set.',
+            detail: cpaDetail + (cpaPressureAds.length ? ' ' + cpaPressureAds.join(' | ') : ''),
+            action: cpaPressureAds.length ? 'Trim the worst CPA pockets before changing the whole structure.' : 'Keep CPA monitoring benchmarked, not reactive.'
+        },
+        wasted_spend: {
+            headline: 'Estimated wasted spend: ' + fmtINR(Number(importedAuditSummary && importedAuditSummary.estimated_wasted_spend || 0)) + '.',
+            detail: 'Red ads: ' + Number(importedAuditSummary && importedAuditSummary.red_ad_count || 0) + ' | Green ads: ' + Number(importedAuditSummary && importedAuditSummary.green_ad_count || 0) + ' | Waste share: ' + wastedSpendShare.toFixed(1) + '% of selected spend.',
+            action: 'Cut wasteful pockets first and preserve the green winners.'
+        },
+        anomaly: {
+            headline: anomalyHeadline,
+            detail: 'Declining spend share: ' + decliningSpendShare.toFixed(1) + '% | Improving spend share: ' + improvingSpendShare.toFixed(1) + '% | Benchmark-positive ads: ' + Number(importedAuditSummary && importedAuditSummary.benchmark_positive_count || 0) + ' | Benchmark-negative ads: ' + Number(importedAuditSummary && importedAuditSummary.benchmark_negative_count || 0) + ' | Paused winners: ' + Number(trendSummary && trendSummary.paused_winners || 0),
+            action: 'Check concentration, red/green balance, and trend inversion before broad edits.'
+        },
+        pacing: {
+            headline: pacingHeadline,
+            detail: 'Top campaign spend share: ' + topCampaignShare.toFixed(1) + '%.' + (importedAuditSummary && importedAuditSummary.top_geo_spend_pocket ? ' Top geo pocket: ' + (importedAuditSummary.top_geo_spend_pocket.key || '--') + '.' : ''),
+            action: topCampaignShare >= 45 ? 'Avoid broad scale until spend concentration is reduced.' : 'Pacing is usable; keep scale cautious and data-led.'
+        },
+        geo_device: {
+            headline: geoDetail.length ? geoDetail[0] : 'Geo / device efficiency is directionally visible but not broken into a sharp gap yet.',
+            detail: geoDetail.slice(1).join(' | ') || (importedAuditSummary && importedAuditSummary.top_geo_spend_pocket ? 'Top geo spend pocket: ' + (importedAuditSummary.top_geo_spend_pocket.key || '--') : 'Geo / device pockets were not strong enough to isolate further.'),
+            action: 'Shift spend toward the better geo/device pockets before a broader budget push.'
+        },
+        attribution: {
+            headline: attribution.seven_day_click_roas != null ? ('7d click ROAS: ' + attribution.seven_day_click_roas + ' | 1d click ROAS: ' + (attribution.one_day_click_roas != null ? attribution.one_day_click_roas : '--')) : 'Attribution split is not injected in this run.',
+            detail: attribution.view_through_roas != null ? ('View-through ROAS: ' + attribution.view_through_roas + ' | Blended MER: ' + (attribution.blended_mer != null ? attribution.blended_mer : '--')) : (attribution.note || 'Attribution breakdown unavailable.'),
+            action: 'Use attribution as a caution layer before pausing retargeting or over-crediting short-window ROAS.'
+        },
+        structure: {
+            headline: structureDetail,
+            detail: topCampaign ? ('Top campaign D6 ROAS: ' + fmtPct(topCampaign.d6ROAS || 0) + ' | Spend concentration: ' + topCampaignShare.toFixed(1) + '%') : 'Structure is present but no single campaign is material enough to call out.',
+            action: topCampaignShare >= 45 ? 'Consolidate or protect the leading campaign while reviewing weaker siblings.' : 'Structure is reasonably distributed; keep the current hierarchy.'
+        },
+        forecast: {
+            headline: forecastBase,
+            detail: 'Upside: ' + forecastUpside + ' Downside: ' + forecastDownside,
+            action: decliningSpendShare > improvingSpendShare ? 'Forecast is cautious: protect winners and reduce weak pockets first.' : 'Forecast is steady: scale only after the leading pockets hold.'
+        }
+    };
+}
+
+function renderImportedSkillContextCard(context) {
+    if (!context) return '';
+    var sections = [
+        { key: 'cpa', label: 'CPA', color: 'var(--orange)' },
+        { key: 'wasted_spend', label: 'Wasted Spend', color: 'var(--red)' },
+        { key: 'anomaly', label: 'Anomaly', color: 'var(--accent)' },
+        { key: 'pacing', label: 'Pacing', color: 'var(--green)' },
+        { key: 'geo_device', label: 'Geo / Device', color: 'var(--text)' },
+        { key: 'attribution', label: 'Attribution', color: 'var(--orange)' },
+        { key: 'structure', label: 'Structure', color: 'var(--accent)' },
+        { key: 'forecast', label: 'Forecast', color: 'var(--green)' }
+    ];
+    var hasContent = sections.some(function(section) { return context[section.key]; });
+    if (!hasContent) return '';
+    return '<div style="' + CARD + 'margin-bottom:12px;border-left:3px solid var(--green);">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">Imported Skill Context</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">' +
+            sections.map(function(section) {
+                var block = context[section.key] || {};
+                if (!block || (!block.headline && !block.detail && !block.action)) return '';
+                return '<div style="' + CARD + 'border-left:3px solid ' + section.color + ';">' +
+                    '<div style="font-size:10px;color:var(--text-dim);margin-bottom:4px;">' + esc(section.label) + '</div>' +
+                    '<div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.5;">' + esc(block.headline || '--') + '</div>' +
+                    (block.detail ? '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5;">' + esc(block.detail) + '</div>' : '') +
+                    (block.action ? '<div style="font-size:11px;color:var(--accent);margin-top:6px;line-height:1.5;">Action: ' + esc(block.action) + '</div>' : '') +
+                '</div>';
+            }).join('') +
+        '</div>' +
+    '</div>';
 }
 
 function getCanonicalOptimizerCommand(parsed, prompt) {
@@ -238,6 +468,9 @@ function parseOptimizerPromptIntent(scanData, prompt) {
     var lower = text.toLowerCase();
     var isMorningBrief = /(run morning account review|morning brief|morning account review)/.test(lower);
     var isChangeAudit = /(any campaign|any adset|across the account|account level|in the last \d+ days|undergone|audience\/location changes|location changes|audience changes|setting changes|what changed|changes in)/.test(lower);
+    var isBroadEntitySearch = /\b(any|all|which|what all|show me|list)\b.*\b(campaign|campaigns|adset|adsets|ads|ad)\b/.test(lower) ||
+        /\bis any\b.*\b(campaign|campaigns|adset|adsets|ads|ad)\b/.test(lower) ||
+        /\bare any\b.*\b(campaign|campaigns|adset|adsets|ads|ad)\b/.test(lower);
     var isDailyAnalysis = /(daily analysis|daily review of account|account daily analysis|full account daily analysis)/.test(lower);
     var isFullHierarchyReview = /(full account|entire account|all active items|all live campaigns|campaign by campaign)/.test(lower);
     var result = {
@@ -277,15 +510,19 @@ function parseOptimizerPromptIntent(scanData, prompt) {
         result.target = { type: 'account', query: '' };
         result.statusFilter = 'all';
     }
+    if (isBroadEntitySearch) {
+        result.mode = 'diagnostic';
+        result.target = { type: 'account', query: '' };
+    }
 
     var explicitType = lower.indexOf('campaign') !== -1 ? 'campaign' : (lower.indexOf('adset') !== -1 ? 'adset' : (lower.indexOf(' ad ') !== -1 || lower.indexOf('specific ad') !== -1 ? 'ad' : ''));
     var match = inferPromptEntityMatch(scanData, text);
-    if (match && !isChangeAudit) {
+    if (match && !isChangeAudit && !isBroadEntitySearch) {
         result.target = { type: explicitType || match.type, query: match.query };
         if (result.mode === 'daily_review' && match.type !== 'campaign' && match.type !== 'adset' && match.type !== 'ad') {
             result.mode = 'account_overview';
         }
-    } else if (!isChangeAudit && explicitType && (lower.indexOf('specific') !== -1 || lower.indexOf('this') === -1)) {
+    } else if (!isChangeAudit && !isBroadEntitySearch && explicitType && (lower.indexOf('specific') !== -1 || lower.indexOf('this') === -1)) {
         var suggestions = getPromptEntitySuggestions(scanData, explicitType, 4);
         result.ok = false;
         result.clarification = 'Name the ' + explicitType + ' you want me to inspect.' +
@@ -302,6 +539,7 @@ async function executeOptimizerPromptFlow(planBtn, promptInput, progressEl) {
     window.OPTIMIZER_USER_PROMPT = text;
     addOptimizerChatMessage('user', text);
 
+    if (!window.OPTIMIZER_SCAN) hydrateOptimizerScanFromCache();
     if (!window.OPTIMIZER_SCAN) {
         addOptimizerChatMessage('assistant', 'Scan the account first, then ask me what you want me to do.');
         renderOptimizer();
@@ -619,6 +857,22 @@ function buildJoinKey(dateStr, campaignName, adsetName, trackerName) {
     ].join('|||');
 }
 
+function buildCampaignJoinKey(dateStr, campaignName) {
+    return [String(dateStr || '').substring(0, 10), normalizeCampaignName(campaignName)].join('|||');
+}
+
+function buildAdsetJoinKey(dateStr, adsetName) {
+    return [String(dateStr || '').substring(0, 10), normalizeAdsetName(adsetName)].join('|||');
+}
+
+function buildAdsetTrackerCoverageKey(campaignName, adsetName, trackerName) {
+    return [
+        normalizeCampaignName(campaignName),
+        normalizeAdsetName(adsetName),
+        normalizeTrackerName(trackerName)
+    ].join('|||');
+}
+
 var _vR = function(sp, rev) {
     if (!sp || sp <= 0 || !rev || rev < 0) return null;
     if (rev / sp > 50) return null;
@@ -629,6 +883,8 @@ function deriveMetrics(r) {
     var p0p1 = (r.p0_signup || 0) + (r.p1_signup || 0);
     var d6Rev = r.d6_overall_revenue || 0;
     var d6Con = r.d6 || 0;
+    var creativeType = String((r && (r.creative_type || r.type)) || '').toLowerCase();
+    var videoEligible = creativeType === 'video';
     return {
         spend: r.spend, impressions: r.impressions, clicks: r.clicks, installs: r.installs,
         thruplay: r.thruplay, p25: r.p25, p100: r.p100,
@@ -643,9 +899,9 @@ function deriveMetrics(r) {
         cpm: r.impressions > 0 ? (r.spend / r.impressions) * 1000 : null,
         ctr: r.impressions > 0 ? (r.clicks / r.impressions) * 100 : null,
         cpi: r.installs > 0 ? r.spend / r.installs : null,
-        hook: r.impressions > 0 ? (r.p25 / r.impressions) * 100 : null,
-        hold: r.p25 > 0 ? (r.thruplay / r.p25) * 100 : null,
-        fullPlay: r.impressions > 0 ? (r.p100 / r.impressions) * 100 : null,
+        hook: videoEligible && r.impressions > 0 ? (r.p25 / r.impressions) * 100 : null,
+        hold: videoEligible && r.p25 > 0 ? (r.thruplay / r.p25) * 100 : null,
+        fullPlay: videoEligible && r.impressions > 0 ? (r.p100 / r.impressions) * 100 : null,
         signupCost: r.signups > 0 ? r.spend / r.signups : null,
         signupPct: r.installs > 0 ? (r.signups / r.installs) * 100 : null,
         p0p1: p0p1,
@@ -770,6 +1026,160 @@ function buildScanEntityLookups(scanData) {
         if (campaignKey && lookups.campaign[ad.campaign_id] && !lookups.campaignByName[campaignKey]) lookups.campaignByName[campaignKey] = lookups.campaign[ad.campaign_id];
     });
     return lookups;
+}
+
+function computeOptimizerWoWTrends(ads, metaRows, mbDaily) {
+    var now = new Date();
+    var weekAgo = new Date(now - 7 * 86400000).toISOString().slice(0, 10);
+    var twoWeeksAgo = new Date(now - 14 * 86400000).toISOString().slice(0, 10);
+    var threeWeeksAgo = new Date(now - 21 * 86400000).toISOString().slice(0, 10);
+    var adWeekly = {};
+
+    function emptyWeekRaw() {
+        return {
+            spend: 0, impressions: 0, clicks: 0, installs: 0,
+            thruplay: 0, p25: 0, p100: 0,
+            signups: 0, d0_trial: 0, d0: 0, d0_revenue: 0,
+            d6: 0, d6_revenue: 0, overall_revenue: 0,
+            d6_overall_con: 0, d6_overall_revenue: 0
+        };
+    }
+
+    function wowPct(curr, prev) {
+        if (prev == null || prev === 0 || curr == null) return null;
+        return ((curr - prev) / Math.abs(prev)) * 100;
+    }
+
+    (metaRows || []).forEach(function(row) {
+        var adUid = (row.campaign_name || '') + '|||' + (row.adset_name || '') + '|||' + (row.ad_name || '');
+        if (!adWeekly[adUid]) {
+            adWeekly[adUid] = {
+                thisWeek: emptyWeekRaw(),
+                lastWeek: emptyWeekRaw(),
+                prevWeek: emptyWeekRaw()
+            };
+        }
+        var d = String(row.date_start || '').slice(0, 10);
+        var bucket = null;
+        if (d >= weekAgo) bucket = adWeekly[adUid].thisWeek;
+        else if (d >= twoWeeksAgo) bucket = adWeekly[adUid].lastWeek;
+        else if (d >= threeWeeksAgo) bucket = adWeekly[adUid].prevWeek;
+        if (!bucket) return;
+
+        bucket.spend += Number(row.spend || 0) * 1.18;
+        bucket.impressions += Number(row.impressions || 0);
+        bucket.clicks += Number(row.clicks || 0);
+        bucket.installs += Number(row.installs || 0);
+        bucket.thruplay += Number(row.thruplay || 0);
+        bucket.p25 += Number(row.p25 || 0);
+        bucket.p100 += Number(row.p100 || 0);
+
+        var mbKey = buildJoinKey(row.date_start, row.campaign_name, row.adset_name, row.ad_name);
+        var mb = mbDaily && mbDaily[mbKey];
+        if (mb) addScanFunnelRaw(bucket, mb);
+    });
+
+    (ads || []).forEach(function(ad) {
+        var adUid = (ad.campaign_name || '') + '|||' + (ad.adset_name || '') + '|||' + (ad.ad_name || '');
+        var weekly = adWeekly[adUid];
+        if (!weekly) {
+            ad._wow = null;
+            return;
+        }
+
+        var tw = deriveMetrics(weekly.thisWeek);
+        var lw = deriveMetrics(weekly.lastWeek);
+        var pw = deriveMetrics(weekly.prevWeek);
+        var signupCost_wow = wowPct(tw.signupCost, lw.signupCost);
+        var d0TrialCost_wow = wowPct(tw.d0TrialCost, lw.d0TrialCost);
+        var cpi_wow = wowPct(tw.cpi, lw.cpi);
+        var signups_wow = wowPct(tw.signups, lw.signups);
+        var d0Trial_wow = wowPct(tw.d0_trial, lw.d0_trial);
+        var d6Conv_wow = wowPct(tw.d6_overall_con, lw.d6_overall_con);
+        var d6Revenue_wow = wowPct(tw.d6_overall_revenue, lw.d6_overall_revenue);
+        var signupCost_wow2 = wowPct(lw.signupCost, pw.signupCost);
+        var d0TrialCost_wow2 = wowPct(lw.d0TrialCost, pw.d0TrialCost);
+        var signups_wow2 = wowPct(lw.signups, pw.signups);
+        var d0Trial_wow2 = wowPct(lw.d0_trial, pw.d0_trial);
+        var d6Conv_wow2 = wowPct(lw.d6_overall_con, pw.d6_overall_con);
+        var d6Revenue_wow2 = wowPct(lw.d6_overall_revenue, pw.d6_overall_revenue);
+
+        var maturedD6ROAS = null;
+        var maturedD6CAC = null;
+        if (ad.isMatured) {
+            var maturedRaw = sumRaw([weekly.lastWeek, weekly.prevWeek]);
+            var maturedM = deriveMetrics(maturedRaw);
+            maturedD6ROAS = maturedM.d6ROAS || null;
+            maturedD6CAC = maturedM.d6CAC != null ? maturedM.d6CAC : null;
+        }
+
+        var trendBreaches = 0;
+        var trendHits = 0;
+        if (signupCost_wow > 20) trendBreaches++;
+        if (d0TrialCost_wow > 20) trendBreaches++;
+        if (cpi_wow > 15) trendBreaches++;
+        if (signups_wow < -20) trendBreaches++;
+        if (d0Trial_wow < -20) trendBreaches++;
+        if (d6Conv_wow < -25) trendBreaches++;
+        if (d6Revenue_wow < -25) trendBreaches++;
+        if (signupCost_wow > 20 && signupCost_wow2 > 20) trendBreaches++;
+        if (d0TrialCost_wow > 20 && d0TrialCost_wow2 > 20) trendBreaches++;
+        if (signups_wow < -20 && signups_wow2 < -20) trendBreaches++;
+        if (d0Trial_wow < -20 && d0Trial_wow2 < -20) trendBreaches++;
+        if (d6Conv_wow < -25 && d6Conv_wow2 < -25) trendBreaches++;
+        if (d6Revenue_wow < -25 && d6Revenue_wow2 < -25) trendBreaches++;
+        if (signupCost_wow < -15) trendHits++;
+        if (d0TrialCost_wow < -15) trendHits++;
+        if (cpi_wow < -10) trendHits++;
+        if (signups_wow > 15) trendHits++;
+        if (d0Trial_wow > 15) trendHits++;
+        if (d6Conv_wow > 20) trendHits++;
+        if (d6Revenue_wow > 20) trendHits++;
+        if (signups_wow > 15 && signups_wow2 > 15) trendHits++;
+        if (d0Trial_wow > 15 && d0Trial_wow2 > 15) trendHits++;
+        if (d6Conv_wow > 20 && d6Conv_wow2 > 20) trendHits++;
+        if (d6Revenue_wow > 20 && d6Revenue_wow2 > 20) trendHits++;
+
+        ad._wow = {
+            thisWeek: tw,
+            lastWeek: lw,
+            prevWeek: pw,
+            signupCost_wow: signupCost_wow != null ? Math.round(signupCost_wow * 10) / 10 : null,
+            d0TrialCost_wow: d0TrialCost_wow != null ? Math.round(d0TrialCost_wow * 10) / 10 : null,
+            cpi_wow: cpi_wow != null ? Math.round(cpi_wow * 10) / 10 : null,
+            signupCost_wow2: signupCost_wow2 != null ? Math.round(signupCost_wow2 * 10) / 10 : null,
+            d0TrialCost_wow2: d0TrialCost_wow2 != null ? Math.round(d0TrialCost_wow2 * 10) / 10 : null,
+            signups_wow: signups_wow != null ? Math.round(signups_wow * 10) / 10 : null,
+            d0Trial_wow: d0Trial_wow != null ? Math.round(d0Trial_wow * 10) / 10 : null,
+            d6Conv_wow: d6Conv_wow != null ? Math.round(d6Conv_wow * 10) / 10 : null,
+            d6Revenue_wow: d6Revenue_wow != null ? Math.round(d6Revenue_wow * 10) / 10 : null,
+            signups_wow2: signups_wow2 != null ? Math.round(signups_wow2 * 10) / 10 : null,
+            d0Trial_wow2: d0Trial_wow2 != null ? Math.round(d0Trial_wow2 * 10) / 10 : null,
+            d6Conv_wow2: d6Conv_wow2 != null ? Math.round(d6Conv_wow2 * 10) / 10 : null,
+            d6Revenue_wow2: d6Revenue_wow2 != null ? Math.round(d6Revenue_wow2 * 10) / 10 : null,
+            trendBreaches: trendBreaches,
+            trendHits: trendHits,
+            trendDirection: trendBreaches >= 2 ? 'declining' : (trendHits >= 2 ? 'improving' : 'stable'),
+            continuousDecline: !!(
+                (signupCost_wow > 20 && signupCost_wow2 > 20) ||
+                (d0TrialCost_wow > 20 && d0TrialCost_wow2 > 20) ||
+                (signups_wow < -20 && signups_wow2 < -20) ||
+                (d0Trial_wow < -20 && d0Trial_wow2 < -20) ||
+                (d6Conv_wow < -25 && d6Conv_wow2 < -25) ||
+                (d6Revenue_wow < -25 && d6Revenue_wow2 < -25)
+            ),
+            continuousIncrease: !!(
+                (signupCost_wow < -15 && signupCost_wow2 < -15) ||
+                (d0TrialCost_wow < -15 && d0TrialCost_wow2 < -15) ||
+                (signups_wow > 15 && signups_wow2 > 15) ||
+                (d0Trial_wow > 15 && d0Trial_wow2 > 15) ||
+                (d6Conv_wow > 20 && d6Conv_wow2 > 20) ||
+                (d6Revenue_wow > 20 && d6Revenue_wow2 > 20)
+            ),
+            maturedD6ROAS: maturedD6ROAS != null ? Math.round(maturedD6ROAS * 100) / 100 : null,
+            maturedD6CAC: maturedD6CAC != null ? Math.round(maturedD6CAC * 100) / 100 : null
+        };
+    });
 }
 
 function resolvePlanSource(action, lookups) {
@@ -933,6 +1343,12 @@ function addScanFunnelRaw(target, row) {
     target.total_trial += Number(row.total_trial) || 0;
     target.d6_overall_con += Number(row.d6_overall_con) || 0;
     target.d6_overall_revenue += Number(row.d6_overall_revenue) || 0;
+    target.d15_overall_con += Number(row.d15_overall_con) || 0;
+    target.d15_overall_revenue += Number(row.d15_overall_revenue) || 0;
+    target.d30_overall_con += Number(row.d30_overall_con) || 0;
+    target.d30_overall_revenue += Number(row.d30_overall_revenue) || 0;
+    target.d60_overall_con += Number(row.d60_overall_con) || 0;
+    target.d60_overall_revenue += Number(row.d60_overall_revenue) || 0;
 }
 
 function addScanMetaRaw(target, row) {
@@ -1199,8 +1615,9 @@ async function enrichOptimizerSettings(scanData, commandType) {
 
 // â”€â”€ Scanner â€” uses same endpoints as Campaign Tree â”€â”€
 
-async function scanAccount(progressCb) {
-    var dr = getSelectedDates();
+async function scanAccount(progressCb, rangeOverride, options) {
+    options = options || {};
+    var dr = rangeOverride || getSelectedDates();
     progressCb('Fetching data from Meta API + Metabase...');
 
     var metaRes, funnelRes, adsStatusRes;
@@ -1241,16 +1658,21 @@ async function scanAccount(progressCb) {
     var mbDaily = {};
     var mbCampaign = {};
     var mbAdset = {};
+    var mbCoverage = {};
+    var mbCampaignAny = {};
+    var mbAdsetAny = {};
     for (var fi = 0; fi < funnelRes.data.length; fi++) {
         var row = funnelRes.data[fi];
         var key = buildJoinKey(row.date, row.campaign_name, row.ad_set_name, row.tracker_name);
         addScanFunnelRaw(ensureScanRaw(mbDaily, key), row);
+        mbCoverage[buildAdsetTrackerCoverageKey(row.campaign_name, row.ad_set_name, row.tracker_name)] = true;
 
         var campKeyMb = normalizeCampaignName(row.campaign_name || '');
         addScanFunnelRaw(ensureScanRaw(mbCampaign, campKeyMb, {
             campaign_name: row.campaign_name || '',
             campaign_id: row.meta_campaign_id || ''
         }), row);
+        mbCampaignAny[campKeyMb] = true;
 
         var adsetKeyMb = campKeyMb + '|||' + normalizeAdsetName(row.ad_set_name || '');
         addScanFunnelRaw(ensureScanRaw(mbAdset, adsetKeyMb, {
@@ -1259,6 +1681,7 @@ async function scanAccount(progressCb) {
             adset_name: row.ad_set_name || '',
             adset_id: ''
         }), row);
+        mbAdsetAny[adsetKeyMb] = true;
     }
 
     // Match Meta to Metabase â€” identical logic to Campaign Tree
@@ -1266,6 +1689,7 @@ async function scanAccount(progressCb) {
     var metaAdset = {};
     var adAgg = {};
     var matchedKeys = 0, unmatchedKeys = 0;
+    var dateShiftMisses = 0, adsetCoverageMisses = 0, campaignCoverageMisses = 0, spendOnlyMisses = 0;
     var matchedMbKeys = {};
     var metaRowMatchFlags = [];
     var metaRows = (metaRes.data || []).filter(function(row) {
@@ -1319,6 +1743,11 @@ async function scanAccount(progressCb) {
             metaRowMatchFlags.push({ adUid: adUid, matched: true, campaignKey: campKey, adsetKey: metaAdsetKey });
         } else {
             unmatchedKeys++;
+            var covKey = buildAdsetTrackerCoverageKey(mr.campaign_name, mr.adset_name, mr.ad_name);
+            if (mbCoverage[covKey]) dateShiftMisses++;
+            else if (mbAdsetAny[campKey + '|||' + normalizeAdsetName(mr.adset_name || '')]) adsetCoverageMisses++;
+            else if (mbCampaignAny[campKey]) campaignCoverageMisses++;
+            else spendOnlyMisses++;
             metaRowMatchFlags.push({ adUid: adUid, matched: false, campaignKey: campKey, adsetKey: metaAdsetKey });
         }
     }
@@ -1439,17 +1868,9 @@ async function scanAccount(progressCb) {
     var matchedSpend = ads.filter(function(a) { return !!a.has_funnel_match; }).reduce(function(sum, a) { return sum + (a.spend || 0); }, 0);
     var totalAdSpend = ads.reduce(function(sum, a) { return sum + (a.spend || 0); }, 0);
     var spendMatchRate = totalAdSpend > 0 ? +((matchedSpend / totalAdSpend) * 100).toFixed(1) : 0;
-    var dateGrainMisses = 0;
-    var adsetLevelCoverageMisses = 0;
-    var campaignLevelCoverageMisses = 0;
-    for (var mf = 0; mf < metaRowMatchFlags.length; mf++) {
-        var flag = metaRowMatchFlags[mf];
-        if (flag.matched) continue;
-        var adRow = adAgg[flag.adUid];
-        if (adRow && adRow._matched) dateGrainMisses++;
-        else if (mbAdset[flag.adsetKey]) adsetLevelCoverageMisses++;
-        else if (mbCampaign[flag.campaignKey]) campaignLevelCoverageMisses++;
-    }
+    var dateGrainMisses = dateShiftMisses;
+    var adsetLevelCoverageMisses = adsetCoverageMisses;
+    var campaignLevelCoverageMisses = campaignCoverageMisses;
 
     // Build tree
     var tree = {};
@@ -1547,11 +1968,30 @@ async function scanAccount(progressCb) {
     var totalSpend = Object.values(campaignAgg).reduce(function(s, x) { return s + (x.spend || 0); }, 0);
     var totalAdsets = Object.values(tree).reduce(function(s, c) { return s + Object.keys(c.adsets).length; }, 0);
 
+    try {
+        computeOptimizerWoWTrends(ads, metaRows, mbDaily);
+    } catch (wowErr) {
+        console.warn('[Optimizer] Failed to compute optimizer-native WoW trends:', wowErr.message);
+    }
+    if (!(ads || []).some(function(ad) { return ad && ad._wow; }) && Array.isArray(window.allData) && window.allData.length) {
+        var wowMap = {};
+        window.allData.forEach(function(item) {
+            if (item && item.ad_id && item._wow) wowMap[item.ad_id] = item._wow;
+        });
+        ads.forEach(function(ad) {
+            if (ad && ad.ad_id && wowMap[ad.ad_id]) ad._wow = wowMap[ad.ad_id];
+        });
+    }
+
     var scanResult = {
         scan_date: new Date().toISOString(),
         date_range: dr,
         tree: tree,
         ads: ads,
+        _trend_source: {
+            meta_rows: metaRows,
+            funnel_rows: funnelRes.data || []
+        },
         evaluatedTotals: evaluatedTotals,
         rangeContext: getOptimizerRangeContext(dr),
         summary: {
@@ -1566,16 +2006,18 @@ async function scanAccount(progressCb) {
             matched_ads: matchedAdsCount,
             unmatched_ads: unmatchedAdsCount,
             spend_match_rate_pct: spendMatchRate,
-            date_grain_miss_rows: dateGrainMisses,
-            adset_level_miss_rows: adsetLevelCoverageMisses,
-            campaign_level_miss_rows: campaignLevelCoverageMisses,
+            date_grain_miss_rows: dateShiftMisses,
+            adset_level_miss_rows: adsetCoverageMisses,
+            campaign_level_miss_rows: campaignCoverageMisses,
+            spend_only_miss_rows: spendOnlyMisses,
             matured_ads: ads.filter(function(a) { return a.isMatured; }).length,
             non_matured_ads: ads.filter(function(a) { return !a.isMatured; }).length,
             ads_with_status: ads.filter(function(a) { return a.created_time; }).length
         }
     };
 
-    window.OPTIMIZER_SCAN = scanResult;
+    if (!options.preserveGlobal) window.OPTIMIZER_SCAN = scanResult;
+    setCachedOptimizerScan(scanResult, options);
     return scanResult;
 }
 
@@ -1837,7 +2279,10 @@ function buildDeterministicActionDiagnosis(action, source, scanData) {
     var parts = [];
     var spend = parseNumericLike(metrics.spend);
     var d6Roas = parseNumericLike(metrics.d6_roas != null ? metrics.d6_roas : metrics.d6ROAS);
+    var d15Roas = parseNumericLike(metrics.d15_roas != null ? metrics.d15_roas : metrics.d15ROAS);
+    var d30Roas = parseNumericLike(metrics.d30_roas != null ? metrics.d30_roas : metrics.d30ROAS);
     var signupCost = parseNumericLike(metrics.signup_cost != null ? metrics.signup_cost : metrics.signupCost);
+    var d0TrialCost = parseNumericLike(metrics.d0_trial_cost != null ? metrics.d0_trial_cost : metrics.d0TrialCost);
     var d6Cac = parseNumericLike(metrics.d6_cac != null ? metrics.d6_cac : metrics.d6CAC);
     var cpi = parseNumericLike(metrics.cpi);
     var ctr = parseNumericLike(metrics.ctr);
@@ -1854,7 +2299,10 @@ function buildDeterministicActionDiagnosis(action, source, scanData) {
     if (ctr != null) parts.push('CTR ' + ctr.toFixed(2) + '%.');
     if (cpm != null) parts.push('CPM ' + fmtINR(cpm) + '.');
     if (d6Roas != null) parts.push('D6 overall ROAS ' + d6Roas.toFixed(1) + '%.');
+    if (d15Roas != null) parts.push('D15 overall ROAS ' + d15Roas.toFixed(1) + '%.');
+    if (d30Roas != null) parts.push('D30 overall ROAS ' + d30Roas.toFixed(1) + '%.');
     if (signupCost != null) parts.push('Signup cost ' + fmtINR(signupCost) + '.');
+    if (d0TrialCost != null) parts.push('D0 trial cost ' + fmtINR(d0TrialCost) + '.');
     if (d6Cac != null) parts.push('D6 CAC ' + fmtINR(d6Cac) + '.');
     if (campaignStatus || adsetStatus || adStatus) {
         parts.push('Status c/a/ad: ' + (campaignStatus || '--') + '/' + (adsetStatus || '--') + '/' + (adStatus || '--') + '.');
@@ -2289,7 +2737,10 @@ function buildDataIntegrityGate(scanData) {
     var dateGrainMissRows = Number(summary.date_grain_miss_rows || 0);
     var adsetLevelMissRows = Number(summary.adset_level_miss_rows || 0);
     var campaignLevelMissRows = Number(summary.campaign_level_miss_rows || 0);
+    var spendOnlyMissRows = Number(summary.spend_only_miss_rows || 0);
     var totalMetaSpend = Number(summary.total_spend || 0);
+    var resolvedMissRows = dateGrainMissRows + adsetLevelMissRows + campaignLevelMissRows;
+    var resolvedCoverageRate = totalMatchedUniverse > 0 ? +((((matched + resolvedMissRows) / totalMatchedUniverse) * 100) || 0).toFixed(1) : 0;
     var matchedSpend = +((spendMatchRate / 100) * totalMetaSpend).toFixed(1);
     var spendOnlySpend = +(totalMetaSpend - matchedSpend).toFixed(1);
     var priorMatchRate = Number(window.OPTIMIZER_LAST_MATCH_RATE_PCT || 0);
@@ -2298,15 +2749,16 @@ function buildDataIntegrityGate(scanData) {
     var keyProblems = [];
     var checks = [];
 
-    if (dailyRowMatchRate < 70) warnings.push('Low Meta↔Metabase daily-row match rate: ' + dailyRowMatchRate + '%. This is a harsh same-day join and can understate true coverage.');
-    if (entityMatchRate < 70) warnings.push('Low ad-level coverage: only ' + entityMatchRate + '% of ads have any Metabase funnel mapping in this window.');
-    if (spendMatchRate < 70) warnings.push('Only ' + spendMatchRate + '% of spend sits on ads with a Metabase funnel match. Budget decisions need caution.');
+    if (dailyRowMatchRate < 70) warnings.push('Low Meta↔Metabase daily-row match rate: ' + dailyRowMatchRate + '%. Exact daily joins are strict; lower-grain coverage may still exist.');
+    if (entityMatchRate < 70) warnings.push('Low ad-level coverage: only ' + entityMatchRate + '% of ads have exact Metabase funnel mapping in this window.');
+    if (spendMatchRate < 70) warnings.push('Only ' + spendMatchRate + '% of spend sits on ads with a Metabase funnel match. Keep attribution caution on material spend-only pockets, but do not treat expected spend-only rows as corruption.');
     if (statusRate < 90) warnings.push('Fresh status coverage is only ' + statusRate + '%. Execution should stay conservative.');
     if (unmatchedRetarget > 0) warnings.push(unmatchedRetarget + ' retargeting ads have no Metabase funnel match and must be judged with Meta-side delivery signals, not fake zero-conversion assumptions.');
-    if (!matchedProspecting) warnings.push('No matched prospecting ads in this slice. Prospecting efficiency calls are weak.');
-    if (dateGrainMissRows > 0) keyProblems.push(dateGrainMissRows + ' unmatched Meta rows belong to ads that do have funnel data elsewhere in the range. This points to spend-date vs signup-date mismatch, not total attribution loss.');
-    if (adsetLevelMissRows > 0) keyProblems.push(adsetLevelMissRows + ' unmatched Meta rows still have Metabase coverage at the same campaign+adset level. This usually means creative/ad-name vs tracker-name mismatch.');
-    if (campaignLevelMissRows > 0) keyProblems.push(campaignLevelMissRows + ' unmatched Meta rows still have Metabase coverage at campaign level only. This usually means adset naming drift between Meta and tracking.');
+    if (!matchedProspecting) warnings.push('No matched prospecting ads in this slice. Prospecting efficiency calls are weaker here, but delivery/settings optimization can still continue.');
+    if (dateGrainMissRows > 0) keyProblems.push(dateGrainMissRows + ' exact daily misses still have the same campaign+adset+tracker coverage elsewhere in the range. This is a date-shift problem, not total attribution loss.');
+    if (adsetLevelMissRows > 0) keyProblems.push(adsetLevelMissRows + ' exact misses still have campaign+adset coverage in the range. This points to tracker/ad-name drift.');
+    if (campaignLevelMissRows > 0) keyProblems.push(campaignLevelMissRows + ' exact misses still have campaign-level coverage only. This points to adset naming drift or rollout drift.');
+    if (spendOnlyMissRows > 0) keyProblems.push(spendOnlyMissRows + ' rows have spend with no funnel coverage at campaign/adset level in the selected window. These are true spend-only rows and should stay conservative.');
 
     checks.push({
         name: 'Spend reconciliation',
@@ -2328,9 +2780,23 @@ function buildDataIntegrityGate(scanData) {
         status: priorMatchRate > 0 && matchDrop > 5 ? 'FAIL' : 'PASS',
         detail: 'Current ad coverage ' + entityMatchRate + '% vs prior session ' + (priorMatchRate || entityMatchRate) + '%'
     });
+    checks.push({
+        name: 'Coverage resolver',
+        status: resolvedCoverageRate >= dailyRowMatchRate ? 'PASS' : 'FAIL',
+        detail: 'Exact daily match ' + dailyRowMatchRate + '% vs resolved coverage ' + resolvedCoverageRate + '%'
+    });
 
     var failedChecks = checks.filter(function(check) { return check.status === 'FAIL'; });
-    if (failedChecks.length) warnings.unshift('Integrity failed on ' + failedChecks.length + ' check(s). Recommendations are provisional until the data issue is verified.');
+    if (failedChecks.length) warnings.unshift('Integrity failed on ' + failedChecks.length + ' check(s). Recommendations are provisional until the failed integrity check is verified.');
+    warnings.unshift('Expected spend-only rows are allowed in this model: real spend stays in totals, stays out of funnel benchmarks, and should trigger tracker caution only where material.');
+
+    var criticalIntegrityFailure = checks.some(function(check) {
+        return (check.name === 'Spend reconciliation' || check.name === 'Weighted median coherence') && check.status === 'FAIL';
+    });
+    var severeCoverageFailure = spendMatchRate < 45 || statusRate < 85;
+    var suddenCoverageCollapse = priorMatchRate > 0 && matchDrop > 10;
+    var provisionalOnly = !!(criticalIntegrityFailure || severeCoverageFailure || suddenCoverageCollapse);
+    var safeForActioning = spendMatchRate >= 60 && statusRate >= 90 && !criticalIntegrityFailure;
 
     return {
         business_constants: buildApexBusinessConstants(),
@@ -2369,8 +2835,8 @@ function buildDataIntegrityGate(scanData) {
         },
         key_problems: keyProblems,
         warnings: warnings,
-        safe_for_actioning: entityMatchRate >= 70 && spendMatchRate >= 70 && statusRate >= 90 && !failedChecks.length,
-        provisional_only: !!failedChecks.length
+        safe_for_actioning: safeForActioning,
+        provisional_only: provisionalOnly
     };
 }
 
@@ -2531,11 +2997,16 @@ function buildSignalAvailabilityContext(scanData, breakdownContext) {
             adsets.push(scanData.tree[campaignName].adsets[adsetName]);
         });
     });
+    function isVideoCreative(ad) {
+        var type = String((ad && (ad.type || ad.creative_type)) || '').toLowerCase();
+        var name = String(ad && ad.ad_name || '').toLowerCase();
+        return type === 'video' || /video|reel|ugc|motion/.test(name);
+    }
     var hookHoldApplicable = ads.some(function(ad) {
-        return Number(ad && ad.impressions || 0) > 0 && (/video|reel|ugc|motion/i.test(String(ad && ad.ad_name || '')) || Number(ad && ad.p25 || 0) > 0 || Number(ad && ad.thruplay || 0) > 0);
+        return isVideoCreative(ad) && Number(ad && ad.impressions || 0) > 0 && (Number(ad && ad.p25 || 0) > 0 || Number(ad && ad.thruplay || 0) > 0);
     });
     var hookHoldAvailable = ads.some(function(ad) {
-        return ad && Number(ad.impressions || 0) > 0 && ad.hook != null && ad.hold != null;
+        return isVideoCreative(ad) && ad && Number(ad.impressions || 0) > 0 && ad.hook != null && ad.hold != null;
     });
     var deliveryEstimateAvailable = adsets.some(function(adset) {
         return adset && adset.delivery_estimate && (adset.delivery_estimate.estimate_ready != null || (Array.isArray(adset.delivery_estimate.daily_outcomes_curve) && adset.delivery_estimate.daily_outcomes_curve.length));
@@ -2959,6 +3430,34 @@ function summarizeAdsetCreativeRefresh(adRows) {
     var pauseNow = [];
     var replaceOrRefresh = [];
     var usedTargets = {};
+    var suggestedAds = [];
+    var suggestedAdSeen = {};
+    function pushSuggested(value) {
+        var clean = String(value || '').trim();
+        if (!clean) return;
+        var key = clean.toLowerCase();
+        if (suggestedAdSeen[key]) return;
+        suggestedAdSeen[key] = true;
+        suggestedAds.push(clean);
+    }
+    function extractSuggestedNames(doLine) {
+        var text = String(doLine || '');
+        if (!text) return [];
+        var out = [];
+        var suggestedBlock = text.match(/Suggested names:\s*([^.]+)/i);
+        if (suggestedBlock && suggestedBlock[1]) {
+            suggestedBlock[1].split(/[|,]/).forEach(function(part) {
+                var name = String(part || '').trim();
+                if (name) out.push(name);
+            });
+        }
+        var directNames = text.match(/(?:with|toward|add|load|keep)\s+([A-Za-z0-9][A-Za-z0-9_\-]+)/ig) || [];
+        directNames.forEach(function(fragment) {
+            var m = String(fragment).match(/(?:with|toward|add|load|keep)\s+([A-Za-z0-9][A-Za-z0-9_\-]+)/i);
+            if (m && m[1] && !/^\d/.test(m[1])) out.push(m[1]);
+        });
+        return out;
+    }
     actionable.forEach(function(row) {
         var adName = String(row && row.ad && row.ad.ad_name || '').trim();
         if (!adName) return;
@@ -2976,6 +3475,9 @@ function summarizeAdsetCreativeRefresh(adRows) {
             var normalizedTarget = String(replacement || '').toLowerCase();
             if (replacement && usedTargets[normalizedTarget]) replacement = '';
             if (replacement) usedTargets[normalizedTarget] = true;
+            extractSuggestedNames(doLine).forEach(function(name) {
+                if (name !== adName) pushSuggested(name);
+            });
             replaceOrRefresh.push({
                 ad_name: adName,
                 next: replacement || (/ADD MORE ADS/.test(action) ? 'Add distinct challenger concepts, not another version of the same ad' : 'Distinct challenger / refresh required')
@@ -2986,7 +3488,8 @@ function summarizeAdsetCreativeRefresh(adRows) {
     return {
         action: 'CREATIVE REFRESH REQUIRED',
         pause_now: pauseNow.slice(0, 6),
-        replace_or_refresh: replaceOrRefresh.slice(0, 6)
+        replace_or_refresh: replaceOrRefresh.slice(0, 6),
+        suggested_ads: suggestedAds.slice(0, 6)
     };
 }
 
@@ -3110,6 +3613,11 @@ function buildCampaignSettingsAudits(scanData, weightedBenchmarks, externalPostu
     var audits = [];
     var benchmarkCPA = Number(weightedBenchmarks && weightedBenchmarks.benchmark_cpa || 0);
     var benchmarkD6 = Number(weightedBenchmarks && weightedBenchmarks.benchmark_d6_roas || 0);
+    var positiveSignalContext = {
+        median_d0_trial_cost: Number(window.OPTIMIZER_BENCHMARKS && window.OPTIMIZER_BENCHMARKS.median_d0_trial_cost || 0),
+        median_d15_roas: weightedPercentileMetric((scanData.ads || []).filter(function(ad) { return ad && ad.has_funnel_match && (ad.spend || 0) > 0 && ad.audience_bucket !== 'retarget'; }), function(ad) { return ad.d15ROAS; }, function(ad) { return ad.spend || 0; }, 0.5) || 0,
+        median_d30_roas: weightedPercentileMetric((scanData.ads || []).filter(function(ad) { return ad && ad.has_funnel_match && (ad.spend || 0) > 0 && ad.audience_bucket !== 'retarget'; }), function(ad) { return ad.d30ROAS; }, function(ad) { return ad.spend || 0; }, 0.5) || 0
+    };
     Object.keys(scanData.tree || {}).forEach(function(campaignName) {
         var camp = scanData.tree[campaignName];
         var adsets = Object.keys(camp.adsets || {}).map(function(name) { return camp.adsets[name]; });
@@ -3134,6 +3642,7 @@ function buildCampaignSettingsAudits(scanData, weightedBenchmarks, externalPostu
             bestAdset: topAdset,
             weakAdsets: weakAdsets
         });
+        var positiveQualitySignal = buildPositiveQualitySignal(camp, 'campaign', Object.assign({}, positiveSignalContext, { trendSignal: trendSignal }));
         var classification = classifyEntityByWeightedBenchmark(camp.totals || {}, benchmarkCPA, benchmarkD6, {
             is_spend_only: !(scanData.ads || []).some(function(ad) { return ad.campaign_name === campaignName && ad.has_funnel_match; }),
             protected_state: learningCount > 0 && learningCount >= liveAdsets.length,
@@ -3166,6 +3675,10 @@ function buildCampaignSettingsAudits(scanData, weightedBenchmarks, externalPostu
             action = 'HOLD FOR ONE MORE READ';
             reason = (trendLens && trendLens.root_cause) || trendSignal.summary;
             doLine = (trendLens && trendLens.action_line) || 'Do not scale, but avoid an immediate hard cut if the structure is otherwise stable. Re-read after the next mature window.';
+        } else if (positiveQualitySignal && /UNDERPERFORMING|WATCH|EARLY_FAILURE/.test(classification.tier)) {
+            action = 'IMPROVE, DO NOT PAUSE';
+            reason = positiveQualitySignal.root_cause;
+            doLine = positiveQualitySignal.action_line;
         } else if (effectiveBudgetType === 'CBO' && learningCount > 0 && liveAdsets.length >= 2) {
             action = 'ISOLATE TEST IN ABO';
             reason = 'CBO is mixing learning adsets with live siblings, which can starve new tests.';
@@ -3215,6 +3728,7 @@ function buildCampaignSettingsAudits(scanData, weightedBenchmarks, externalPostu
                 learningCount ? (learningCount + ' live adsets are still learning or limited.') : 'No obvious learning spread issue in live adsets.',
                 topAdset ? ('Top adset by spend: ' + topAdset.name + ' (' + fmtINR((topAdset.totals || {}).spend || 0) + ').') : 'No live adset spend concentration found.',
                 trendSignal ? ('Trend signal: ' + trendSignal.pattern + ' — ' + trendSignal.summary + ' Root cause: ' + ((trendLens && trendLens.root_cause) || trendSignal.likely_cause) + ' Action lens: ' + ((trendLens && trendLens.action_line) || trendSignal.likely_fix)) : 'No advanced WoW trend signal available.',
+                positiveQualitySignal ? ('Positive quality signal: ' + positiveQualitySignal.summary + ' Root cause: ' + positiveQualitySignal.root_cause + ' Action lens: ' + positiveQualitySignal.action_line) : 'No positive D0/D15/D30 quality signal isolated.',
                 trendSignal && trendSignal.recent_signal ? ('Recent signal: ' + trendSignal.recent_signal.pattern + ' — ' + trendSignal.recent_signal.summary + ' | Signup cost WoW ' + (trendSignal.recent_signal.signup_cost_wow_pct != null ? trendSignal.recent_signal.signup_cost_wow_pct + '%' : '--') + ' | D0 trial cost WoW ' + (trendSignal.recent_signal.d0_trial_cost_wow_pct != null ? trendSignal.recent_signal.d0_trial_cost_wow_pct + '%' : '--') + ' | CPI WoW ' + (trendSignal.recent_signal.cpi_wow_pct != null ? trendSignal.recent_signal.cpi_wow_pct + '%' : '--') + ' | CTR WoW ' + (trendSignal.recent_signal.ctr_wow_pct != null ? trendSignal.recent_signal.ctr_wow_pct + '%' : '--') + ' | CPM WoW ' + (trendSignal.recent_signal.cpm_wow_pct != null ? trendSignal.recent_signal.cpm_wow_pct + '%' : '--')) : 'No recent 7-day cost-pressure signal available.'
             ]
         });
@@ -3230,6 +3744,11 @@ function buildAdsetSettingsAudits(scanData, weightedBenchmarks, breakdownContext
     var audits = [];
     var benchmarkCPA = Number(weightedBenchmarks && weightedBenchmarks.benchmark_cpa || 0);
     var benchmarkD6 = Number(weightedBenchmarks && weightedBenchmarks.benchmark_d6_roas || 0);
+    var positiveSignalContext = {
+        median_d0_trial_cost: Number(window.OPTIMIZER_BENCHMARKS && window.OPTIMIZER_BENCHMARKS.median_d0_trial_cost || 0),
+        median_d15_roas: weightedPercentileMetric((scanData.ads || []).filter(function(ad) { return ad && ad.has_funnel_match && (ad.spend || 0) > 0 && ad.audience_bucket !== 'retarget'; }), function(ad) { return ad.d15ROAS; }, function(ad) { return ad.spend || 0; }, 0.5) || 0,
+        median_d30_roas: weightedPercentileMetric((scanData.ads || []).filter(function(ad) { return ad && ad.has_funnel_match && (ad.spend || 0) > 0 && ad.audience_bucket !== 'retarget'; }), function(ad) { return ad.d30ROAS; }, function(ad) { return ad.spend || 0; }, 0.5) || 0
+    };
     var breakdownFallback = deriveApexBreakdownFallbacks(breakdownContext);
     Object.keys(scanData.tree || {}).forEach(function(campaignName) {
         var camp = scanData.tree[campaignName];
@@ -3255,6 +3774,7 @@ function buildAdsetSettingsAudits(scanData, weightedBenchmarks, breakdownContext
                 bestAd: bestAd,
                 failingAds: failingAds
             });
+            var positiveQualitySignal = buildPositiveQualitySignal(adset, 'adset', Object.assign({}, positiveSignalContext, { trendSignal: trendSignal }));
             var classification = classifyEntityByWeightedBenchmark(adset.totals || {}, benchmarkCPA, benchmarkD6, {
                 is_spend_only: !!liveAds.length && !matchedAds.length,
                 protected_state: protectedState,
@@ -3289,6 +3809,10 @@ function buildAdsetSettingsAudits(scanData, weightedBenchmarks, breakdownContext
                 action = 'HOLD FOR NEXT MATURE READ';
                 reason = (trendLens && trendLens.root_cause) || trendSignal.summary;
                 doLine = (trendLens && trendLens.action_line) || 'Do not scale this adset yet, but avoid a hard cut until the next mature week confirms whether the recovery is real.';
+            } else if (positiveQualitySignal && /UNDERPERFORMING|WATCH|EARLY_FAILURE/.test(classification.tier)) {
+                action = 'IMPROVE, DO NOT PAUSE';
+                reason = positiveQualitySignal.root_cause;
+                doLine = positiveQualitySignal.action_line;
             } else if (classification.tier === 'PROTECTED') {
                 action = 'HOLD';
                 doLine = 'Do not touch this adset until learning stabilizes or cooldown clears.';
@@ -3383,6 +3907,7 @@ function buildAdsetSettingsAudits(scanData, weightedBenchmarks, breakdownContext
                     'Matched live ads: ' + matchedAds.length + '/' + liveAds.length,
                     bestAd ? ('Best sibling: ' + bestAd.ad_name + '.') : 'No clear winning sibling in this adset.',
                     trendSignal ? ('Trend signal: ' + trendSignal.pattern + ' — ' + trendSignal.summary + ' Root cause: ' + ((trendLens && trendLens.root_cause) || trendSignal.likely_cause) + ' Action lens: ' + ((trendLens && trendLens.action_line) || trendSignal.likely_fix)) : 'No advanced WoW trend signal available.',
+                    positiveQualitySignal ? ('Positive quality signal: ' + positiveQualitySignal.summary + ' Root cause: ' + positiveQualitySignal.root_cause + ' Action lens: ' + positiveQualitySignal.action_line) : 'No positive D0/D15/D30 quality signal isolated.',
                     trendSignal && trendSignal.recent_signal ? ('Recent signal: ' + trendSignal.recent_signal.pattern + ' — ' + trendSignal.recent_signal.summary + ' | Signup cost WoW ' + (trendSignal.recent_signal.signup_cost_wow_pct != null ? trendSignal.recent_signal.signup_cost_wow_pct + '%' : '--') + ' | D0 trial cost WoW ' + (trendSignal.recent_signal.d0_trial_cost_wow_pct != null ? trendSignal.recent_signal.d0_trial_cost_wow_pct + '%' : '--') + ' | CPI WoW ' + (trendSignal.recent_signal.cpi_wow_pct != null ? trendSignal.recent_signal.cpi_wow_pct + '%' : '--') + ' | CTR WoW ' + (trendSignal.recent_signal.ctr_wow_pct != null ? trendSignal.recent_signal.ctr_wow_pct + '%' : '--') + ' | CPM WoW ' + (trendSignal.recent_signal.cpm_wow_pct != null ? trendSignal.recent_signal.cpm_wow_pct + '%' : '--')) : 'No recent 7-day cost-pressure signal available.',
                     'Audience: ' + (adset.audience_definition || adset.audience_type || 'unknown'),
                     'Age/Gender: ' + (adset.age_targeting || 'ALL') + ' | ' + (adset.gender_targeting || 'ALL'),
@@ -3401,6 +3926,11 @@ function buildAdsetSettingsAudits(scanData, weightedBenchmarks, breakdownContext
 function buildAdHealthAudits(scanData, weightedBenchmarks, winnerLibrary, signalAvailability, advancedTrendIntelligence) {
     var benchmarkCPA = Number(weightedBenchmarks && weightedBenchmarks.benchmark_cpa || 0);
     var benchmarkD6 = Number(weightedBenchmarks && weightedBenchmarks.benchmark_d6_roas || 0);
+    var positiveSignalContext = {
+        median_d0_trial_cost: Number(window.OPTIMIZER_BENCHMARKS && window.OPTIMIZER_BENCHMARKS.median_d0_trial_cost || 0),
+        median_d15_roas: weightedPercentileMetric((scanData.ads || []).filter(function(item) { return item && item.has_funnel_match && (item.spend || 0) > 0 && item.audience_bucket !== 'retarget'; }), function(item) { return item.d15ROAS; }, function(item) { return item.spend || 0; }, 0.5) || 0,
+        median_d30_roas: weightedPercentileMetric((scanData.ads || []).filter(function(item) { return item && item.has_funnel_match && (item.spend || 0) > 0 && item.audience_bucket !== 'retarget'; }), function(item) { return item.d30ROAS; }, function(item) { return item.spend || 0; }, 0.5) || 0
+    };
     return (scanData.ads || []).filter(function(ad) { return ad && ad.is_live; }).map(function(ad) {
         var siblings = (scanData.ads || []).filter(function(other) {
             return other && other.is_live && other.adset_name === ad.adset_name && other.campaign_name === ad.campaign_name;
@@ -3415,6 +3945,7 @@ function buildAdHealthAudits(scanData, weightedBenchmarks, winnerLibrary, signal
         var trendLens = buildTrendRootCauseActionLens(ad, 'ad', trendSignal, {
             bestAd: betterSibling || historicalWinner || null
         });
+        var positiveQualitySignal = buildPositiveQualitySignal(ad, 'ad', Object.assign({}, positiveSignalContext, { trendSignal: trendSignal }));
         var score = 'STABLE';
         var signal = 'No clear red flag.';
         var action = 'HOLD';
@@ -3423,6 +3954,10 @@ function buildAdHealthAudits(scanData, weightedBenchmarks, winnerLibrary, signal
             score = 'WATCH';
             signal = 'Retargeting ad-level performance is not a reliable standalone decision surface here. Judge the parent adset on delivery, frequency, and pool sanity.';
             action = 'HOLD RETARGETING STEADY';
+        } else if (positiveQualitySignal && (ad.spend || 0) >= 5000) {
+            score = 'STRONG';
+            signal = positiveQualitySignal.root_cause;
+            action = 'KEEP LIVE AND IMPROVE AROUND IT';
         } else if (trendSignal && trendSignal.pattern === 'UNSUSTAINABLE_VALUE_MIX') {
             score = 'WATCH';
             signal = (trendLens && trendLens.root_cause) || trendSignal.summary;
@@ -3435,10 +3970,10 @@ function buildAdHealthAudits(scanData, weightedBenchmarks, winnerLibrary, signal
             score = 'WATCH';
             signal = compliance.detail;
             action = 'COMPLIANCE REVIEW';
-        } else if ((ad.spend || 0) >= 1000 && (ad.hook || 0) < 15) {
-            score = 'FAILING';
-            signal = 'Hook rate is critically weak.';
-            action = betterSibling ? 'PAUSE AND REPLACE' : 'PAUSE';
+          } else if ((ad.spend || 0) >= 1000 && String((ad.type || ad.creative_type || '')).toLowerCase() === 'video' && (ad.hook || 0) < 15) {
+              score = 'FAILING';
+              signal = 'Hook rate is critically weak.';
+              action = betterSibling ? 'PAUSE AND REPLACE' : 'PAUSE';
         } else if ((ad.spend || 0) >= 3000 && benchmarkCPA > 0 && (ad.signupCost || 0) > benchmarkCPA * 1.5) {
             score = 'FAILING';
             signal = 'Signup cost is more than 1.5x weighted benchmark.';
@@ -3466,8 +4001,8 @@ function buildAdHealthAudits(scanData, weightedBenchmarks, winnerLibrary, signal
             compliance_status: compliance.status,
             compliance_note: compliance.detail,
             sibling_benchmark_ctr: siblingCtrMedian ? +siblingCtrMedian.toFixed(2) : null,
-            hook_rate: ad.hook != null ? +Number(ad.hook).toFixed(1) : null,
-            hold_rate: ad.hold != null ? +Number(ad.hold).toFixed(1) : null,
+            hook_rate: String((ad.type || ad.creative_type || '')).toLowerCase() === 'video' && ad.hook != null ? +Number(ad.hook).toFixed(1) : null,
+            hold_rate: String((ad.type || ad.creative_type || '')).toLowerCase() === 'video' && ad.hold != null ? +Number(ad.hold).toFixed(1) : null,
             ctr: ad.ctr != null ? +Number(ad.ctr).toFixed(2) : null,
             cpi: ad.cpi != null ? Math.round(ad.cpi) : null,
             signup_cost: ad.signupCost != null ? Math.round(ad.signupCost) : null,
@@ -3477,6 +4012,7 @@ function buildAdHealthAudits(scanData, weightedBenchmarks, winnerLibrary, signal
                 ad.has_funnel_match ? 'Matched funnel data available.' : 'Spend-only row: do not trust CPA/ROAS absolutely.',
                 compliance.detail ? compliance.detail : 'No obvious SEBI naming risk from current metadata.',
                 trendSignal ? ('Trend signal: ' + trendSignal.pattern + ' — ' + trendSignal.summary + ' Root cause: ' + ((trendLens && trendLens.root_cause) || trendSignal.likely_cause) + ' Action lens: ' + ((trendLens && trendLens.action_line) || trendSignal.likely_fix)) : 'No advanced WoW trend signal available.',
+                positiveQualitySignal ? ('Positive quality signal: ' + positiveQualitySignal.summary + ' Root cause: ' + positiveQualitySignal.root_cause + ' Action lens: ' + positiveQualitySignal.action_line) : 'No positive D0/D15/D30 quality signal isolated.',
                 replacement ? ('Best replacement: ' + replacement + (betterSibling && replacement === betterSibling.ad_name ? ' (live sibling).' : ' (historical winner).')) : 'No replacement candidate isolated yet.',
                 signalAvailability && signalAvailability.creative_signals && !signalAvailability.creative_signals.quality_ranking_available ? 'Creative ranking data is unavailable in this path; verdict is based on hook, hold, CTR, CPI, and D6 only.' : ''
             ]
@@ -3581,6 +4117,179 @@ function deriveEntityWowMetric(ads, metricField, rawField) {
     var totalWeight = rows.reduce(function(sum, row) { return sum + row.weight; }, 0);
     if (!totalWeight) return null;
     return +(rows.reduce(function(sum, row) { return sum + (row.value * row.weight); }, 0) / totalWeight).toFixed(1);
+}
+
+function buildEntityTrendAds(scanData, campaignName, adsetName) {
+    var sourceAds = Array.isArray(scanData && scanData.entity_source_ads) ? scanData.entity_source_ads
+        : (Array.isArray(scanData && scanData.ads) ? scanData.ads : []);
+    return sourceAds.filter(function(ad) {
+        if (!ad) return false;
+        if (campaignName && ad.campaign_name !== campaignName) return false;
+        if (adsetName && ad.adset_name !== adsetName) return false;
+        return true;
+    });
+}
+
+function buildTrendBucketsFromRange(range, bucketSize, bucketCount) {
+    var size = Math.max(1, Number(bucketSize || 7));
+    var count = Math.max(2, Number(bucketCount || 3));
+    var endStr = range && range.until ? String(range.until).slice(0, 10) : new Date().toISOString().slice(0, 10);
+    var end = new Date(endStr + 'T00:00:00');
+    if (Number.isNaN(end.getTime())) return [];
+    var buckets = [];
+    for (var i = 0; i < count; i++) {
+        var bucketEnd = new Date(end.getTime() - (i * size * 86400000));
+        var bucketStart = new Date(bucketEnd.getTime() - ((size - 1) * 86400000));
+        buckets.push({
+            key: i === 0 ? 'thisWeek' : (i === 1 ? 'lastWeek' : 'prevWeek'),
+            from: bucketStart.toISOString().slice(0, 10),
+            to: bucketEnd.toISOString().slice(0, 10)
+        });
+    }
+    return buckets;
+}
+
+function getTrendBucketKey(dateStr, buckets) {
+    var d = String(dateStr || '').slice(0, 10);
+    for (var i = 0; i < (buckets || []).length; i++) {
+        if (d >= buckets[i].from && d <= buckets[i].to) return buckets[i].key;
+    }
+    return null;
+}
+
+function buildTrendRowsFromSource(scanData, spec) {
+    var source = scanData && scanData._trend_source;
+    if (!source || !Array.isArray(source.meta_rows) || !Array.isArray(source.funnel_rows)) return [];
+    var buckets = buildTrendBucketsFromRange(scanData && scanData.date_range, 7, 3);
+    if (!buckets.length) return [];
+    var visibleCampaigns = {};
+    var visibleAdsets = {};
+    Object.keys((scanData && scanData.tree) || {}).forEach(function(campaignName) {
+        visibleCampaigns[normalizeCampaignName(campaignName)] = campaignName;
+        var camp = scanData.tree[campaignName];
+        Object.keys((camp && camp.adsets) || {}).forEach(function(adsetName) {
+            visibleAdsets[normalizeCampaignName(campaignName) + '|||' + normalizeAdsetName(adsetName)] = {
+                campaign_name: campaignName,
+                adset_name: adsetName
+            };
+        });
+    });
+    var visibleAds = {};
+    (scanData && scanData.ads || []).forEach(function(ad) {
+        if (!ad) return;
+        visibleAds[normalizeCampaignName(ad.campaign_name || '') + '|||' + normalizeAdsetName(ad.adset_name || '') + '|||' + normalizeTrackerName(ad.ad_name || '')] = ad;
+    });
+
+    var metaByEntity = {};
+    var funnelByEntity = {};
+
+    function ensureBucketStore(store, key, label, spendHint) {
+        if (!store[key]) {
+            store[key] = {
+                label: label,
+                spend_hint: 0,
+                thisWeek: emptyRaw(),
+                lastWeek: emptyRaw(),
+                prevWeek: emptyRaw()
+            };
+        }
+        if (spendHint) store[key].spend_hint += Number(spendHint || 0);
+        return store[key];
+    }
+
+    (source.meta_rows || []).forEach(function(row) {
+        var bucketKey = getTrendBucketKey(row.date_start, buckets);
+        if (!bucketKey) return;
+        var spendHint = (Number(row.spend || 0) || 0) * 1.18;
+        if (spec.entity_type === 'campaign') {
+            var campaignKey = normalizeCampaignName(row.campaign_name || '');
+            if (!visibleCampaigns[campaignKey]) return;
+            addScanMetaRaw(ensureBucketStore(metaByEntity, campaignKey, visibleCampaigns[campaignKey], spendHint)[bucketKey], row);
+        } else if (spec.entity_type === 'adset') {
+            var adsetKey = normalizeCampaignName(row.campaign_name || '') + '|||' + normalizeAdsetName(row.adset_name || '');
+            if (!visibleAdsets[adsetKey]) return;
+            addScanMetaRaw(ensureBucketStore(metaByEntity, adsetKey, visibleAdsets[adsetKey].campaign_name + ' → ' + visibleAdsets[adsetKey].adset_name, spendHint)[bucketKey], row);
+        } else {
+            var adKey = normalizeCampaignName(row.campaign_name || '') + '|||' + normalizeAdsetName(row.adset_name || '') + '|||' + normalizeTrackerName(row.ad_name || '');
+            if (!visibleAds[adKey]) return;
+            addScanMetaRaw(ensureBucketStore(metaByEntity, adKey, (row.campaign_name || '') + ' → ' + (row.adset_name || '') + ' → ' + (row.ad_name || ''), spendHint)[bucketKey], row);
+        }
+    });
+
+    (source.funnel_rows || []).forEach(function(row) {
+        var bucketKey = getTrendBucketKey(row.date, buckets);
+        if (!bucketKey) return;
+        if (spec.entity_type === 'campaign') {
+            var campaignKey = normalizeCampaignName(row.campaign_name || '');
+            if (!visibleCampaigns[campaignKey]) return;
+            addScanFunnelRaw(ensureBucketStore(funnelByEntity, campaignKey, visibleCampaigns[campaignKey])[bucketKey], row);
+        } else if (spec.entity_type === 'adset') {
+            var adsetKey = normalizeCampaignName(row.campaign_name || '') + '|||' + normalizeAdsetName(row.ad_set_name || '');
+            if (!visibleAdsets[adsetKey]) return;
+            addScanFunnelRaw(ensureBucketStore(funnelByEntity, adsetKey, visibleAdsets[adsetKey].campaign_name + ' → ' + visibleAdsets[adsetKey].adset_name)[bucketKey], row);
+        } else {
+            var adKey = normalizeCampaignName(row.campaign_name || '') + '|||' + normalizeAdsetName(row.ad_set_name || '') + '|||' + normalizeTrackerName(row.tracker_name || '');
+            var visibleAd = visibleAds[adKey] ? adKey : null;
+            if (!visibleAd) return;
+            addScanFunnelRaw(ensureBucketStore(funnelByEntity, visibleAd, visibleAds[visibleAd] ? ((visibleAds[visibleAd].campaign_name || '') + ' → ' + (visibleAds[visibleAd].adset_name || '') + ' → ' + (visibleAds[visibleAd].ad_name || '')) : visibleAd)[bucketKey], row);
+        }
+    });
+
+    return Object.keys(metaByEntity).map(function(key) {
+        var meta = metaByEntity[key];
+        var funnel = funnelByEntity[key] || { thisWeek: emptyRaw(), lastWeek: emptyRaw(), prevWeek: emptyRaw() };
+        var thisWeek = deriveMetrics(Object.assign(emptyRaw(), funnel.thisWeek, {
+            spend: meta.thisWeek.spend,
+            impressions: meta.thisWeek.impressions,
+            clicks: meta.thisWeek.clicks,
+            installs: meta.thisWeek.installs,
+            thruplay: meta.thisWeek.thruplay,
+            p25: meta.thisWeek.p25,
+            p100: meta.thisWeek.p100
+        }));
+        var lastWeek = deriveMetrics(Object.assign(emptyRaw(), funnel.lastWeek, {
+            spend: meta.lastWeek.spend,
+            impressions: meta.lastWeek.impressions,
+            clicks: meta.lastWeek.clicks,
+            installs: meta.lastWeek.installs,
+            thruplay: meta.lastWeek.thruplay,
+            p25: meta.lastWeek.p25,
+            p100: meta.lastWeek.p100
+        }));
+        var wow = null;
+        if (spec.metric === 'signup_cost_wow_pct') wow = (lastWeek.signupCost && thisWeek.signupCost != null) ? (((thisWeek.signupCost - lastWeek.signupCost) / Math.abs(lastWeek.signupCost)) * 100) : null;
+        else if (spec.metric === 'd0_trial_cost_wow_pct') wow = (lastWeek.d0TrialCost && thisWeek.d0TrialCost != null) ? (((thisWeek.d0TrialCost - lastWeek.d0TrialCost) / Math.abs(lastWeek.d0TrialCost)) * 100) : null;
+        else if (spec.metric === 'cpi_wow_pct') wow = (lastWeek.cpi && thisWeek.cpi != null) ? (((thisWeek.cpi - lastWeek.cpi) / Math.abs(lastWeek.cpi)) * 100) : null;
+        if (wow == null || !isFinite(wow)) return null;
+        var label = meta.label || (funnel.label || key);
+        var row = {
+            entity_type: spec.entity_type,
+            label: label,
+            spend: Number(meta.spend_hint || thisWeek.spend || 0),
+            metric_value: +wow.toFixed(1),
+            trend: {
+                thisWeek: thisWeek,
+                lastWeek: lastWeek
+            },
+            basis: 'Basis: ' + (scanData.date_range ? (scanData.date_range.since + ' → ' + scanData.date_range.until) : '--') + ' | Current 7d vs previous 7d raw-bucket comparison'
+        };
+        if (spec.entity_type === 'campaign') {
+            row.campaign_name = meta.label || key;
+            row.adset_name = '';
+            row.ad_name = '';
+        } else if (spec.entity_type === 'adset') {
+            var parts = key.split('|||');
+            row.campaign_name = visibleAdsets[key] ? visibleAdsets[key].campaign_name : (parts[0] || '');
+            row.adset_name = visibleAdsets[key] ? visibleAdsets[key].adset_name : (parts[1] || '');
+            row.ad_name = '';
+        } else {
+            var adParts = key.split('|||');
+            row.campaign_name = visibleAds[key] ? (visibleAds[key].campaign_name || '') : (adParts[0] || '');
+            row.adset_name = visibleAds[key] ? (visibleAds[key].adset_name || '') : (adParts[1] || '');
+            row.ad_name = visibleAds[key] ? (visibleAds[key].ad_name || '') : (adParts[2] || '');
+        }
+        return row;
+    }).filter(Boolean);
 }
 
 function buildRecentCostPressureSignalFromMetrics(metrics) {
@@ -3861,6 +4570,61 @@ function summarizeEntityAdvancedTrend(ads) {
     };
 }
 
+function buildPositiveQualitySignal(entity, entityType, context) {
+    context = context || {};
+    var totals = entity && entity.totals ? entity.totals : entity || {};
+    var d0TrialCost = Number(totals.d0TrialCost || 0);
+    var d15Roas = Number(totals.d15ROAS || 0);
+    var d30Roas = Number(totals.d30ROAS || 0);
+    var d6Roas = Number(totals.d6ROAS || 0);
+    var spend = Number(totals.spend || 0);
+    var medianD0TrialCost = Number(context.median_d0_trial_cost || 0);
+    var medianD15Roas = Number(context.median_d15_roas || 0);
+    var medianD30Roas = Number(context.median_d30_roas || 0);
+    var trendSignal = context.trendSignal || null;
+    var recentSignal = trendSignal && trendSignal.recent_signal ? trendSignal.recent_signal : null;
+    var d0TrialCostWow = recentSignal ? safeWowValue(recentSignal.d0_trial_cost_wow_pct) : null;
+    var positives = [];
+
+    if (d0TrialCost > 0 && medianD0TrialCost > 0 && d0TrialCost <= medianD0TrialCost * 0.85) {
+        positives.push('D0 trial cost is below weighted median');
+    }
+    if (d0TrialCostWow != null && d0TrialCostWow <= -10) {
+        positives.push('D0 trial cost is declining week on week');
+    }
+    if (d15Roas > 0 && medianD15Roas > 0 && d15Roas >= medianD15Roas * 1.2) {
+        positives.push('D15 ROAS is exceptional versus account mix');
+    }
+    if (d30Roas > 0 && medianD30Roas > 0 && d30Roas >= medianD30Roas * 1.2) {
+        positives.push('D30 ROAS is exceptional versus account mix');
+    }
+
+    if (!positives.length || spend < 8000) return null;
+
+    var summary = positives.join('; ') + '.';
+    var rootCause = 'Early and longer-tail quality signals are stronger than a simple D6-only read suggests.';
+    var actionLine = entityType === 'campaign'
+        ? 'Do not pause this campaign on near-term pressure alone. Protect the stronger long-tail pocket and improve the weaker adsets, ads, or settings around it.'
+        : (entityType === 'adset'
+            ? 'Do not pause this adset on D6 pressure alone. Keep the stronger quality signal live and improve the ad mix, audience, placements, or geo around it.'
+            : 'Do not pause this ad on D6 alone if the parent quality signals stay strong. Keep it live as a quality reference while improving the weaker companions around it.');
+
+    if ((d15Roas > 0 && d30Roas > 0) && d30Roas >= d15Roas) {
+        rootCause = 'The cohort is compounding value after D6, which suggests quality is stronger than the short-window read alone.';
+    } else if (d0TrialCost > 0 && medianD0TrialCost > 0 && d0TrialCost <= medianD0TrialCost * 0.85) {
+        rootCause = 'Cheaper same-day trial formation is a positive forward signal for mature D6 efficiency if the rest of the funnel remains healthy.';
+    }
+
+    return {
+        pattern: 'POSITIVE_QUALITY_SIGNAL',
+        summary: summary,
+        root_cause: rootCause,
+        action_line: actionLine,
+        positives: positives,
+        d0_trial_cost_wow_pct: d0TrialCostWow
+    };
+}
+
 function buildTrendRootCauseActionLens(entity, entityType, trendSignal, context) {
     context = context || {};
     if (!trendSignal) return null;
@@ -4068,6 +4832,996 @@ function buildApexChangeLog() {
     });
 }
 
+function parseTrendSearchPrompt(prompt) {
+    var lower = String(prompt || '').toLowerCase();
+    if (!/\b(any|all|which|what all|show me|list|is any|are any|give me|tell me|find|scan through|was there any|do we have any|are there any)\b/.test(lower)) return null;
+    if (!/(week on week|wow|improving|declining|reduced|reduction|decreased|increased|rising|falling|exceptional|best)/.test(lower)) return null;
+    var entityType = /\badsets?\b/.test(lower) ? 'adset' : (/\bads?\b/.test(lower) ? 'ad' : 'campaign');
+    var metric = null;
+    if (/signup costs?|sign up costs?|su cost/.test(lower)) metric = 'signup_cost_wow_pct';
+    else if (/d0\s*trial costs?|d0trial costs?|trial costs?/.test(lower)) metric = 'd0_trial_cost_wow_pct';
+    else if (/d15\s*roas/.test(lower)) metric = 'd15_roas';
+    else if (/d30\s*roas/.test(lower)) metric = 'd30_roas';
+    else if (/d6\s*roas|roas/.test(lower)) metric = 'd6_roas';
+    else if (/\bcpi\b/.test(lower)) metric = 'cpi_wow_pct';
+    if (!metric) return null;
+
+    var comparator = 'improving';
+    if (/(reduced|decreased|falling|down|declining|lower)/.test(lower)) comparator = 'down';
+    else if (/(increased|rising|up|inflating|higher)/.test(lower)) comparator = 'up';
+    else if (/(exceptional|best|strong|highest)/.test(lower)) comparator = 'high';
+    else if (/(weak|lowest|poor)/.test(lower)) comparator = 'low';
+
+    return {
+        entity_type: entityType,
+        metric: metric,
+        comparator: comparator,
+        explicit_status: /\blive\b/.test(lower) ? 'live_only' : (/\bpaused\b/.test(lower) ? 'paused_only' : 'all'),
+        raw_prompt: String(prompt || '')
+    };
+}
+
+function parseGrowthDriverPrompt(prompt) {
+    var lower = String(prompt || '').toLowerCase();
+    if (!/(how to increase|how do i increase|increase|get more|how to get more|boost|grow|improve|scale)/.test(lower)) return null;
+    var objective = null;
+    if (/(d0\s*trials?|d0trial|d0 trial)/.test(lower)) objective = 'd0_trial';
+    else if (/\bsignups?\b|sign up/.test(lower)) objective = 'signups';
+    if (!objective) return null;
+    return {
+        objective: objective,
+        raw_prompt: String(prompt || ''),
+        wants_actionables: true
+    };
+}
+
+function parseMetricObjectivePrompt(prompt) {
+    var lower = String(prompt || '').toLowerCase();
+    if (/\b(any|all|which|what all|show me|list|week on week|wow)\b/.test(lower)) return null;
+    if (!/(how to|reduce|lower|decrease|improve|increase|boost|grow|get more|scale)/.test(lower)) return null;
+    var metric = null;
+    if (/d0\s*trial cost|d0trial cost/.test(lower)) metric = 'd0_trial_cost';
+    else if (/signup cost|sign up cost|su cost/.test(lower)) metric = 'signup_cost';
+    else if (/d6\s*cac/.test(lower)) metric = 'd6_cac';
+    else if (/d15\s*roas/.test(lower)) metric = 'd15_roas';
+    else if (/d30\s*roas/.test(lower)) metric = 'd30_roas';
+    else if (/d6\s*roas|roas/.test(lower)) metric = 'd6_roas';
+    else if (/d0\s*trials?|d0trial/.test(lower)) metric = 'd0_trial';
+    else if (/\bsignups?\b|sign up/.test(lower)) metric = 'signups';
+    if (!metric) return null;
+
+    var intent = 'improve';
+    if (/(reduce|lower|decrease|cut|bring down)/.test(lower)) intent = 'reduce';
+    else if (/(increase|get more|boost|grow|scale|raise)/.test(lower)) intent = 'increase';
+
+    return {
+        metric: metric,
+        intent: intent,
+        mature_only: /(mature data|only take mature data|take mature data|mature only|only mature)/.test(lower),
+        explicit_status: /\blive\b/.test(lower) ? 'live_only' : (/\bpaused\b/.test(lower) ? 'paused_only' : 'all'),
+        raw_prompt: String(prompt || '')
+    };
+}
+
+function getGrowthMetricLabel(objective) {
+    return objective === 'd0_trial' ? 'D0 Trials' : 'Signups';
+}
+
+function getGrowthCostLabel(objective) {
+    return objective === 'd0_trial' ? 'D0 Trial Cost' : 'Signup Cost';
+}
+
+function scoreGrowthDriverRow(row, objective) {
+    var count = Number(row && row.metric_count || 0);
+    var cost = Number(row && row.metric_cost || 0);
+    var spend = Number(row && row.spend || 0);
+    var quality = Number(row && row.d6_roas || 0);
+    var countScore = count * 1000;
+    var spendScore = Math.min(spend / 1000, 250);
+    var qualityScore = quality * 3;
+    var costPenalty = cost > 0 ? Math.min(cost / 20, 400) : 0;
+    return countScore + spendScore + qualityScore - costPenalty;
+}
+
+function buildGrowthDriverEntityRows(scanData, objective) {
+    var campaigns = [];
+    var adsets = [];
+    var ads = [];
+    var basisRange = scanData && scanData.date_range ? (scanData.date_range.since + ' → ' + scanData.date_range.until) : '--';
+
+    Object.keys(scanData.tree || {}).forEach(function(campaignName) {
+        var camp = scanData.tree[campaignName];
+        var campTotals = camp && camp.totals ? camp.totals : {};
+        var campCount = Number(objective === 'd0_trial' ? (campTotals.d0_trial || 0) : (campTotals.signups || 0));
+        var campCost = Number(objective === 'd0_trial' ? (campTotals.d0TrialCost || 0) : (campTotals.signupCost || 0));
+        campaigns.push({
+            label: campaignName,
+            campaign_name: campaignName,
+            metric_count: campCount,
+            metric_cost: campCost > 0 ? campCost : null,
+            spend: Number(campTotals.spend || 0),
+            d6_roas: Number(campTotals.d6ROAS || 0),
+            basis: getEntityMetricBasis(campTotals, basisRange, 'Mixed selected-window basis')
+        });
+        Object.keys(camp.adsets || {}).forEach(function(adsetName) {
+            var adset = camp.adsets[adsetName];
+            var adsetTotals = adset && adset.totals ? adset.totals : {};
+            var adsetCount = Number(objective === 'd0_trial' ? (adsetTotals.d0_trial || 0) : (adsetTotals.signups || 0));
+            var adsetCost = Number(objective === 'd0_trial' ? (adsetTotals.d0TrialCost || 0) : (adsetTotals.signupCost || 0));
+            adsets.push({
+                label: campaignName + ' → ' + adsetName,
+                campaign_name: campaignName,
+                adset_name: adsetName,
+                metric_count: adsetCount,
+                metric_cost: adsetCost > 0 ? adsetCost : null,
+                spend: Number(adsetTotals.spend || 0),
+                d6_roas: Number(adsetTotals.d6ROAS || 0),
+                optimization_event: adset.optimization_event || 'UNKNOWN',
+                location_targeting: adset.location_targeting || 'UNKNOWN',
+                placement_type: adset.placement_type || 'UNKNOWN',
+                placements_active: Array.isArray(adset.placements_active) ? adset.placements_active.slice() : [],
+                basis: getEntityMetricBasis(adsetTotals, basisRange, 'Mixed selected-window basis')
+            });
+            (adset.ads || []).forEach(function(ad) {
+                var count = Number(objective === 'd0_trial' ? (ad.d0_trial || 0) : (ad.signups || 0));
+                var cost = Number(objective === 'd0_trial' ? (ad.d0TrialCost || 0) : (ad.signupCost || 0));
+                ads.push({
+                    label: campaignName + ' → ' + adsetName + ' → ' + (ad.ad_name || '--'),
+                    campaign_name: campaignName,
+                    adset_name: adsetName,
+                    ad_name: ad.ad_name || '--',
+                    metric_count: count,
+                    metric_cost: cost > 0 ? cost : null,
+                    spend: Number(ad.spend || 0),
+                    d6_roas: Number(ad.d6ROAS || 0),
+                    basis: getEntityMetricBasis(ad, basisRange, ad.isMatured ? 'Matured ad using mature-eval window' : ('Unmatured ad using full-data fallback (' + (ad.daysSinceGoLive != null ? ad.daysSinceGoLive : '--') + 'd live)'))
+                });
+            });
+        });
+    });
+
+    function rankRows(rows) {
+        return rows.filter(function(row) {
+            return (row.metric_count || 0) > 0 && (row.spend || 0) > 0;
+        }).map(function(row) {
+            row.score = scoreGrowthDriverRow(row, objective);
+            return row;
+        }).sort(function(a, b) {
+            if (b.score !== a.score) return b.score - a.score;
+            if ((b.metric_count || 0) !== (a.metric_count || 0)) return (b.metric_count || 0) - (a.metric_count || 0);
+            if ((a.metric_cost || Infinity) !== (b.metric_cost || Infinity)) return (a.metric_cost || Infinity) - (b.metric_cost || Infinity);
+            return (b.spend || 0) - (a.spend || 0);
+        }).slice(0, 8);
+    }
+
+    return {
+        campaigns: rankRows(campaigns),
+        adsets: rankRows(adsets),
+        ads: rankRows(ads)
+    };
+}
+
+function buildGrowthDriverPockets(scanData, breakdownContext, objective, topAdsets) {
+    var rows = breakdownContext && breakdownContext.breakdowns ? breakdownContext.breakdowns : {};
+    function rankPocket(list, keyField, labelPrefix) {
+        return (list || []).filter(function(row) {
+            return (row.spend_7d || 0) >= 5000 && (row.installs_7d || 0) > 0;
+        }).map(function(row) {
+            return {
+                label: row[keyField] || '--',
+                installs: Number(row.installs_7d || 0),
+                cpi: Number(row.cpi_7d || 0),
+                spend: Number(row.spend_7d || 0),
+                spend_share_pct: Number(row.spend_share_pct || 0),
+                note: labelPrefix
+            };
+        }).sort(function(a, b) {
+            if ((b.installs || 0) !== (a.installs || 0)) return (b.installs || 0) - (a.installs || 0);
+            if ((a.cpi || Infinity) !== (b.cpi || Infinity)) return (a.cpi || Infinity) - (b.cpi || Infinity);
+            return (b.spend || 0) - (a.spend || 0);
+        }).slice(0, 6);
+    }
+
+    var settingsCounts = {};
+    (topAdsets || []).forEach(function(row) {
+        var keys = [
+            row.optimization_event ? ('event:' + row.optimization_event) : '',
+            row.location_targeting ? ('geo:' + row.location_targeting) : '',
+            row.placement_type ? ('placement_mode:' + row.placement_type) : ''
+        ].filter(Boolean);
+        (row.placements_active || []).slice(0, 8).forEach(function(p) { keys.push('placement:' + p); });
+        keys.forEach(function(key) { settingsCounts[key] = (settingsCounts[key] || 0) + 1; });
+    });
+    var settingsPatterns = Object.keys(settingsCounts).map(function(key) {
+        return { key: key, count: settingsCounts[key] };
+    }).sort(function(a, b) { return b.count - a.count; }).slice(0, 8);
+
+    return {
+        placements: rankPocket(rows.placement, 'placement', 'Meta-side placement pocket'),
+        devices: rankPocket(rows.device, 'device', 'Meta-side device pocket'),
+        geos: rankPocket(rows.geography, 'region', 'Meta-side geo pocket'),
+        cohorts: rankPocket((rows.age_gender || []).filter(function(row) {
+            var age = String(row.age_band || '').toLowerCase();
+            var gender = String(row.gender || '').toLowerCase();
+            return age && age !== 'unknown' && gender && gender !== 'unknown';
+        }).map(function(row) {
+            return {
+                cohort_label: row.age_band + ' ' + titleCaseWords(row.gender),
+                installs_7d: row.installs_7d,
+                cpi_7d: row.cpi_7d,
+                spend_7d: row.spend_7d,
+                spend_share_pct: row.spend_share_pct
+            };
+        }), 'cohort_label', 'Meta-side age/gender pocket'),
+        settings_patterns: settingsPatterns
+    };
+}
+
+function buildGrowthDriverActionLines(spec, entityRows, pockets) {
+    var actions = [];
+    var metricLabel = getGrowthMetricLabel(spec.objective);
+    var costLabel = getGrowthCostLabel(spec.objective);
+    var topAdsets = (entityRows.adsets || []).slice(0, 3);
+    var topAds = (entityRows.ads || []).slice(0, 3);
+    var topPlacements = (pockets.placements || []).slice(0, 3);
+    var topGeos = (pockets.geos || []).slice(0, 3);
+
+    if (topAdsets.length) {
+        actions.push('Lean budget into the strongest ' + metricLabel + ' adsets first: ' + topAdsets.map(function(r) {
+            return r.adset_name + ' (' + r.metric_count + ' ' + metricLabel + ', ' + (r.metric_cost != null ? fmtINR(r.metric_cost) : '--') + ' ' + costLabel + ')';
+        }).join(' | ') + '.');
+    }
+    if (topAds.length) {
+        actions.push('Keep the best live ads feeding that outcome: ' + topAds.map(function(r) {
+            return r.ad_name + ' (' + r.metric_count + ' ' + metricLabel + ')';
+        }).join(' | ') + '.');
+    }
+    if (topPlacements.length) {
+        actions.push('Prioritize the strongest Meta-side delivery pockets first: ' + topPlacements.map(function(r) {
+            return titleCaseWords(String(r.label || '').replace(/_/g, ' ')) + ' (Installs ' + r.installs + ', CPI ' + fmtINR(r.cpi) + ')';
+        }).join(' | ') + '.');
+    }
+    if (topGeos.length) {
+        actions.push('Bias budget toward the stronger geo pockets that are already giving cheaper upstream volume: ' + topGeos.map(function(r) {
+            return r.label + ' (CPI ' + fmtINR(r.cpi) + ', Spend ' + fmtINR(r.spend) + ')';
+        }).join(' | ') + '.');
+    }
+    return actions.slice(0, 5);
+}
+
+function buildGrowthDriverPlan(scanData, breakdownContext, spec) {
+    var entityRows = buildGrowthDriverEntityRows(scanData, spec.objective);
+    var pockets = buildGrowthDriverPockets(scanData, breakdownContext, spec.objective, entityRows.adsets);
+    var metricLabel = getGrowthMetricLabel(spec.objective);
+    var costLabel = getGrowthCostLabel(spec.objective);
+    var actions = buildGrowthDriverActionLines(spec, entityRows, pockets);
+    var topCampaign = entityRows.campaigns[0];
+    var executive = topCampaign
+        ? ('Best current ' + metricLabel + ' driver is ' + topCampaign.label + ' with ' + topCampaign.metric_count + ' ' + metricLabel + ' at ' + (topCampaign.metric_cost != null ? fmtINR(topCampaign.metric_cost) : '--') + ' ' + costLabel + '.')
+        : ('No confirmed ' + metricLabel + ' drivers found in the current slice.');
+    return {
+        operator_answer: executive,
+        executive_summary: executive,
+        actions: [],
+        growth_driver_result: {
+            objective: spec.objective,
+            metric_label: metricLabel,
+            cost_label: costLabel,
+            entity_rows: entityRows,
+            pockets: pockets,
+            action_lines: actions,
+            raw_prompt: spec.raw_prompt || ''
+        }
+    };
+}
+
+function shiftDateByDays(dateStr, deltaDays) {
+    var dt = new Date(String(dateStr || '') + 'T00:00:00');
+    if (Number.isNaN(dt.getTime())) return null;
+    dt.setDate(dt.getDate() + Number(deltaDays || 0));
+    return dt.toISOString().slice(0, 10);
+}
+
+function buildMetricObjectiveEffectiveRange(scanData, spec) {
+    var range = scanData && scanData.date_range ? scanData.date_range : getSelectedDates();
+    if (!range || !range.since || !range.until) return range;
+    if (!spec || !spec.mature_only) return range;
+    var trimmedUntil = shiftDateByDays(range.until, -7);
+    if (!trimmedUntil || trimmedUntil < range.since) return {
+        since: range.since,
+        until: range.since
+    };
+    return {
+        since: range.since,
+        until: trimmedUntil
+    };
+}
+
+function isDateWithinRange(dateStr, range) {
+    var d = String(dateStr || '').slice(0, 10);
+    if (!d || !range || !range.since || !range.until) return false;
+    return d >= range.since && d <= range.until;
+}
+
+function getMetricObjectiveLabel(metric) {
+    if (metric === 'd0_trial_cost') return 'D0 Trial Cost';
+    if (metric === 'signup_cost') return 'Signup Cost';
+    if (metric === 'd6_cac') return 'D6 CAC';
+    if (metric === 'd15_roas') return 'D15 ROAS';
+    if (metric === 'd30_roas') return 'D30 ROAS';
+    if (metric === 'd6_roas') return 'D6 ROAS';
+    if (metric === 'd0_trial') return 'D0 Trials';
+    if (metric === 'signups') return 'Signups';
+    return String(metric || '--');
+}
+
+function getMetricObjectiveValue(metrics, metric) {
+    if (!metrics) return null;
+    if (metric === 'd0_trial_cost') return metrics.d0TrialCost;
+    if (metric === 'signup_cost') return metrics.signupCost;
+    if (metric === 'd6_cac') return metrics.d6CAC;
+    if (metric === 'd15_roas') return metrics.d15ROAS;
+    if (metric === 'd30_roas') return metrics.d30ROAS;
+    if (metric === 'd6_roas') return metrics.d6ROAS;
+    if (metric === 'd0_trial') return metrics.d0_trial;
+    if (metric === 'signups') return metrics.signups;
+    return null;
+}
+
+function isLowerBetterMetric(metric) {
+    return metric === 'd0_trial_cost' || metric === 'signup_cost' || metric === 'd6_cac';
+}
+
+function buildMetricObjectiveRowsFromSource(scanData, spec, effectiveRange) {
+    var source = scanData && scanData._trend_source;
+    if (!source || !Array.isArray(source.meta_rows) || !Array.isArray(source.funnel_rows)) return { campaigns: [], adsets: [], ads: [] };
+    var visibleCampaigns = {};
+    var visibleAdsets = {};
+    var visibleAds = {};
+    Object.keys((scanData && scanData.tree) || {}).forEach(function(campaignName) {
+        visibleCampaigns[normalizeCampaignName(campaignName)] = campaignName;
+        var camp = scanData.tree[campaignName];
+        Object.keys((camp && camp.adsets) || {}).forEach(function(adsetName) {
+            visibleAdsets[normalizeCampaignName(campaignName) + '|||' + normalizeAdsetName(adsetName)] = {
+                campaign_name: campaignName,
+                adset_name: adsetName
+            };
+        });
+    });
+    (scanData && scanData.ads || []).forEach(function(ad) {
+        if (!ad) return;
+        visibleAds[normalizeCampaignName(ad.campaign_name || '') + '|||' + normalizeAdsetName(ad.adset_name || '') + '|||' + normalizeTrackerName(ad.ad_name || '')] = ad;
+    });
+
+    function ensureStore(store, key, label) {
+        if (!store[key]) store[key] = { label: label, raw: emptyRaw() };
+        return store[key];
+    }
+
+    function buildEntityStores(entityType) {
+        var metaStore = {};
+        var funnelStore = {};
+        (source.meta_rows || []).forEach(function(row) {
+            if (!isDateWithinRange(row.date_start, effectiveRange)) return;
+            if (entityType === 'campaign') {
+                var campaignKey = normalizeCampaignName(row.campaign_name || '');
+                if (!visibleCampaigns[campaignKey]) return;
+                addScanMetaRaw(ensureStore(metaStore, campaignKey, visibleCampaigns[campaignKey]).raw, row);
+            } else if (entityType === 'adset') {
+                var adsetKey = normalizeCampaignName(row.campaign_name || '') + '|||' + normalizeAdsetName(row.adset_name || '');
+                if (!visibleAdsets[adsetKey]) return;
+                addScanMetaRaw(ensureStore(metaStore, adsetKey, visibleAdsets[adsetKey].campaign_name + ' → ' + visibleAdsets[adsetKey].adset_name).raw, row);
+            } else {
+                var adKey = normalizeCampaignName(row.campaign_name || '') + '|||' + normalizeAdsetName(row.adset_name || '') + '|||' + normalizeTrackerName(row.ad_name || '');
+                if (!visibleAds[adKey]) return;
+                addScanMetaRaw(ensureStore(metaStore, adKey, (row.campaign_name || '') + ' → ' + (row.adset_name || '') + ' → ' + (row.ad_name || '')).raw, row);
+            }
+        });
+        (source.funnel_rows || []).forEach(function(row) {
+            if (!isDateWithinRange(row.date, effectiveRange)) return;
+            if (entityType === 'campaign') {
+                var campaignKey = normalizeCampaignName(row.campaign_name || '');
+                if (!visibleCampaigns[campaignKey]) return;
+                addScanFunnelRaw(ensureStore(funnelStore, campaignKey, visibleCampaigns[campaignKey]).raw, row);
+            } else if (entityType === 'adset') {
+                var adsetKey = normalizeCampaignName(row.campaign_name || '') + '|||' + normalizeAdsetName(row.ad_set_name || '');
+                if (!visibleAdsets[adsetKey]) return;
+                addScanFunnelRaw(ensureStore(funnelStore, adsetKey, visibleAdsets[adsetKey].campaign_name + ' → ' + visibleAdsets[adsetKey].adset_name).raw, row);
+            } else {
+                var adKey = normalizeCampaignName(row.campaign_name || '') + '|||' + normalizeAdsetName(row.ad_set_name || '') + '|||' + normalizeTrackerName(row.tracker_name || '');
+                if (!visibleAds[adKey]) return;
+                var ad = visibleAds[adKey];
+                addScanFunnelRaw(ensureStore(funnelStore, adKey, (ad.campaign_name || '') + ' → ' + (ad.adset_name || '') + ' → ' + (ad.ad_name || '')).raw, row);
+            }
+        });
+        return Object.keys(metaStore).map(function(key) {
+            var meta = metaStore[key];
+            var funnel = funnelStore[key] || { raw: emptyRaw() };
+            var metrics = deriveMetrics(Object.assign(emptyRaw(), funnel.raw, {
+                spend: meta.raw.spend,
+                impressions: meta.raw.impressions,
+                clicks: meta.raw.clicks,
+                installs: meta.raw.installs,
+                thruplay: meta.raw.thruplay,
+                p25: meta.raw.p25,
+                p100: meta.raw.p100
+            }));
+            var metricValue = getMetricObjectiveValue(metrics, spec.metric);
+            if (metricValue == null || !isFinite(Number(metricValue))) return null;
+            var row = {
+                entity_type: entityType,
+                label: meta.label,
+                spend: Number(metrics.spend || 0),
+                metric_value: Number(metricValue),
+                metric_count: spec.metric === 'd0_trial' ? Number(metrics.d0_trial || 0) : (spec.metric === 'signups' ? Number(metrics.signups || 0) : null),
+                supporting_count: spec.metric === 'd0_trial_cost' ? Number(metrics.d0_trial || 0) : (spec.metric === 'signup_cost' ? Number(metrics.signups || 0) : (spec.metric === 'd6_cac' ? Number(metrics.d6Con || 0) : null)),
+                signup_cost: metrics.signupCost,
+                d0_trial_cost: metrics.d0TrialCost,
+                d6_cac: metrics.d6CAC,
+                d6_roas: metrics.d6ROAS,
+                d15_roas: metrics.d15ROAS,
+                d30_roas: metrics.d30ROAS,
+                signups: metrics.signups,
+                d0_trial: metrics.d0_trial,
+                basis: 'Basis: ' + effectiveRange.since + ' → ' + effectiveRange.until + (spec.mature_only ? ' | Mature-only execution basis (last 7 days excluded)' : ' | Full selected-window execution basis')
+            };
+            return row;
+        }).filter(Boolean);
+    }
+
+    function rank(rows) {
+        return rows.filter(function(row) {
+            if ((row.spend || 0) <= 0) return false;
+            if (spec.metric === 'd0_trial_cost') return (row.d0_trial || 0) > 0;
+            if (spec.metric === 'signup_cost') return (row.signups || 0) > 0;
+            if (spec.metric === 'd6_cac') return (row.supporting_count || 0) > 0;
+            return true;
+        }).sort(function(a, b) {
+            if (isLowerBetterMetric(spec.metric)) {
+                if ((a.metric_value || Infinity) !== (b.metric_value || Infinity)) return (a.metric_value || Infinity) - (b.metric_value || Infinity);
+                return (b.spend || 0) - (a.spend || 0);
+            }
+            if ((b.metric_value || -Infinity) !== (a.metric_value || -Infinity)) return (b.metric_value || -Infinity) - (a.metric_value || -Infinity);
+            return (b.spend || 0) - (a.spend || 0);
+        }).slice(0, 8);
+    }
+
+    return {
+        campaigns: rank(buildEntityStores('campaign')),
+        adsets: rank(buildEntityStores('adset')),
+        ads: rank(buildEntityStores('ad'))
+    };
+}
+
+function buildMetricObjectivePockets(breakdownContext) {
+    var rows = breakdownContext && breakdownContext.breakdowns ? breakdownContext.breakdowns : {};
+    function rank(rowsIn, keyField) {
+        return (rowsIn || []).filter(function(row) {
+            return (row.spend_7d || 0) >= 5000 && (row.installs_7d || 0) > 0;
+        }).map(function(row) {
+            return {
+                label: row[keyField] || '--',
+                installs: Number(row.installs_7d || 0),
+                cpi: Number(row.cpi_7d || 0),
+                spend: Number(row.spend_7d || 0),
+                spend_share_pct: Number(row.spend_share_pct || 0)
+            };
+        }).sort(function(a, b) {
+            if ((a.cpi || Infinity) !== (b.cpi || Infinity)) return (a.cpi || Infinity) - (b.cpi || Infinity);
+            if ((b.installs || 0) !== (a.installs || 0)) return (b.installs || 0) - (a.installs || 0);
+            return (b.spend || 0) - (a.spend || 0);
+        }).slice(0, 6);
+    }
+    return {
+        placements: rank(rows.placement, 'placement'),
+        devices: rank(rows.device, 'device'),
+        geos: rank(rows.geography, 'region'),
+        cohorts: rank((rows.age_gender || []).filter(function(row) {
+            var age = String(row.age_band || '').toLowerCase();
+            var gender = String(row.gender || '').toLowerCase();
+            return age && age !== 'unknown' && gender && gender !== 'unknown';
+        }).map(function(row) {
+            return {
+                cohort_label: row.age_band + ' ' + titleCaseWords(row.gender),
+                installs_7d: row.installs_7d,
+                cpi_7d: row.cpi_7d,
+                spend_7d: row.spend_7d,
+                spend_share_pct: row.spend_share_pct
+            };
+        }), 'cohort_label')
+    };
+}
+
+function buildMetricObjectiveActionLines(spec, rows, pockets) {
+    var label = getMetricObjectiveLabel(spec.metric);
+    var lines = [];
+    var topAdsets = (rows.adsets || []).slice(0, 3);
+    var topAds = (rows.ads || []).slice(0, 3);
+    if (isLowerBetterMetric(spec.metric) && topAdsets.length) {
+        lines.push('Use the lowest-cost adsets as the control set for this metric: ' + topAdsets.map(function(r) {
+            return r.adset_name + ' (' + fmtINR(r.metric_value) + ')';
+        }).join(' | ') + '.');
+    } else if (topAdsets.length) {
+        lines.push('Protect and improve around the strongest adsets for ' + label + ': ' + topAdsets.map(function(r) {
+            return r.adset_name + ' (' + (isLowerBetterMetric(spec.metric) ? fmtINR(r.metric_value) : fmtPct(r.metric_value)) + ')';
+        }).join(' | ') + '.');
+    }
+    if (topAds.length) {
+        lines.push('Keep the strongest ads feeding this metric: ' + topAds.map(function(r) { return r.ad_name; }).join(' | ') + '.');
+    }
+    if ((pockets.placements || []).length) {
+        lines.push('Lean into the lowest-CPI Meta placements first: ' + pockets.placements.slice(0, 3).map(function(r) { return titleCaseWords(String(r.label || '').replace(/_/g, ' ')) + ' (' + fmtINR(r.cpi) + ')'; }).join(' | ') + '.');
+    }
+    if ((pockets.geos || []).length) {
+        lines.push('Bias delivery toward the stronger geo pockets: ' + pockets.geos.slice(0, 3).map(function(r) { return r.label + ' (' + fmtINR(r.cpi) + ')'; }).join(' | ') + '.');
+    }
+    return lines.slice(0, 5);
+}
+
+function buildMetricObjectivePlan(scanData, breakdownContext, spec, effectiveRange) {
+    var rows = buildMetricObjectiveRowsFromSource(scanData, spec, effectiveRange);
+    var pockets = buildMetricObjectivePockets(breakdownContext);
+    var label = getMetricObjectiveLabel(spec.metric);
+    var executive = 'Deterministic ' + (spec.intent === 'reduce' ? 'reduction' : 'improvement') + ' plan for ' + label + '.';
+    var topCampaign = (rows.campaigns || [])[0];
+    if (topCampaign) {
+        executive += ' Best current campaign signal: ' + topCampaign.label + ' at ' + (isLowerBetterMetric(spec.metric) ? fmtINR(topCampaign.metric_value) : (spec.metric.indexOf('roas') !== -1 ? fmtPct(topCampaign.metric_value) : String(topCampaign.metric_value))) + '.';
+    }
+    return {
+        operator_answer: executive,
+        executive_summary: executive,
+        actions: [],
+        metric_objective_result: {
+            metric: spec.metric,
+            metric_label: label,
+            intent: spec.intent,
+            mature_only: !!spec.mature_only,
+            effective_range: effectiveRange,
+            entity_rows: rows,
+            pockets: pockets,
+            action_lines: buildMetricObjectiveActionLines(spec, rows, pockets),
+            raw_prompt: spec.raw_prompt || ''
+        }
+    };
+}
+
+function getTrendSearchRows(scanData, runtimeContext, spec) {
+    if (spec && /_wow_pct$/.test(spec.metric)) {
+        var sourceRows = buildTrendRowsFromSource(scanData, spec);
+        if (sourceRows && sourceRows.length) return sourceRows;
+    }
+    var rows = [];
+    if (!spec) return rows;
+    if (spec.entity_type === 'campaign') {
+        rows = Object.keys(scanData.tree || {}).map(function(campaignName) {
+            var camp = scanData.tree[campaignName];
+            var trend = runtimeContext.advanced_trend_intelligence && runtimeContext.advanced_trend_intelligence.campaigns
+                ? runtimeContext.advanced_trend_intelligence.campaigns[campaignName]
+                : null;
+            var campaignAds = buildEntityTrendAds(scanData, campaignName, '');
+            var directWowMetric = spec.metric === 'signup_cost_wow_pct' ? deriveEntityWowMetric(campaignAds, 'signupCost_wow', 'signupCost')
+                : spec.metric === 'd0_trial_cost_wow_pct' ? deriveEntityWowMetric(campaignAds, 'd0TrialCost_wow', 'd0TrialCost')
+                : spec.metric === 'cpi_wow_pct' ? deriveEntityWowMetric(campaignAds, 'cpi_wow', 'cpi')
+                : null;
+            return {
+                entity_type: 'campaign',
+                campaign_name: campaignName,
+                adset_name: '',
+                ad_name: '',
+                label: campaignName,
+                spend: Number((camp.totals && camp.totals.spend) || 0),
+                metric_value: spec.metric === 'd15_roas' ? Number((camp.totals && camp.totals.d15ROAS) || 0)
+                    : spec.metric === 'd30_roas' ? Number((camp.totals && camp.totals.d30ROAS) || 0)
+                    : spec.metric === 'd6_roas' ? Number((camp.totals && camp.totals.d6ROAS) || 0)
+                    : (directWowMetric != null ? Number(directWowMetric) : (trend ? Number(trend[spec.metric] || 0) : null)),
+                trend: trend,
+                basis: getEntityMetricBasis(camp.totals || null, scanData.date_range ? (scanData.date_range.since + ' → ' + scanData.date_range.until) : '--', 'Mixed selected-window basis')
+            };
+        });
+    } else if (spec.entity_type === 'adset') {
+        Object.keys(scanData.tree || {}).forEach(function(campaignName) {
+            var camp = scanData.tree[campaignName];
+            Object.keys(camp.adsets || {}).forEach(function(adsetName) {
+                var adset = camp.adsets[adsetName];
+                var trend = runtimeContext.advanced_trend_intelligence && runtimeContext.advanced_trend_intelligence.adsets
+                    ? runtimeContext.advanced_trend_intelligence.adsets[campaignName + '||' + adsetName]
+                    : null;
+                var adsetAds = buildEntityTrendAds(scanData, campaignName, adsetName);
+                var directWowMetric = spec.metric === 'signup_cost_wow_pct' ? deriveEntityWowMetric(adsetAds, 'signupCost_wow', 'signupCost')
+                    : spec.metric === 'd0_trial_cost_wow_pct' ? deriveEntityWowMetric(adsetAds, 'd0TrialCost_wow', 'd0TrialCost')
+                    : spec.metric === 'cpi_wow_pct' ? deriveEntityWowMetric(adsetAds, 'cpi_wow', 'cpi')
+                    : null;
+                rows.push({
+                    entity_type: 'adset',
+                    campaign_name: campaignName,
+                    adset_name: adsetName,
+                    ad_name: '',
+                    label: campaignName + ' → ' + adsetName,
+                    spend: Number((adset.totals && adset.totals.spend) || 0),
+                    metric_value: spec.metric === 'd15_roas' ? Number((adset.totals && adset.totals.d15ROAS) || 0)
+                        : spec.metric === 'd30_roas' ? Number((adset.totals && adset.totals.d30ROAS) || 0)
+                        : spec.metric === 'd6_roas' ? Number((adset.totals && adset.totals.d6ROAS) || 0)
+                        : (directWowMetric != null ? Number(directWowMetric) : (trend ? Number(trend[spec.metric] || 0) : null)),
+                    trend: trend,
+                    basis: getEntityMetricBasis(adset.totals || null, scanData.date_range ? (scanData.date_range.since + ' → ' + scanData.date_range.until) : '--', 'Mixed selected-window basis')
+                });
+            });
+        });
+    } else {
+        rows = (scanData.ads || []).map(function(ad) {
+            var wow = ad && ad._wow ? ad._wow : {};
+            return {
+                entity_type: 'ad',
+                campaign_name: ad.campaign_name || '',
+                adset_name: ad.adset_name || '',
+                ad_name: ad.ad_name || '',
+                label: (ad.campaign_name || '') + ' → ' + (ad.adset_name || '') + ' → ' + (ad.ad_name || ''),
+                spend: Number(ad.spend || 0),
+                metric_value: spec.metric === 'd15_roas' ? Number(ad.d15ROAS || 0)
+                    : spec.metric === 'd30_roas' ? Number(ad.d30ROAS || 0)
+                    : spec.metric === 'd6_roas' ? Number(ad.d6ROAS || 0)
+                    : spec.metric === 'signup_cost_wow_pct' ? (wow.signupCost_wow != null ? Number(wow.signupCost_wow) : null)
+                    : spec.metric === 'cpi_wow_pct' ? (wow.cpi_wow != null ? Number(wow.cpi_wow) : null)
+                    : null,
+                trend: wow,
+                basis: getEntityMetricBasis(ad, scanData.date_range ? (scanData.date_range.since + ' → ' + scanData.date_range.until) : '--', ad.isMatured ? 'Matured ad using mature-eval window' : 'Unmatured ad using full-data fallback')
+            };
+        });
+        if (spec.metric === 'd0_trial_cost_wow_pct') {
+            rows.forEach(function(row, idx) {
+                var ad = scanData.ads[idx];
+                var wow = ad && ad._wow ? ad._wow : null;
+                row.metric_value = wow
+                    ? safeWowValue(wow.d0TrialCost_wow)
+                    : null;
+            });
+        }
+    }
+    return rows.filter(function(row) { return row.metric_value != null && isFinite(row.metric_value); });
+}
+
+function filterTrendSearchRows(rows, spec) {
+    return rows.filter(function(row) {
+        var v = Number(row.metric_value);
+        if (!isFinite(v)) return false;
+        if (spec.metric === 'd15_roas' || spec.metric === 'd30_roas' || spec.metric === 'd6_roas') {
+            if (spec.comparator === 'high' || spec.comparator === 'improving' || spec.comparator === 'up') return v > 0;
+            if (spec.comparator === 'low' || spec.comparator === 'down') return v > 0;
+        }
+        if (spec.comparator === 'improving') return v < 0;
+        if (spec.comparator === 'down') return v < 0;
+        if (spec.comparator === 'up') return v >= 5;
+        if (spec.comparator === 'high') return v > 0;
+        if (spec.comparator === 'low') return v > 0;
+        return false;
+    }).sort(function(a, b) {
+        if (spec.comparator === 'down' || spec.comparator === 'improving') return a.metric_value - b.metric_value;
+        return b.metric_value - a.metric_value;
+    });
+}
+
+function formatTrendMetricLabel(spec, value) {
+    if (spec.metric === 'signup_cost_wow_pct' || spec.metric === 'd0_trial_cost_wow_pct' || spec.metric === 'cpi_wow_pct') {
+        return (value > 0 ? '+' : '') + value.toFixed(1) + '% WoW';
+    }
+    return value.toFixed(1) + '%';
+}
+
+function getTrendMetricDisplayName(metric) {
+    if (metric === 'signup_cost_wow_pct') return 'Signup Cost';
+    if (metric === 'd0_trial_cost_wow_pct') return 'D0 Trial Cost';
+    if (metric === 'cpi_wow_pct') return 'CPI';
+    if (metric === 'd15_roas') return 'D15 ROAS';
+    if (metric === 'd30_roas') return 'D30 ROAS';
+    if (metric === 'd6_roas') return 'D6 ROAS';
+    return String(metric || '--');
+}
+
+function formatTrendMetricValue(metric, value) {
+    if (value == null || !isFinite(Number(value))) return '--';
+    var num = Number(value);
+    if (metric === 'd15_roas' || metric === 'd30_roas' || metric === 'd6_roas') return num.toFixed(1) + '%';
+    return fmtINR(Math.round(num));
+}
+
+function wantsTrendActionables(prompt) {
+    var lower = String(prompt || '').toLowerCase();
+    return /(why|reason|root cause|fix|how to fix|action|actionable|what should|what to do|improve|make it better)/.test(lower);
+}
+
+function buildTrendInsightLines(spec, rows) {
+    var metricName = getTrendMetricDisplayName(spec.metric);
+    var top = (rows || []).slice(0, 3);
+    if (!top.length) return [];
+    return top.map(function(row) {
+        var current = row.trend && row.trend.thisWeek ? row.trend.thisWeek : {};
+        var prev = row.trend && row.trend.lastWeek ? row.trend.lastWeek : {};
+        var reason = '';
+        if (spec.metric === 'signup_cost_wow_pct' || spec.metric === 'd0_trial_cost_wow_pct') {
+            if ((current.signups || 0) < (prev.signups || 0) && Number(row.metric_value) < 0) reason = 'Cost improved despite lower volume, so do not treat it as scalable without checking if volume stayed healthy.';
+            else if ((current.signups || 0) > (prev.signups || 0) && Number(row.metric_value) < 0) reason = 'Cost improved while signup volume held or improved, which is a stronger positive signal.';
+            else if ((current.d0_trial || 0) > (prev.d0_trial || 0) && spec.metric === 'd0_trial_cost_wow_pct') reason = 'D0 trial volume improved while cost fell, which is a positive forward signal for D6.';
+            else reason = 'Cost improved week on week, but verify whether the underlying volume stayed broad enough before scaling.';
+        } else if (spec.metric === 'd15_roas' || spec.metric === 'd30_roas' || spec.metric === 'd6_roas') {
+            reason = 'Strong ' + metricName + ' suggests this entity has quality worth improving around, not blindly pausing.';
+        } else {
+            reason = metricName + ' moved favorably week on week.';
+        }
+        return row.label + ': ' + reason;
+    });
+}
+
+function renderTrendSearchBreakdown(plan) {
+    var result = plan && plan.trend_search_result ? plan.trend_search_result : null;
+    if (!result) return '';
+    var metric = result.metric;
+    var metricName = getTrendMetricDisplayName(metric);
+    var rows = (result.matches && result.matches.length ? result.matches : result.closest || []).slice(0, 12);
+    if (!rows.length) return '';
+    var prompt = (result.raw_prompt || plan.user_request || '');
+    var showInsights = wantsTrendActionables(prompt);
+    var headerCopy = (result.matches && result.matches.length)
+        ? ('Week-on-week breakdown for ' + metricName + ' matching your condition')
+        : ('No strict match. Closest week-on-week ' + metricName + ' signals');
+    var table = '<div style="' + CARD + 'margin-bottom:16px;border-left:3px solid var(--accent);">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">' + esc(headerCopy) + '</div>' +
+        '<div style="overflow:auto;">' +
+            '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+                '<thead><tr style="text-align:left;color:var(--text-dim);border-bottom:1px solid var(--border);">' +
+                    '<th style="padding:8px 10px;">Entity</th>' +
+                    '<th style="padding:8px 10px;">Current 7d</th>' +
+                    '<th style="padding:8px 10px;">Previous 7d</th>' +
+                    '<th style="padding:8px 10px;">WoW</th>' +
+                    '<th style="padding:8px 10px;">Spend</th>' +
+                    '<th style="padding:8px 10px;">Basis</th>' +
+                '</tr></thead>' +
+                '<tbody>' +
+                    rows.map(function(row) {
+                        var current = row.trend && row.trend.thisWeek ? row.trend.thisWeek : {};
+                        var previous = row.trend && row.trend.lastWeek ? row.trend.lastWeek : {};
+                        var wow = row.metric_value != null ? ((Number(row.metric_value) > 0 ? '+' : '') + Number(row.metric_value).toFixed(1) + '%') : '--';
+                        var wowColor = Number(row.metric_value) < 0 ? 'var(--green)' : (Number(row.metric_value) > 0 ? 'var(--red)' : 'var(--text)');
+                        return '<tr style="border-bottom:1px solid rgba(255,255,255,0.06);">' +
+                            '<td style="padding:10px;color:var(--text);vertical-align:top;min-width:320px;">' + esc(row.label || '--') + '</td>' +
+                            '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(formatTrendMetricValue(metric, metric === 'cpi_wow_pct' ? current.cpi : (metric === 'd0_trial_cost_wow_pct' ? current.d0TrialCost : (metric === 'signup_cost_wow_pct' ? current.signupCost : current[metric])))) + '</td>' +
+                            '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(formatTrendMetricValue(metric, metric === 'cpi_wow_pct' ? previous.cpi : (metric === 'd0_trial_cost_wow_pct' ? previous.d0TrialCost : (metric === 'signup_cost_wow_pct' ? previous.signupCost : previous[metric])))) + '</td>' +
+                            '<td style="padding:10px;color:' + wowColor + ';font-weight:700;vertical-align:top;">' + esc(wow) + '</td>' +
+                            '<td style="padding:10px;color:var(--text);vertical-align:top;">' + fmtINR(row.spend || 0) + '</td>' +
+                            '<td style="padding:10px;color:var(--text-dim);vertical-align:top;min-width:220px;">Current 7d vs previous 7d raw-bucket comparison</td>' +
+                        '</tr>';
+                    }).join('') +
+                '</tbody>' +
+            '</table>' +
+        '</div>' +
+    '</div>';
+    if (!showInsights) return table;
+    var insights = buildTrendInsightLines(result, rows);
+    return table +
+        '<div style="' + CARD + 'margin-bottom:16px;border-left:3px solid var(--orange);">' +
+            '<div style="font-size:12px;font-weight:700;color:var(--orange);margin-bottom:8px;">Insights / Actionables</div>' +
+            (insights.length ? insights.map(function(line) {
+                return '<div style="font-size:12px;color:var(--text-dim);padding:4px 0;">• ' + esc(line) + '</div>';
+            }).join('') : '<div style="font-size:12px;color:var(--text-dim);">No additional actionables requested.</div>') +
+        '</div>';
+}
+
+function renderGrowthDriverBreakdown(plan) {
+    var result = plan && plan.growth_driver_result ? plan.growth_driver_result : null;
+    if (!result) return '';
+    var metricLabel = result.metric_label || 'Outcome';
+    var costLabel = result.cost_label || 'Cost';
+    var entityRows = result.entity_rows || { campaigns: [], adsets: [], ads: [] };
+    var pockets = result.pockets || { placements: [], devices: [], geos: [], cohorts: [], settings_patterns: [] };
+    function renderEntityTable(title, rows, entityField) {
+        rows = (rows || []).slice(0, 6);
+        if (!rows.length) return '';
+        return '<div style="' + CARD + 'margin-bottom:12px;">' +
+            '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">' + esc(title) + '</div>' +
+            '<div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+                '<thead><tr style="text-align:left;color:var(--text-dim);border-bottom:1px solid var(--border);">' +
+                    '<th style="padding:8px 10px;">' + esc(entityField) + '</th>' +
+                    '<th style="padding:8px 10px;">' + esc(metricLabel) + '</th>' +
+                    '<th style="padding:8px 10px;">' + esc(costLabel) + '</th>' +
+                    '<th style="padding:8px 10px;">Spend</th>' +
+                    '<th style="padding:8px 10px;">D6 ROAS</th>' +
+                    '<th style="padding:8px 10px;">Basis</th>' +
+                '</tr></thead><tbody>' +
+                rows.map(function(row) {
+                    return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(row.label || '--') + '</td>' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(String(row.metric_count || 0)) + '</td>' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(row.metric_cost != null ? fmtINR(row.metric_cost) : '--') + '</td>' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(fmtINR(row.spend || 0)) + '</td>' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(row.d6_roas != null ? fmtPct(row.d6_roas) : '--') + '</td>' +
+                        '<td style="padding:10px;color:var(--text-dim);vertical-align:top;">' + esc(row.basis || '--') + '</td>' +
+                    '</tr>';
+                }).join('') +
+                '</tbody></table></div></div>';
+    }
+    function renderPocketTable(title, rows, labelField) {
+        rows = (rows || []).slice(0, 6);
+        if (!rows.length) return '';
+        return '<div style="' + CARD + 'margin-bottom:12px;">' +
+            '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">' + esc(title) + '</div>' +
+            '<div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+                '<thead><tr style="text-align:left;color:var(--text-dim);border-bottom:1px solid var(--border);">' +
+                    '<th style="padding:8px 10px;">Pocket</th>' +
+                    '<th style="padding:8px 10px;">Installs</th>' +
+                    '<th style="padding:8px 10px;">CPI</th>' +
+                    '<th style="padding:8px 10px;">Spend</th>' +
+                    '<th style="padding:8px 10px;">Spend Share</th>' +
+                '</tr></thead><tbody>' +
+                rows.map(function(row) {
+                    return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(row[labelField] || row.label || '--') + '</td>' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(String(row.installs || 0)) + '</td>' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(row.cpi != null ? fmtINR(row.cpi) : '--') + '</td>' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(fmtINR(row.spend || 0)) + '</td>' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(row.spend_share_pct != null ? Number(row.spend_share_pct).toFixed(1) + '%' : '--') + '</td>' +
+                    '</tr>';
+                }).join('') +
+                '</tbody></table></div></div>';
+    }
+    var settingsPatterns = (pockets.settings_patterns || []).slice(0, 8);
+    return '<div style="' + CARD + 'margin-bottom:16px;border-left:3px solid var(--accent);">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">How to increase ' + esc(metricLabel) + '</div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;">Numbers first: strongest current campaigns, adsets, ads, and Meta-side delivery pockets supporting more ' + esc(metricLabel) + ' in this slice.</div>' +
+        renderEntityTable('Best Campaign Drivers', entityRows.campaigns, 'Campaign') +
+        renderEntityTable('Best Adset Drivers', entityRows.adsets, 'Campaign → Adset') +
+        renderEntityTable('Best Ad Drivers', entityRows.ads, 'Campaign → Adset → Ad') +
+        renderPocketTable('Placements / Platforms To Lean Into', pockets.placements, 'label') +
+        renderPocketTable('Devices / OS To Lean Into', pockets.devices, 'label') +
+        renderPocketTable('Geographies To Lean Into', pockets.geos, 'label') +
+        renderPocketTable('Age × Gender Cohorts To Lean Into', pockets.cohorts, 'label') +
+        (settingsPatterns.length ? '<div style="' + CARD + 'margin-bottom:12px;"><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">Winning Settings Patterns In Strong Adsets</div><div style="display:flex;gap:8px;flex-wrap:wrap;">' + settingsPatterns.map(function(item) {
+            var text = String(item.key || '').replace(/^event:/, 'Optimization event: ').replace(/^geo:/, 'Geo: ').replace(/^placement_mode:/, 'Placement mode: ').replace(/^placement:/, 'Placement: ');
+            return '<span style="' + CARD + 'padding:6px 10px;font-size:11px;color:var(--text);">' + esc(text) + ' (' + esc(String(item.count || 0)) + ')</span>';
+        }).join('') + '</div></div>' : '') +
+        ((result.action_lines || []).length ? '<div style="' + CARD + 'margin-bottom:0;"><div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:10px;">Actionables</div>' + result.action_lines.map(function(line) {
+            return '<div style="font-size:11px;color:var(--text);padding:4px 0;">• ' + esc(line) + '</div>';
+        }).join('') + '</div>' : '') +
+    '</div>';
+}
+
+function renderMetricObjectiveBreakdown(plan) {
+    var result = plan && plan.metric_objective_result ? plan.metric_objective_result : null;
+    if (!result) return '';
+    var metricLabel = result.metric_label || '--';
+    var rows = result.entity_rows || { campaigns: [], adsets: [], ads: [] };
+    var pockets = result.pockets || { placements: [], devices: [], geos: [], cohorts: [] };
+    var effectiveRange = result.effective_range ? (result.effective_range.since + ' → ' + result.effective_range.until) : '--';
+    function metricDisplay(v) {
+        if (v == null) return '--';
+        if (isLowerBetterMetric(result.metric)) return fmtINR(v);
+        if (/roas/.test(result.metric)) return fmtPct(v);
+        return String(v);
+    }
+    function renderEntityTable(title, data) {
+        data = (data || []).slice(0, 6);
+        if (!data.length) return '';
+        return '<div style="' + CARD + 'margin-bottom:12px;">' +
+            '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">' + esc(title) + '</div>' +
+            '<div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+                '<thead><tr style="text-align:left;color:var(--text-dim);border-bottom:1px solid var(--border);">' +
+                    '<th style="padding:8px 10px;">Entity</th>' +
+                    '<th style="padding:8px 10px;">' + esc(metricLabel) + '</th>' +
+                    '<th style="padding:8px 10px;">Spend</th>' +
+                    '<th style="padding:8px 10px;">Support</th>' +
+                    '<th style="padding:8px 10px;">Basis</th>' +
+                '</tr></thead><tbody>' +
+                data.map(function(row) {
+                    var support = row.supporting_count != null ? String(row.supporting_count) : ((row.metric_count != null && row.metric !== result.metric) ? String(row.metric_count) : '--');
+                    return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(row.label || '--') + '</td>' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(metricDisplay(row.metric_value)) + '</td>' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(fmtINR(row.spend || 0)) + '</td>' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(support) + '</td>' +
+                        '<td style="padding:10px;color:var(--text-dim);vertical-align:top;">' + esc(row.basis || '--') + '</td>' +
+                    '</tr>';
+                }).join('') +
+                '</tbody></table></div></div>';
+    }
+    function renderPocketTable(title, list) {
+        list = (list || []).slice(0, 6);
+        if (!list.length) return '';
+        return '<div style="' + CARD + 'margin-bottom:12px;">' +
+            '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">' + esc(title) + '</div>' +
+            '<div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+                '<thead><tr style="text-align:left;color:var(--text-dim);border-bottom:1px solid var(--border);">' +
+                    '<th style="padding:8px 10px;">Pocket</th>' +
+                    '<th style="padding:8px 10px;">Installs</th>' +
+                    '<th style="padding:8px 10px;">CPI</th>' +
+                    '<th style="padding:8px 10px;">Spend</th>' +
+                '</tr></thead><tbody>' +
+                list.map(function(row) {
+                    return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(row.label || '--') + '</td>' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(String(row.installs || 0)) + '</td>' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(row.cpi != null ? fmtINR(row.cpi) : '--') + '</td>' +
+                        '<td style="padding:10px;color:var(--text);vertical-align:top;">' + esc(fmtINR(row.spend || 0)) + '</td>' +
+                    '</tr>';
+                }).join('') +
+                '</tbody></table></div></div>';
+    }
+    return '<div style="' + CARD + 'margin-bottom:16px;border-left:3px solid var(--accent);">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">How to ' + esc(result.intent === 'reduce' ? 'reduce' : 'improve') + ' ' + esc(metricLabel) + '</div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;">Execution basis: ' + esc(effectiveRange) + (result.mature_only ? ' | Mature-only execution basis (last 7 days excluded).' : ' | Full selected-window execution basis.') + '</div>' +
+        renderEntityTable('Best Campaigns For This Metric', rows.campaigns) +
+        renderEntityTable('Best Adsets For This Metric', rows.adsets) +
+        renderEntityTable('Best Ads For This Metric', rows.ads) +
+        renderPocketTable('Lowest-CPI Placements / Platforms', pockets.placements) +
+        renderPocketTable('Lowest-CPI Devices / OS', pockets.devices) +
+        renderPocketTable('Lowest-CPI Geographies', pockets.geos) +
+        renderPocketTable('Lowest-CPI Age × Gender Cohorts', pockets.cohorts) +
+        ((result.action_lines || []).length ? '<div style="' + CARD + 'margin-bottom:0;"><div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:10px;">Actionables</div>' + result.action_lines.map(function(line) {
+            return '<div style="font-size:11px;color:var(--text);padding:4px 0;">• ' + esc(line) + '</div>';
+        }).join('') + '</div>' : '') +
+    '</div>';
+}
+
+function buildTrendSearchPlan(scanData, runtimeContext, spec) {
+    var rawRows = getTrendSearchRows(scanData, runtimeContext, spec).filter(function(row) {
+        return row && row.metric_value != null && isFinite(Number(row.metric_value));
+    });
+    var rows = filterTrendSearchRows(rawRows, spec);
+    var metricLabel = spec.metric === 'signup_cost_wow_pct' ? 'signup cost WoW'
+        : spec.metric === 'd0_trial_cost_wow_pct' ? 'D0 trial cost WoW'
+        : spec.metric === 'd15_roas' ? 'D15 ROAS'
+        : spec.metric === 'd30_roas' ? 'D30 ROAS'
+        : spec.metric === 'd6_roas' ? 'D6 ROAS'
+        : spec.metric;
+    var top = rows.slice(0, 12);
+    var closest = [];
+    if (!top.length) {
+        closest = rawRows.slice().sort(function(a, b) {
+            if (spec.comparator === 'down' || spec.comparator === 'improving') return Number(a.metric_value || 0) - Number(b.metric_value || 0);
+            if (spec.comparator === 'up' || spec.comparator === 'high') return Number(b.metric_value || 0) - Number(a.metric_value || 0);
+            if (spec.comparator === 'low') return Number(a.metric_value || 0) - Number(b.metric_value || 0);
+            return Number(b.metric_value || 0) - Number(a.metric_value || 0);
+        }).slice(0, 5);
+    }
+    var operatorAnswer;
+    if (!top.length) {
+        operatorAnswer = 'No ' + spec.entity_type + 's in the current slice cross the strict `' + metricLabel + '` threshold for this condition. Basis: ' + (scanData.date_range ? (scanData.date_range.since + ' → ' + scanData.date_range.until) : '--') + '.';
+        if (closest.length) {
+            operatorAnswer += '\n\nClosest signals:\n\n' + closest.map(function(row, idx) {
+                return (idx + 1) + '. ' + row.label + ' — ' + formatTrendMetricLabel(spec, Number(row.metric_value)) + ' | Spend ' + fmtINR(row.spend || 0) + '\n' + row.basis;
+            }).join('\n\n');
+        }
+    } else {
+        operatorAnswer = 'Matching ' + spec.entity_type + (spec.entity_type === 'ad' ? 's' : 's') + ' for `' + metricLabel + '`:\n\n' + top.map(function(row, idx) {
+            return (idx + 1) + '. ' + row.label + ' — ' + formatTrendMetricLabel(spec, Number(row.metric_value)) + ' | Spend ' + fmtINR(row.spend || 0) + '\n' + row.basis;
+        }).join('\n\n');
+    }
+    return {
+        operator_answer: operatorAnswer,
+        executive_summary: top.length
+            ? ('Found ' + top.length + ' matching ' + spec.entity_type + (top.length === 1 ? '' : 's') + ' for ' + metricLabel + ' in the current slice.')
+            : ('No strict matches found for ' + metricLabel + ' in the current slice.'),
+        actions: [],
+        trend_search_result: {
+            entity_type: spec.entity_type,
+            metric: spec.metric,
+            comparator: spec.comparator,
+            raw_prompt: spec.raw_prompt || '',
+            matches: top,
+            closest: closest
+        }
+    };
+}
+
+function widenTrendSearchRange(range, minDays) {
+    var targetDays = Math.max(Number(minDays || 42), 42);
+    if (!range || !range.until) return null;
+    var end = new Date(String(range.until) + 'T00:00:00');
+    if (Number.isNaN(end.getTime())) return null;
+    var start = new Date(end.getTime() - (targetDays - 1) * 86400000);
+    return {
+        since: start.toISOString().slice(0, 10),
+        until: range.until
+    };
+}
+
 function inferEntityTypeFromAction(actionType) {
     var type = String(actionType || '').toUpperCase();
     if (type.indexOf('CAMPAIGN') !== -1) return 'campaign';
@@ -4136,6 +5890,7 @@ function buildScopedScanData(scanData, target) {
                 date_range: scanData.date_range,
                 tree: Object.assign({}, (function(){ var x={}; x[campaignName]=camp; return x; })()),
                 ads: ads,
+                _trend_source: scanData._trend_source,
                 evaluatedTotals: Object.assign({}, camp.totals || {}),
                 rangeContext: scanData.rangeContext,
                 summary: {
@@ -4172,6 +5927,7 @@ function buildScopedScanData(scanData, target) {
                 date_range: scanData.date_range,
                 tree: scopedTree,
                 ads: adsetAds,
+                _trend_source: scanData._trend_source,
                 evaluatedTotals: Object.assign({}, adsetNode.totals || {}),
                 rangeContext: scanData.rangeContext,
                 summary: {
@@ -4207,6 +5963,7 @@ function buildScopedScanData(scanData, target) {
                 date_range: scanData.date_range,
                 tree: oneTree,
                 ads: [ad],
+                _trend_source: scanData._trend_source,
                 evaluatedTotals: metricsFromAd(ad),
                 rangeContext: scanData.rangeContext,
                 summary: {
@@ -4296,6 +6053,10 @@ function buildFilteredScanData(scanData, filters) {
         date_range: scanData.date_range,
         tree: nextTree,
         ads: filteredAds,
+        _trend_source: scanData._trend_source,
+        entity_source_ads: originalAds.filter(function(ad) {
+            return passesOptimizerAudienceFilter(ad, audienceFilter);
+        }),
         evaluatedTotals: deriveMetrics(sumRaw(filteredAds)),
         rangeContext: scanData.rangeContext,
         summary: {
@@ -4564,6 +6325,8 @@ function buildApexRuntimeContext(scanData, benchmarks, campaignActions, adsetAct
     var adsetSettingsAudits = buildAdsetSettingsAudits(scanData, weightedBenchmarks, breakdownContext, externalPosture, signalAvailability, advancedTrendIntelligence);
     var adHealthAudits = buildAdHealthAudits(scanData, weightedBenchmarks, historicalWinnerLibrary, signalAvailability, advancedTrendIntelligence);
     var skillContracts = buildOptimizerSkillContracts();
+    var importedAuditSummary = buildImportedOptimizerAuditSummary(scanData);
+    var importedSkillContext = buildImportedSkillContextBlocks(scanData, weightedBenchmarks, breakdownContext, importedAuditSummary, trendSummary, advancedTrendIntelligence);
     var breakdownActionRecommendations = buildBreakdownActionRecommendations(breakdownContext);
     var campaigns = Object.keys(scanData.tree || {}).map(function(campaignName) {
         var camp = scanData.tree[campaignName];
@@ -4578,8 +6341,15 @@ function buildApexRuntimeContext(scanData, benchmarks, campaignActions, adsetAct
             budget_owner_name: camp.budget_entity_name || '',
             current_daily_budget: camp.budget_current_daily_budget || null,
             spend_window: Math.round((camp.totals && camp.totals.spend) || 0),
+            signups_window: Math.round((camp.totals && camp.totals.signups) || 0),
             d6_roas_window: +Number((camp.totals && camp.totals.d6ROAS) || 0).toFixed(1),
+            d15_roas_window: +Number((camp.totals && camp.totals.d15ROAS) || 0).toFixed(1),
+            d30_roas_window: +Number((camp.totals && camp.totals.d30ROAS) || 0).toFixed(1),
             signup_cost_window: (camp.totals && camp.totals.signupCost) != null ? Math.round(camp.totals.signupCost || 0) : null,
+            d0_trial_cost_window: (camp.totals && camp.totals.d0TrialCost) != null ? Math.round(camp.totals.d0TrialCost || 0) : null,
+            d6_conversions_window: Math.round((camp.totals && camp.totals.d6) || 0),
+            d15_conversions_window: Math.round((camp.totals && camp.totals.d15_overall_con) || 0),
+            d30_conversions_window: Math.round((camp.totals && camp.totals.d30_overall_con) || 0),
             adset_count: Object.keys(camp.adsets || {}).length,
             optimizer_flags: (campaignActions || []).filter(function(action) { return action.campaign === campaignName; }).slice(0, 5).map(function(action) { return action.action + ': ' + action.reason; })
         };
@@ -4612,8 +6382,15 @@ function buildApexRuntimeContext(scanData, benchmarks, campaignActions, adsetAct
                 audience_definition: adset.audience_definition || '',
                 audience_size_total: adset.audience_size_total || null,
                 spend_window: Math.round((adset.totals && adset.totals.spend) || 0),
+                signups_window: Math.round((adset.totals && adset.totals.signups) || 0),
                 d6_roas_window: +Number((adset.totals && adset.totals.d6ROAS) || 0).toFixed(1),
+                d15_roas_window: +Number((adset.totals && adset.totals.d15ROAS) || 0).toFixed(1),
+                d30_roas_window: +Number((adset.totals && adset.totals.d30ROAS) || 0).toFixed(1),
                 signup_cost_window: (adset.totals && adset.totals.signupCost) != null ? Math.round(adset.totals.signupCost || 0) : null,
+                d0_trial_cost_window: (adset.totals && adset.totals.d0TrialCost) != null ? Math.round(adset.totals.d0TrialCost || 0) : null,
+                d6_conversions_window: Math.round((adset.totals && adset.totals.d6) || 0),
+                d15_conversions_window: Math.round((adset.totals && adset.totals.d15_overall_con) || 0),
+                d30_conversions_window: Math.round((adset.totals && adset.totals.d30_overall_con) || 0),
                 red_ads: (adset.ads || []).filter(function(ad) { return ad.alertStatus === 'red'; }).length,
                 green_ads: (adset.ads || []).filter(function(ad) { return ad.alertStatus === 'green'; }).length,
                 optimizer_flags: (adsetActions || []).filter(function(action) { return action.campaign === campaignName && action.adset === adsetName; }).slice(0, 5).map(function(action) { return action.action + ': ' + action.reason; })
@@ -4650,10 +6427,16 @@ function buildApexRuntimeContext(scanData, benchmarks, campaignActions, adsetAct
             impressions_window: Math.round(ad.impressions || 0),
             installs_window: Math.round(ad.installs || 0),
             signups_window: Math.round(ad.signups || 0),
+            d0_trial_window: Math.round(ad.d0_trial || 0),
             d6_window: Math.round(ad.d6 || 0),
+            d15_window: Math.round(ad.d15_overall_con || 0),
+            d30_window: Math.round(ad.d30_overall_con || 0),
             d6_roas_window: +Number(ad.d6ROAS || 0).toFixed(1),
+            d15_roas_window: +Number(ad.d15ROAS || 0).toFixed(1),
+            d30_roas_window: +Number(ad.d30ROAS || 0).toFixed(1),
             d6_cac_window: ad.d6CAC != null ? Math.round(ad.d6CAC) : null,
             signup_cost_window: ad.signupCost != null ? Math.round(ad.signupCost) : null,
+            d0_trial_cost_window: ad.d0TrialCost != null ? Math.round(ad.d0TrialCost) : null,
             cpi_window: ad.cpi != null ? Math.round(ad.cpi) : null,
             ctr_window: ad.ctr != null ? +ad.ctr.toFixed(2) : null,
             is_matured: !!ad.isMatured,
@@ -4687,6 +6470,8 @@ function buildApexRuntimeContext(scanData, benchmarks, campaignActions, adsetAct
         },
         business_constants: businessConstants,
         skill_contracts: skillContracts,
+        imported_audit_summary: importedAuditSummary,
+        imported_skill_context: importedSkillContext,
         signal_availability: signalAvailability,
         advanced_trend_intelligence: advancedTrendIntelligence,
         account_snapshot: {
@@ -4717,9 +6502,14 @@ function buildApexRuntimeContext(scanData, benchmarks, campaignActions, adsetAct
                 signups: Math.round(totals.signups || 0),
                 signup_cost: totals.signupCost != null ? Math.round(totals.signupCost) : null,
                 d0_trial_cost: totals.d0TrialCost != null ? Math.round(totals.d0TrialCost) : null,
+                d0_trial: Math.round(totals.d0_trial || 0),
                 d6: Math.round(totals.d6 || 0),
+                d15: Math.round(totals.d15_overall_con || 0),
+                d30: Math.round(totals.d30_overall_con || 0),
                 d6_cac: totals.d6CAC != null ? Math.round(totals.d6CAC) : null,
                 d6_roas: totals.d6ROAS != null ? +totals.d6ROAS.toFixed(1) : null,
+                d15_roas: totals.d15ROAS != null ? +totals.d15ROAS.toFixed(1) : null,
+                d30_roas: totals.d30ROAS != null ? +totals.d30ROAS.toFixed(1) : null,
                 overall_roas: totals.overallROAS != null ? +totals.overallROAS.toFixed(1) : null
             },
             weekly_trend_summary: trendSummary,
@@ -4730,6 +6520,8 @@ function buildApexRuntimeContext(scanData, benchmarks, campaignActions, adsetAct
             },
             benchmark_summary: {
                 median_d6_roas: +(benchmarks.median_d6_roas || 0).toFixed(1),
+                median_d15_roas: +((weightedPercentileMetric((scanData.ads || []).filter(function(ad) { return ad && ad.has_funnel_match && (ad.spend || 0) > 0 && ad.audience_bucket !== 'retarget'; }), function(ad) { return ad.d15ROAS; }, function(ad) { return ad.spend || 0; }, 0.5) || 0)).toFixed(1),
+                median_d30_roas: +((weightedPercentileMetric((scanData.ads || []).filter(function(ad) { return ad && ad.has_funnel_match && (ad.spend || 0) > 0 && ad.audience_bucket !== 'retarget'; }), function(ad) { return ad.d30ROAS; }, function(ad) { return ad.spend || 0; }, 0.5) || 0)).toFixed(1),
                 median_signup_cost: Math.round(benchmarks.median_signup_cost || 0),
                 median_d0_trial_cost: Math.round(benchmarks.median_d0_trial_cost || 0),
                 median_cpi: Math.round(benchmarks.median_cpi || 0),
@@ -4854,9 +6646,14 @@ function buildApexPrompts(runtimeContext) {
         '- When breakdowns are present, use them for dimensional analysis. If a breakdown is unavailable or only contains delivery metrics, say so directly.',
         '- Treat meta_operator_audit as first-class evidence. Prioritize campaign settings, audience, location, placement, bid, pacing, and ad-level delivery issues before leaning only on funnel metrics.',
         '- campaign_settings_audits, adset_settings_audits, and ad_health_audits are deterministic operator inputs. Use them directly when they are strong, and do not replace them with vague wording.',
+        '- imported_skill_context is a deterministic operator layer. Use it explicitly for CPA, wasted spend, anomaly, pacing, geo/device, attribution, structure, and forecast calls. If a block is material, surface it as an explicit section or action in the output instead of burying it in a generic summary.',
         '- advanced_trend_intelligence is a first-class override. If ROAS or revenue improves while signup cost, D0 trial cost, or volume quality worsens, treat that as a sustainability warning rather than a clean scale signal.',
         '- Use advanced_trend_intelligence to reason about contradictory signals: rising ROAS with rising signup/D0 costs, falling ROAS despite cheaper signup cost, cheaper volume with weaker D6 quality, and early-trial improvement that does not translate into D6 value.',
-        '- Before analysis, audit data_integrity_gate. If Meta↔Metabase match quality is weak, say so clearly and avoid overconfident ROAS/CAC recommendations.',
+        '- Treat D0 trial cost as a predictive forward signal for D6 quality. If D0 trial cost is below weighted median or declining week on week, use that as a positive input unless stronger downstream evidence disproves it.',
+        '- Treat exceptional D15 ROAS and D30 ROAS as real quality signals. If long-tail ROAS is strong, do not jump straight to pause logic; explain how to improve the surrounding adset, audience, placement, or creative mix instead.',
+        '- Before analysis, audit data_integrity_gate. Daily-row Meta↔Metabase join rate is debug-only and is expected to run low because spend date and signup date differ. Do not treat low daily-row match alone as a reason to halt optimization.',
+        '- Expected spend-only rows are valid in this model: keep their spend in totals, exclude them from funnel benchmarks, and surface tracker caution only where material. Do not describe expected spend-only rows as corrupted data.',
+        '- If spend reconciliation, weighted-median coherence, or fresh status coverage are healthy, optimization can continue even when daily-row match is low. Be cautious on ROAS/CAC confidence where spend coverage is weak, but do not issue blanket "do not optimize" conclusions.',
         '- Treat unmatched retargeting ads as a special case: do not misclassify them as broken prospecting just because Metabase funnel rows are missing.',
         '- Use the injected playbook_rules as operating discipline. Do not improvise when a playbook scenario clearly matches.',
         '- All actions are pending approval by default.',
@@ -5022,13 +6819,184 @@ function buildApexPrompts(runtimeContext) {
 }
 
 async function generateOptimizationPlan(scanData) {
-    scanData = await enrichOptimizerSettings(scanData, window.OPTIMIZER_COMMAND_TYPE || 'daily_optimisation');
-    var scoped = buildScopedScanData(scanData, window.OPTIMIZER_TARGET || { type: 'account', query: '' });
+    var commandType = window.OPTIMIZER_COMMAND_TYPE || 'daily_optimisation';
+    var target = window.OPTIMIZER_TARGET || { type: 'account', query: '' };
+    var trendSearchSpec = parseTrendSearchPrompt(window.OPTIMIZER_USER_PROMPT || '');
+    var metricObjectiveSpec = parseMetricObjectivePrompt(window.OPTIMIZER_USER_PROMPT || '');
+    var growthDriverSpec = parseGrowthDriverPrompt(window.OPTIMIZER_USER_PROMPT || '');
+
+    var scoped = buildScopedScanData(scanData, target);
     scanData = scoped.scanData || scanData;
+    var deterministicStatusSpec = metricObjectiveSpec || trendSearchSpec || growthDriverSpec;
+    var preTrendStatusFilter = deterministicStatusSpec ? (deterministicStatusSpec.explicit_status || 'all') : (window.OPTIMIZER_STATUS_FILTER || 'live_only');
     scanData = buildFilteredScanData(scanData, {
         audienceFilter: window.OPTIMIZER_AUDIENCE_FILTER || 'all',
-        statusFilter: window.OPTIMIZER_STATUS_FILTER || 'live_only'
+        statusFilter: preTrendStatusFilter
     });
+
+    if (trendSearchSpec) {
+        var trendStatusFilter = preTrendStatusFilter;
+        var trendRuntimeContext = {
+            session_mode: window.OPTIMIZER_APEX_MODE || 'daily_review',
+            command_type: 'trend_search',
+            data_integrity_gate: buildDataIntegrityGate(scanData),
+            advanced_trend_intelligence: buildAdvancedTrendIntelligence(scanData),
+            external_posture: { active: false, posture: 'HOLD AND OPTIMISE', reason: 'Not needed for deterministic trend search.' },
+            skill_contracts: buildOptimizerSkillContracts(),
+            historical_winner_library: buildHistoricalWinnerLibrary(scanData),
+            breakdown_action_recommendations: [],
+            signal_availability: buildSignalAvailabilityContext(scanData, { available: false, breakdowns: {} })
+        };
+        var trendPlan = buildTrendSearchPlan(scanData, trendRuntimeContext, trendSearchSpec);
+        var currentRangeDays = getRangeDayCount(scanData && scanData.date_range);
+        var needsWiderTrendWindow = trendPlan && trendPlan.trend_search_result && (!trendPlan.trend_search_result.matches || !trendPlan.trend_search_result.matches.length) &&
+            /wow_pct/.test(trendSearchSpec.metric) &&
+            currentRangeDays < 42;
+        if (needsWiderTrendWindow) {
+            try {
+                var widerRange = widenTrendSearchRange(scanData.date_range, 42);
+                if (widerRange) {
+                    var widerScan = await scanAccount(function() {}, widerRange, { preserveGlobal: true });
+                    var widerScoped = buildScopedScanData(widerScan, target);
+                    widerScan = widerScoped.scanData || widerScan;
+                    widerScan = buildFilteredScanData(widerScan, {
+                        audienceFilter: window.OPTIMIZER_AUDIENCE_FILTER || 'all',
+                        statusFilter: trendStatusFilter
+                    });
+                    var widerTrendRuntimeContext = {
+                        session_mode: window.OPTIMIZER_APEX_MODE || 'daily_review',
+                        command_type: 'trend_search',
+                        data_integrity_gate: buildDataIntegrityGate(widerScan),
+                        advanced_trend_intelligence: buildAdvancedTrendIntelligence(widerScan),
+                        external_posture: { active: false, posture: 'HOLD AND OPTIMISE', reason: 'Not needed for deterministic trend search.' },
+                        skill_contracts: buildOptimizerSkillContracts(),
+                        historical_winner_library: buildHistoricalWinnerLibrary(widerScan),
+                        breakdown_action_recommendations: [],
+                        signal_availability: buildSignalAvailabilityContext(widerScan, { available: false, breakdowns: {} })
+                    };
+                    var widerTrendPlan = buildTrendSearchPlan(widerScan, widerTrendRuntimeContext, trendSearchSpec);
+                    if (widerTrendPlan && widerTrendPlan.trend_search_result && widerTrendPlan.trend_search_result.matches && widerTrendPlan.trend_search_result.matches.length) {
+                        trendPlan = widerTrendPlan;
+                        trendPlan.executive_summary += ' Used an expanded evidence window: ' + widerRange.since + ' → ' + widerRange.until + '.';
+                    } else if (trendPlan && trendPlan.operator_answer) {
+                        trendPlan.operator_answer += '\n\nNo strict match in the current window. Expanded trend read also checked: ' + widerRange.since + ' → ' + widerRange.until + '.';
+                    }
+                }
+            } catch (trendExpandErr) {
+                console.warn('[Optimizer] Trend-search range expansion failed:', trendExpandErr.message);
+            }
+        }
+        trendPlan.external_context = { available: false, fetched_at: new Date().toISOString(), limitations: ['Skipped for deterministic trend search.'] };
+        trendPlan.breakdown_context = { available: false, fetched_at: new Date().toISOString(), breakdowns: { age_gender: [], placement: [], device: [], geography: [], hourly: [] }, limitations: ['Skipped for deterministic trend search.'] };
+        trendPlan.data_integrity_gate = trendRuntimeContext.data_integrity_gate;
+        trendPlan.target_scope = scoped.targetSummary || null;
+        trendPlan.session_mode = trendRuntimeContext.session_mode;
+        trendPlan.command_type = 'trend_search';
+        trendPlan.deterministic_audits = { campaigns: [], adsets: [], ads: [] };
+        trendPlan.skill_contracts = trendRuntimeContext.skill_contracts;
+        trendPlan.signal_availability = trendRuntimeContext.signal_availability;
+        trendPlan.historical_winner_library = trendRuntimeContext.historical_winner_library;
+        trendPlan.advanced_trend_intelligence = trendRuntimeContext.advanced_trend_intelligence;
+        trendPlan.breakdown_action_recommendations = [];
+        trendPlan.external_posture = trendRuntimeContext.external_posture;
+        trendPlan.applied_filters = {
+            audience: window.OPTIMIZER_AUDIENCE_FILTER || 'all',
+            status: trendStatusFilter
+        };
+        trendPlan = enrichPlanWithScanContext(trendPlan, scanData);
+        trendPlan = normalizeOptimizationPlan(trendPlan, scanData);
+        trendPlan = finalizeOptimizerPlan(trendPlan, scanData);
+        window.OPTIMIZER_PLAN = trendPlan;
+        if (trendPlan.data_integrity_gate && trendPlan.data_integrity_gate.entity_match_rate_pct != null) {
+            window.OPTIMIZER_LAST_MATCH_RATE_PCT = Number(trendPlan.data_integrity_gate.entity_match_rate_pct || 0);
+            try { localStorage.setItem('optimizer_last_match_rate_pct', String(window.OPTIMIZER_LAST_MATCH_RATE_PCT)); } catch (e) {}
+        }
+        return trendPlan;
+    }
+
+    scanData = await enrichOptimizerSettings(scanData, commandType);
+    if (metricObjectiveSpec) {
+        var metricRange = buildMetricObjectiveEffectiveRange(scanData, metricObjectiveSpec);
+        var metricBreakdownContext;
+        try {
+            metricBreakdownContext = await fetchApexBreakdowns(metricRange);
+        } catch (metricBreakdownErr) {
+            metricBreakdownContext = {
+                available: false,
+                fetched_at: new Date().toISOString(),
+                breakdowns: { age_gender: [], placement: [], device: [], geography: [], hourly: [] },
+                limitations: ['Granular breakdown fetch failed: ' + (metricBreakdownErr ? metricBreakdownErr.message : 'unknown error')]
+            };
+        }
+        var metricPlan = buildMetricObjectivePlan(scanData, metricBreakdownContext, metricObjectiveSpec, metricRange);
+        metricPlan.external_context = { available: false, fetched_at: new Date().toISOString(), limitations: ['Skipped for deterministic metric-objective search.'] };
+        metricPlan.breakdown_context = metricBreakdownContext;
+        metricPlan.data_integrity_gate = buildDataIntegrityGate(scanData);
+        metricPlan.target_scope = scoped.targetSummary || null;
+        metricPlan.session_mode = window.OPTIMIZER_APEX_MODE || 'daily_review';
+        metricPlan.command_type = 'metric_objective_search';
+        metricPlan.deterministic_audits = { campaigns: [], adsets: [], ads: [] };
+        metricPlan.skill_contracts = buildOptimizerSkillContracts();
+        metricPlan.signal_availability = buildSignalAvailabilityContext(scanData, metricBreakdownContext);
+        metricPlan.historical_winner_library = buildHistoricalWinnerLibrary(scanData);
+        metricPlan.advanced_trend_intelligence = buildAdvancedTrendIntelligence(scanData);
+        metricPlan.breakdown_action_recommendations = buildBreakdownActionRecommendations(metricBreakdownContext);
+        metricPlan.external_posture = { active: false, posture: 'HOLD AND OPTIMISE', reason: 'Not needed for deterministic metric-objective search.' };
+        metricPlan.applied_filters = {
+            audience: window.OPTIMIZER_AUDIENCE_FILTER || 'all',
+            status: preTrendStatusFilter
+        };
+        metricPlan = enrichPlanWithScanContext(metricPlan, scanData);
+        metricPlan = normalizeOptimizationPlan(metricPlan, scanData);
+        metricPlan = finalizeOptimizerPlan(metricPlan, scanData);
+        window.OPTIMIZER_PLAN = metricPlan;
+        if (metricPlan.data_integrity_gate && metricPlan.data_integrity_gate.entity_match_rate_pct != null) {
+            window.OPTIMIZER_LAST_MATCH_RATE_PCT = Number(metricPlan.data_integrity_gate.entity_match_rate_pct || 0);
+            try { localStorage.setItem('optimizer_last_match_rate_pct', String(window.OPTIMIZER_LAST_MATCH_RATE_PCT)); } catch (e) {}
+        }
+        return metricPlan;
+    }
+    if (growthDriverSpec) {
+        var growthRange = scanData && scanData.date_range ? scanData.date_range : getSelectedDates();
+        var growthBreakdownContext;
+        try {
+            growthBreakdownContext = await fetchApexBreakdowns(growthRange);
+        } catch (growthBreakdownErr) {
+            growthBreakdownContext = {
+                available: false,
+                fetched_at: new Date().toISOString(),
+                breakdowns: { age_gender: [], placement: [], device: [], geography: [], hourly: [] },
+                limitations: ['Granular breakdown fetch failed: ' + (growthBreakdownErr ? growthBreakdownErr.message : 'unknown error')]
+            };
+        }
+        var growthPlan = buildGrowthDriverPlan(scanData, growthBreakdownContext, growthDriverSpec);
+        growthPlan.external_context = { available: false, fetched_at: new Date().toISOString(), limitations: ['Skipped for deterministic growth-driver search.'] };
+        growthPlan.breakdown_context = growthBreakdownContext;
+        growthPlan.data_integrity_gate = buildDataIntegrityGate(scanData);
+        growthPlan.target_scope = scoped.targetSummary || null;
+        growthPlan.session_mode = window.OPTIMIZER_APEX_MODE || 'daily_review';
+        growthPlan.command_type = 'growth_driver_search';
+        growthPlan.deterministic_audits = { campaigns: [], adsets: [], ads: [] };
+        growthPlan.skill_contracts = buildOptimizerSkillContracts();
+        growthPlan.signal_availability = buildSignalAvailabilityContext(scanData, growthBreakdownContext);
+        growthPlan.historical_winner_library = buildHistoricalWinnerLibrary(scanData);
+        growthPlan.advanced_trend_intelligence = buildAdvancedTrendIntelligence(scanData);
+        growthPlan.breakdown_action_recommendations = buildBreakdownActionRecommendations(growthBreakdownContext);
+        growthPlan.external_posture = { active: false, posture: 'HOLD AND OPTIMISE', reason: 'Not needed for deterministic growth-driver search.' };
+        growthPlan.applied_filters = {
+            audience: window.OPTIMIZER_AUDIENCE_FILTER || 'all',
+            status: window.OPTIMIZER_STATUS_FILTER || 'live_only'
+        };
+        growthPlan = enrichPlanWithScanContext(growthPlan, scanData);
+        growthPlan = normalizeOptimizationPlan(growthPlan, scanData);
+        growthPlan = finalizeOptimizerPlan(growthPlan, scanData);
+        window.OPTIMIZER_PLAN = growthPlan;
+        if (growthPlan.data_integrity_gate && growthPlan.data_integrity_gate.entity_match_rate_pct != null) {
+            window.OPTIMIZER_LAST_MATCH_RATE_PCT = Number(growthPlan.data_integrity_gate.entity_match_rate_pct || 0);
+            try { localStorage.setItem('optimizer_last_match_rate_pct', String(window.OPTIMIZER_LAST_MATCH_RATE_PCT)); } catch (e) {}
+        }
+        return growthPlan;
+    }
     var compactTree = buildCompactTree(scanData.tree);
 
     // Pre-compute rules-based actions to feed AI
@@ -5282,9 +7250,20 @@ async function generateOptimizationPlan(scanData) {
     }
 
     var runtimeRange = scanData && scanData.date_range ? scanData.date_range : getSelectedDates();
+    var needExternalContext = /morning_account_review|deep_dive|predict_30_days/.test(String(commandType || ''));
+    var needBreakdowns = commandType !== 'trend_search';
     var contextResults = await Promise.allSettled([
-        fetchApexExternalContext(),
-        fetchApexBreakdowns(runtimeRange)
+        needExternalContext ? fetchApexExternalContext() : Promise.resolve({
+            available: false,
+            fetched_at: new Date().toISOString(),
+            limitations: ['Skipped for this command.']
+        }),
+        needBreakdowns ? fetchApexBreakdowns(runtimeRange) : Promise.resolve({
+            available: false,
+            fetched_at: new Date().toISOString(),
+            breakdowns: { age_gender: [], placement: [], device: [], geography: [], hourly: [] },
+            limitations: ['Skipped for this command.']
+        })
     ]);
     var externalContext = contextResults[0].status === 'fulfilled' ? contextResults[0].value : {
         available: false,
@@ -5307,6 +7286,15 @@ async function generateOptimizationPlan(scanData) {
 
     var runtimeContext = buildApexRuntimeContext(scanData, benchmarks, campaignActions, adsetActions, rulesActions, compactTree, externalContext, breakdownContext);
     if (scoped.targetSummary) runtimeContext.target_scope = scoped.targetSummary;
+    var brainCacheKey = buildOptimizerBrainCacheKey(scanData, window.OPTIMIZER_USER_PROMPT || '', runtimeContext);
+    var cachedBrain = getOptimizerBrainCache(brainCacheKey);
+    if (cachedBrain) {
+        window.OPTIMIZER_PLAN = cachedBrain;
+        if (cachedBrain.data_integrity_gate && cachedBrain.data_integrity_gate.entity_match_rate_pct != null) {
+            window.OPTIMIZER_LAST_MATCH_RATE_PCT = Number(cachedBrain.data_integrity_gate.entity_match_rate_pct || 0);
+        }
+        return cachedBrain;
+    }
     var apexPrompts = buildApexPrompts(runtimeContext);
     var systemPrompt = apexPrompts.system;
     var userPrompt = apexPrompts.user;
@@ -5380,6 +7368,7 @@ async function generateOptimizationPlan(scanData) {
     plan = normalizeOptimizationPlan(plan, scanData);
     plan = finalizeOptimizerPlan(plan, scanData);
     window.OPTIMIZER_PLAN = plan;
+    setOptimizerBrainCache(brainCacheKey, plan);
     if (plan.data_integrity_gate && plan.data_integrity_gate.entity_match_rate_pct != null) {
         window.OPTIMIZER_LAST_MATCH_RATE_PCT = Number(plan.data_integrity_gate.entity_match_rate_pct || 0);
         try { localStorage.setItem('optimizer_last_match_rate_pct', String(window.OPTIMIZER_LAST_MATCH_RATE_PCT)); } catch (e) {}
@@ -5465,6 +7454,168 @@ async function executeAllActions(actions) {
 function saveLog() { try { localStorage.setItem('optimizer_log', JSON.stringify((window.OPTIMIZER_LOG || []).slice(-200))); } catch (e) {} }
 function loadLog() { try { return JSON.parse(localStorage.getItem('optimizer_log') || '[]'); } catch (e) { return []; } }
 
+var OPTIMIZER_BRAIN_CACHE = {};
+var OPTIMIZER_BRAIN_CACHE_TTL_MS = 15 * 60 * 1000;
+var OPTIMIZER_SCAN_CACHE_KEY = 'optimizer_scan_cache';
+var OPTIMIZER_SCAN_CACHE_TTL_MS = 30 * 60 * 1000;
+var OPTIMIZER_SCAN_CACHE_MEM = null;
+
+function loadOptimizerBrainCache() {
+    try { return JSON.parse(localStorage.getItem('optimizer_brain_cache') || '{}'); }
+    catch (e) { return {}; }
+}
+
+function saveOptimizerBrainCache(cache) {
+    try { localStorage.setItem('optimizer_brain_cache', JSON.stringify(cache || {})); } catch (e) {}
+}
+
+function hashOptimizerKey(value) {
+    var str = String(value || '');
+    var hash = 5381;
+    for (var i = 0; i < str.length; i++) {
+        hash = ((hash << 5) + hash) + str.charCodeAt(i);
+        hash = hash & 0x7fffffff;
+    }
+    return String(hash);
+}
+
+function buildOptimizerBrainCacheKey(scanData, prompt, runtimeContext) {
+    var summary = scanData && scanData.summary ? scanData.summary : {};
+    var dateRange = scanData && scanData.date_range ? scanData.date_range : {};
+    var integrity = runtimeContext && runtimeContext.data_integrity_gate ? runtimeContext.data_integrity_gate : (scanData && scanData.data_integrity_gate ? scanData.data_integrity_gate : {});
+    var fingerprint = {
+        platform: 'meta',
+        version: 2,
+        prompt: String(prompt || '').trim().toLowerCase(),
+        session_mode: runtimeContext && runtimeContext.session_mode || '',
+        command_type: runtimeContext && runtimeContext.command_type || '',
+        target: runtimeContext && runtimeContext.target_scope ? {
+            type: runtimeContext.target_scope.type || '',
+            label: String(runtimeContext.target_scope.label || '').trim().toLowerCase()
+        } : {},
+        date_range: {
+            since: dateRange.since || '',
+            until: dateRange.until || ''
+        },
+        totals: {
+            spend: Number((scanData && scanData.evaluatedTotals || {}).spend || 0),
+            signups: Number((scanData && scanData.evaluatedTotals || {}).signups || 0),
+            d6_roas: Number((scanData && scanData.evaluatedTotals || {}).d6ROAS || 0),
+            d6_cac: Number((scanData && scanData.evaluatedTotals || {}).d6CAC || 0)
+        },
+        summary: {
+            total_campaigns: Number(summary.total_campaigns || 0),
+            total_adsets: Number(summary.total_adsets || 0),
+            total_ads: Number(summary.total_ads || 0),
+            matured_ads: Number(summary.matured_ads || 0),
+            non_matured_ads: Number(summary.non_matured_ads || 0)
+        },
+        integrity: {
+            entity_match_rate_pct: Math.round(integrity.entity_match_rate_pct || integrity.adCoveragePct || 0),
+            spend_match_rate_pct: Math.round(integrity.spend_match_rate_pct || 0),
+            fresh_status_verified_pct: Math.round(integrity.fresh_status_verified_pct || 0),
+            safe_for_actioning: !!integrity.safe_for_actioning
+        }
+    };
+    return hashOptimizerKey(JSON.stringify(fingerprint));
+}
+
+function getOptimizerBrainCache(cacheKey) {
+    if (!OPTIMIZER_BRAIN_CACHE || !Object.keys(OPTIMIZER_BRAIN_CACHE).length) {
+        OPTIMIZER_BRAIN_CACHE = loadOptimizerBrainCache();
+    }
+    var item = OPTIMIZER_BRAIN_CACHE[cacheKey];
+    if (!item) return null;
+    if ((Date.now() - item.ts) > OPTIMIZER_BRAIN_CACHE_TTL_MS) {
+        delete OPTIMIZER_BRAIN_CACHE[cacheKey];
+        saveOptimizerBrainCache(OPTIMIZER_BRAIN_CACHE);
+        return null;
+    }
+    return item.value || null;
+}
+
+function setOptimizerBrainCache(cacheKey, value) {
+    if (!OPTIMIZER_BRAIN_CACHE) OPTIMIZER_BRAIN_CACHE = loadOptimizerBrainCache();
+    OPTIMIZER_BRAIN_CACHE[cacheKey] = { ts: Date.now(), value: value };
+    saveOptimizerBrainCache(OPTIMIZER_BRAIN_CACHE);
+}
+
+function getOptimizerScanCacheKey(dateRange) {
+    var range = dateRange || getSelectedDates();
+    return String(range && range.since || '') + '|' + String(range && range.until || '');
+}
+
+function cloneOptimizerScanForCache(scan) {
+    if (!scan) return null;
+    var cloned = Object.assign({}, scan);
+    if (scan.summary) cloned.summary = Object.assign({}, scan.summary);
+    if (scan.evaluatedTotals) cloned.evaluatedTotals = Object.assign({}, scan.evaluatedTotals);
+    if (scan.rangeContext) cloned.rangeContext = Object.assign({}, scan.rangeContext);
+    // Keep the expensive raw rows in memory only; persist the render-ready scan.
+    if (scan._trend_source) cloned._trend_source = { meta_rows: [], funnel_rows: [] };
+    return cloned;
+}
+
+function loadOptimizerScanCacheStore() {
+    try { return JSON.parse(localStorage.getItem(OPTIMIZER_SCAN_CACHE_KEY) || '{}'); }
+    catch (e) { return {}; }
+}
+
+function saveOptimizerScanCacheStore(cache) {
+    try { localStorage.setItem(OPTIMIZER_SCAN_CACHE_KEY, JSON.stringify(cache || {})); } catch (e) {}
+}
+
+function getCachedOptimizerScan(dateRange) {
+    var key = getOptimizerScanCacheKey(dateRange);
+    if (OPTIMIZER_SCAN_CACHE_MEM && OPTIMIZER_SCAN_CACHE_MEM.key === key) {
+        if ((Date.now() - OPTIMIZER_SCAN_CACHE_MEM.ts) <= OPTIMIZER_SCAN_CACHE_TTL_MS) return OPTIMIZER_SCAN_CACHE_MEM.scan;
+    }
+
+    var candidates = [];
+    try {
+        var sessionRaw = sessionStorage.getItem(OPTIMIZER_SCAN_CACHE_KEY + ':session');
+        if (sessionRaw) candidates.push(JSON.parse(sessionRaw));
+    } catch (e) {}
+    try {
+        var localRaw = localStorage.getItem(OPTIMIZER_SCAN_CACHE_KEY + ':local');
+        if (localRaw) candidates.push(JSON.parse(localRaw));
+    } catch (e) {}
+    if (!candidates.length) return null;
+
+    var now = Date.now();
+    for (var i = 0; i < candidates.length; i++) {
+        var item = candidates[i];
+        if (!item || item.key !== key) continue;
+        if ((now - Number(item.ts || 0)) > OPTIMIZER_SCAN_CACHE_TTL_MS) continue;
+        OPTIMIZER_SCAN_CACHE_MEM = { key: key, ts: Number(item.ts || 0), scan: item.scan || null };
+        return item.scan || null;
+    }
+    return null;
+}
+
+function setCachedOptimizerScan(scan, options) {
+    if (!scan || (options && options.skipCache)) return;
+    var key = getOptimizerScanCacheKey(scan.date_range);
+    scan._cached_at = scan._cached_at || new Date().toISOString();
+    scan._cache_key = key;
+    var payload = {
+        key: key,
+        ts: Date.now(),
+        scan: scan
+    };
+    OPTIMIZER_SCAN_CACHE_MEM = { key: key, ts: payload.ts, scan: scan };
+    try { sessionStorage.setItem(OPTIMIZER_SCAN_CACHE_KEY + ':session', JSON.stringify(payload)); } catch (e) {}
+    try { localStorage.setItem(OPTIMIZER_SCAN_CACHE_KEY + ':local', JSON.stringify({ key: key, ts: payload.ts, scan: cloneOptimizerScanForCache(scan) })); } catch (e) {}
+}
+
+function hydrateOptimizerScanFromCache() {
+    if (window.OPTIMIZER_SCAN) return window.OPTIMIZER_SCAN;
+    var cached = getCachedOptimizerScan(getSelectedDates());
+    if (!cached) return null;
+    window.OPTIMIZER_SCAN = cached;
+    return cached;
+}
+
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // UI RENDERING
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -5472,6 +7623,7 @@ function loadLog() { try { return JSON.parse(localStorage.getItem('optimizer_log
 window.renderOptimizer = function() {
     var container = document.getElementById('optimizerContent');
     if (!container) return;
+    hydrateOptimizerScanFromCache();
     var stage = window.OPTIMIZER_STAGE || 'scan';
     if (stage === 'plan' && window.OPTIMIZER_PLAN) renderPlanStage(container);
     else if (stage === 'execute') renderExecuteStage(container);
@@ -5481,7 +7633,7 @@ window.renderOptimizer = function() {
 // â”€â”€ SCAN STAGE â”€â”€
 
 function renderScanStage(container) {
-    var scan = window.OPTIMIZER_SCAN;
+    var scan = hydrateOptimizerScanFromCache() || window.OPTIMIZER_SCAN;
     var displayScan = scan ? buildFilteredScanData(scan, {
         audienceFilter: window.OPTIMIZER_AUDIENCE_FILTER || 'all',
         statusFilter: window.OPTIMIZER_STATUS_FILTER || 'live_only'
@@ -5491,6 +7643,7 @@ function renderScanStage(container) {
     var html = '<div class="ci-panel">' +
         '<h2>\u26a1 Campaign Optimizer</h2>' +
         '<p style="color:var(--text-dim);font-size:13px;margin-bottom:20px;">Scan all campaigns \u2192 AI generates optimization plan \u2192 one-click execute</p>' +
+        (scan && scan._cached_at ? '<div style="' + CARD + 'margin-bottom:16px;border-left:3px solid var(--green);">Loaded cached scan from ' + esc(Math.max(1, Math.round((Date.now() - new Date(scan._cached_at).getTime()) / 60000))) + ' min ago. Rescan to refresh.</div>' : '') +
 
         '<div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">' +
             '<label style="font-size:12px;color:var(--text-dim);">Date Range:</label>' +
@@ -6476,7 +8629,8 @@ function renderOperatorOverview(plan, scan, actions) {
         '<div style="' + CARD + 'border-left:3px solid var(--green);"><div style="font-size:10px;color:var(--text-dim);">D6 Overall ROAS</div><div style="font-size:16px;font-weight:700;color:var(--green);margin-top:4px;">' + (pulse.roas_window != null ? Number(pulse.roas_window).toFixed(1) + '%' : '--') + '</div></div>' +
         '<div style="' + CARD + 'border-left:3px solid var(--orange);"><div style="font-size:10px;color:var(--text-dim);">Ads In Current Slice</div><div style="font-size:16px;font-weight:700;color:var(--text);margin-top:4px;">' + esc(String(scanSummary.total_ads || 0)) + '</div><div style="font-size:10px;color:var(--text-dim);margin-top:4px;">' + esc(String(scanSummary.total_campaigns || 0)) + ' campaigns | ' + esc(String(scanSummary.total_adsets || 0)) + ' adsets</div></div>' +
         '<div style="' + CARD + 'border-left:3px solid var(--red);"><div style="font-size:10px;color:var(--text-dim);">Do Now</div><div style="font-size:16px;font-weight:700;color:var(--red);margin-top:4px;">' + esc(String(summary.p1 + summary.p2)) + '</div><div style="font-size:10px;color:var(--text-dim);margin-top:4px;">' + esc(String(summary.pause)) + ' pauses | ' + esc(String(summary.budget)) + ' budget moves</div></div>' +
-    '</div>';
+    '</div>' +
+    renderImportedSkillContextCard(plan.imported_skill_context || null);
 }
 
 function renderMarketerDailyReview(plan, actions) {
@@ -6495,6 +8649,7 @@ function renderMarketerDailyReview(plan, actions) {
         '<h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">APEX Morning Brief</h3>' +
         '<div style="' + CARD + 'margin-bottom:10px;border-left:3px solid var(--accent);"><div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Recommendation Basis</div><div style="font-size:12px;color:var(--text);line-height:1.7;">Date range: ' + esc(analysisBasis.range) + ' | Basis: ' + esc(analysisBasis.mode) + ' (' + esc(analysisBasis.detail) + ')</div></div>' +
         '<div style="' + CARD + 'margin-bottom:10px;border-left:3px solid var(--accent);"><div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Market Read</div><div style="font-size:12px;color:var(--text);line-height:1.7;">' + esc(marketRead.summary || plan.executive_summary || '--') + '</div><div style="font-size:11px;color:var(--accent);margin-top:6px;">Posture: ' + esc(marketRead.posture || 'HOLD AND OPTIMISE') + '</div></div>' +
+        renderImportedSkillContextCard(plan.imported_skill_context || null) +
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px;">' +
             '<div style="' + CARD + '"><div style="font-size:10px;color:var(--text-dim);">Spend Today</div><div style="font-size:14px;font-weight:700;color:var(--text);margin-top:4px;">' + esc(pulse.spend_today || '--') + '</div></div>' +
             '<div style="' + CARD + '"><div style="font-size:10px;color:var(--text-dim);">ROAS 7d</div><div style="font-size:14px;font-weight:700;color:var(--green);margin-top:4px;">' + esc(pulse.roas_7d || '--') + '</div></div>' +
@@ -6588,6 +8743,7 @@ function renderMarketerDiagnosis(plan, scan) {
     return '<div style="' + CS + '">' +
         renderSignalAvailabilityCard(plan) +
         '<h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Why Performance Looks Like This</h3>' +
+        renderImportedSkillContextCard(plan.imported_skill_context || null) +
         (perf.length ? perf.map(function(item) {
             return '<div style="' + CARD + 'margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:var(--text);">' + esc(item.metric || '--') + '</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">' + esc(item.attributed_cause || '--') + '</div><div style="font-size:11px;color:var(--accent);margin-top:4px;">Confidence: ' + esc(item.confidence || '--') + '</div></div>';
         }).join('') : '') +
@@ -6614,6 +8770,7 @@ function renderMarketerScaleAndTest(plan, scan) {
     var greenAds = (scan && scan.ads || []).filter(function(a) { return a.is_live && a.alertStatus === 'green'; }).sort(function(a, b) { return (b.d6ROAS || 0) - (a.d6ROAS || 0); }).slice(0, 3);
     return '<div style="' + CS + '">' +
         '<h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Next Moves</h3>' +
+        renderImportedSkillContextCard(plan.imported_skill_context || null) +
         (scaling.length ? '<div style="margin-bottom:12px;"><div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;">Scale Steps</div>' + scaling.map(function(item) {
             return '<div style="' + CARD + 'margin-bottom:8px;"><div style="font-size:12px;font-weight:600;color:var(--green);">' + esc(item.adset_name || '--') + '</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">' + esc(item.budget_today != null ? fmtINR(item.budget_today) : '--') + ' → ' + esc(item.budget_day3 != null ? fmtINR(item.budget_day3) : '--') + ' → ' + esc(item.budget_day7 != null ? fmtINR(item.budget_day7) : '--') + '</div><div style="font-size:11px;color:var(--accent);margin-top:4px;">Watch: ' + esc(item.watch_metric || '--') + '</div></div>';
         }).join('') + '</div>' : '') +
@@ -7395,7 +9552,8 @@ function renderAccountOverviewTree(scan, plan) {
                     '<div style="' + CARD + 'margin-top:10px;border-left:3px solid var(--orange);">' +
                         '<div style="font-size:12px;font-weight:700;color:var(--orange);margin-bottom:8px;">' + esc(creativeRefreshSummary.action) + '</div>' +
                         (creativeRefreshSummary.pause_now.length ? '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Pause now: ' + esc(creativeRefreshSummary.pause_now.join(' | ')) + '</div>' : '') +
-                        (creativeRefreshSummary.replace_or_refresh.length ? '<div style="font-size:11px;color:var(--text-dim);">Replace / refresh: ' + esc(creativeRefreshSummary.replace_or_refresh.map(function(item) { return item.ad_name + ' → ' + item.next; }).join(' | ')) + '</div>' : '') +
+                        (creativeRefreshSummary.replace_or_refresh.length ? '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Replace / refresh: ' + esc(creativeRefreshSummary.replace_or_refresh.map(function(item) { return item.ad_name + ' → ' + item.next; }).join(' | ')) + '</div>' : '') +
+                        (creativeRefreshSummary.suggested_ads && creativeRefreshSummary.suggested_ads.length ? '<div style="font-size:11px;color:var(--accent);">Suggested ads: ' + esc(creativeRefreshSummary.suggested_ads.join(' | ')) + '</div>' : '') +
                     '</div>'
                 ) : '') +
                 (!ads.length ? '<div style="font-size:12px;color:var(--text-dim);">No live ads found inside this adset.</div>' : '');
@@ -7410,6 +9568,9 @@ function renderApexV2Stage(container, plan, mode, actions, currentFilter, curren
     var appliedFilters = plan.applied_filters || {};
     var displayScan = getCurrentOptimizerDisplayScan();
     var analysisBasis = derivePlanAnalysisBasis(plan, displayScan);
+    var trendBreakdownHtml = plan.command_type === 'trend_search' ? renderTrendSearchBreakdown(plan) : '';
+    var metricObjectiveHtml = plan.command_type === 'metric_objective_search' ? renderMetricObjectiveBreakdown(plan) : '';
+    var growthBreakdownHtml = plan.command_type === 'growth_driver_search' ? renderGrowthDriverBreakdown(plan) : '';
     var html = '<div class="ci-panel">' +
         '<h2>⚡ Optimizer</h2>' +
         '<div style="font-size:11px;color:var(--text-dim);margin:-6px 0 16px 0;">' + esc(modeConfig.label) + ' | ' + esc(modeConfig.sublabel) + '</div>' +
@@ -7433,7 +9594,7 @@ function renderApexV2Stage(container, plan, mode, actions, currentFilter, curren
         '<div style="' + CARD + 'margin-bottom:10px;border-left:3px solid var(--accent);"><div style="font-size:10px;color:var(--text-dim);">Analysis Basis</div><div style="font-size:13px;color:var(--text);margin-top:4px;">Date range: ' + esc(analysisBasis.range) + '</div><div style="font-size:11px;color:var(--text-dim);margin-top:6px;">Mode: ' + esc(analysisBasis.mode) + ' | ' + esc(analysisBasis.detail) + '</div></div>' +
         '<div style="' + CARD + 'margin-bottom:10px;border-left:3px solid var(--accent);"><div style="font-size:10px;color:var(--text-dim);">Current Working Slice</div><div style="font-size:13px;color:var(--text);margin-top:4px;">' + esc(titleCaseWords(String(appliedFilters.audience || 'all').replace('_', ' '))) + ' | ' + esc(titleCaseWords(String(appliedFilters.status || 'all').replace('_', ' '))) + '</div></div>' +
         (plan.data_integrity_gate ? '<div style="' + CARD + 'margin-bottom:10px;border-left:3px solid ' + (plan.data_integrity_gate.safe_for_actioning ? 'var(--green)' : 'var(--orange)') + ';"><div style="font-size:10px;color:var(--text-dim);">Data Integrity</div><div style="font-size:13px;color:var(--text);margin-top:4px;">Ad coverage ' + esc(String(plan.data_integrity_gate.entity_match_rate_pct || plan.data_integrity_gate.match_rate_pct || 0)) + '% | Spend coverage ' + esc(String(plan.data_integrity_gate.spend_match_rate_pct || 0)) + '% | Fresh status ' + esc(String(plan.data_integrity_gate.fresh_status_verified_pct || 0)) + '%</div><div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.6;">Daily-row match ' + esc(String(plan.data_integrity_gate.daily_row_match_rate_pct || plan.data_integrity_gate.match_rate_pct || 0)) + '%</div>' + (plan.data_integrity_gate.provisional_only ? '<div style="font-size:11px;color:var(--orange);margin-top:6px;line-height:1.6;">Recommendations are provisional until failed integrity checks are resolved.</div>' : '') + ((plan.data_integrity_gate.session_checks && plan.data_integrity_gate.session_checks.length) ? '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.6;">' + esc(plan.data_integrity_gate.session_checks.map(function(check) { return check.name + ': ' + check.status; }).join(' | ')) + '</div>' : '') + ((plan.data_integrity_gate.key_problems && plan.data_integrity_gate.key_problems.length) ? '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.6;">' + esc(plan.data_integrity_gate.key_problems[0]) + '</div>' : ((plan.data_integrity_gate.warnings && plan.data_integrity_gate.warnings.length) ? '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.6;">' + esc(plan.data_integrity_gate.warnings[0]) + '</div>' : '')) + '</div>' : '') +
-        (plan.operator_answer ? '<div style="' + CARD + 'margin-bottom:16px;border-left:3px solid var(--orange);"><div style="font-size:10px;color:var(--text-dim);margin-bottom:8px;">APEX Answer</div><div style="font-size:13px;color:var(--text);line-height:1.7;">' + nl2br(plan.operator_answer) + '</div></div>' : '') +
+        (trendBreakdownHtml || metricObjectiveHtml || growthBreakdownHtml || (plan.operator_answer ? '<div style="' + CARD + 'margin-bottom:16px;border-left:3px solid var(--orange);"><div style="font-size:10px;color:var(--text-dim);margin-bottom:8px;">APEX Answer</div><div style="font-size:13px;color:var(--text);line-height:1.7;">' + nl2br(plan.operator_answer) + '</div></div>' : '')) +
         renderOperatorOverview(plan, displayScan, actions) +
         (plan.executive_summary ? '<div style="' + CARD + 'margin-bottom:16px;border-left:3px solid var(--accent);">' + esc(plan.executive_summary) + '</div>' : '');
 
@@ -7890,11 +10051,11 @@ function bindScanEvents(container) {
                 await scanAccount(function(msg) { prog.textContent = msg; });
                 window.OPTIMIZER_STAGE = 'scan';
                 renderOptimizer();
-            } catch (err) {
-                prog.innerHTML = '<span style="color:var(--red);">Scan failed: ' + esc(err.message) + '</span>';
-                scanBtn.disabled = false; scanBtn.textContent = '\ud83d\udd0d Scan Full Account';
-            }
-        });
+        } catch (err) {
+            prog.innerHTML = '<span style="color:var(--red);">Scan failed: ' + esc(err.message) + '</span>';
+            scanBtn.disabled = false; scanBtn.textContent = '\ud83d\udd0d Scan Full Account';
+        }
+    });
     }
 
     var planBtn = document.getElementById('optPlanBtn');

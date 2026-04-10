@@ -1,0 +1,20 @@
+{
+  "campaign_id": "120242304634610636",
+  "existing_adset_id": "120242597857250636",
+  "ad_name": "CODEx_HealthCheck_Fincart_080426_1",
+  "ad_status": "PAUSED",
+  "creative_name": "CODEx_HealthCheck_Fincart_080426_1",
+  "primary_text": "Tired of endless research? Get SEBI-registered advice. Clear entry and exit alerts. Trusted by 50L+ investors. Start free trial now.",
+  "headline": "Don’t Miss The Next One",
+  "description": "",
+  "cta": "SUBSCRIBE",
+  "creative_type": "VIDEO",
+  "app_id": "495909759024406",
+  "object_store_url": "http://play.google.com/store/apps/details?id=com.univest.capp",
+  "custom_event_type": "PURCHASE",
+  "page_id": "100391482646475",
+  "link_url": "",
+  "asset_horizontal": "https://drive.google.com/file/d/1z6oCtLZs8hYlYGJz1U29RLiTrsdNXyDM/view?usp=drive_link",
+  "asset_vertical": "https://drive.google.com/file/d/1fyI2qAJVtxu0mwxW-SBqjvDjbK4SPD3R/view?usp=drive_link",
+  "asset_square": "https://drive.google.com/file/d/1ECl9IgUquzVVoyEgqKC68IWUkhtVMDHf/view?usp=drive_link"
+}

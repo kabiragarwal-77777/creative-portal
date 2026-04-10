@@ -1,0 +1,18 @@
+{
+  "name": "meta-ad-uploader",
+  "version": "1.0.0",
+  "description": "Automated Meta ad upload tool - reads config from Google Sheets, creates adsets and ads with multi-size creatives",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.79.0",
+    "dotenv": "^17.3.1",
+    "express": "^4.18.0",
+    "form-data": "^4.0.0",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.3",
+    "openai": "^6.32.0"
+  }
+}

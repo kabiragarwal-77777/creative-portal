@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Analyser</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        if (typeof XLSX === 'undefined') {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');
+        }
+    </script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #08080d;
+            --bg-card: #12121c;
+            --bg-input: #1a1a2e;
+            --bg-user: #1e1e3a;
+            --bg-ai: #12121c;
+            --accent: #6c5ce7;
+            --accent-hover: #7f71ed;
+            --green: #00d4aa;
+            --red: #ff6b6b;
+            --orange: #ffa94d;
+            --text: #e2e2e2;
+            --text-muted: #888;
+            --border: #2a2a3e;
+            --radius: 10px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Data Sources Bar ── */
+        .sources-bar {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 24px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .sources-bar label.bar-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+        }
+
+        .source-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 12px;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .source-chip.active {
+            border-color: var(--accent);
+            color: var(--text);
+            background: rgba(108, 92, 231, 0.12);
+        }
+
+        .source-chip.file-active {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        .source-chip input[type="url"], .source-chip input[type="text"] {
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 12px;
+            outline: none;
+            width: 260px;
+        }
+
+        .source-chip input::placeholder { color: var(--text-muted); }
+
+        .source-chip .tab-input {
+            width: 100px;
+            border-left: 1px solid var(--border);
+            padding-left: 8px;
+            margin-left: 4px;
+        }
+
+        .file-chip { cursor: pointer; }
+        .file-chip:hover { border-color: var(--accent); }
+        .file-chip input { display: none; }
+
+        /* Meta toggle in bar */
+        .meta-chip {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .meta-chip .mini-toggle {
+            width: 28px; height: 16px;
+            background: var(--bg);
+            border-radius: 8px;
+            position: relative;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .meta-chip .mini-toggle::after {
+            content: '';
+            width: 12px; height: 12px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            position: absolute;
+            top: 2px; left: 2px;
+            transition: all 0.2s;
+        }
+
+        .meta-chip.active .mini-toggle {
+            background: var(--accent);
+        }
+
+        .meta-chip.active .mini-toggle::after {
+            left: 14px;
+            background: #fff;
+        }
+
+        .meta-date-select {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 11px;
+            padding: 2px 6px;
+            outline: none;
+            display: none;
+        }
+
+        .meta-chip.active .meta-date-select { display: inline-block; }
+
+        .source-divider {
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .btn-new-chat {
+            margin-left: auto;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 11px;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-new-chat:hover { border-color: var(--red); color: var(--red); }
+
+        .btn-download-chat {
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-family: inherit;
+            font-size: 11px;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: none;
+        }
+        .btn-download-chat:hover { border-color: var(--green); color: var(--green); }
+        .btn-download-chat.visible { display: block; }
+
+        /* ── Chat Area ── */
+        .chat-area {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .chat-area::-webkit-scrollbar { width: 5px; }
+        .chat-area::-webkit-scrollbar-track { background: transparent; }
+        .chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        /* Welcome state */
+        .chat-welcome {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            gap: 16px;
+        }
+
+        .chat-welcome svg { opacity: 0.25; }
+
+        .chat-welcome h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .chat-welcome p {
+            font-size: 13px;
+            max-width: 450px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .suggestion-chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 8px;
+        }
+
+        .suggestion-chip {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .suggestion-chip:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+
+        /* Messages */
+        .msg {
+            max-width: 85%;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .msg-user {
+            align-self: flex-end;
+            background: var(--bg-user);
+            border: 1px solid rgba(108, 92, 231, 0.3);
+            border-radius: 14px 14px 4px 14px;
+            padding: 12px 18px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text);
+        }
+
+        .msg-ai {
+            align-self: flex-start;
+            background: var(--bg-ai);
+            border: 1px solid var(--border);
+            border-radius: 14px 14px 14px 4px;
+            padding: 20px 24px;
+            font-size: 13px;
+            line-height: 1.6;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        .msg-ai .section-header {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text);
+            margin: 24px 0 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .msg-ai .section-header:first-child { margin-top: 0; }
+        .msg-ai h3 { font-size: 14px; font-weight: 600; color: var(--text); margin: 16px 0 8px; }
+        .msg-ai p { font-size: 13px; line-height: 1.7; color: #ccc; margin-bottom: 8px; }
+        .msg-ai ul, .msg-ai ol { margin: 8px 0 8px 20px; font-size: 13px; line-height: 1.8; color: #ccc; }
+        .msg-ai strong { color: var(--text); }
+
+        .msg-ai .metric-highlight {
+            background: rgba(108, 92, 231, 0.2);
+            color: #a78bfa;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 12.5px;
+        }
+
+        .msg-ai .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 12px;
+        }
+
+        .msg-ai .report-table th {
+            background: var(--bg-input);
+            color: var(--text);
+            font-weight: 600;
+            text-align: left;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+        }
+
+        .msg-ai .report-table td {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            color: #ccc;
+        }
+
+        .msg-ai .report-table tr:nth-child(even) td { background: rgba(26, 26, 46, 0.5); }
+
+        .msg-ai .insight-card {
+            background: rgba(108, 92, 231, 0.08);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 12px 16px;
+            margin: 10px 0;
+            font-size: 12.5px;
+            line-height: 1.6;
+            color: #ccc;
+        }
+
+        .msg-ai .recommendation {
+            background: rgba(0, 212, 170, 0.08);
+            border-left: 3px solid var(--green);
+            border-radius: 0 8px 8px 0;
+            padding: 12px 16px;
+            margin: 10px 0;
+        }
+
+        .msg-ai .warning-card {
+            background: rgba(255, 107, 107, 0.08);
+            border-left: 3px solid var(--red);
+            border-radius: 0 8px 8px 0;
+            padding: 12px 16px;
+            margin: 10px 0;
+        }
+
+        /* Typing indicator */
+        .msg-typing {
+            align-self: flex-start;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 20px;
+            background: var(--bg-ai);
+            border: 1px solid var(--border);
+            border-radius: 14px 14px 14px 4px;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dots span {
+            width: 6px; height: 6px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            animation: typingBounce 1.2s infinite;
+        }
+
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-4px); opacity: 1; }
+        }
+
+        /* Data loaded badge */
+        .data-badge {
+            align-self: center;
+            background: rgba(0, 212, 170, 0.1);
+            border: 1px solid rgba(0, 212, 170, 0.3);
+            border-radius: 20px;
+            padding: 6px 16px;
+            font-size: 11px;
+            color: var(--green);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ── Chat Input ── */
+        .chat-input-area {
+            flex-shrink: 0;
+            padding: 16px 24px 20px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-card);
+        }
+
+        .chat-input-wrap {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            max-width: 100%;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 13px;
+            padding: 12px 16px;
+            outline: none;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+            line-height: 1.5;
+            transition: border-color 0.2s;
+        }
+
+        .chat-input:focus { border-color: var(--accent); }
+
+        .chat-input::placeholder { color: var(--text-muted); }
+
+        .send-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: var(--accent);
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover { background: var(--accent-hover); }
+        .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .send-btn svg { width: 18px; height: 18px; }
+    </style>
+</head>
+<body>
+    <!-- Data Sources Bar -->
+    <div class="sources-bar">
+        <label class="bar-label">Data:</label>
+
+        <div class="source-chip" id="sheetChip">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+            <input type="url" id="sheetUrl" placeholder="Google Sheets link...">
+            <input type="text" id="tabName" class="tab-input" placeholder="Tab name">
+        </div>
+
+        <span class="source-divider">+</span>
+
+        <div class="source-chip file-chip" id="fileChip">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+            <span id="fileLabel">Upload .xlsx / .csv</span>
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.tsv">
+        </div>
+
+        <span class="source-divider">+</span>
+
+        <div class="source-chip meta-chip" id="metaChip">
+            <div class="mini-toggle"></div>
+            <span>Meta Ads</span>
+            <select class="meta-date-select" id="metaDatePreset" onclick="event.stopPropagation()">
+                <option value="maximum" selected>Lifetime</option>
+                <option value="last_7d">7d</option>
+                <option value="last_14d">14d</option>
+                <option value="last_30d">30d</option>
+                <option value="last_90d">90d</option>
+                <option value="this_month">This month</option>
+                <option value="last_month">Last month</option>
+            </select>
+        </div>
+
+        <button class="btn-download-chat" id="downloadBtn" title="Download full conversation as report">Download</button>
+        <button class="btn-new-chat" id="newChatBtn" title="Clear chat and start fresh">New Chat</button>
+    </div>
+
+    <!-- Chat Area -->
+    <div class="chat-area" id="chatArea">
+        <div class="chat-welcome" id="welcome">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M3 3h18v18H3z"/><path d="M3 9h18M9 3v18M15 13l-3 3-2-2"/>
+            </svg>
+            <h2>Data Analyser</h2>
+            <p>Connect your data sources above, then ask anything about your data. I'll analyse it and give you actionable insights.</p>
+            <div class="suggestion-chips">
+                <button class="suggestion-chip" data-prompt="Give me a full performance breakdown of all campaigns">Full performance breakdown</button>
+                <button class="suggestion-chip" data-prompt="Identify the top 5 and bottom 5 performers by ROAS and recommend budget changes">Top & bottom performers</button>
+                <button class="suggestion-chip" data-prompt="Analyse trends over time and flag any anomalies or concerning patterns">Trend analysis & anomalies</button>
+                <button class="suggestion-chip" data-prompt="What campaigns should I pause and which should I scale? Give specific budget recommendations">Budget recommendations</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Input -->
+    <div class="chat-input-area">
+        <div class="chat-input-wrap">
+            <textarea class="chat-input" id="chatInput" placeholder="Ask about your data..." rows="1"></textarea>
+            <button class="send-btn" id="sendBtn" title="Send">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const $ = id => document.getElementById(id);
+
+        const sheetUrlInput = $('sheetUrl');
+        const tabNameInput = $('tabName');
+        const sheetChip = $('sheetChip');
+        const fileChip = $('fileChip');
+        const fileInput = $('fileInput');
+        const fileLabel = $('fileLabel');
+        const metaChip = $('metaChip');
+        const metaDatePreset = $('metaDatePreset');
+        const chatArea = $('chatArea');
+        const welcome = $('welcome');
+        const chatInput = $('chatInput');
+        const sendBtn = $('sendBtn');
+        const newChatBtn = $('newChatBtn');
+        const downloadBtn = $('downloadBtn');
+
+        let uploadedCSV = null;
+        let conversationHistory = []; // OpenAI message history
+        let dataLoaded = false;       // Whether first message has loaded data
+        let allReports = [];          // For download
+        let sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+
+        // ── Sheet chip highlight ──
+        sheetUrlInput.addEventListener('input', () => {
+            sheetChip.classList.toggle('active', sheetUrlInput.value.trim().length > 0);
+        });
+
+        // ── File Upload ──
+        fileChip.addEventListener('click', (e) => {
+            // Prevent double-trigger: only open file dialog if the click wasn't from the input itself
+            if (e.target !== fileInput) {
+                fileInput.value = ''; // reset so re-selecting same file triggers change
+                fileInput.click();
+            }
+        });
+
+        fileChip.addEventListener('dragover', e => { e.preventDefault(); fileChip.style.borderColor = 'var(--accent)'; });
+        fileChip.addEventListener('dragleave', () => { fileChip.style.borderColor = ''; });
+        fileChip.addEventListener('drop', e => {
+            e.preventDefault();
+            fileChip.style.borderColor = '';
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) handleFile(fileInput.files[0]);
+        });
+
+        function handleFile(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (!['xlsx', 'xls', 'csv', 'tsv'].includes(ext)) {
+                fileLabel.textContent = 'Unsupported format';
+                return;
+            }
+
+            fileLabel.textContent = file.name.length > 20 ? file.name.slice(0, 17) + '...' : file.name;
+
+            if (ext === 'csv' || ext === 'tsv') {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    uploadedCSV = e.target.result;
+                    fileChip.classList.add('file-active');
+                    console.log('[Analyser] CSV loaded:', uploadedCSV.length, 'chars');
+                };
+                reader.onerror = () => {
+                    fileLabel.textContent = 'Read error';
+                    uploadedCSV = null;
+                };
+                reader.readAsText(file);
+            } else {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    try {
+                        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                        // Combine all sheets
+                        let allCsv = '';
+                        wb.SheetNames.forEach((name, i) => {
+                            const csv = XLSX.utils.sheet_to_csv(wb.Sheets[name]);
+                            if (csv.trim()) {
+                                if (wb.SheetNames.length > 1) {
+                                    allCsv += (i > 0 ? '\n\n' : '') + '--- Sheet: ' + name + ' ---\n' + csv;
+                                } else {
+                                    allCsv = csv;
+                                }
+                            }
+                        });
+                        uploadedCSV = allCsv;
+                        fileChip.classList.add('file-active');
+                        console.log('[Analyser] Excel loaded:', wb.SheetNames.length, 'sheets,', uploadedCSV.length, 'chars');
+                    } catch (err) {
+                        console.error('[Analyser] Excel parse error:', err);
+                        fileLabel.textContent = 'Parse error';
+                        uploadedCSV = null;
+                    }
+                };
+                reader.onerror = () => {
+                    fileLabel.textContent = 'Read error';
+                    uploadedCSV = null;
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        // ── Meta Toggle ──
+        metaChip.addEventListener('click', () => {
+            metaChip.classList.toggle('active');
+        });
+
+        // ── Auto-resize textarea ──
+        chatInput.addEventListener('input', () => {
+            chatInput.style.height = 'auto';
+            chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+        });
+
+        // ── Send on Enter (Shift+Enter for newline) ──
+        chatInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        sendBtn.addEventListener('click', sendMessage);
+
+        // ── Suggestion chips ──
+        document.querySelectorAll('.suggestion-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                chatInput.value = chip.dataset.prompt;
+                chatInput.dispatchEvent(new Event('input'));
+                sendMessage();
+            });
+        });
+
+        // ── New Chat ──
+        newChatBtn.addEventListener('click', () => {
+            conversationHistory = [];
+            dataLoaded = false;
+            allReports = [];
+            sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+            chatArea.innerHTML = '';
+            chatArea.appendChild(welcome);
+            welcome.style.display = 'flex';
+            downloadBtn.classList.remove('visible');
+        });
+
+        // ── Send Message ──
+        async function sendMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            const hasSheet = sheetUrlInput.value.trim().length > 0;
+            const hasFile = uploadedCSV !== null;
+            const hasMeta = metaChip.classList.contains('active');
+
+            if (!dataLoaded && !hasSheet && !hasFile && !hasMeta) {
+                addSystemBadge('Connect at least one data source above first');
+                return;
+            }
+
+            // Hide welcome
+            welcome.style.display = 'none';
+
+            // Add user message to UI
+            addUserMsg(text);
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            sendBtn.disabled = true;
+
+            // Show typing indicator
+            const typing = addTypingIndicator();
+
+            try {
+                const body = {
+                    prompt: text,
+                    messages: conversationHistory,
+                    tabName: tabNameInput.value.trim(),
+                    sessionId: sessionId,
+                };
+
+                // Only send data sources on first message (or if not yet loaded)
+                if (!dataLoaded) {
+                    if (hasFile) body.csvData = uploadedCSV;
+                    if (hasSheet) body.sheetUrl = sheetUrlInput.value.trim();
+                    if (hasMeta) {
+                        body.includeMeta = true;
+                        body.metaDatePreset = metaDatePreset.value;
+                    }
+                }
+
+                const res = await fetch('/api/analyse', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Analysis failed');
+
+                // Remove typing, add AI response
+                typing.remove();
+
+                // Show data badge on first message
+                if (!dataLoaded) {
+                    const sources = [];
+                    if (hasSheet) sources.push('Google Sheet');
+                    if (hasFile) sources.push('Uploaded file');
+                    if (hasMeta) sources.push('Meta Ads API');
+                    addSystemBadge('Data loaded: ' + sources.join(' + '));
+                    dataLoaded = true;
+                }
+
+                addAIMsg(data.report);
+                allReports.push(data.report);
+                downloadBtn.classList.add('visible');
+
+                // Update conversation history
+                conversationHistory = data.history || conversationHistory;
+
+            } catch (err) {
+                typing.remove();
+                addSystemBadge('Error: ' + err.message);
+            } finally {
+                sendBtn.disabled = false;
+                chatInput.focus();
+            }
+        }
+
+        // ── UI Helpers ──
+        function addUserMsg(text) {
+            const div = document.createElement('div');
+            div.className = 'msg msg-user';
+            div.textContent = text;
+            chatArea.appendChild(div);
+            conversationHistory.push({ role: 'user', content: text });
+            scrollToBottom();
+        }
+
+        function addAIMsg(html) {
+            const div = document.createElement('div');
+            div.className = 'msg msg-ai';
+            div.innerHTML = html;
+            chatArea.appendChild(div);
+            scrollToBottom();
+        }
+
+        function addTypingIndicator() {
+            const div = document.createElement('div');
+            div.className = 'msg-typing';
+            div.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div> Analysing...';
+            chatArea.appendChild(div);
+            scrollToBottom();
+            return div;
+        }
+
+        function addSystemBadge(text) {
+            const div = document.createElement('div');
+            div.className = 'data-badge';
+            div.textContent = text;
+            chatArea.appendChild(div);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            requestAnimationFrame(() => {
+                chatArea.scrollTop = chatArea.scrollHeight;
+            });
+        }
+
+        // ── Download ──
+        downloadBtn.addEventListener('click', () => {
+            const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Analysis Report</title>
+<style>
+body{font-family:'Segoe UI',Arial,sans-serif;max-width:900px;margin:40px auto;padding:0 20px;color:#222;line-height:1.6}
+h2{color:#4a3db5;border-bottom:2px solid #eee;padding-bottom:8px;margin-top:32px}
+h3{color:#333;margin-top:24px}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px}
+th{background:#f0eeff;color:#333;font-weight:600;text-align:left;padding:10px 14px;border:1px solid #ddd}
+td{padding:9px 14px;border:1px solid #ddd}
+tr:nth-child(even) td{background:#fafafa}
+.metric-highlight{background:#f0eeff;color:#4a3db5;padding:2px 6px;border-radius:3px;font-weight:700}
+.insight-card{background:#f8f7ff;border-left:3px solid #6c5ce7;padding:14px 18px;margin:12px 0;border-radius:0 8px 8px 0}
+.recommendation{background:#f0fdf9;border-left:3px solid #00c896;padding:14px 18px;margin:12px 0;border-radius:0 8px 8px 0}
+.warning-card{background:#fff5f5;border-left:3px solid #e74c3c;padding:14px 18px;margin:12px 0;border-radius:0 8px 8px 0}
+.section-header{font-size:20px;font-weight:700}
+hr{border:none;border-top:1px solid #eee;margin:30px 0}
+@media print{body{margin:20px}}
+</style></head><body>
+<h1 style="color:#4a3db5;margin-bottom:4px">Analysis Report</h1>
+<p style="color:#888;font-size:13px">Generated on ${new Date().toLocaleString()}</p>
+<hr>
+${allReports.join('<hr>')}
+</body></html>`;
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'analysis-report-' + new Date().toISOString().slice(0,10) + '.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    </script>
+</body>
+</html>

@@ -6,7 +6,7 @@
     var _currentTab = 'gcDashboard';
     var _loadedTabs = {};
 
-    var ALL_VIEWS = ['gcDashboard', 'gcIntelligence', 'gcSimulator', 'gcRecommendations'];
+    var ALL_VIEWS = ['gcDashboard', 'gcCampaignTree', 'gcIntelligence', 'gcSimulator', 'gcRecommendations'];
 
     // ── Utilities ──────────────────────────────────────────────
 

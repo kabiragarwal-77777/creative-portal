@@ -1,0 +1,4041 @@
+{
+  "120242021406790636": {
+    "ad_name": "FB_MOF_Static_corporate-Majdoor_V0_140326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-14T23:39:09+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242021575070636": {
+    "ad_name": "FB_MOF_Static_Reminder_V0_140326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-14T23:48:27+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242021444000636": {
+    "ad_name": "FB_MOF_Static_You-love-discounts_V0_140326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-14T23:41:35+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242021545640636": {
+    "ad_name": "FB_MOF_Static_Stock-Down_V0_140326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-14T23:46:50+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242021461400636": {
+    "ad_name": "FB_MOF_Static_The-Bear-Rules_V0_140326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-14T23:44:18+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023447730636": {
+    "ad_name": "FB_MOF_Static_Buy-The-Dip_V5_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:01:49+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023435560636": {
+    "ad_name": "FB_MOF_Static_Buy-The-Dip_V4_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:01:49+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023109710636": {
+    "ad_name": "FB_MOF_Static_Buy-The-Dip_V1_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:01:49+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242141977250636": {
+    "ad_name": "FB_MOF_Video_Ayush-Ai-Bumper_V2_170326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-17T18:01:47+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242141913500636": {
+    "ad_name": "FB_MOF_Video_Monkey-Ai-Bumper_V0_170326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-17T18:00:37+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242141954090636": {
+    "ad_name": "FB_MOF_Video_Ayush-Ai-Bumper_V1_170326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-17T18:01:12+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023603550636": {
+    "ad_name": "FB_MOF_Static_Market-Crash-Social_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:25:51+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238758113540636": {
+    "ad_name": "FB_MOF_Video_Nakul-New-Inf_V1_221225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-22T19:04:17+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023842130636": {
+    "ad_name": "FB_MOF_Static_Metro-Shreya_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:33:57+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023842140636": {
+    "ad_name": "FB_MOF_Static_Metro-Rohan_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:33:57+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242021802560636": {
+    "ad_name": "FB_MOF_Static_kal-kare-so-aaj-kar_V0_140326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-14T23:59:50+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023473170636": {
+    "ad_name": "FB_MOF_Static_Buy-Nifty_Strategy_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:11:10+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023473140636": {
+    "ad_name": "FB_MOF_Static_Dip_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:11:10+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023603540636": {
+    "ad_name": "FB_MOF_Static_LPG-Cylinder_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:25:51+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242022759240636": {
+    "ad_name": "FB_MOF_Static_10%-Off_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T01:51:00+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023085050636": {
+    "ad_name": "FB_MOF_Static_Bear-MD_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T01:51:00+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241727571670636": {
+    "ad_name": "FB_MOF_Static_Reddit-Post_V1_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T21:36:06+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241727214580636": {
+    "ad_name": "FB_MOF_Static_ChatGpt_V0_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T21:36:06+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241727405410636": {
+    "ad_name": "FB_MOF_Static_Gemini_V0_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T21:36:06+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241727625550636": {
+    "ad_name": "FB_MOF_Static_Reddit-Post_V2_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T21:36:06+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242104291460636": {
+    "ad_name": "FB_MOF_Video_Tamannah-Inf-2_V0_170326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-17T01:50:21+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242104153540636": {
+    "ad_name": "FB_MOF_Video_Tamannah-Inf-1_V0_170326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-17T01:43:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242103951770636": {
+    "ad_name": "FB_MOF_Video_Garvit-Influencer-3_V0_170326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-17T01:30:18+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242103760240636": {
+    "ad_name": "FB_MOF_Video_Garvit-Influencer-2_V0_170326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-17T01:20:03+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242103557980636": {
+    "ad_name": "FB_MOF_Video_Garvit-Influencer-1_V0_170326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-17T01:11:03+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242087250180636": {
+    "ad_name": "FB_MOF_Video_Cute-Orange_V0_160326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-16T18:30:26+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242085604870636": {
+    "ad_name": "FB_MOF_Video_Cute-AI_V0_160326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-16T18:25:27+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242084481930636": {
+    "ad_name": "FB_MOF_Static_One-Bad-Trade_V1_160326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-16T17:24:47+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242083294750636": {
+    "ad_name": "FB_MOF_Static_91%-Lose_V1_160326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-16T16:25:22+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242081923040636": {
+    "ad_name": "FB_MOF_Static_Pillar_V3_160326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-16T15:51:33+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242081778500636": {
+    "ad_name": "FB_MOF_Static_Pillar_V2_160326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-16T15:45:37+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242081194500636": {
+    "ad_name": "FB_MOF_Static_Pillar_V1_160326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-16T15:39:23+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023073080636": {
+    "ad_name": "FB_MOF_Static_Ab-To-Resign_V2_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T01:51:00+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023842120636": {
+    "ad_name": "FB_MOF_Static_Metro-Rahul_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:33:57+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023392900636": {
+    "ad_name": "FB_MOF_Static_Buy-The-Dip_V2_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:01:49+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023603570636": {
+    "ad_name": "FB_MOF_Static_WhatsApp_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:25:51+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023473160636": {
+    "ad_name": "FB_MOF_Static_Breaking-News-Nifty_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:11:10+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242021902820636": {
+    "ad_name": "FB_MOF_Static_market-is-red_V0_140326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T00:04:14+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023603530636": {
+    "ad_name": "FB_MOF_Static_Crude-Oil_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:25:51+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023842160636": {
+    "ad_name": "FB_MOF_Static_Zero-Guess_Work_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:33:57+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023842150636": {
+    "ad_name": "FB_MOF_Static_Trading_On-Telegram-Tips_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:33:57+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023603560636": {
+    "ad_name": "FB_MOF_Static_Market-Neeche-Hai_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:25:51+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023473190636": {
+    "ad_name": "FB_MOF_Static_Email-Filter-Noice_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:11:10+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023473180636": {
+    "ad_name": "FB_MOF_Static_Discounted-Stock_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:11:10+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242023422330636": {
+    "ad_name": "FB_MOF_Static_Buy-The-Dip_V3_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T02:01:50+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242022971840636": {
+    "ad_name": "FB_MOF_Static_Ab-To-Resign_V1_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T01:51:00+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242022931730636": {
+    "ad_name": "FB_MOF_Static_2020-Crash_V0_150326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T01:51:00+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242021868830636": {
+    "ad_name": "FB_MOF_Static_know-stocks_V0_140326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-15T00:02:40+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242021759560636": {
+    "ad_name": "FB_MOF_Static_stock-at-120_V0_140326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-14T23:58:05+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242021688610636": {
+    "ad_name": "FB_MOF_Static_Quote_V0_140326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-14T23:54:40+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241969517780636": {
+    "ad_name": "FB_MOF_Video_Orange-Goggles_V1_130326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-13T19:00:11+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241969644970636": {
+    "ad_name": "FB_MOF_Video_Orange-Goggles_V2_130326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-13T19:01:34+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241967394810636": {
+    "ad_name": "FB_MOF_Video_Budhu-Ladki-Returns-3_V0_130326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-13T18:26:40+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241967053850636": {
+    "ad_name": "FB_MOF_Video_Budhu-Ladki-Returns-2_V0_130326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-13T18:19:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241966778580636": {
+    "ad_name": "FB_MOF_Video_Budhu-Ladki-Returns-1_V0_130326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-13T18:05:24+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241956838380636": {
+    "ad_name": "FB_MOF_Video_Nupur-Inf-2_V0_130326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-13T14:17:09+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241956469000636": {
+    "ad_name": "FB_MOF_Video_Nupur-Inf-1_V0_130326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-13T13:43:40+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241956205600636": {
+    "ad_name": "FB_MOF_Video_Volatile-Uncle-2_V0_130326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-13T13:29:18+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241955782580636": {
+    "ad_name": "FB_MOF_Video_Volatile-Uncle-1_V0_130326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-13T13:23:55+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241727486040636": {
+    "ad_name": "FB_MOF_Static_Imagine-Returns_V0_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T21:36:06+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241887094750636": {
+    "ad_name": "FB_MOF_Video_Suiiii_V0_120326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-12T11:48:49+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241887303840636": {
+    "ad_name": "FB_MOF_Video_Univest-Car_V0_120326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-12T11:52:08+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241886765950636": {
+    "ad_name": "FB_MOF_Video_Premimum-Telegram_V0_120326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-12T11:37:36+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241886899790636": {
+    "ad_name": "FB_MOF_Video_Ghar-Wale-Shadi-Ke-Piche-Pade-Hai_V0_120326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-12T11:43:13+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241886573120636": {
+    "ad_name": "FB_MOF_Video_Shut-The-Noice_V0_120326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-12T11:31:20+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241845078100636": {
+    "ad_name": "FB_MOF_Video_Bonus-Reel_V0_110326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-11T19:09:02+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241846884200636": {
+    "ad_name": "FB_MOF_Video_Risky-Markets_V0_110326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-11T19:43:58+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241846490060636": {
+    "ad_name": "FB_MOF_Video_Risk-Hai-Toh-Ishq-Hai_V0_110326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-11T19:32:51+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241845828260636": {
+    "ad_name": "FB_MOF_Video_Copy-Karana_Band_V0_110326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-11T19:23:09+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241282230800636": {
+    "ad_name": "FB_MOF_Static_Mr-Bull_V0_260226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-26T19:43:48+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241282453030636": {
+    "ad_name": "FB_MOF_Static_Retirement_V0_260226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-26T19:54:00+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241282133730636": {
+    "ad_name": "FB_MOF_Static_Investing-or-guessing_V0_260226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-26T19:40:37+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241282006030636": {
+    "ad_name": "FB_MOF_Static_3-Galtiya_V0_260226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-26T19:33:58+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241282311620636": {
+    "ad_name": "FB_MOF_Static_Rahul-manager_V0_260226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-26T19:47:41+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240838029160636": {
+    "ad_name": "FB_MOF_Static_Concert_V5_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T17:37:40+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241815554060636": {
+    "ad_name": "FB_MOF_Video_Pranit-Ai-Option-Traders_V0_110326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-11T12:05:42+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241727706210636": {
+    "ad_name": "FB_MOF_Static_Tweet_V0_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T21:48:03+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241720355190636": {
+    "ad_name": "FB_MOF_Video_Dhyaan-Se-Suno-Inf_V1_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T21:16:39+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241727897020636": {
+    "ad_name": "FB_MOF_Static_Trading-is-so-Difficult_V4_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T21:48:03+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241727706170636": {
+    "ad_name": "FB_MOF_Static_Trading-is-so-Difficult_V1_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T21:48:03+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241726869830636": {
+    "ad_name": "FB_MOF_Video_Dhyaan-Se-Suno-Inf_V2_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T21:21:31+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241727706190636": {
+    "ad_name": "FB_MOF_Static_Trade-on-Insights_V0_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T21:48:03+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241727706220636": {
+    "ad_name": "FB_MOF_Static_Trading-is-so-Difficult_V3_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T21:48:03+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241727706200636": {
+    "ad_name": "FB_MOF_Static_Trading-is-so-Difficult_V2_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T21:48:03+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241722548490636": {
+    "ad_name": "FB_MOF_Video_Turtle-Dheere-Chalna_V0_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T18:51:32+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241722438410636": {
+    "ad_name": "FB_MOF_Video_Ghadi-Time_V0_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T18:47:19+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241722340700636": {
+    "ad_name": "FB_MOF_Video_Chalti-Train_V0_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T18:40:49+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241722123820636": {
+    "ad_name": "FB_MOF_Video_Ruka-Hua-Paani_V0_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T18:36:11+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241721133320636": {
+    "ad_name": "FB_MOF_Video_Khadi-Car-Zung_V0_090326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-09T18:23:57+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241692776910636": {
+    "ad_name": "FB_MOF_Static_India-Win-T20_V0_080326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-08T22:00:50+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241681377260636": {
+    "ad_name": "FB_MOF_Video_Pranit-Option-Traders_V0_080326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-08T12:52:48+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241681203610636": {
+    "ad_name": "FB_MOF_Static_Cricket-Ground_V2_080326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-08T12:44:37+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241681203600636": {
+    "ad_name": "FB_MOF_Static_Cricket-Ground_V3_080326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-08T12:44:37+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241681203620636": {
+    "ad_name": "FB_MOF_Static_Cricket-Ground_V1_080326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-08T12:44:37+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241623731190636": {
+    "ad_name": "FB_MOF_Static_Bus-Stand_V3_070326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-07T00:49:51+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241623982890636": {
+    "ad_name": "FB_MOF_Static_Bus-Stand_V4_070326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-07T00:49:51+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241623731170636": {
+    "ad_name": "FB_MOF_Static_Bus-Stand_V1_070326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-07T00:49:51+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241623731180636": {
+    "ad_name": "FB_MOF_Static_Bus-Stand_V2_070326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-07T00:49:51+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241465055920636": {
+    "ad_name": "FB_MOF_Static_Tips_V0_030326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-03T18:40:52+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241464963160636": {
+    "ad_name": "FB_MOF_Static_News_V0_030326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-03T18:40:52+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241464733870636": {
+    "ad_name": "FB_MOF_Static_CEO_V0_030326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-03T18:40:52+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241278516630636": {
+    "ad_name": "Test - FB_MOF_Video_Ai-Sector-Sardar_V1_260226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-26T18:37:26+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241278516620636": {
+    "ad_name": "Test - FB_MOF_Video_Ai-Sector-Sardar_V2_260226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-26T18:36:54+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241462210940636": {
+    "ad_name": "FB_MOF_Static_Holi-Portfolio_V0_030326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-03T18:01:44+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241462387850636": {
+    "ad_name": "FB_MOF_Static_Holi-Holi_V0_030326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-03T18:01:44+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240897544510636": {
+    "ad_name": "FB_MOF_Video_Candle-AI_190226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-19T16:36:32+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241429769960636": {
+    "ad_name": "FB_MOF_Video_Holi-Fire-Ai_V0_020326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-02T21:43:44+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241429595270636": {
+    "ad_name": "FB_MOF_Video_Holi-Colors_V0_020326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-02T21:37:21+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241429670690636": {
+    "ad_name": "FB_MOF_Video_Holi-Spray_V0_020326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-02T21:40:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241429430110636": {
+    "ad_name": "FB_MOF_Video_Holi-Ladki_V0_020326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-02T21:33:20+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241416309440636": {
+    "ad_name": "FB_MOF_Video_Holi-Sudhir_V0_020326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-02T14:18:05+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240837940880636": {
+    "ad_name": "FB_MOF_Static_Concert_V4_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T17:34:54+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240837592980636": {
+    "ad_name": "FB_MOF_Static_Concert_V2_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T17:24:56+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240837298030636": {
+    "ad_name": "FB_MOF_Static_Concert_V1_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T17:20:33+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240837719190636": {
+    "ad_name": "FB_MOF_Static_Concert_V3_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T17:31:46+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241410193940636": {
+    "ad_name": "FB_MOF_Video_Univest-Improved-Again_V0_020326",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-03-02T11:16:00+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241330206350636": {
+    "ad_name": "FB_MOF_Video_Holi-RA_V2_270226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-27T21:13:45+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241330135940636": {
+    "ad_name": "FB_MOF_Video_Holi-RA_V1_270226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-27T20:06:27+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241329883300636": {
+    "ad_name": "FB_MOF_Video_Holi-Offer_V0_270226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-27T19:58:37+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241330050320636": {
+    "ad_name": "FB_MOF_Video_Holi-Offer_V2_270226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-27T20:02:16+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241329407390636": {
+    "ad_name": "FB_MOF_Video_Holi-Ladki_V0_270226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-27T19:54:58+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240840019890636": {
+    "ad_name": "FB_MOF_Static_Locked_V0_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T19:36:22+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241281982040636": {
+    "ad_name": "FB_MOF_Video_Turtle-Theory_V0_260226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-26T19:40:47+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240478522780636": {
+    "ad_name": "FB_MOF_Video_Jibran-Inf_V0_070226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-07T12:15:24+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241272488520636": {
+    "ad_name": "FB_MOF_Video_AI-Story_V5_260226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-26T15:23:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240897544530636": {
+    "ad_name": "FB_MOF_Video_Credit-Card-AI_190226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-19T16:36:32+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240478664710636": {
+    "ad_name": "FB_MOF_Video_Sardar-Inf_V0_070226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-07T12:24:50+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240867418900636": {
+    "ad_name": "FB_MOF_Static_Invest-early-in-Ai_180226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-18T18:40:41+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240840019860636": {
+    "ad_name": "FB_MOF_Static_Gamble_V0_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T19:36:22+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240840019880636": {
+    "ad_name": "FB_MOF_Static_Past-Perf_V0_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T19:36:22+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240898162260636": {
+    "ad_name": "FB_MOF_Video_Phone-AI_190226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-19T16:36:32+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240831183240636": {
+    "ad_name": "FB_MOF_Video_Kabir-Inf_V2_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T14:38:31+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240865975420636": {
+    "ad_name": "FB_MOF_Static_Talking-Ai_180226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-18T17:44:05+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240808852180636": {
+    "ad_name": "FB_MOF_Video_Wallet-AI_V0_160226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-16T19:22:50+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240839588660636": {
+    "ad_name": "FB_MOF_Static_Cricket-Bus_V3_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T18:59:58+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240839588620636": {
+    "ad_name": "FB_MOF_Static_Cricket-Bus_V1_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T18:59:58+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240839588670636": {
+    "ad_name": "FB_MOF_Static_Cricket-Bus_V2_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T18:59:58+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240898497390636": {
+    "ad_name": "FB_MOF_Video_Anurag-Inf_V2_190226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-19T16:50:13+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240865516690636": {
+    "ad_name": "FB_MOF_Video_Sam-Altman_V0_180226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-18T17:12:26+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240839588650636": {
+    "ad_name": "FB_MOF_Static_Cricket-Bus_V5_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T18:59:58+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240856364210636": {
+    "ad_name": "FB_MOF_Video_Silver-Gold-Inf_V0_180226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-18T12:01:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240845538580636": {
+    "ad_name": "Test1_FB_MOF_Static_Advoisary-Idea_V2_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T23:04:44+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240845538590636": {
+    "ad_name": "Test1_FB_MOF_Static_Advoisary-Idea_V3_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T23:04:44+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240845538640636": {
+    "ad_name": "Test1_FB_MOF_Static_Advoisary-Idea_V1_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T23:04:44+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240830884640636": {
+    "ad_name": "FB_MOF_Video_Kabir-Inf_V1_170226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-17T14:33:50+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240808720940636": {
+    "ad_name": "FB_MOF_Video_Pranit-Silver-FD_V0_160226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-16T19:11:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240808091860636": {
+    "ad_name": "FB_MOF_Static_India-Win_V0_160226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-16T18:31:54+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240807811230636": {
+    "ad_name": "FB_MOF_Video_India-Win_V0_160226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-16T18:28:05+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240384998640636": {
+    "ad_name": "FB_MOF_Static_Inside-Airoplane_V0_050226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-05T12:54:10+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239824077350636": {
+    "ad_name": "FB_MOF_Video_US-War_V0_200126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-20T17:28:11+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240116887150636": {
+    "ad_name": "FB_MOF_Video_YT-Channel-Video-Revamped_V0_280126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-28T18:43:40+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240632451060636": {
+    "ad_name": "FB_MOF_Video_Sardar-Inf_V0_110226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-11T18:46:52+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240632451050636": {
+    "ad_name": "FB_MOF_Video_Sardar-2-Inf_V0_110226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-11T18:46:52+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240632012730636": {
+    "ad_name": "FB_MOF_Static_Outside-Airport_V0_110226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-11T18:45:21+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240547655340636": {
+    "ad_name": "FB_MOF_Video_Bangalore-Airport-Region-Wise_V0_100226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-10T10:54:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240547655330636": {
+    "ad_name": "FB_MOF_Video_Outside-Airport-Bangalore-Region-Wise_V0_100226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-10T10:54:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240477392580636": {
+    "ad_name": "FB_MOF_Video_Outside-Airport_V0_070226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-07T11:22:52+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240632012740636": {
+    "ad_name": "FB_MOF_Static_Inside-Airoplane_V0_110226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-11T18:45:21+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240572613460636": {
+    "ad_name": "FB_MOF_Video_Cyber-City-Delhi-Region-Wise_V0_100226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-10T10:57:52+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240547655320636": {
+    "ad_name": "FB_MOF_Video_Inside-Aeroplane-Bangalore-Region-Wise_V0_100226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-10T10:54:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240477392560636": {
+    "ad_name": "FB_MOF_Video_Inside-Aeroplane_V0_070226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-07T11:22:52+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240572613430636": {
+    "ad_name": "FB_MOF_Video_Inside-Aeroplane-Delhi-Region-Wise_V0_100226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-10T10:57:52+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240477392600636": {
+    "ad_name": "FB_MOF_Video_Bangalore-Airport_V0_070226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-07T11:22:52+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240572613470636": {
+    "ad_name": "FB_MOF_Video_CP-Delhi-Region-Wise_V0_100226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-10T10:57:52+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240477392590636": {
+    "ad_name": "FB_MOF_Video_Cyber-City_V0_070226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-07T11:22:52+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240477392570636": {
+    "ad_name": "FB_MOF_Video_CP_V0_070226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-07T11:22:52+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240116627820636": {
+    "ad_name": "FB_MOF_Video_Univest-HR-Revamped_V0_280126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-28T18:24:56+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238587201520636": {
+    "ad_name": "FB_MOF_Video_FD-Karli-Influencer_V0_181225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-18T18:35:34+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240478943360636": {
+    "ad_name": "FB_MOF_Video_RA-Sardar-Inf_V0_070226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-07T12:47:25+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240478698400636": {
+    "ad_name": "FB_MOF_Video_Sardar-2-Inf_V0_070226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-07T12:31:23+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240478780950636": {
+    "ad_name": "FB_MOF_Video_Hegde-Inf_V0_070226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-07T12:38:09+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240384295300636": {
+    "ad_name": "FB_MOF_Static_Outside-Airport_V0_050226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-05T12:42:42+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240384759050636": {
+    "ad_name": "FB_MOF_Static_Connaught-Place_V0_050226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-05T12:47:40+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240385084160636": {
+    "ad_name": "FB_MOF_Static_Bangalore-Airport_V0_050226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-05T12:57:00+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240384866480636": {
+    "ad_name": "FB_MOF_Static_Cyber-City_V0_050226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-05T12:50:59+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238826552800636": {
+    "ad_name": "FB_MOF_Video_AI-Testimonial_241225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-24T11:39:19+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240394989280636": {
+    "ad_name": "FB_MOF_Static_Deal-2_V0_050226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-05T16:35:37+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240394922530636": {
+    "ad_name": "FB_MOF_Static_Deal-1_V0_050226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-05T16:31:15+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240395059070636": {
+    "ad_name": "FB_MOF_Static_US-India-Deal-3_V0_050226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-05T16:37:50+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240395153820636": {
+    "ad_name": "FB_MOF_Video_Rahul-Explained_V0_050226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-05T16:40:37+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240382485930636": {
+    "ad_name": "FB_MOF_Video_G-Meet_V0_050226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-05T11:56:40+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240242875540636": {
+    "ad_name": "FB_MOF_Video_Pranit-Budget_V0_010226",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-02-01T20:35:39+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240180456360636": {
+    "ad_name": "FB_MOF_Video_Yash-Kabir_V0_300126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-30T12:20:03+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240145433890636": {
+    "ad_name": "FB_MOF_Video_Influencer-Amitesh_V2_290126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-29T15:32:37+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240145221580636": {
+    "ad_name": "FB_MOF_Video_Influencer-Amitesh_V1_290126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-29T15:21:39+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239899480460636": {
+    "ad_name": "FB_MOF_Video_Gods-In-Car_V0_220126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-22T12:35:14+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239871442050636": {
+    "ad_name": "FB_MOF_Static_Carousel_V0_210126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-21T17:26:09+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237965784490636": {
+    "ad_name": "FB_MOF_Video_Perplexity-Kabir_V0_051225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-05T16:38:02+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238647325360636": {
+    "ad_name": "FB_MOF_Video_News-Anchor_VT_191225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-19T19:07:49+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239777007860636": {
+    "ad_name": "FB_MOF_Video_US-War_V0_190126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-19T11:28:19+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239793041480636": {
+    "ad_name": "FB_MOF_Video_Copper-Pranit_V0_190126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-19T19:27:32+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239792636320636": {
+    "ad_name": "FB_MOF_Video_Vaishali_V0_190126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-19T19:15:05+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239792535880636": {
+    "ad_name": "FB_MOF_Video_Ayush-New_V2_190126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-19T19:02:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239792372150636": {
+    "ad_name": "FB_MOF_Video_Ayush-New_V1_190126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-19T18:57:44+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239697997670636": {
+    "ad_name": "FB_MOF_Video_US-War_V0_160126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-16T19:00:59+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239753270190636": {
+    "ad_name": "FB_MOF_Video_US-War_V0_180126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-18T12:36:56+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239693098600636": {
+    "ad_name": "FB_MOF_Video_Doctor_V2_160126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-16T17:22:25+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239680486880636": {
+    "ad_name": "FB_MOF_Video_YT-Cut_V2_160126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-16T13:26:54+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239644461460636": {
+    "ad_name": "FB_MOF_Video_YT-Cut_V0_150126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-15T11:16:37+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239282420340636": {
+    "ad_name": "FB_MOF_Video_New-Year-Resolution_V0_060126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-06T18:47:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239281143860636": {
+    "ad_name": "FB_MOF_Video_Short-Term-Trade_V0_060126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-06T18:42:39+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239242089620636": {
+    "ad_name": "FB_MOF_Video_Diversification-Dilemma_V0_050126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-05T18:27:57+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239240813370636": {
+    "ad_name": "FB_MOF_Video_Nifty-all-Time-High_V0_050126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-05T17:45:09+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239105814770636": {
+    "ad_name": "FB_MOF_Static_Gain-Skip_V0_020126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-02T15:16:40+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239086876750636": {
+    "ad_name": "FB_MOF_Video_Portfolio-Gains_V0_010126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-01T18:36:30+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239086827900636": {
+    "ad_name": "FB_MOF_Video_Muscle-Gain_V0_010126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-01T18:32:56+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239086704910636": {
+    "ad_name": "FB_MOF_Video_Tummy-Girl_V0_010126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-01T18:24:39+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239086519330636": {
+    "ad_name": "FB_MOF_Video_Makeup-Overloaded_V0_010126",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2026-01-01T18:01:51+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239015049050636": {
+    "ad_name": "FB_MOF_Video_New-Year-RA-Offer_V0_301225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-30T17:12:23+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239013464630636": {
+    "ad_name": "FB_MOF_Video_New-Year-AI-Offer_V0_301225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-30T16:25:42+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238962292840636": {
+    "ad_name": "FB_MOF_Video_Pranit-Silver_V0_291225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-29T01:22:00+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238533281240636": {
+    "ad_name": "FB_MOF_Static_Options_V0_171225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-17T18:35:48+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238532865610636": {
+    "ad_name": "FB_MOF_Static_Futures_V0_171225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-17T18:25:53+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238905408370636": {
+    "ad_name": "FB_MOF_Video_Jasmine_V0_261225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-26T19:05:49+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238803090120636": {
+    "ad_name": "FB_MOF_Video_AI-Car-Crash-Christmas_V0_231225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-23T19:33:16+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238844264050636": {
+    "ad_name": "FB_MOF_Video_AI-Santa-Christmas_V0_241225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-24T18:14:41+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238828105740636": {
+    "ad_name": "FB_MOF_Static_Christmas_V4_241225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-24T12:30:39+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238826282210636": {
+    "ad_name": "FB_MOF_Static_Christmas_V1_241225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-24T12:15:31+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238828010160636": {
+    "ad_name": "FB_MOF_Static_Christmas_V2_241225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-24T12:20:49+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238828061520636": {
+    "ad_name": "FB_MOF_Static_Christmas_V3_241225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-24T12:26:51+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238802942950636": {
+    "ad_name": "FB_MOF_Video_AI-Santa-Christmas_V0_231225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-23T19:24:17+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238802261230636": {
+    "ad_name": "FB_MOF_Video_AI-Baby-Christmas_V0_231225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-23T19:17:54+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238645500170636": {
+    "ad_name": "FB_MOF_Video_Pranit_Car_V0_191225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-19T18:30:07+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238532940700636": {
+    "ad_name": "FB_MOF_Static_Equity_V0_171225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-17T18:31:24+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238644834920636": {
+    "ad_name": "FB_MOF_Video_YouTube-Video_V0_191225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-19T18:05:37+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238647423650636": {
+    "ad_name": "FB_MOF_Video_Pranit-Jane-Street_VT1_191225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-19T19:09:53+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238647423660636": {
+    "ad_name": "FB_MOF_Video_Myth-Buster_VT_191225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-19T19:09:53+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238766913830636": {
+    "ad_name": "FB_MOF_Static_100-Plus_V0_231225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-23T00:14:18+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238766767980636": {
+    "ad_name": "FB_MOF_Static_Discover_V0_231225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-23T00:09:59+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238766650400636": {
+    "ad_name": "FB_MOF_Static_Economic-Times_V0_231225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-23T00:06:39+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238766478140636": {
+    "ad_name": "FB_MOF_Video_Options_V0_221225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-22T23:53:07+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238758323380636": {
+    "ad_name": "FB_MOF_Video_Pranit-Inshorts_V0_221225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-22T19:09:45+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238757651150636": {
+    "ad_name": "FB_MOF_Video_HindZinc_V0_221225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-22T18:59:27+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238647964690636": {
+    "ad_name": "FB_MOF_Video_5000-dede_H2_VT_191225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-19T19:19:23+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238647964710636": {
+    "ad_name": "FB_MOF_Video_Random-Selfie-Girl_VT_191225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-19T19:19:11+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238647964700636": {
+    "ad_name": "FB_MOF_Video_ShortTerm-LongTerm_VT_191225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-19T19:19:11+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238645757490636": {
+    "ad_name": "FB_MOF_Video_inf-Shainal_V0_191225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-19T18:40:03+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238419442840636": {
+    "ad_name": "FB_MOF_Static_Gussing-Game_V0_151225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-15T17:56:33+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238419812440636": {
+    "ad_name": "FB_MOF_Video_Gussing-Game_V0_151225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-15T18:03:38+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238387899820636": {
+    "ad_name": "FB_MOF_Video_Monkey-AI_V3_141225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-14T23:19:18+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238295100270636": {
+    "ad_name": "FB_MOF_Video_Doctor_V0_121225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-12T13:48:24+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237968553350636": {
+    "ad_name": "FB_MOF_Video_FInfluencer_0s_V0_051225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-05T18:29:06+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238199477140636": {
+    "ad_name": "FB_MOF_Video_Orange-Goggles_V3_101225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-10T20:13:06+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238198560640636": {
+    "ad_name": "FB_MOF_Video_Orange-Goggles_V2_101225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-10T19:54:48+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238189987750636": {
+    "ad_name": "FB_MOF_Video_Orange-Goggles_V1_101225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-10T17:20:27+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238139099270636": {
+    "ad_name": "FB_MOF_Video_Hedged_V3_091225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-09T18:29:25+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238137480950636": {
+    "ad_name": "FB_MOF_Video_Hedged_V2_091225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-09T18:03:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238130612550636": {
+    "ad_name": "FB_MOF_Video_Hedged_V1_091225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-09T15:56:30+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238098919020636": {
+    "ad_name": "FB_MOF_Video_Ayush-Influencer_V0_081225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-08T22:59:53+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237965956210636": {
+    "ad_name": "FB_MOF_Shark_V0_051225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-05T16:44:21+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237965784530636": {
+    "ad_name": "FB_MOF_Negative-Hook_V0_051225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-05T16:38:02+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237965784500636": {
+    "ad_name": "FB_MOF_Static_why-do-stock-gurus_V0_051225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-05T16:38:02+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237965784520636": {
+    "ad_name": "FB_MOF_Video_Yashpal-Mbagger_0_051225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-05T16:38:02+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237965784540636": {
+    "ad_name": "FB_MOF_Static_Missed-Mbagger_0_051225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-05T16:38:02+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237965784510636": {
+    "ad_name": "FB_MOF_Static_One-Builds-Portfolio_0s_V0_051225",
+    "campaign_name": "Test2-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_051225",
+    "created_time": "2025-12-05T16:38:02+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241557474930636": {
+    "ad_name": "FB_MOF_Static_Smarter-Investing_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T19:28:16+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241556901930636": {
+    "ad_name": "FB_MOF_Static_Right-Stock_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T19:28:16+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241556901920636": {
+    "ad_name": "FB_MOF_Static_Why-Univest_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T19:28:16+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241556901940636": {
+    "ad_name": "FB_MOF_Static_Metro-Steps_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T19:28:16+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241454173070636": {
+    "ad_name": "FB_MOF_Static_Research-First_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T13:42:07+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240629902300636": {
+    "ad_name": "FB_MOF_Statics_Resign_V0_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T17:46:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240631466210636": {
+    "ad_name": "FB_MOF_Statics_Stop_V0_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T18:23:34+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241551691450636": {
+    "ad_name": "FB_MOF_Static_Positions_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T17:21:15+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715743610636": {
+    "ad_name": "FB_MOF_Statics_Telegram_V1_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:19:09+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715743570636": {
+    "ad_name": "FB_MOF_Statics_Telegram_V9_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:19:09+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240621242220636": {
+    "ad_name": "FB_MOF_Statics_Telegram_V1_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T15:08:15+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242195375710636": {
+    "ad_name": "FB_MOF_Video_Financial-Adda_V2_180326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-18T17:33:29+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242195305150636": {
+    "ad_name": "FB_MOF_Video_Financial-Adda_V1_180326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-18T17:32:27+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242195450560636": {
+    "ad_name": "FB_MOF_Video_Financial-Adda_V3_180326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-18T17:34:29+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242195221220636": {
+    "ad_name": "FB_MOF_Video_CreatX-Final_V0_180326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-18T17:31:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242144622070636": {
+    "ad_name": "FB_MOF_Static_Salary-Slip_V0_170326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-17T19:36:23+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242144383780636": {
+    "ad_name": "FB_MOF_Static_LPG-Crisis-Impact_V0_170326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-17T19:27:19+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242144628090636": {
+    "ad_name": "FB_MOF_Static_Smart-Investor_V0_170326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-17T19:36:40+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242144640100636": {
+    "ad_name": "FB_MOF_Static_Uber-Bill_V0_170326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-17T19:37:12+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242144634220636": {
+    "ad_name": "FB_MOF_Static_Twitter-Abhishek-Lal_V0_170326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-17T19:36:55+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242144380150636": {
+    "ad_name": "FB_MOF_Static_Investor-Journey_V0_170326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-17T19:27:02+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242144390290636": {
+    "ad_name": "FB_MOF_Static_Market-Down-Notification_V0_170326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-17T19:27:40+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242144374680636": {
+    "ad_name": "FB_MOF_Static_He-Sells-Chai_V0_170326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-17T19:26:46+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120242144368500636": {
+    "ad_name": "FB_MOF_Static_LPG-Crisis_V0_170326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-17T19:26:27+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238144622020636": {
+    "ad_name": "FB_MOF_Video_Nakul_091225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-09T20:30:51+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240623681920636": {
+    "ad_name": "FB_MOF_Statics_Telegram_V2_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T15:14:07+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240623813450636": {
+    "ad_name": "FB_MOF_Statics_Telegram_V3_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T15:24:39+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240629865410636": {
+    "ad_name": "FB_MOF_Statics_Old-Phone_V3_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T17:44:07+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240716269630636": {
+    "ad_name": "FB_MOF_Static_Rupees-One-Coin_V0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:31:04+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715263280636": {
+    "ad_name": "FB_MOF_Statics_Resign_V0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:12:12+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241461584900636": {
+    "ad_name": "FB_MOF_Static_Concert_V5_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T17:33:32+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715988010636": {
+    "ad_name": "FB_MOF_Static_C-Metro-5_V0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:24:20+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240716269640636": {
+    "ad_name": "FB_MOF_Static_Defence_0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:31:04+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241556901950636": {
+    "ad_name": "FB_MOF_Static_Helmet_V2_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T19:28:16+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241556901960636": {
+    "ad_name": "FB_MOF_Static_Helmet_V1_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T19:28:16+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241888526470636": {
+    "ad_name": "FB_MOF_Video_TFG-Podcast_120326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-12T12:23:00+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241887766050636": {
+    "ad_name": "FB_MOF_Video_Grey-Eyes-Man_120326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-12T12:14:56+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241887523380636": {
+    "ad_name": "FB_MOF_Video_Bimbo_120326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-12T12:03:42+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241886867590636": {
+    "ad_name": "FB_MOF_Video_Sudhir-Solution_120326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-12T11:51:07+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241551691520636": {
+    "ad_name": "FB_MOF_Static_Office-Time_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T17:21:15+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241551691470636": {
+    "ad_name": "FB_MOF_Static_Switch_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T17:21:15+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715988020636": {
+    "ad_name": "FB_MOF_Static_C-Metro-1_V0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:24:20+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715743590636": {
+    "ad_name": "FB_MOF_Statics_Telegram_V5_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:19:09+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241827748110636": {
+    "ad_name": "FB_MOF_Video_Google-Search_V0_110326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-11T14:38:39+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241823926190636": {
+    "ad_name": "FB_MOF_Video_Anmol-Testimonial_V3_110326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-11T13:44:07+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241819863210636": {
+    "ad_name": "FB_MOF_Video_Anmol-Testimonial_V2_110326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-11T13:35:55+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241817532110636": {
+    "ad_name": "FB_MOF_Video_Anmol-Testimonial_V1_110326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-11T12:58:24+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241454897510636": {
+    "ad_name": "FB_MOF_Static_Switch_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T13:58:00+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241461058360636": {
+    "ad_name": "FB_MOF_Static_Verified_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T17:20:22+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241461270600636": {
+    "ad_name": "FB_MOF_Static_Positions_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T17:24:36+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241454897520636": {
+    "ad_name": "FB_MOF_Static_Start-Investing_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T13:57:31+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241454792270636": {
+    "ad_name": "FB_MOF_Static_Unlock_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T13:42:07+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241454173090636": {
+    "ad_name": "FB_MOF_Static_Exit_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T13:42:07+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241454691930636": {
+    "ad_name": "FB_MOF_Static_Filtered_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T13:42:07+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240629818260636": {
+    "ad_name": "FB_MOF_Statics_Old-Phone_V2_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T17:42:01+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240629532870636": {
+    "ad_name": "FB_MOF_Statics_Old-Phone_V1_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T17:39:00+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241612863370636": {
+    "ad_name": "hehehe",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-06T19:42:11+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241455757830636": {
+    "ad_name": "FB_MOF_Video_Kitna-Dooba_V2_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T14:15:20+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241429248970636": {
+    "ad_name": "FB_MOF_Static_Stress_V0_020326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-02T21:26:01+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241454897470636": {
+    "ad_name": "FB_MOF_Static_Missed_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T13:58:00+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241454897490636": {
+    "ad_name": "FB_MOF_Static_Herd_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T13:58:00+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241454740090636": {
+    "ad_name": "FB_MOF_Static_GYM_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T13:42:07+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241454173080636": {
+    "ad_name": "FB_MOF_Static_Office-Time_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T13:42:07+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240716269620636": {
+    "ad_name": "FB_MOF_Static_Metro-In-Dinon-1_V0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:31:04+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715987940636": {
+    "ad_name": "FB_MOF_Static_C-Metro-2_V0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:24:20+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715451980636": {
+    "ad_name": "FB_MOF_Static_cricket-1_V2_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:14:51+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715451940636": {
+    "ad_name": "FB_MOF_Static_cricket-1_V1_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:14:51+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241428977910636": {
+    "ad_name": "FB_MOF_Static_Entry-Exit_V0_020326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-02T21:26:01+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241551691530636": {
+    "ad_name": "FB_MOF_Static_Filtered_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T17:21:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240716269500636": {
+    "ad_name": "FB_MOF_Static_Metro-In-Dinon-2_V0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:31:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241551691490636": {
+    "ad_name": "FB_MOF_Static_Start-Investing_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T17:21:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241551691480636": {
+    "ad_name": "FB_MOF_Static_Herd_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T17:21:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715987970636": {
+    "ad_name": "FB_MOF_Static_C-Exit-Light_V0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:24:20+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241551691550636": {
+    "ad_name": "FB_MOF_Static_GYM_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T17:21:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715743630636": {
+    "ad_name": "FB_MOF_Statics_Telegram_V8_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:19:09+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241551691570636": {
+    "ad_name": "FB_MOF_Static_Discipline_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T17:21:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240898605300636": {
+    "ad_name": "FB_MOF_Static_Talking-Ai_190226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-19T16:57:00+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240716269650636": {
+    "ad_name": "FB_MOF_Static_Stock-at-80_0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:31:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715263330636": {
+    "ad_name": "FB_MOF_Statics_Old-Phone_V1_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:12:12+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715743620636": {
+    "ad_name": "FB_MOF_Statics_Telegram_V7_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:19:09+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715263300636": {
+    "ad_name": "FB_MOF_Statics_Stop_V0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:12:12+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241551691560636": {
+    "ad_name": "FB_MOF_Static_Unlock_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T17:21:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715988000636": {
+    "ad_name": "FB_MOF_Static_C-Metro-4_V0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:24:20+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715987950636": {
+    "ad_name": "FB_MOF_Static_C-Exit-Unlock_V0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:24:20+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715451950636": {
+    "ad_name": "FB_MOF_Static_cricket-1_V4_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:14:51+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241551691500636": {
+    "ad_name": "FB_MOF_Static_Missed_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T17:21:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241551691440636": {
+    "ad_name": "FB_MOF_Static_Data-Backed_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T17:21:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715263320636": {
+    "ad_name": "FB_MOF_Statics_Old-Phone_V2_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:12:12+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715987930636": {
+    "ad_name": "FB_MOF_Static_C-Exit-Astronaut_V0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:24:20+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241461481420636": {
+    "ad_name": "FB_MOF_Static_Investing-or-guessing_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T17:30:34+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241461481410636": {
+    "ad_name": "FB_MOF_Static_3-Galtiya_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T17:30:34+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241551691510636": {
+    "ad_name": "FB_MOF_Static_Research-First_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T17:21:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715987990636": {
+    "ad_name": "FB_MOF_Static_C-Metro-6_V0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:24:20+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241461481390636": {
+    "ad_name": "FB_MOF_Static_Retirement_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T17:30:34+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715451960636": {
+    "ad_name": "FB_MOF_Static_cricket-1_V3_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:14:51+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240715451930636": {
+    "ad_name": "FB_MOF_Static_cricket-1_V5_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T15:14:51+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241551691460636": {
+    "ad_name": "FB_MOF_Static_Verified_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T17:21:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241461481400636": {
+    "ad_name": "FB_MOF_Static_Mr-Bull_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T17:30:34+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241551691540636": {
+    "ad_name": "FB_MOF_Static_Exit_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T17:21:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241556372830636": {
+    "ad_name": "FB_MOF_Static_Bear_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T19:03:09+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241556372840636": {
+    "ad_name": "FB_MOF_Static_Market-Falling_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T19:03:09+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241556372860636": {
+    "ad_name": "FB_MOF_Static_Dog_V2_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T19:03:09+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241556372870636": {
+    "ad_name": "FB_MOF_Static_Wrong-Stock_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T19:03:09+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241556372850636": {
+    "ad_name": "FB_MOF_Static_Dog_V1_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T19:03:09+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241555826710636": {
+    "ad_name": "FB_MOF_Video_Rahul-Figure_V2_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T18:42:50+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241551236770636": {
+    "ad_name": "FB_MOF_Video_Beard-Man-3_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T17:07:14+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241542381240636": {
+    "ad_name": "FB_MOF_Video_Beard-Man-1_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T13:17:45+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241542674550636": {
+    "ad_name": "FB_MOF_Video_Beard-Man-2_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T14:52:22+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241541896250636": {
+    "ad_name": "FB_MOF_Video_Rahul-Figure_V0_050326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-05T12:56:17+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241454897500636": {
+    "ad_name": "FB_MOF_Static_Data-Backed_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T13:58:00+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241429292970636": {
+    "ad_name": "FB_MOF_Static_Green-Bull_V0_020326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-02T21:26:01+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241454897530636": {
+    "ad_name": "FB_MOF_Static_Discipline_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T13:58:00+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240624002590636": {
+    "ad_name": "FB_MOF_Statics_Telegram_V5_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T15:44:49+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240624002560636": {
+    "ad_name": "FB_MOF_Statics_CMO-Tweet_V0_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T15:47:23+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240624002580636": {
+    "ad_name": "FB_MOF_Statics_Telegram_V6_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T15:47:23+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241455897130636": {
+    "ad_name": "FB_MOF_Video_News_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T14:19:55+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241455808880636": {
+    "ad_name": "FB_MOF_Video_Naked-Calls_V0_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T14:17:57+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120241455497640636": {
+    "ad_name": "FB_MOF_Video_Kitna-Dooba_V1_030326",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-03-03T14:11:49+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240627260460636": {
+    "ad_name": "FB_MOF_Video_Telegram_V1_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T16:36:18+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237953273420636": {
+    "ad_name": "FB_MOF_Static_One-Builds-Portfolio_0s_V0_051225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-05T13:32:12+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240846469800636": {
+    "ad_name": "Test2_FB_MOF_Static_Advoisary-Picks_V2_170226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-17T23:50:22+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240846469840636": {
+    "ad_name": "Test2_FB_MOF_Static_Advoisary-Picks_V3_170226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-17T23:50:22+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240846469790636": {
+    "ad_name": "Test2_FB_MOF_Static_Advoisary-Picks_V1_170226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-17T23:50:22+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240680906120636": {
+    "ad_name": "FB_MOF_Static_cricket-1_V4_120226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-12T19:41:58+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240680282440636": {
+    "ad_name": "FB_MOF_Static_cricket-1_V1_120226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-12T19:26:53+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240624165450636": {
+    "ad_name": "FB_MOF_Statics_Telegram_V9_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T15:58:33+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240624165440636": {
+    "ad_name": "FB_MOF_Statics_Telegram_V7_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T15:48:16+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240808413580636": {
+    "ad_name": "FB_MOF_Video_Anurag-Inf_V0_160226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-16T18:57:49+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240730650240636": {
+    "ad_name": "FB_MOF_Video_IT-Sector-Crash_V0_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T22:04:13+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240681058760636": {
+    "ad_name": "FB_MOF_Static_cricket-1_V5_120226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-12T19:46:53+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240725990550636": {
+    "ad_name": "FB_MOF_Video_Uncle_V3_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T20:43:25+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240725483470636": {
+    "ad_name": "FB_MOF_Video_Uncle_V2_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T20:37:14+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240723588040636": {
+    "ad_name": "FB_MOF_Video_Uncle_V1_130226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-13T19:40:47+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240082190960636": {
+    "ad_name": "FB_MOF_Video_Yash-Ripal-CCTV_V0_270126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-27T18:18:58+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240631921210636": {
+    "ad_name": "FB_MOF_Statics_Telegram_V10_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T18:27:22+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240624165420636": {
+    "ad_name": "FB_MOF_Statics_Telegram_V8_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T15:51:42+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240627693630636": {
+    "ad_name": "FB_MOF_Video_Telegram_V3_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T16:49:20+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240680835870636": {
+    "ad_name": "FB_MOF_Static_cricket-1_V3_120226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-12T19:35:06+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240627450360636": {
+    "ad_name": "FB_MOF_Video_Telegram_V2_110226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-11T16:45:49+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240680710350636": {
+    "ad_name": "FB_MOF_Static_cricket-1_V2_120226",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-02-12T19:31:33+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239537895790636": {
+    "ad_name": "FB_MOF_Video_Metro_V0_120126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-12T18:55:55+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240104101820636": {
+    "ad_name": "FB_MOF_Video_Sardar-Retail-Investors_V0_280126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-28T13:13:06+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240081157940636": {
+    "ad_name": "FB_MOF_Video_Sardar-Defence_V0_270126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-27T18:08:54+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236807820620636": {
+    "ad_name": "FB_MOF_Video_Asking-People-Questions_V0_141125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-14T19:13:37+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240103900950636": {
+    "ad_name": "FB_MOF_Video_Union-Budget-Laptop_V0_280126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-28T13:02:46+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240104641520636": {
+    "ad_name": "FB_MOF_Video_Union-Budget-AI_V0_280126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-28T13:23:47+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240104810550636": {
+    "ad_name": "FB_MOF_Static_Budget-Screenshot_V0_280126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-28T13:27:41+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240041620150636": {
+    "ad_name": "FB_MOF_Static_UB-5_V0_260126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-26T17:00:08+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240041533340636": {
+    "ad_name": "FB_MOF_Static_UB-4_V0_260126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-26T16:57:56+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239376804320636": {
+    "ad_name": "FB_MOF_Static_Metro-In-Dinon-1_V0_080126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-08T16:09:30+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240072992230636": {
+    "ad_name": "FB_MOF_Video_Budget-Fire-AI-1_V0_270126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-27T14:27:13+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240071772900636": {
+    "ad_name": "FB_MOF_Video_Metro-Motion-1_V0_270126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-27T14:12:19+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240072234910636": {
+    "ad_name": "FB_MOF_Video_Metro-Motion-2_V0_270126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-27T14:16:08+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239945778140636": {
+    "ad_name": "FB_MOF_Video_C-Metro-NM-WU_V4_230126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-23T13:43:43+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239945723310636": {
+    "ad_name": "FB_MOF_Video_C-Metro-NM-WU_V3_230126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-23T13:41:09+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239943433980636": {
+    "ad_name": "FB_MOF_Video_C-Metro-WM-WU_V4_230126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-23T12:30:58+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239944492170636": {
+    "ad_name": "FB_MOF_Video_C-Metro-WM-WU_V5_230126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-23T13:09:00+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239942783190636": {
+    "ad_name": "FB_MOF_Video_C-Metro-WM-WU_V3_230126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-23T12:14:56+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239943210480636": {
+    "ad_name": "FB_MOF_Video_C-Metro-WM-WU_V2_230126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-23T12:26:30+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239943126610636": {
+    "ad_name": "FB_MOF_Video_C-Metro-WM-WU_V1_230126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-23T12:20:03+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240074022180636": {
+    "ad_name": "FB_MOF_Video_UB-1_V0_270126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-27T14:54:48+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240073534980636": {
+    "ad_name": "FB_MOF_Video_Budget-Fire-AI-3_V0_270126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-27T14:45:30+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240073310630636": {
+    "ad_name": "FB_MOF_Video_Budget-Fire-AI-2_V0_270126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-27T14:35:13+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240070639010636": {
+    "ad_name": "FB_MOF_Static_C-Exit-Unlock_V0_270126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-27T13:37:43+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240070531770636": {
+    "ad_name": "FB_MOF_Static_C-Exit-Light_V0_270126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-27T13:34:34+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240069561190636": {
+    "ad_name": "FB_MOF_Static_C-Exit-Astronaut_V0_270126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-27T13:25:09+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240041888140636": {
+    "ad_name": "FB_MOF_Static_UB-8_V0_260126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-26T17:12:17+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240041856210636": {
+    "ad_name": "FB_MOF_Static_UB-7_V0_260126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-26T17:10:18+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240041692310636": {
+    "ad_name": "FB_MOF_Static_UB-6_V0_260126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-26T17:04:14+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240041356550636": {
+    "ad_name": "FB_MOF_Static_UB-2_V0_260126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-26T16:52:57+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240041416620636": {
+    "ad_name": "FB_MOF_Static_UB-3_V0_260126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-26T16:55:59+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120240041131520636": {
+    "ad_name": "FB_MOF_Static_UB-1_V0_260126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-26T16:48:14+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239610151300636": {
+    "ad_name": "FB_MOF_Static_C-Metro-7_V0_140126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-14T11:37:37+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239945579970636": {
+    "ad_name": "FB_MOF_Video_C-Metro-NM-WU_V2_230126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-23T13:38:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239944716800636": {
+    "ad_name": "FB_MOF_Video_C-Metro-NM-WU_V5_230126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-23T13:14:58+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239942694800636": {
+    "ad_name": "FB_MOF_Video_C-Metro-WM-WU_V3_230126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-23T12:07:58+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239293238360636": {
+    "ad_name": "FB_MOF_Video_AI-Suggestion_V0_070126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-07T00:10:30+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239610127840636": {
+    "ad_name": "FB_MOF_Static_C-Metro-6_V0_140126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-14T11:34:09+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239610240460636": {
+    "ad_name": "FB_MOF_Static_C-Metro-5-WU_V0_140126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-14T11:39:14+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238145820150636": {
+    "ad_name": "FB_MOF_Video_Mohit_091225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-09T20:43:32+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239869820420636": {
+    "ad_name": "FB_MOF_Static_Daily-Nifty-Analysis_V0_210126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-21T15:36:56+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237953389260636": {
+    "ad_name": "FB_MOF_Video_Perplexity-Kabir_V0_051225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-05T13:36:51+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237845568300636": {
+    "ad_name": "FB_MOF_Aunty_V1_031225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-03T15:28:13+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236714411580636": {
+    "ad_name": "FB_MOF_Video_News-Anchor-Test_V0_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T14:58:17+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239294395110636": {
+    "ad_name": "FB_MOF_Video_News-Anchor_V0_070126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-07T00:40:39+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239610060650636": {
+    "ad_name": "FB_MOF_Static_C-Metro-4_V0_140126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-14T11:27:25+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239609554570636": {
+    "ad_name": "FB_MOF_Static_C-Metro-3_V0_140126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-14T10:50:18+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239610081790636": {
+    "ad_name": "FB_MOF_Static_C-Metro-5_V0_140126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-14T11:30:53+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239580105330636": {
+    "ad_name": "FB_MOF_Static_C-Metro-1_V0_140126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-13T18:44:16+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239610240470636": {
+    "ad_name": "FB_MOF_Static_C-Metro-4-WU_V0_140126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-14T11:39:21+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239610240510636": {
+    "ad_name": "FB_MOF_Static_C-Metro-1-WU_V0_140126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-14T11:39:14+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239377842880636": {
+    "ad_name": "FB_MOF_Static_Metro-In-Dinon-2_V0_080126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-08T16:17:27+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239698387660636": {
+    "ad_name": "FB_MOF_Video_Manish_V2_160126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-16T19:17:53+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239695538310636": {
+    "ad_name": "FB_MOF_Video_Manish_V1_160126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-16T18:48:33+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239693442980636": {
+    "ad_name": "FB_MOF_Video_Pranit-Perf_V0_160126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-16T18:17:24+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239586394030636": {
+    "ad_name": "FB_MOF_Static_C-Metro-2_V0_140126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-13T18:59:02+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239610240490636": {
+    "ad_name": "FB_MOF_Static_C-Metro-3-WU_V0_140126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-14T11:39:29+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239610240500636": {
+    "ad_name": "FB_MOF_Static_C-Metro-2-WU_V0_140126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-14T11:39:21+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239431354320636": {
+    "ad_name": "FB_MOF_Video_Himanshu-Karan-Shetty_V0_090126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-09T18:09:23+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239539761980636": {
+    "ad_name": "FB_MOF_Video_Rahul-Comment_V0_120126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-12T19:11:01+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239537496100636": {
+    "ad_name": "FB_MOF_Video_Rahul-Economictimes_V0_120126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-12T18:42:35+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239529846900636": {
+    "ad_name": "FB_MOF_Video_Rahul-Laptop_V2_120126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-12T15:30:10+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239431183370636": {
+    "ad_name": "FB_MOF_Video_Anurag-Lacoste_V0_090126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-09T18:04:27+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239431536140636": {
+    "ad_name": "FB_MOF_Video_Himanshu-Karan-Shetty_V1_090126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-09T18:15:24+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239430785330636": {
+    "ad_name": "FB_MOF_Video_Rahul-Expose_V0_090126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-09T17:54:30+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239377940170636": {
+    "ad_name": "FB_MOF_Static_Rupees-One-Coin_V0_080126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-08T16:22:55+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239376049320636": {
+    "ad_name": "FB_MOF_Video_Rahul-Laptop_V0_080126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-08T15:44:36+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239058265780636": {
+    "ad_name": "FB_MOF_Static_Director-Tweet_V0_311225 – Copy",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-31T19:06:39+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239294465730636": {
+    "ad_name": "FB_MOF_Video_Corporate_V0_070126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-07T00:43:41+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239294170470636": {
+    "ad_name": "FB_MOF_Video_Therapist_V0_070126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-07T00:32:51+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239294084870636": {
+    "ad_name": "FB_MOF_Video_Rollercoaster_V0_070126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-07T00:28:57+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239293956720636": {
+    "ad_name": "FB_MOF_Video_Lottery_V0_070126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-07T00:26:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239293859620636": {
+    "ad_name": "FB_MOF_Video_Friend-Convo_V0_070126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-07T00:22:44+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239293789550636": {
+    "ad_name": "FB_MOF_Video_Fake-Guru_V0_070126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-07T00:19:13+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239293556640636": {
+    "ad_name": "FB_MOF_Video_Enterpreneur_V0_070126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-07T00:15:53+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239238288440636": {
+    "ad_name": "FB_MOF_Video_Karan-Shetty_V0_050126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-05T16:10:33+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239238097640636": {
+    "ad_name": "FB_MOF_Video_Kaushal-Pandey_V0_050126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-05T16:03:54+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239109769220636": {
+    "ad_name": "FB_MOF_Video_Vakeel_V0_020126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-02T19:00:54+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239086035460636": {
+    "ad_name": "FB_MOF_Video_Old-Uncle_V0_010126",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2026-01-01T17:54:17+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239058063080636": {
+    "ad_name": "FB_MOF_Video_CEO-Tweet_V0_311225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-31T19:03:09+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239057858660636": {
+    "ad_name": "FB_MOF_Video_Malik_V0_311225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-31T18:58:47+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120239040423060636": {
+    "ad_name": "FB_MOF_Video_CA-Lakshmi_V0_311225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-31T12:29:22+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238403744340636": {
+    "ad_name": "FB_MOF_Static_Dec-Future-Table_V0_151225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-15T12:19:44+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237964481170636": {
+    "ad_name": "FB_MOF_Static_Commodity-Nov_V0_051225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-05T16:19:40+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237962261750636": {
+    "ad_name": "FB_MOF_Static_Options-48%_V0_051225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-05T15:54:07+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238405286960636": {
+    "ad_name": "FB_MOF_Static_Future_V0_151225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-15T12:47:55+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238402650810636": {
+    "ad_name": "FB_MOF_Static_All-In-One_V0_151225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-15T12:07:48+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238453321630636": {
+    "ad_name": "FB_MOF_Static_Gmaps_V1_151225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-16T12:05:29+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238453321620636": {
+    "ad_name": "FB_MOF_Static_Gmaps_V2_151225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-16T12:06:00+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238453666850636": {
+    "ad_name": "FB_MOF_Static_Gussing-Game_V0_151225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-16T12:11:16+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238453560520636": {
+    "ad_name": "FB_MOF_Static_One-Builds-Portfolio_0s_V0_151225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-16T12:08:25+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238453321590636": {
+    "ad_name": "FB_MOF_Static_All-In-One_V0_151225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-16T12:06:00+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238453321610636": {
+    "ad_name": "FB_MOF_Static_Losing-Money_V0_151225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-16T12:05:49+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238453321600636": {
+    "ad_name": "FB_MOF_Static_Options-Trading_V0_151225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-16T12:05:39+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236714639210636": {
+    "ad_name": "FB_MOF_Static_Confusion-se-clarity-tak_V0_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T15:01:35+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237574031040636": {
+    "ad_name": "FB_MOF_Static_Defence_0_281125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-28T17:53:14+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238402520250636": {
+    "ad_name": "FB_MOF_Static_Options-Trading_V0_151225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-15T12:03:11+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238402107760636": {
+    "ad_name": "FB_MOF_Static_Losing-Money_V0_151225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-15T12:00:08+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237963018780636": {
+    "ad_name": "FB_MOF_Static_Options-48%_V2_051225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-05T16:02:45+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238096470810636": {
+    "ad_name": "FB_MOF_Video_Inf-Stock-Heist_081225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-08T22:35:40+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120238144072150636": {
+    "ad_name": "FB_MOF_Video_W-Tshirt-Ladka_091225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-09T20:13:56+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237925125900636": {
+    "ad_name": "FB_MOF_Inf-Danish_041225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-04T22:24:49+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237964684450636": {
+    "ad_name": "FB_MOF_Static_Options_V3_051225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-05T16:24:44+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237434450940636": {
+    "ad_name": "FB_MOF_Static_Performance-20th-Nov_V0_261125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-26T16:11:12+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237953145660636": {
+    "ad_name": "FB_MOF_Static_why-do-stock-gurus_V0_051225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-05T13:26:43+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237952029890636": {
+    "ad_name": "FB_MOF_Negative-Hook_V0_051225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-05T13:08:25+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237925466980636": {
+    "ad_name": "FB_MOF_Video_Defence_0_041225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-04T22:39:34+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237925466990636": {
+    "ad_name": "FB_MOF_Video_Stock-at-80_0_041225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-04T22:46:41+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237925997580636": {
+    "ad_name": "FB_MOF_Video_Yashpal-Mbagger_0_041225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-05T12:00:33+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237925997570636": {
+    "ad_name": "FB_MOF_Static_Missed-Mbagger_0_281125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-05T12:26:21+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237925291020636": {
+    "ad_name": "FB_MOF_Inf-Stock-Heist_041225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-04T22:32:43+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237902470110636": {
+    "ad_name": "FB_MOF_Univest-HR_V0_041225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-04T16:49:22+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237846039300636": {
+    "ad_name": "FB_MOF_Time-Traveller_V0_031225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-03T15:44:38+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237818235330636": {
+    "ad_name": "FB_MOF_Hladki_V0_031225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-03T15:19:46+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237845944950636": {
+    "ad_name": "FB_MOF_Aunty_V2_031225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-03T15:33:31+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237575141590636": {
+    "ad_name": "FB_MOF_Angrez-Tond_V0_281125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-28T18:33:08+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237873692990636": {
+    "ad_name": "FB_MOF_AI-Ladki_V0_041225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-04T00:28:18+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237873390260636": {
+    "ad_name": "FB_MOF_Breakup_V0_041225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-04T00:19:50+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237762336540636": {
+    "ad_name": "FB_MOF_Angrez-Uncle_V2_021225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-02T14:58:25+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237711647190636": {
+    "ad_name": "FB_MOF_40years+-Experience_V0_011225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-01T18:21:35+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237695775470636": {
+    "ad_name": "FB_MOF_Static_Stock-at-80_0_011225",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-12-01T13:44:32+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237534675790636": {
+    "ad_name": "FB_MOF_Static_Defence_0_281125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-28T01:05:52+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237575119410636": {
+    "ad_name": "FB_MOF_Aunty-Black-F_V2_281125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-28T18:28:40+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237128877390636": {
+    "ad_name": "FB_MOF_Black-Friday-Fire_0_201125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-20T19:36:05+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237505669480636": {
+    "ad_name": "FB_MOF_Aunty-Black-F_V0_271125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-27T18:01:25+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237535120150636": {
+    "ad_name": "FB_MOF_Static_Yashpal-Mbagger_0_281125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-28T01:19:08+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237535120180636": {
+    "ad_name": "FB_MOF_Static_Missed-Mbagger_0_281125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-28T01:18:43+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237534386710636": {
+    "ad_name": "FB_MOF_Static_Stock-at-80_0_281125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-28T01:01:31+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237533432650636": {
+    "ad_name": "FB_MOF_Static_Cheating_0_281125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-28T00:53:27+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236714639190636": {
+    "ad_name": "FB_MOF_Static_why-do-stock-gurus_V0_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T15:01:35+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236714639200636": {
+    "ad_name": "FB_MOF_Static_Even-Milk-Expires_V0_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T15:01:44+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237440365310636": {
+    "ad_name": "FB_MOF_Selfie-Girl-BlackF_0_261125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-26T17:29:25+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236713812640636": {
+    "ad_name": "FB_MOF_Static_Performance-6th-Oct_V0_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T14:53:20+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236713812650636": {
+    "ad_name": "FB_BOF_Static_30th-Oct-Perf_V0_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T14:53:20+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237179336040636": {
+    "ad_name": "FB_MOF_Angrez-Uncle_V0_241125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-24T15:32:00+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237396360540636": {
+    "ad_name": "FB_MOF_Election-Day_V1_261125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-26T00:33:52+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236713812660636": {
+    "ad_name": "FB_BOF_Static_ICICI_V0_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T14:53:29+0530",
+    "status": "PAUSED",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237252005500636": {
+    "ad_name": "FB_MOF_Paper-Crumple-BF_V0_231125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-23T01:33:23+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237180739920636": {
+    "ad_name": "FB_MOF_Phone-Sliding-BlackF_V0_211125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-21T18:57:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237179071040636": {
+    "ad_name": "FB_MOF_Black-Hand_0_211125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-21T18:15:00+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237178435810636": {
+    "ad_name": "FB_MOF_Video_Election-Day_211125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-21T18:07:30+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237178811000636": {
+    "ad_name": "FB_MOF_Baby-AI_V0_211125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-21T18:13:15+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237138665680636": {
+    "ad_name": "FB_MOF_Black-Friday-AI_V3_201125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-21T00:03:37+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237138014110636": {
+    "ad_name": "FB_MOF_Black-Friday-AI_V2_201125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-20T23:59:03+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237137944390636": {
+    "ad_name": "FB_MOF_Black-Friday-AI_V1_201125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-20T23:56:22+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237129330570636": {
+    "ad_name": "FB_MOF_Black-Friday_V2_201125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-20T19:47:26+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237062728130636": {
+    "ad_name": "FB_MOF_Static_Gmaps_V2_191125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-19T16:58:45+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237062097280636": {
+    "ad_name": "FB_MOF_Static_Gmaps_V1_191125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-19T16:55:35+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237011643810636": {
+    "ad_name": "FB_MOF_Video_Monkey-AI_V1_181125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-18T16:45:58+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237012177070636": {
+    "ad_name": "FB_MOF_Video_Anil-Eternal_V0_181125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-18T17:00:53+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120237011782060636": {
+    "ad_name": "FB_MOF_Video_Monkey-AI_V2_181125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-18T16:51:33+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236918686350636": {
+    "ad_name": "FB_MOF_Video_AS-Sebi_V0_171125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-17T02:56:09+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236899065390636": {
+    "ad_name": "FB_MOF_Video_AS-Explains_V0_161125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-16T12:48:32+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236807295480636": {
+    "ad_name": "FB_MOF_Video_Irritating-Ladki_V0_141125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-14T18:55:45+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236899216560636": {
+    "ad_name": "FB_MOF_Video_AS-Anchor_V0_161125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-16T12:55:30+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236909112920636": {
+    "ad_name": "FB_MOF_Video_AS-Selfie_V0_161125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-16T18:25:44+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236885519320636": {
+    "ad_name": "FB_MOF_Video_Standup_V4_161125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-16T01:11:41+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236864366240636": {
+    "ad_name": "FB_MOF_Video_5000-dede_H2_151125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-15T14:50:46+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236885427820636": {
+    "ad_name": "FB_MOF_Video_Standup_V3_161125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-16T01:07:16+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236898815810636": {
+    "ad_name": "FB_MOF_Video_AS-Tension_V0_161125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-16T12:41:54+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236860641500636": {
+    "ad_name": "FB_MOF_Static_Performance-10th-Oct_V0_151125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-15T14:32:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236863486120636": {
+    "ad_name": "FB_MOF_Video_5000-dede_H3_151125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-15T14:44:16+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236862895250636": {
+    "ad_name": "FB_MOF_Static_Confusion-se-clarity-tak_V0_151125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-15T14:36:30+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236863299490636": {
+    "ad_name": "FB_MOF_Static_Even-Milk-Expires_V0_151125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-15T14:40:45+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236808092910636": {
+    "ad_name": "FB_MOF_Video_Overacting_V0_141125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-14T19:21:27+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236802448610636": {
+    "ad_name": "FB_MOF_Static_Stop-Chasing_V0_141125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-14T17:29:32+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236806705930636": {
+    "ad_name": "FB_MOF_Video_Chashmish-Buddhu_V0_141125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-14T18:42:06+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236805401830636": {
+    "ad_name": "FB_MOF_Video_Skoda-Gedi_V0_141125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-14T18:20:03+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236750151960636": {
+    "ad_name": "FB_MOF_Static_Yashpal-Sir_V2_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T22:23:04+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236749954260636": {
+    "ad_name": "FB_MOF_Static_Multibagger_V0_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T22:17:38+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236735786170636": {
+    "ad_name": "FB_MOF_Video_Why-do-Stock-Guru_V0_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T18:54:00+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236735057360636": {
+    "ad_name": "FB_MOF_Video_Milk-Expires_V0_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T18:40:53+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236716292590636": {
+    "ad_name": "FB_MOF_Static_Market-Fall_V0_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T15:10:24+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236717019630636": {
+    "ad_name": "FB_MOF_Static_Viral-Video_V0_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T15:11:33+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236716010680636": {
+    "ad_name": "FB_MOF_Static_Retail-Investors_V0_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T15:08:20+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236714340800636": {
+    "ad_name": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T14:56:52+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  },
+  "120236714266280636": {
+    "ad_name": "FB_MOF_Video_Trader-Test_V0_131125",
+    "campaign_name": "Test-Campaign_FB_MOF_Manual-App_Android_Pro-Sub_Pan-India_131125",
+    "created_time": "2025-11-13T14:55:29+0530",
+    "status": "ACTIVE",
+    "first_seen": "2026-03-20T08:16:33.920Z"
+  }
+}

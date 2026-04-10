@@ -6,6 +6,9 @@
     var _trendlineCache = {};
     var _refreshInterval = null;
     var _lastRefreshRequestAt = 0;
+    var CACHE_VERSION = 'v2';
+    var DASHBOARD_CACHE_KEY = 'ci2.roas.simulator.dashboard.' + CACHE_VERSION;
+    var TRENDLINE_CACHE_PREFIX = 'ci2.roas.simulator.trendline.' + CACHE_VERSION + '.';
 
     var CHECKPOINT_META = {
         P0: { color: '#8b5cf6', label: 'P0', checkpointLabel: 'Day 0' },
@@ -44,9 +47,82 @@
 
     function accuracyCardValue(val, verifiedCount) {
         if (val == null) {
-            return verifiedCount > 0 ? 'Pending' : 'No data';
+            return 'Pending maturity';
         }
         return fmtAccuracy(val);
+    }
+
+    function hasLocalStorage() {
+        try {
+            return typeof localStorage !== 'undefined';
+        } catch (err) {
+            return false;
+        }
+    }
+
+    function readCache(key) {
+        if (!hasLocalStorage()) return null;
+        try {
+            var raw = localStorage.getItem(key);
+            if (!raw) return null;
+            return JSON.parse(raw);
+        } catch (err) {
+            return null;
+        }
+    }
+
+    function writeCache(key, value) {
+        if (!hasLocalStorage()) return;
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+        } catch (err) {
+            // ignore quota / serialization failures
+        }
+    }
+
+    function fmtCachedAt(ts) {
+        if (!ts) return '-';
+        try {
+            return new Date(ts).toLocaleString();
+        } catch (err) {
+            return String(ts);
+        }
+    }
+
+    function getCachedDashboard() {
+        return readCache(DASHBOARD_CACHE_KEY);
+    }
+
+    function setCachedDashboard(data) {
+        writeCache(DASHBOARD_CACHE_KEY, {
+            savedAt: new Date().toISOString(),
+            data: data
+        });
+    }
+
+    function getCachedTrendline(adId) {
+        return readCache(TRENDLINE_CACHE_PREFIX + adId);
+    }
+
+    function setCachedTrendline(adId, data) {
+        writeCache(TRENDLINE_CACHE_PREFIX + adId, {
+            savedAt: new Date().toISOString(),
+            data: data
+        });
+    }
+
+    function showProgress(message) {
+        var progress = document.getElementById('rtProgress');
+        if (!progress) return;
+        progress.style.display = '';
+        progress.innerHTML = '<div style="padding:12px 16px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);font-size:12px;color:var(--text-dim);line-height:1.5;">' + escapeHtml(message) + '</div>';
+    }
+
+    function hideProgress() {
+        var progress = document.getElementById('rtProgress');
+        if (!progress) return;
+        progress.style.display = 'none';
+        progress.innerHTML = '';
     }
 
     function fmtDate(val) {
@@ -88,6 +164,7 @@
 
         container.innerHTML = buildHTML();
         bindEvents();
+        renderCachedDashboard();
         fetchDashboard();
         _refreshInterval = setInterval(fetchDashboard, 5 * 60 * 1000);
     }
@@ -112,6 +189,7 @@
                 '</div>' +
 
                 '<div id="rtStats" style="margin-bottom:20px;"></div>' +
+                '<div id="rtLearning" style="margin-bottom:20px;"></div>' +
                 '<div id="rtProgress" style="display:none;margin-bottom:16px;"></div>' +
                 '<div id="rtFlash" style="display:none;margin-bottom:16px;"></div>' +
                 '<div id="rtTable"></div>' +
@@ -130,16 +208,39 @@
     }
 
     function fetchDashboard() {
+        var cached = getCachedDashboard();
+        if (cached && cached.data) {
+            _dashboardData = cached.data;
+            renderStats(cached.data.summary);
+            renderLearningPanel(cached.data);
+            renderTable(cached.data.ads || []);
+            showProgress('Showing cached simulator state from ' + fmtCachedAt(cached.savedAt) + ' while fresh Meta + Metabase data loads.');
+        } else {
+            showProgress('Loading fresh simulator data...');
+        }
+
         fetch('/api/ci2/roas-simulator/dashboard')
             .then(function(res) { return res.json(); })
             .then(function(result) {
-                if (!result.success || !result.data) return;
+                if (!result.success || !result.data) {
+                    hideProgress();
+                    showFlash('Simulator fetch returned no usable data.', 'var(--red, #ef4444)');
+                    return;
+                }
                 _dashboardData = result.data;
+                setCachedDashboard(result.data);
                 renderStats(result.data.summary);
+                renderLearningPanel(result.data);
                 renderTable(result.data.ads || []);
+                hideProgress();
             })
             .catch(function(err) {
-                showFlash('Simulator fetch failed: ' + err.message, 'var(--red, #ef4444)');
+                hideProgress();
+                if (!(cached && cached.data)) {
+                    showFlash('Simulator fetch failed: ' + err.message, 'var(--red, #ef4444)');
+                } else {
+                    showFlash('Fresh simulator fetch failed; showing cached state: ' + err.message, 'var(--red, #ef4444)');
+                }
             });
 
         if (Date.now() - _lastRefreshRequestAt > 15 * 60 * 1000) {
@@ -150,12 +251,8 @@
     function runRefresh(manual) {
         _lastRefreshRequestAt = Date.now();
 
-        var progress = document.getElementById('rtProgress');
         var snapshotBtn = document.getElementById('rtSnapshotBtn');
-        if (progress) {
-            progress.style.display = '';
-            progress.innerHTML = '<div style="padding:12px 16px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);font-size:12px;color:var(--text-dim);">Refreshing Meta + Metabase snapshots and checkpoint forecasts...</div>';
-        }
+        showProgress('Refreshing Meta + Metabase snapshots and checkpoint forecasts... Cached simulator data will stay visible until the rebuild lands.');
         if (manual && snapshotBtn) snapshotBtn.disabled = true;
 
         fetch('/api/ci2/roas-simulator/refresh', {
@@ -165,7 +262,7 @@
         })
             .then(function(res) { return res.json(); })
             .then(function(result) {
-                if (progress) progress.style.display = 'none';
+                hideProgress();
                 if (manual && snapshotBtn) snapshotBtn.disabled = false;
 
                 if (!result.success) {
@@ -181,10 +278,20 @@
                 fetchDashboard();
             })
             .catch(function(err) {
-                if (progress) progress.style.display = 'none';
+                hideProgress();
                 if (manual && snapshotBtn) snapshotBtn.disabled = false;
                 if (manual) showFlash('Refresh failed: ' + err.message, 'var(--red, #ef4444)');
             });
+    }
+
+    function renderCachedDashboard() {
+        var cached = getCachedDashboard();
+        if (!cached || !cached.data) return;
+        _dashboardData = cached.data;
+        renderStats(cached.data.summary);
+        renderLearningPanel(cached.data);
+        renderTable(cached.data.ads || []);
+        showProgress('Showing cached simulator state from ' + fmtCachedAt(cached.savedAt) + ' while fresh Meta + Metabase data loads.');
     }
 
     function showFlash(msg, color) {
@@ -231,6 +338,72 @@
                 '</div>';
             }).join('') +
         '</div>';
+    }
+
+    function renderLearningPanel(data) {
+        var el = document.getElementById('rtLearning');
+        if (!el || !data) return;
+
+        var summary = data.summary || {};
+        var aggregate = data.aggregate_view;
+        var learning = data.learning_summary || {};
+        var matrix = summary.accuracy_matrix || {};
+        var stageCounts = learning.stage_counts || {};
+        var familyCounts = learning.family_counts || {};
+        var stages = ['P0', 'P2', 'P8', 'P14'];
+        var horizons = ['d6', 'd15', 'd30', 'd60', 'd180'];
+
+        var stageHtml = stages.map(function(stage) {
+            var topFamily = (familyCounts[stage] && familyCounts[stage][0]) || null;
+            return '<div style="flex:1;min-width:160px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px;">' +
+                '<div style="font-size:11px;color:var(--text-dim);font-weight:700;">' + stage + ' curve set</div>' +
+                '<div style="font-size:22px;font-weight:700;margin-top:4px;color:var(--accent, #6366f1);">' + (stageCounts[stage] || 0) + '</div>' +
+                '<div style="font-size:10px;color:var(--text-dim);margin-top:4px;">' + (topFamily ? escapeHtml(topFamily.bucket + ' - ' + (topFamily.sample_size || 0) + ' samples') : 'No family coverage yet') + '</div>' +
+            '</div>';
+        }).join('');
+
+        var matrixHtml = '<div style="overflow-x:auto;">' +
+            '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+            '<thead><tr style="border-bottom:1px solid var(--border);">' +
+                '<th style="text-align:left;padding:8px 6px;color:var(--text-dim);">Checkpoint</th>' +
+                horizons.map(function(h) {
+                    return '<th style="text-align:center;padding:8px 6px;color:var(--text-dim);">' + h.toUpperCase() + '</th>';
+                }).join('') +
+            '</tr></thead><tbody>' +
+            stages.map(function(stage) {
+                return '<tr style="border-bottom:1px solid var(--border);">' +
+                    '<td style="padding:8px 6px;font-weight:700;">' + stage + '</td>' +
+                    horizons.map(function(h) {
+                        var val = matrix[stage] && matrix[stage][h];
+                        return '<td style="padding:8px 6px;text-align:center;color:' + roasColor(val) + ';font-weight:700;">' + (val == null ? 'Pending maturity' : fmtAccuracy(val)) + '</td>';
+                    }).join('') +
+                '</tr>';
+            }).join('') +
+            '</tbody></table>' +
+        '</div>';
+
+        el.innerHTML = '' +
+            '<div class="ci-panel" style="margin-bottom:0;">' +
+                '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;">' +
+                    '<div>' +
+                        '<div style="font-size:14px;font-weight:700;">Portfolio learning view</div>' +
+                        '<div style="font-size:12px;color:var(--text-dim);margin-top:4px;">Aggregate actual line, average checkpoint forecasts, and stage-level accuracy mapped from the matured creative set.</div>' +
+                    '</div>' +
+                    '<div style="font-size:11px;color:var(--text-dim);text-align:right;">' +
+                        'Built at: ' + escapeHtml((learning && learning.built_at) || '-') + '<br>' +
+                        'Samples: ' + escapeHtml(String((learning && learning.sample_count) || 0)) +
+                    '</div>' +
+                '</div>' +
+                '<div id="rtAggregateChart" style="margin-bottom:16px;"></div>' +
+                '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">' + stageHtml + '</div>' +
+                '<div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:8px;">Checkpoint accuracy matrix</div>' +
+                matrixHtml +
+            '</div>';
+
+        if (aggregate) {
+            var chart = document.getElementById('rtAggregateChart');
+            if (chart) renderTrendline(chart, aggregate);
+        }
     }
 
     function renderTable(ads) {
@@ -332,24 +505,40 @@
         if (!chartContainer) return;
 
         if (_trendlineCache[adId]) {
-            renderTrendline(chartContainer, _trendlineCache[adId]);
-            return;
+            renderTrendline(chartContainer, _trendlineCache[adId], { banner: 'Showing cached prediction lines while fresh data loads.' });
+        } else {
+            var stored = getCachedTrendline(adId);
+            if (stored && stored.data) {
+                _trendlineCache[adId] = stored.data;
+                renderTrendline(chartContainer, stored.data, { banner: 'Showing cached prediction lines from ' + fmtCachedAt(stored.savedAt) + ' while fresh data loads.' });
+            }
         }
 
-        chartContainer.innerHTML = '<div style="font-size:12px;color:var(--text-dim);">Loading simulator line chart...</div>';
+        if (!_trendlineCache[adId]) {
+            chartContainer.innerHTML = '<div style="font-size:12px;color:var(--text-dim);">Loading simulator line chart...</div>';
+        }
 
         fetch('/api/ci2/roas-simulator/trendline/' + encodeURIComponent(adId))
             .then(function(res) { return res.json(); })
             .then(function(result) {
                 if (!result.success || !result.data) {
-                    chartContainer.innerHTML = '<div style="font-size:12px;color:var(--red);">Failed to load simulator details.</div>';
+                    if (!_trendlineCache[adId]) {
+                        chartContainer.innerHTML = '<div style="font-size:12px;color:var(--red);">Failed to load simulator details.</div>';
+                    } else {
+                        renderTrendline(chartContainer, _trendlineCache[adId], { banner: 'Fresh detail fetch failed; cached prediction lines are still shown.' });
+                    }
                     return;
                 }
                 _trendlineCache[adId] = result.data;
+                setCachedTrendline(adId, result.data);
                 renderTrendline(chartContainer, result.data);
             })
             .catch(function(err) {
-                chartContainer.innerHTML = '<div style="font-size:12px;color:var(--red);">Error: ' + escapeHtml(err.message) + '</div>';
+                if (!_trendlineCache[adId]) {
+                    chartContainer.innerHTML = '<div style="font-size:12px;color:var(--red);">Error: ' + escapeHtml(err.message) + '</div>';
+                } else {
+                    renderTrendline(chartContainer, _trendlineCache[adId], { banner: 'Fresh detail fetch failed: ' + err.message + '. Cached line is still visible.' });
+                }
             });
     }
 
@@ -405,7 +594,8 @@
         return lines;
     }
 
-    function renderTrendline(container, data) {
+    function renderTrendline(container, data, options) {
+        options = options || {};
         var lines = buildLineSeries(data);
         var W = 760;
         var H = 320;
@@ -526,7 +716,7 @@
                     '<div style="font-size:10px;color:var(--text-dim);font-weight:700;">' + horizon.label + '</div>' +
                     '<div style="font-size:18px;font-weight:700;color:' + roasColor(horizon.actual_roas) + ';margin-top:4px;">' + fmtRoas(horizon.actual_roas) + '</div>' +
                     '<div style="font-size:10px;color:var(--text-dim);margin-top:4px;">' + fmtINR(horizon.actual_revenue) + ' rev</div>' +
-                    '<div style="font-size:10px;color:' + (horizon.mature ? 'var(--green, #10b981)' : 'var(--orange, #f59e0b)') + ';margin-top:4px;">' + (horizon.mature ? 'Mature' : 'Immature') + '</div>' +
+                    '<div style="font-size:10px;color:' + (horizon.mature ? 'var(--green, #10b981)' : 'var(--orange, #f59e0b)') + ';margin-top:4px;">' + (horizon.mature ? 'Mature' : 'Pending maturity') + '</div>' +
                 '</div>';
             }).join('') +
             '</div>' +
@@ -548,7 +738,7 @@
                             'Anchor spend: ' + fmtINR(run.spend_at_creation) + '<br>' +
                             'Confidence: ' + (run.confidence_score != null ? Math.round(run.confidence_score) + '%' : '-') + '<br>' +
                             'Method: ' + escapeHtml(run.prediction_method || '-') + '<br>' +
-                            'Accuracy now: ' + fmtAccuracy(run.accuracy_summary && run.accuracy_summary.average_accuracy_pct) + ' across ' + ((run.accuracy_summary && run.accuracy_summary.verified_horizons) || 0) + ' mature horizons.' +
+                            'Accuracy now: ' + ((run.accuracy_summary && run.accuracy_summary.average_accuracy_pct != null) ? fmtAccuracy(run.accuracy_summary.average_accuracy_pct) : 'Pending maturity') + ' across ' + ((run.accuracy_summary && run.accuracy_summary.verified_horizons) || 0) + ' mature horizons.' +
                         '</div>' +
                         '<div style="font-size:11px;color:var(--text-dim);line-height:1.6;margin-top:8px;">' + escapeHtml(run.reasoning || 'Fresh forecast from the actual checkpoint base.') + '</div>' +
                     '</div>';
@@ -556,12 +746,12 @@
             '</div>' : '<div style="font-size:12px;color:var(--text-dim);">No frozen checkpoint lines exist yet for this cohort.</div>') +
         '</div>';
 
+        var title = data.title || shortName(data.ad && data.ad.ad_name);
+        var subtitle = data.subtitle || ('Days live: ' + escapeHtml(String(data.ad && data.ad.days_live || 0)) + ' | Spend: ' + fmtINR(data.ad && data.ad.spend) + ' | Current actual base: ' + fmtRoas(data.ad && data.ad.actual_anchor_roas));
         var header = '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:10px;">' +
             '<div>' +
-                '<div style="font-size:15px;font-weight:700;">' + escapeHtml(shortName(data.ad.ad_name)) + '</div>' +
-                '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">' +
-                    'Days live: ' + escapeHtml(String(data.ad.days_live || 0)) + ' | Spend: ' + fmtINR(data.ad.spend) + ' | Current actual base: ' + fmtRoas(data.ad.actual_anchor_roas) +
-                '</div>' +
+                '<div style="font-size:15px;font-weight:700;">' + escapeHtml(shortName(title)) + '</div>' +
+                '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;">' + escapeHtml(subtitle) + '</div>' +
             '</div>' +
             '<div style="font-size:11px;color:var(--text-dim);text-align:right;">' +
                 'Snapshot: ' + fmtDate(data.ad.latest_snapshot_date) + '<br>' +
@@ -569,7 +759,8 @@
             '</div>' +
         '</div>';
 
-        container.innerHTML = header + svg + legend + horizonCards + checkpointCards;
+        var banner = options.banner ? '<div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:rgba(99,102,241,0.08);font-size:11px;color:var(--text-dim);margin-bottom:10px;">' + escapeHtml(options.banner) + '</div>' : '';
+        container.innerHTML = banner + header + svg + legend + horizonCards + checkpointCards;
     }
 
     window.ciSimulatorInit = init;

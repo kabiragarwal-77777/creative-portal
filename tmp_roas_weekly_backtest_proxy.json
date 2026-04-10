@@ -1,0 +1,1819 @@
+{
+  "summary": {
+    "P0": {
+      "D6": {
+        "n": 7,
+        "mape": 49.59,
+        "smape": 57.11
+      },
+      "D15": {
+        "n": 7,
+        "mape": 45.87,
+        "smape": 56.42
+      },
+      "D30": {
+        "n": 7,
+        "mape": 52.27,
+        "smape": 59.43
+      },
+      "D60": {
+        "n": 7,
+        "mape": 53.14,
+        "smape": 58.52
+      },
+      "D180": {
+        "n": 7,
+        "mape": 42.6,
+        "smape": 54.07
+      }
+    },
+    "P2": {
+      "D6": {
+        "n": 5,
+        "mape": 75.27,
+        "smape": 82.59
+      },
+      "D15": {
+        "n": 5,
+        "mape": 54.14,
+        "smape": 69.31
+      },
+      "D30": {
+        "n": 5,
+        "mape": 40.34,
+        "smape": 54.48
+      },
+      "D60": {
+        "n": 5,
+        "mape": 43.13,
+        "smape": 58.83
+      },
+      "D180": {
+        "n": 5,
+        "mape": 46.63,
+        "smape": 65.22
+      }
+    },
+    "P8": {
+      "D6": {
+        "n": 3,
+        "mape": 28.52,
+        "smape": 37.27
+      },
+      "D15": {
+        "n": 3,
+        "mape": 85.11,
+        "smape": 79.14
+      },
+      "D30": {
+        "n": 3,
+        "mape": 90.76,
+        "smape": 83.26
+      },
+      "D60": {
+        "n": 3,
+        "mape": 79.76,
+        "smape": 77.5
+      },
+      "D180": {
+        "n": 3,
+        "mape": 95.27,
+        "smape": 85.41
+      }
+    },
+    "P14": {
+      "D6": {
+        "n": 3,
+        "mape": 31.73,
+        "smape": 40.73
+      },
+      "D15": {
+        "n": 3,
+        "mape": 28.34,
+        "smape": 36.31
+      },
+      "D30": {
+        "n": 3,
+        "mape": 40.52,
+        "smape": 47.46
+      },
+      "D60": {
+        "n": 3,
+        "mape": 33.43,
+        "smape": 42.35
+      },
+      "D180": {
+        "n": 3,
+        "mape": 26.81,
+        "smape": 36.68
+      }
+    }
+  },
+  "rows": [
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D6",
+      "actual_final": 0.0,
+      "predicted_final": 6.15,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D15",
+      "actual_final": 0.0,
+      "predicted_final": 8.05,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D30",
+      "actual_final": 0.0,
+      "predicted_final": 8.49,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D60",
+      "actual_final": 0.0,
+      "predicted_final": 11.54,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D180",
+      "actual_final": 0.0,
+      "predicted_final": 14.78,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D6",
+      "actual_final": 0.0,
+      "predicted_final": 10.6,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D15",
+      "actual_final": 0.0,
+      "predicted_final": 13.71,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D30",
+      "actual_final": 0.0,
+      "predicted_final": 15.23,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D60",
+      "actual_final": 0.0,
+      "predicted_final": 18.11,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D180",
+      "actual_final": 0.0,
+      "predicted_final": 20.83,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D6",
+      "actual_final": 0.0,
+      "predicted_final": 10.07,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D15",
+      "actual_final": 0.0,
+      "predicted_final": 10.97,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D30",
+      "actual_final": 0.0,
+      "predicted_final": 14.02,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D60",
+      "actual_final": 0.0,
+      "predicted_final": 16.58,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D180",
+      "actual_final": 0.0,
+      "predicted_final": 35.9,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D6",
+      "actual_final": 0.0,
+      "predicted_final": 18.62,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D15",
+      "actual_final": 0.0,
+      "predicted_final": 20.33,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D30",
+      "actual_final": 0.0,
+      "predicted_final": 21.15,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D60",
+      "actual_final": 0.0,
+      "predicted_final": 38.59,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Baby-AI_V0_211125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D180",
+      "actual_final": 0.0,
+      "predicted_final": 47.58,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-AI_V1_201125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D6",
+      "actual_final": 0.0,
+      "predicted_final": 12.5,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-AI_V1_201125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D15",
+      "actual_final": 0.0,
+      "predicted_final": 22.17,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-AI_V1_201125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D30",
+      "actual_final": 0.0,
+      "predicted_final": 22.82,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-AI_V1_201125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D60",
+      "actual_final": 0.0,
+      "predicted_final": 26.6,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-AI_V1_201125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D180",
+      "actual_final": 0.0,
+      "predicted_final": 30.1,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-AI_V1_201125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D6",
+      "actual_final": 0.0,
+      "predicted_final": 18.35,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-AI_V1_201125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D15",
+      "actual_final": 0.0,
+      "predicted_final": 22.69,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-AI_V1_201125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D30",
+      "actual_final": 0.0,
+      "predicted_final": 26.08,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-AI_V1_201125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D60",
+      "actual_final": 0.0,
+      "predicted_final": 34.5,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-AI_V1_201125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D180",
+      "actual_final": 0.0,
+      "predicted_final": 50.14,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-AI_V1_201125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D6",
+      "actual_final": 0.0,
+      "predicted_final": 0.0,
+      "ape": null,
+      "smape": null,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-AI_V1_201125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D15",
+      "actual_final": 0.0,
+      "predicted_final": 0.0,
+      "ape": null,
+      "smape": null,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-AI_V1_201125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D30",
+      "actual_final": 0.0,
+      "predicted_final": 0.0,
+      "ape": null,
+      "smape": null,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-AI_V1_201125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D60",
+      "actual_final": 0.0,
+      "predicted_final": 0.0,
+      "ape": null,
+      "smape": null,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-AI_V1_201125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D180",
+      "actual_final": 0.0,
+      "predicted_final": 0.0,
+      "ape": null,
+      "smape": null,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-Fire_0_201125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D6",
+      "actual_final": 19.36,
+      "predicted_final": 13.92,
+      "ape": 28.07,
+      "smape": 32.66,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-Fire_0_201125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D15",
+      "actual_final": 20.17,
+      "predicted_final": 16.76,
+      "ape": 16.92,
+      "smape": 18.48,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-Fire_0_201125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D30",
+      "actual_final": 23.29,
+      "predicted_final": 17.7,
+      "ape": 23.99,
+      "smape": 27.26,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-Fire_0_201125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D60",
+      "actual_final": 30.32,
+      "predicted_final": 19.68,
+      "ape": 35.09,
+      "smape": 42.56,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-Fire_0_201125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D180",
+      "actual_final": 35.27,
+      "predicted_final": 26.23,
+      "ape": 25.63,
+      "smape": 29.4,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-Fire_0_201125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D6",
+      "actual_final": 19.36,
+      "predicted_final": 13.17,
+      "ape": 31.99,
+      "smape": 38.09,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-Fire_0_201125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D15",
+      "actual_final": 20.17,
+      "predicted_final": 13.17,
+      "ape": 34.72,
+      "smape": 42.02,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-Fire_0_201125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D30",
+      "actual_final": 23.29,
+      "predicted_final": 13.17,
+      "ape": 43.47,
+      "smape": 55.54,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-Fire_0_201125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D60",
+      "actual_final": 30.32,
+      "predicted_final": 16.44,
+      "ape": 45.79,
+      "smape": 59.38,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Black-Friday-Fire_0_201125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D180",
+      "actual_final": 35.27,
+      "predicted_final": 20.64,
+      "ape": 41.49,
+      "smape": 52.35,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Election-Day_V1_261125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D6",
+      "actual_final": 26.24,
+      "predicted_final": 10.53,
+      "ape": 59.88,
+      "smape": 85.48,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Election-Day_V1_261125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D15",
+      "actual_final": 26.24,
+      "predicted_final": 10.53,
+      "ape": 59.88,
+      "smape": 85.48,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Election-Day_V1_261125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D30",
+      "actual_final": 26.24,
+      "predicted_final": 10.53,
+      "ape": 59.88,
+      "smape": 85.48,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Election-Day_V1_261125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D60",
+      "actual_final": 26.24,
+      "predicted_final": 10.53,
+      "ape": 59.88,
+      "smape": 85.48,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Election-Day_V1_261125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D180",
+      "actual_final": 114.21,
+      "predicted_final": 38.88,
+      "ape": 65.96,
+      "smape": 98.41,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Selfie-Girl-BlackF_0_261125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D6",
+      "actual_final": 0.0,
+      "predicted_final": 3.33,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Selfie-Girl-BlackF_0_261125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D15",
+      "actual_final": 0.0,
+      "predicted_final": 5.06,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Selfie-Girl-BlackF_0_261125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D30",
+      "actual_final": 0.0,
+      "predicted_final": 9.48,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Selfie-Girl-BlackF_0_261125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D60",
+      "actual_final": 0.0,
+      "predicted_final": 9.48,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Selfie-Girl-BlackF_0_261125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D180",
+      "actual_final": 0.0,
+      "predicted_final": 28.78,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Selfie-Girl-BlackF_0_261125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D6",
+      "actual_final": 0.0,
+      "predicted_final": 0.0,
+      "ape": null,
+      "smape": null,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Selfie-Girl-BlackF_0_261125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D15",
+      "actual_final": 0.0,
+      "predicted_final": 0.0,
+      "ape": null,
+      "smape": null,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Selfie-Girl-BlackF_0_261125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D30",
+      "actual_final": 0.0,
+      "predicted_final": 0.0,
+      "ape": null,
+      "smape": null,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Selfie-Girl-BlackF_0_261125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D60",
+      "actual_final": 0.0,
+      "predicted_final": 0.0,
+      "ape": null,
+      "smape": null,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Selfie-Girl-BlackF_0_261125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D180",
+      "actual_final": 0.0,
+      "predicted_final": 0.0,
+      "ape": null,
+      "smape": null,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Static_Performance-20th-Nov_V0_261125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D6",
+      "actual_final": 13.91,
+      "predicted_final": 14.13,
+      "ape": 1.58,
+      "smape": 1.57,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Static_Performance-20th-Nov_V0_261125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D15",
+      "actual_final": 13.91,
+      "predicted_final": 14.13,
+      "ape": 1.58,
+      "smape": 1.57,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Static_Performance-20th-Nov_V0_261125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D30",
+      "actual_final": 13.91,
+      "predicted_final": 25.66,
+      "ape": 84.5,
+      "smape": 59.4,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Static_Performance-20th-Nov_V0_261125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D60",
+      "actual_final": 13.91,
+      "predicted_final": 26.86,
+      "ape": 93.09,
+      "smape": 63.52,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Static_Performance-20th-Nov_V0_261125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D180",
+      "actual_final": 41.74,
+      "predicted_final": 33.55,
+      "ape": 19.61,
+      "smape": 21.74,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Static_Performance-20th-Nov_V0_261125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D6",
+      "actual_final": 13.91,
+      "predicted_final": 3.69,
+      "ape": 73.47,
+      "smape": 116.12,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Static_Performance-20th-Nov_V0_261125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D15",
+      "actual_final": 13.91,
+      "predicted_final": 3.69,
+      "ape": 73.47,
+      "smape": 116.12,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Static_Performance-20th-Nov_V0_261125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D30",
+      "actual_final": 13.91,
+      "predicted_final": 3.69,
+      "ape": 73.47,
+      "smape": 116.12,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Static_Performance-20th-Nov_V0_261125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D60",
+      "actual_final": 13.91,
+      "predicted_final": 3.69,
+      "ape": 73.47,
+      "smape": 116.12,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Static_Performance-20th-Nov_V0_261125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D180",
+      "actual_final": 41.74,
+      "predicted_final": 7.61,
+      "ape": 81.77,
+      "smape": 138.32,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Anchor_V0_161125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D6",
+      "actual_final": 7.99,
+      "predicted_final": 3.06,
+      "ape": 61.73,
+      "smape": 89.29,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Anchor_V0_161125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D15",
+      "actual_final": 9.63,
+      "predicted_final": 3.06,
+      "ape": 68.25,
+      "smape": 103.6,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Anchor_V0_161125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D30",
+      "actual_final": 9.63,
+      "predicted_final": 3.06,
+      "ape": 68.25,
+      "smape": 103.6,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Anchor_V0_161125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D60",
+      "actual_final": 11.85,
+      "predicted_final": 4.31,
+      "ape": 63.61,
+      "smape": 93.27,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Anchor_V0_161125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D180",
+      "actual_final": 13.58,
+      "predicted_final": 4.83,
+      "ape": 64.42,
+      "smape": 95.03,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D6",
+      "actual_final": 5.79,
+      "predicted_final": 12.03,
+      "ape": 107.81,
+      "smape": 70.05,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D15",
+      "actual_final": 9.26,
+      "predicted_final": 15.19,
+      "ape": 64.04,
+      "smape": 48.51,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D30",
+      "actual_final": 12.99,
+      "predicted_final": 15.19,
+      "ape": 16.94,
+      "smape": 15.62,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D60",
+      "actual_final": 12.99,
+      "predicted_final": 15.66,
+      "ape": 20.53,
+      "smape": 18.62,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D180",
+      "actual_final": 18.75,
+      "predicted_final": 25.98,
+      "ape": 38.57,
+      "smape": 32.33,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D6",
+      "actual_final": 5.79,
+      "predicted_final": 14.49,
+      "ape": 150.19,
+      "smape": 85.78,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D15",
+      "actual_final": 9.26,
+      "predicted_final": 14.49,
+      "ape": 56.44,
+      "smape": 44.02,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D30",
+      "actual_final": 12.99,
+      "predicted_final": 14.49,
+      "ape": 11.52,
+      "smape": 10.89,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D60",
+      "actual_final": 12.99,
+      "predicted_final": 14.49,
+      "ape": 11.52,
+      "smape": 10.89,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D180",
+      "actual_final": 18.75,
+      "predicted_final": 22.35,
+      "ape": 19.2,
+      "smape": 17.52,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D6",
+      "actual_final": 5.79,
+      "predicted_final": 4.21,
+      "ape": 27.22,
+      "smape": 31.5,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D15",
+      "actual_final": 9.26,
+      "predicted_final": 4.21,
+      "ape": 54.49,
+      "smape": 74.9,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D30",
+      "actual_final": 12.99,
+      "predicted_final": 4.36,
+      "ape": 66.47,
+      "smape": 99.55,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D60",
+      "actual_final": 12.99,
+      "predicted_final": 5.56,
+      "ape": 57.2,
+      "smape": 80.11,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D180",
+      "actual_final": 18.75,
+      "predicted_final": 8.79,
+      "ape": 53.14,
+      "smape": 72.36,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D6",
+      "actual_final": 5.79,
+      "predicted_final": 6.07,
+      "ape": 4.8,
+      "smape": 4.68,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D15",
+      "actual_final": 9.26,
+      "predicted_final": 8.27,
+      "ape": 10.65,
+      "smape": 11.25,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D30",
+      "actual_final": 12.99,
+      "predicted_final": 9.16,
+      "ape": 29.52,
+      "smape": 34.63,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D60",
+      "actual_final": 12.99,
+      "predicted_final": 10.75,
+      "ape": 17.25,
+      "smape": 18.87,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_AS-Sebi_V0_171125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D180",
+      "actual_final": 18.75,
+      "predicted_final": 15.68,
+      "ape": 16.36,
+      "smape": 17.82,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D6",
+      "actual_final": 0.0,
+      "predicted_final": 3.68,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D15",
+      "actual_final": 0.0,
+      "predicted_final": 5.5,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D30",
+      "actual_final": 0.0,
+      "predicted_final": 5.66,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D60",
+      "actual_final": 0.0,
+      "predicted_final": 6.6,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D180",
+      "actual_final": 0.0,
+      "predicted_final": 8.6,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D6",
+      "actual_final": 0.0,
+      "predicted_final": 5.1,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D15",
+      "actual_final": 0.0,
+      "predicted_final": 7.18,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D30",
+      "actual_final": 0.0,
+      "predicted_final": 9.36,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D60",
+      "actual_final": 0.0,
+      "predicted_final": 10.42,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D180",
+      "actual_final": 0.0,
+      "predicted_final": 17.54,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D6",
+      "actual_final": 0.0,
+      "predicted_final": 9.32,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D15",
+      "actual_final": 0.0,
+      "predicted_final": 11.24,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D30",
+      "actual_final": 0.0,
+      "predicted_final": 12.66,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D60",
+      "actual_final": 0.0,
+      "predicted_final": 13.75,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D180",
+      "actual_final": 0.0,
+      "predicted_final": 15.85,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D6",
+      "actual_final": 0.0,
+      "predicted_final": 31.5,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D15",
+      "actual_final": 0.0,
+      "predicted_final": 31.5,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D30",
+      "actual_final": 0.0,
+      "predicted_final": 31.5,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D60",
+      "actual_final": 0.0,
+      "predicted_final": 34.78,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_Buddhu-Ladki-Test_V0_131125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D180",
+      "actual_final": 0.0,
+      "predicted_final": 36.33,
+      "ape": null,
+      "smape": 200.0,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D6",
+      "actual_final": 20.72,
+      "predicted_final": 6.71,
+      "ape": 67.62,
+      "smape": 102.16,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D15",
+      "actual_final": 22.82,
+      "predicted_final": 7.41,
+      "ape": 67.54,
+      "smape": 101.97,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D30",
+      "actual_final": 22.82,
+      "predicted_final": 9.54,
+      "ape": 58.19,
+      "smape": 82.06,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D60",
+      "actual_final": 26.32,
+      "predicted_final": 13.25,
+      "ape": 49.67,
+      "smape": 66.08,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D180",
+      "actual_final": 38.22,
+      "predicted_final": 17.06,
+      "ape": 55.36,
+      "smape": 76.54,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D6",
+      "actual_final": 20.72,
+      "predicted_final": 7.86,
+      "ape": 62.08,
+      "smape": 90.01,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D15",
+      "actual_final": 22.82,
+      "predicted_final": 11.07,
+      "ape": 51.49,
+      "smape": 69.34,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D30",
+      "actual_final": 22.82,
+      "predicted_final": 15.12,
+      "ape": 33.74,
+      "smape": 40.58,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D60",
+      "actual_final": 26.32,
+      "predicted_final": 15.12,
+      "ape": 42.55,
+      "smape": 54.04,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D180",
+      "actual_final": 38.22,
+      "predicted_final": 18.77,
+      "ape": 50.89,
+      "smape": 68.26,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D6",
+      "actual_final": 20.72,
+      "predicted_final": 9.08,
+      "ape": 56.17,
+      "smape": 78.11,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D15",
+      "actual_final": 22.82,
+      "predicted_final": 9.94,
+      "ape": 56.46,
+      "smape": 78.67,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D30",
+      "actual_final": 22.82,
+      "predicted_final": 12.05,
+      "ape": 47.2,
+      "smape": 61.78,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D60",
+      "actual_final": 26.32,
+      "predicted_final": 12.05,
+      "ape": 54.22,
+      "smape": 74.39,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D180",
+      "actual_final": 38.22,
+      "predicted_final": 14.12,
+      "ape": 63.05,
+      "smape": 92.08,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D6",
+      "actual_final": 20.72,
+      "predicted_final": 10.15,
+      "ape": 51.02,
+      "smape": 68.49,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D15",
+      "actual_final": 22.82,
+      "predicted_final": 10.15,
+      "ape": 55.52,
+      "smape": 76.86,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D30",
+      "actual_final": 22.82,
+      "predicted_final": 10.15,
+      "ape": 55.52,
+      "smape": 76.86,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D60",
+      "actual_final": 26.32,
+      "predicted_final": 10.15,
+      "ape": 61.44,
+      "smape": 88.68,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V1_181125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D180",
+      "actual_final": 38.22,
+      "predicted_final": 14.42,
+      "ape": 62.28,
+      "smape": 90.43,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D6",
+      "actual_final": 9.36,
+      "predicted_final": 11.27,
+      "ape": 20.44,
+      "smape": 18.54,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D15",
+      "actual_final": 9.36,
+      "predicted_final": 13.37,
+      "ape": 42.89,
+      "smape": 35.32,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D30",
+      "actual_final": 9.36,
+      "predicted_final": 14.42,
+      "ape": 54.11,
+      "smape": 42.59,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D60",
+      "actual_final": 12.17,
+      "predicted_final": 18.27,
+      "ape": 50.15,
+      "smape": 40.09,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P0",
+      "stage_index": 0,
+      "horizon": "D180",
+      "actual_final": 15.91,
+      "predicted_final": 20.47,
+      "ape": 28.64,
+      "smape": 25.05,
+      "checkpoint_week": "2025-11-17"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D6",
+      "actual_final": 9.36,
+      "predicted_final": 3.87,
+      "ape": 58.62,
+      "smape": 82.93,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D15",
+      "actual_final": 9.36,
+      "predicted_final": 4.25,
+      "ape": 54.57,
+      "smape": 75.04,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D30",
+      "actual_final": 9.36,
+      "predicted_final": 5.66,
+      "ape": 39.52,
+      "smape": 49.25,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D60",
+      "actual_final": 12.17,
+      "predicted_final": 7.02,
+      "ape": 42.35,
+      "smape": 53.72,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P2",
+      "stage_index": 1,
+      "horizon": "D180",
+      "actual_final": 15.91,
+      "predicted_final": 9.58,
+      "ape": 39.78,
+      "smape": 49.66,
+      "checkpoint_week": "2025-11-24"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D6",
+      "actual_final": 9.36,
+      "predicted_final": 9.16,
+      "ape": 2.16,
+      "smape": 2.19,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D15",
+      "actual_final": 9.36,
+      "predicted_final": 22.87,
+      "ape": 144.38,
+      "smape": 83.85,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D30",
+      "actual_final": 9.36,
+      "predicted_final": 24.21,
+      "ape": 158.61,
+      "smape": 88.46,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D60",
+      "actual_final": 12.17,
+      "predicted_final": 27.73,
+      "ape": 127.85,
+      "smape": 77.99,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P8",
+      "stage_index": 2,
+      "horizon": "D180",
+      "actual_final": 15.91,
+      "predicted_final": 42.9,
+      "ape": 169.63,
+      "smape": 91.78,
+      "checkpoint_week": "2025-12-01"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D6",
+      "actual_final": 9.36,
+      "predicted_final": 5.67,
+      "ape": 39.38,
+      "smape": 49.03,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D15",
+      "actual_final": 9.36,
+      "predicted_final": 7.6,
+      "ape": 18.84,
+      "smape": 20.8,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D30",
+      "actual_final": 9.36,
+      "predicted_final": 12.78,
+      "ape": 36.51,
+      "smape": 30.87,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D60",
+      "actual_final": 12.17,
+      "predicted_final": 14.8,
+      "ape": 21.61,
+      "smape": 19.51,
+      "checkpoint_week": "2025-12-08"
+    },
+    {
+      "creative": "FB_MOF_Video_Monkey-AI_V2_181125",
+      "stage": "P14",
+      "stage_index": 3,
+      "horizon": "D180",
+      "actual_final": 15.91,
+      "predicted_final": 16.2,
+      "ape": 1.81,
+      "smape": 1.79,
+      "checkpoint_week": "2025-12-08"
+    }
+  ]
+}

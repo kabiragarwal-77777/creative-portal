@@ -1,0 +1,26 @@
+name: Daily Creative Alerts
+
+on:
+  schedule:
+    # 9:00 AM IST = 3:30 AM UTC
+    - cron: '30 3 * * *'
+  workflow_dispatch: # Manual trigger from GitHub UI
+
+jobs:
+  send-alerts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install nodemailer
+
+      - name: Send alert emails
+        env:
+          ALERT_EMAIL_FROM: kabir.agarwal@univest.in
+          ALERT_EMAIL_APP_PASSWORD: ${{ secrets.ALERT_EMAIL_APP_PASSWORD }}
+        run: node .github/scripts/send-alerts.js

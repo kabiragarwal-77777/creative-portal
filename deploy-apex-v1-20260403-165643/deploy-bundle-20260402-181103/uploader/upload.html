@@ -1,0 +1,3282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meta Ad Uploader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-body: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-input: #1a1a2e;
+            --bg-hover: #22223a;
+            --bg-terminal: #08080d;
+            --accent: #6c5ce7;
+            --accent-hover: #7f71ee;
+            --green: #00d4aa;
+            --red: #ff6b6b;
+            --yellow: #ffd93d;
+            --text: #e0e0e0;
+            --text-dim: #888;
+            --text-muted: #555;
+            --border: #2a2a3e;
+            --radius: 10px;
+            --radius-sm: 6px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-body);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-body); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+        /* Header */
+        .page-header {
+            background: linear-gradient(135deg, #12121a 0%, #1a1a2e 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 28px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .page-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .page-header h1 span { color: var(--accent); }
+        .page-header p {
+            color: var(--text-dim);
+            font-size: 13px;
+            margin-top: 2px;
+        }
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-dim);
+            background: var(--bg-input);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: background 0.3s;
+        }
+        .status-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+        .status-dot.error { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+        /* Layout */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 32px 40px 80px;
+        }
+
+        /* Section Cards */
+        .section-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 28px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        .section-header:hover { background: var(--bg-hover); }
+        .section-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-number {
+            background: var(--accent);
+            color: #fff;
+            width: 26px; height: 26px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .section-toggle {
+            font-size: 18px;
+            color: var(--text-dim);
+            transition: transform 0.3s;
+        }
+        .section-toggle.collapsed { transform: rotate(-90deg); }
+        .section-body {
+            padding: 24px 28px;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            overflow: hidden;
+        }
+        .section-body.collapsed {
+            max-height: 0 !important;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        /* Form Elements */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px 28px;
+        }
+        .form-grid.three-col {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+        .form-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group label .required {
+            color: var(--red);
+            margin-left: 2px;
+        }
+        input[type="text"],
+        input[type="number"],
+        input[type="password"],
+        input[type="datetime-local"],
+        input[type="url"],
+        select,
+        textarea {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            padding: 10px 14px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15);
+        }
+        input.invalid, select.invalid, textarea.invalid {
+            border-color: var(--red);
+            box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.15);
+        }
+        textarea { resize: vertical; min-height: 80px; }
+        select { cursor: pointer; }
+        select option { background: var(--bg-input); color: var(--text); }
+
+        /* Radio / Checkbox groups */
+        .radio-group, .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .radio-group label, .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--text);
+            text-transform: none;
+            letter-spacing: 0;
+            cursor: pointer;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .radio-group label:hover, .checkbox-group label:hover {
+            border-color: var(--accent);
+            background: var(--bg-hover);
+        }
+        .radio-group input:checked + span,
+        .checkbox-group input:checked + span {
+            color: var(--accent);
+        }
+        .radio-group label:has(input:checked),
+        .checkbox-group label:has(input:checked) {
+            border-color: var(--accent);
+            background: rgba(108, 92, 231, 0.1);
+        }
+        input[type="radio"], input[type="checkbox"] {
+            accent-color: var(--accent);
+            width: 14px; height: 14px;
+            cursor: pointer;
+        }
+
+        /* Sub-section headings */
+        .sub-heading {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 24px 0 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            grid-column: 1 / -1;
+        }
+        .sub-heading:first-child { margin-top: 0; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 10px 22px;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+        .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        .btn-primary:active { transform: translateY(0); }
+        .btn-secondary {
+            background: var(--bg-input);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { border-color: var(--accent); background: var(--bg-hover); }
+        .btn-success {
+            background: var(--green);
+            color: #0a0a0f;
+        }
+        .btn-success:hover { background: #00e6b8; }
+        .btn-danger {
+            background: var(--red);
+            color: #fff;
+        }
+        .btn-danger:hover { background: #ff8585; }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .btn-lg {
+            padding: 14px 36px;
+            font-size: 16px;
+            border-radius: var(--radius);
+        }
+
+        /* Toggle switch for Manual Entry */
+        .toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        .toggle-label { font-size: 14px; color: var(--text-dim); }
+        .toggle-label.active { color: var(--accent); font-weight: 600; }
+        .toggle {
+            width: 44px; height: 24px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .toggle.on { background: var(--accent); border-color: var(--accent); }
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 18px; height: 18px;
+            background: #fff;
+            border-radius: 50%;
+            top: 2px; left: 2px;
+            transition: transform 0.2s;
+        }
+        .toggle.on::after { transform: translateX(20px); }
+
+        /* Sheet table */
+        .sheet-table-wrap {
+            max-height: 320px;
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            margin-top: 16px;
+        }
+        .sheet-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .sheet-table th {
+            background: var(--bg-input);
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-dim);
+            position: sticky;
+            top: 0;
+            white-space: nowrap;
+        }
+        .sheet-table td {
+            padding: 8px 14px;
+            border-top: 1px solid var(--border);
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .sheet-table tr:hover td { background: var(--bg-hover); }
+        .sheet-table .btn { padding: 5px 12px; font-size: 12px; }
+
+        /* Campaign info */
+        .campaign-info {
+            display: flex;
+            gap: 20px;
+            margin-top: 12px;
+        }
+        .campaign-info .info-badge {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+        }
+
+        /* Preview Card */
+        .preview-card {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            display: none;
+        }
+        .preview-card.show { display: block; }
+        .preview-card h3 {
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: var(--accent);
+        }
+        .preview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 32px;
+        }
+        .preview-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .preview-item .label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .preview-item .value {
+            font-size: 14px;
+            color: var(--text);
+            word-break: break-all;
+        }
+        .preview-item .value.empty { color: var(--text-muted); font-style: italic; }
+        .preview-divider {
+            grid-column: 1 / -1;
+            height: 1px;
+            background: var(--border);
+            margin: 8px 0;
+        }
+
+        /* Execution Actions */
+        .exec-actions {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        /* Execution Log */
+        .exec-log {
+            background: var(--bg-terminal);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            max-height: 420px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+        .log-entry {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .log-entry .log-time {
+            color: var(--text-muted);
+            white-space: nowrap;
+            min-width: 80px;
+        }
+        .log-entry .log-icon {
+            min-width: 18px;
+            text-align: center;
+        }
+        .log-entry .log-msg { flex: 1; }
+        .log-entry.pending .log-icon { color: var(--yellow); }
+        .log-entry.success .log-icon { color: var(--green); }
+        .log-entry.error .log-icon { color: var(--red); }
+        .log-entry.error .log-msg { color: var(--red); }
+        .log-entry.info .log-icon { color: var(--accent); }
+        .log-result {
+            margin-top: 12px;
+            padding: 14px;
+            border-radius: var(--radius-sm);
+        }
+        .log-result.success {
+            background: rgba(0, 212, 170, 0.08);
+            border: 1px solid rgba(0, 212, 170, 0.3);
+        }
+        .log-result.error {
+            background: rgba(255, 107, 107, 0.08);
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            color: var(--red);
+        }
+        .log-result a { color: var(--green); text-decoration: underline; }
+
+        /* Spinner */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid var(--border);
+            border-top-color: var(--yellow);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px;
+            max-width: 480px;
+            width: 90%;
+            text-align: center;
+        }
+        .modal h3 { font-size: 18px; margin-bottom: 12px; }
+        .modal p { color: var(--text-dim); font-size: 14px; margin-bottom: 24px; }
+        .modal-actions { display: flex; gap: 12px; justify-content: center; }
+
+        /* Settings panel */
+        .settings-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        .settings-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 28px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        .settings-header:hover { background: var(--bg-hover); }
+        .settings-header h2 {
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--yellow);
+        }
+        .settings-body {
+            padding: 20px 28px;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            overflow: hidden;
+        }
+        .settings-body.collapsed {
+            max-height: 0 !important;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        .settings-saved {
+            color: var(--green);
+            font-size: 12px;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.3s;
+            margin-left: 12px;
+        }
+        .settings-saved.show { opacity: 1; }
+
+        /* Hidden helper */
+        .hidden { display: none !important; }
+
+        /* Responsive */
+        @media (max-width: 800px) {
+            .page-header { padding: 20px; flex-direction: column; gap: 12px; }
+            .container { padding: 20px; }
+            .form-grid, .form-grid.three-col { grid-template-columns: 1fr; }
+            .preview-grid { grid-template-columns: 1fr; }
+            .section-body { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Auth Gate -->
+<div id="authGate" style="display:flex; align-items:center; justify-content:center; min-height:100vh; background:var(--bg-body);">
+    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:40px; width:360px; text-align:center;">
+        <h2 style="font-size:20px; margin-bottom:6px;">Meta <span style="color:var(--accent);">Ad Uploader</span></h2>
+        <p style="color:var(--text-dim); font-size:13px; margin-bottom:24px;">Enter password to continue</p>
+        <input type="password" id="authPassword" placeholder="Password" style="width:100%; margin-bottom:16px;" onkeydown="if(event.key==='Enter')checkAuth()">
+        <button class="btn btn-primary" onclick="checkAuth()" style="width:100%;">Unlock</button>
+        <p id="authError" style="color:var(--red); font-size:13px; margin-top:12px; display:none;">Incorrect password</p>
+    </div>
+</div>
+
+<!-- Main App (hidden until auth) -->
+<div id="mainApp" style="display:none;">
+
+<!-- Header -->
+<header class="page-header">
+    <div>
+        <h1>Meta <span>Ad Uploader</span></h1>
+        <p>Client-side ad creation from spreadsheet config &mdash; no server required</p>
+    </div>
+    <div class="connection-status">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Not configured</span>
+    </div>
+</header>
+
+<div class="container">
+
+    <!-- Settings Panel -->
+    <div class="settings-panel">
+        <div class="settings-header" onclick="toggleSettings()">
+            <h2>&#9881; Meta API Settings</h2>
+            <span class="section-toggle" id="settingsToggle">&#9662;</span>
+        </div>
+        <div class="settings-body" id="settingsBody">
+            <div class="form-grid three-col">
+                <div class="form-group">
+                    <label>Meta Access Token <span class="required">*</span></label>
+                    <input type="password" id="metaAccessToken" placeholder="Paste your access token">
+                </div>
+                <div class="form-group">
+                    <label>AppSecret Proof (optional)</label>
+                    <input type="password" id="metaAppSecretProof" placeholder="Paste your appsecret_proof">
+                </div>
+                <div class="form-group">
+                    <label>Ad Account ID</label>
+                    <input type="text" id="metaAdAccountId" placeholder="act_725019929189148" value="act_725019929189148">
+                </div>
+            </div>
+            <div style="margin-top: 16px; display: flex; align-items: center;">
+                <button class="btn btn-success" onclick="saveSettings()">Save &amp; Connect</button>
+                <span class="settings-saved" id="settingsSaved">Settings saved</span>
+                <button class="btn btn-secondary" style="margin-left: 12px;" onclick="clearSettings()">Clear Stored Credentials</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 1: Source Config -->
+    <div class="section-card">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">1</span> Source Config</h2>
+            <span class="section-toggle">&#9662;</span>
+        </div>
+        <div class="section-body">
+            <!-- Mode Selector -->
+            <div style="margin-bottom: 18px;">
+                <label style="font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block;">Mode</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="uploadMode" value="ad" checked onchange="switchUploadMode(this.value)"><span>Ad / Adset Creation</span></label>
+                    <label><input type="radio" name="uploadMode" value="campaign" onchange="switchUploadMode(this.value)"><span>Campaign Creation</span></label>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Google Sheet ID</label>
+                    <input type="text" id="sheetId" placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" value="1BZLKA1MjctDvNtko9hDpaoShFwZzUttAp8QTZmh93RE" oninput="fetchSheetTabs()">
+                </div>
+                <div class="form-group">
+                    <label>Sheet Tab</label>
+                    <select id="tabName" onchange="onTabChange(this.value)">
+                        <option value="sheet1">Ad / Adset Creation</option>
+                        <option value="Campaign Creation">Campaign Creation</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 16px;">
+                <button class="btn btn-primary" onclick="loadSheetData()">&#9655; Load Sheet Data</button>
+            </div>
+
+            <div class="toggle-wrap">
+                <span class="toggle-label" id="toggleLabelSheet">Sheet Mode</span>
+                <div class="toggle" id="manualToggle" onclick="toggleManualEntry()"></div>
+                <span class="toggle-label" id="toggleLabelManual">Manual Entry</span>
+            </div>
+
+            <div id="sheetTableWrap" class="sheet-table-wrap hidden">
+                <table class="sheet-table" id="sheetTable">
+                    <thead><tr id="sheetHead"></tr></thead>
+                    <tbody id="sheetBody"></tbody>
+                </table>
+            </div>
+            <p id="sheetStatus" style="color: var(--text-muted); font-size: 13px; margin-top: 10px;"></p>
+        </div>
+    </div>
+
+    <!-- Section 2: Campaign Selection -->
+    <div class="section-card">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">2</span> Campaign Selection</h2>
+            <span class="section-toggle">&#9662;</span>
+        </div>
+        <div class="section-body">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Campaign <span class="required">*</span></label>
+                    <select id="campaignId">
+                        <option value="">Configure settings first...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-secondary" onclick="loadCampaigns()">Reload Campaigns</button>
+                </div>
+            </div>
+            <div class="campaign-info" id="campaignInfo" style="display:none;">
+                <span class="info-badge" id="campaignObjective"></span>
+                <span class="info-badge" id="campaignStatus"></span>
+                <span class="info-badge" id="campaignFinserv" style="display:none; background:rgba(255,107,107,0.15); color:var(--red);"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: Adset Configuration -->
+    <div class="section-card">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">3</span> Adset Configuration</h2>
+            <span class="section-toggle">&#9662;</span>
+        </div>
+        <div class="section-body">
+            <div class="form-grid">
+
+                <!-- Use Existing Adset -->
+                <div class="sub-heading">Use Existing Adset <span style="font-weight:400;font-size:12px;color:#aaa;">(skip adset creation)</span></div>
+
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Existing Adset ID</label>
+                    <input type="text" id="existingAdsetId" placeholder="e.g. 23851234567890123" oninput="toggleExistingAdset()" onpaste="setTimeout(toggleExistingAdset, 50)">
+                    <small style="color:#aaa;">If provided, a new ad will be pushed into this adset — all fields below will be skipped.</small>
+                </div>
+
+                <!-- Basic -->
+                <div id="adsetFieldsWrapper">
+                <div class="sub-heading">Basic</div>
+
+                <div class="form-group">
+                    <label>Adset Name <span class="required">*</span></label>
+                    <input type="text" id="adsetName" placeholder="My Adset">
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="adsetStatus">
+                        <option value="PAUSED" selected>PAUSED</option>
+                        <option value="ACTIVE">ACTIVE</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Budget Type</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="budgetType" value="daily" checked onchange="toggleBudgetType()"><span>Daily Budget</span></label>
+                        <label><input type="radio" name="budgetType" value="lifetime" onchange="toggleBudgetType()"><span>Lifetime Budget</span></label>
+                    </div>
+                </div>
+                <div class="form-group" id="budgetGroup">
+                    <label id="budgetLabel">Daily Budget (INR) <span class="required">*</span></label>
+                    <input type="number" id="budget" placeholder="e.g. 500" min="1">
+                </div>
+
+                <div class="form-group">
+                    <label>Bid Strategy</label>
+                    <select id="bidStrategy" onchange="toggleBidAmount()">
+                        <option value="LOWEST_COST_WITHOUT_CAP">Lowest Cost (No Cap)</option>
+                        <option value="LOWEST_COST_WITH_BID_CAP">Lowest Cost (Bid Cap)</option>
+                        <option value="LOWEST_COST_WITH_MIN_ROAS">Min ROAS</option>
+                        <option value="COST_CAP">Cost Cap</option>
+                    </select>
+                </div>
+                <div class="form-group hidden" id="bidAmountGroup">
+                    <label>Bid Amount (INR) <span class="required">*</span></label>
+                    <input type="number" id="bidAmount" placeholder="e.g. 25" min="0" step="0.01">
+                </div>
+
+                <div class="form-group">
+                    <label>Billing Event</label>
+                    <select id="billingEvent">
+                        <option value="IMPRESSIONS" selected>IMPRESSIONS</option>
+                        <option value="LINK_CLICKS">LINK_CLICKS</option>
+                        <option value="APP_INSTALLS">APP_INSTALLS</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Optimization Goal</label>
+                    <select id="optimizationGoal">
+                        <option value="APP_INSTALLS" selected>APP_INSTALLS</option>
+                        <option value="OFFSITE_CONVERSIONS">OFFSITE_CONVERSIONS</option>
+                        <option value="LINK_CLICKS">LINK_CLICKS</option>
+                        <option value="LEAD_GENERATION">LEAD_GENERATION</option>
+                        <option value="REACH">REACH</option>
+                        <option value="IMPRESSIONS">IMPRESSIONS</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Custom Event Type</label>
+                    <select id="customEventType">
+                        <option value="" selected>(none)</option>
+                        <option value="PURCHASE">PURCHASE</option>
+                        <option value="ADD_TO_CART">ADD_TO_CART</option>
+                        <option value="INITIATED_CHECKOUT">INITIATED_CHECKOUT</option>
+                        <option value="COMPLETE_REGISTRATION">COMPLETE_REGISTRATION</option>
+                        <option value="LEAD">LEAD</option>
+                        <option value="OTHER">OTHER</option>
+                    </select>
+                </div>
+
+                <!-- Schedule -->
+                <div class="sub-heading">Schedule</div>
+
+                <div class="form-group">
+                    <label>Start Time <span class="required">*</span></label>
+                    <input type="datetime-local" id="startTime">
+                </div>
+                <div class="form-group">
+                    <label>End Time</label>
+                    <input type="datetime-local" id="endTime">
+                </div>
+
+                <!-- Targeting -->
+                <div class="sub-heading">Targeting</div>
+
+                <div class="form-group">
+                    <label>Age Min</label>
+                    <input type="number" id="ageMin" value="18" min="13" max="65">
+                </div>
+                <div class="form-group">
+                    <label>Age Max</label>
+                    <input type="number" id="ageMax" value="65" min="13" max="65">
+                </div>
+
+                <div class="form-group">
+                    <label>Genders</label>
+                    <select id="genders">
+                        <option value="0">All</option>
+                        <option value="1">Male</option>
+                        <option value="2">Female</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Countries (comma-separated codes)</label>
+                    <input type="text" id="geoCountries" value="IN" placeholder="e.g. IN,US">
+                </div>
+
+                <div class="form-group">
+                    <label>Device Platforms</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" name="devicePlatform" value="mobile" checked><span>Mobile</span></label>
+                        <label><input type="checkbox" name="devicePlatform" value="desktop"><span>Desktop</span></label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Operating System</label>
+                    <select id="osTarget">
+                        <option value="Android" selected>Android</option>
+                        <option value="iOS">iOS</option>
+                        <option value="All">All</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Min OS Version</label>
+                    <input type="text" id="minOsVersion" placeholder="e.g. 8.0">
+                </div>
+                <div class="form-group"></div>
+
+                <div class="form-group full-width">
+                    <label>Publisher Platforms</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" name="publisherPlatform" value="facebook" checked><span>Facebook</span></label>
+                        <label><input type="checkbox" name="publisherPlatform" value="instagram" checked><span>Instagram</span></label>
+                        <label><input type="checkbox" name="publisherPlatform" value="audience_network"><span>Audience Network</span></label>
+                        <label><input type="checkbox" name="publisherPlatform" value="messenger"><span>Messenger</span></label>
+                    </div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Facebook Positions</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" name="fbPosition" value="feed" checked><span>Feed</span></label>
+                        <label><input type="checkbox" name="fbPosition" value="video_feeds" checked><span>Video Feeds</span></label>
+                        <label><input type="checkbox" name="fbPosition" value="story" checked><span>Story</span></label>
+                        <label><input type="checkbox" name="fbPosition" value="facebook_reels" checked><span>Reels</span></label>
+                        <label><input type="checkbox" name="fbPosition" value="facebook_reels_overlay" checked><span>Reels Overlay</span></label>
+                        <label><input type="checkbox" name="fbPosition" value="profile_feed" checked><span>Profile Feed</span></label>
+                        <label><input type="checkbox" name="fbPosition" value="marketplace" checked><span>Marketplace</span></label>
+                        <label><input type="checkbox" name="fbPosition" value="search" checked><span>Search</span></label>
+                        <label><input type="checkbox" name="fbPosition" value="instream_video" checked><span>Instream Video</span></label>
+                        <label><input type="checkbox" name="fbPosition" value="right_hand_column" checked><span>Right Column</span></label>
+                    </div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Instagram Positions</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" name="igPosition" value="stream" checked><span>Stream</span></label>
+                        <label><input type="checkbox" name="igPosition" value="story" checked><span>Story</span></label>
+                        <label><input type="checkbox" name="igPosition" value="reels" checked><span>Reels</span></label>
+                        <label><input type="checkbox" name="igPosition" value="explore" checked><span>Explore</span></label>
+                        <label><input type="checkbox" name="igPosition" value="explore_home" checked><span>Explore Home</span></label>
+                        <label><input type="checkbox" name="igPosition" value="ig_search" checked><span>Search</span></label>
+                        <label><input type="checkbox" name="igPosition" value="profile_reels" checked><span>Profile Reels</span></label>
+                        <label><input type="checkbox" name="igPosition" value="profile_feed" checked><span>Profile Feed</span></label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Custom Audiences</label>
+                    <textarea id="customAudiences" placeholder="Paste audience IDs, one per line" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Excluded Audiences</label>
+                    <textarea id="excludedAudiences" placeholder="Paste audience IDs, one per line" rows="3"></textarea>
+                </div>
+
+                <!-- Promoted Object -->
+                <div class="sub-heading">Promoted Object (App Install)</div>
+
+                <div class="form-group">
+                    <label>Application ID <span class="required">*</span></label>
+                    <input type="text" id="appId" placeholder="e.g. 123456789">
+                </div>
+                <div class="form-group">
+                    <label>Object Store URL <span class="required">*</span></label>
+                    <input type="text" id="objectStoreUrl" placeholder="https://play.google.com/store/apps/details?id=...">
+                </div>
+
+                </div><!-- /adsetFieldsWrapper -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 4: Ad Configuration -->
+    <div class="section-card">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">4</span> Ad Configuration</h2>
+            <span class="section-toggle">&#9662;</span>
+        </div>
+        <div class="section-body">
+            <div class="form-grid">
+
+                <!-- Basic -->
+                <div class="sub-heading">Basic</div>
+
+                <div class="form-group">
+                    <label>Ad Name <span class="required">*</span></label>
+                    <input type="text" id="adName" placeholder="My Ad">
+                </div>
+                <div class="form-group">
+                    <label>Ad Status</label>
+                    <select id="adStatus">
+                        <option value="PAUSED" selected>PAUSED</option>
+                        <option value="ACTIVE">ACTIVE</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Creative Name <span class="required">*</span></label>
+                    <input type="text" id="creativeName" placeholder="My Creative">
+                </div>
+                <div class="form-group"></div>
+
+                <!-- Creative Content -->
+                <div class="sub-heading">Creative Content</div>
+
+                <div class="form-group full-width">
+                    <label>Primary Text / Body <span class="required">*</span></label>
+                    <textarea id="primaryText" placeholder="Your ad copy here..." rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Headline <span class="required">*</span></label>
+                    <input type="text" id="headline" placeholder="Catchy headline">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" id="description" placeholder="Optional description">
+                </div>
+                <div class="form-group">
+                    <label>Call to Action</label>
+                    <select id="cta">
+                        <option value="SUBSCRIBE" selected>SUBSCRIBE</option>
+                        <option value="INSTALL_MOBILE_APP">INSTALL_MOBILE_APP</option>
+                        <option value="LEARN_MORE">LEARN_MORE</option>
+                        <option value="SIGN_UP">SIGN_UP</option>
+                        <option value="DOWNLOAD">DOWNLOAD</option>
+                        <option value="GET_OFFER">GET_OFFER</option>
+                        <option value="SHOP_NOW">SHOP_NOW</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Link URL <span class="required">*</span></label>
+                    <input type="text" id="linkUrl" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>URL Tags (UTM params)</label>
+                    <input type="text" id="urlTags" placeholder="utm_source=meta&utm_medium=paid">
+                </div>
+
+                <!-- Creative Assets -->
+                <div class="sub-heading">Creative Assets</div>
+
+                <div class="form-group full-width">
+                    <label>Creative Type</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="creativeType" value="VIDEO" checked onchange="toggleCreativeType()"><span>Video</span></label>
+                        <label><input type="radio" name="creativeType" value="IMAGE" onchange="toggleCreativeType()"><span>Image</span></label>
+                    </div>
+                </div>
+
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label for="assetFolder">Asset Folder URL <small>(Drive folder with -horizontal, -vertical, -square files)</small></label>
+                    <input type="text" id="assetFolder" placeholder="https://drive.google.com/drive/folders/...">
+                </div>
+                <div class="form-group">
+                    <label>Horizontal Asset &mdash; 16:9 / Landscape <span class="required">*</span></label>
+                    <input type="text" id="assetHorizontal" placeholder="Google Drive URL">
+                </div>
+                <div class="form-group">
+                    <label>Vertical Asset &mdash; 9:16 / Portrait <span class="required">*</span></label>
+                    <input type="text" id="assetVertical" placeholder="Google Drive URL">
+                </div>
+                <div class="form-group">
+                    <label>Square Asset &mdash; 1:1 / Square <span class="required">*</span></label>
+                    <input type="text" id="assetSquare" placeholder="Google Drive URL">
+                </div>
+                <div class="form-group"></div>
+
+                <div id="thumbnailFields">
+                    <div class="form-grid" style="margin-top: 4px;">
+                        <div class="form-group">
+                            <label>Thumbnail Horizontal URL</label>
+                            <input type="text" id="thumbHorizontal" placeholder="Google Drive URL (optional)">
+                        </div>
+                        <div class="form-group">
+                            <label>Thumbnail Vertical URL</label>
+                            <input type="text" id="thumbVertical" placeholder="Google Drive URL (optional)">
+                        </div>
+                        <div class="form-group">
+                            <label>Thumbnail Square URL</label>
+                            <input type="text" id="thumbSquare" placeholder="Google Drive URL (optional)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page -->
+                <div class="sub-heading">Page</div>
+
+                <div class="form-group">
+                    <label>Facebook Page ID <span class="required">*</span></label>
+                    <input type="text" id="pageId" value="100391482646475" placeholder="e.g. 100391482646475">
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 5: Preview & Execute -->
+    <div class="section-card">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">5</span> Preview &amp; Execute</h2>
+            <span class="section-toggle">&#9662;</span>
+        </div>
+        <div class="section-body">
+            <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                <button class="btn btn-secondary" onclick="showPreview()">&#128065; Preview</button>
+                <button class="btn btn-primary btn-lg" id="createBtn" onclick="confirmExecute()">&#9889; Create Ad</button>
+                <button class="btn btn-primary btn-lg" id="bulkBtn" onclick="confirmBulkExecute()" style="display:none; background: #00d4aa;">&#9889; Run Selected Rows (<span id="bulkCount">0</span>)</button>
+            </div>
+
+            <div class="preview-card" id="previewCard">
+                <h3>Ad Creation Preview</h3>
+                <div class="preview-grid" id="previewGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 6: Execution Log -->
+    <div class="section-card">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2><span class="section-number">6</span> Execution Log</h2>
+            <span class="section-toggle">&#9662;</span>
+        </div>
+        <div class="section-body">
+            <div class="exec-log" id="execLog">
+                <div style="color: var(--text-muted);">Execution log will appear here when you create an ad.</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal-overlay" id="confirmModal">
+    <div class="modal">
+        <h3>Confirm Ad Creation</h3>
+        <p id="confirmMsg">This will create an adset and ad on your Meta account. The adset will be set to <strong id="confirmStatus">PAUSED</strong>. Continue?</p>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="executeCreate()">Yes, Create</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    // =========================================================================
+    // CONSTANTS
+    // =========================================================================
+    const META_API_VERSION = 'v21.0';
+    const META_API_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
+    const DEFAULT_AD_ACCOUNT_ID = 'act_725019929189148';
+    const DEFAULT_PAGE_ID = '100391482646475';
+    const DEFAULT_INSTAGRAM_ACTOR_ID = '17841452244426405';
+    const DEFAULT_REGULATORY_ID = '1698107647490483';
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyKYm0aNJHvjAuc6KxrcZAzuIpc2qs_RT8sbngiwC5-m-6-2gPVY7uV2z4gSFLtVHTysw/exec';
+
+    // =========================================================================
+    // STATE
+    // =========================================================================
+    let sheetRows = [];
+    let sheetHeaders = [];
+    let campaigns = [];
+    let isManualEntry = false;
+    let selectedSheetRowIndex = null;
+
+    // Credentials — hardcoded defaults, overridable via settings panel
+    let META_ACCESS_TOKEN = localStorage.getItem('meta_access_token') || 'EAAHDBv0GZCRYBQyK7aPCLInqIH1BCZAl5p3CLHZAngLOWT00ZAcXe84uW9CHogplylkwyovDH9473hg6CMEArA9ZAyR6wKJK3MIrLvb9YHqQDiLVSDw08MMSEBu5kucQr9TNZClZATU8FvB8XHVHuDyEKzZBhjFYA4saidojpVmZAQYpwd1ukGsGkuCvg56MDLwZDZD';
+    let META_APPSECRET_PROOF = localStorage.getItem('meta_appsecret_proof') || '90ac6dda5c28ea7294af38156e56aa6f48d3027b6cbf86763f02e364e55bd414';
+    let META_AD_ACCOUNT_ID = localStorage.getItem('meta_ad_account_id') || DEFAULT_AD_ACCOUNT_ID;
+
+    // =========================================================================
+    // HELPERS
+    // =========================================================================
+    function $(id) { return document.getElementById(id); }
+    function qs(sel) { return document.querySelector(sel); }
+    function qsa(sel) { return document.querySelectorAll(sel); }
+
+    function getCheckedValues(name) {
+        return Array.from(qsa(`input[name="${name}"]:checked`)).map(cb => cb.value);
+    }
+
+    function setCheckedValues(name, values) {
+        qsa(`input[name="${name}"]`).forEach(cb => {
+            cb.checked = values.includes(cb.value);
+        });
+    }
+
+    function timeStamp() {
+        const d = new Date();
+        return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    // =========================================================================
+    // GOOGLE DRIVE URL HELPERS
+    // =========================================================================
+    function extractDriveFileId(urlOrId) {
+        if (!urlOrId) return null;
+        let match = urlOrId.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+        if (match) return match[1];
+        match = urlOrId.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (match) return match[1];
+        match = urlOrId.match(/open\?id=([a-zA-Z0-9_-]+)/);
+        if (match) return match[1];
+        if (/^[a-zA-Z0-9_-]+$/.test(urlOrId)) return urlOrId;
+        return null;
+    }
+
+    function getDriveDirectUrl(driveUrl) {
+        const fileId = extractDriveFileId(driveUrl);
+        if (!fileId) throw new Error(`Could not extract Google Drive file ID from: ${driveUrl}`);
+        return `https://drive.google.com/uc?export=download&id=${fileId}`;
+    }
+
+    function getDriveUserContentUrl(driveUrl) {
+        const fileId = extractDriveFileId(driveUrl);
+        if (!fileId) throw new Error(`Could not extract Google Drive file ID from: ${driveUrl}`);
+        return `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
+    }
+
+    // =========================================================================
+    // META API HELPERS (client-side)
+    // =========================================================================
+    function metaParams(extra = {}) {
+        const params = { access_token: META_ACCESS_TOKEN, ...extra };
+        if (META_APPSECRET_PROOF) params.appsecret_proof = META_APPSECRET_PROOF;
+        return params;
+    }
+
+    async function metaGet(endpoint, params = {}) {
+        const url = new URL(`${META_API_BASE}${endpoint}`);
+        const allParams = metaParams(params);
+        for (const [k, v] of Object.entries(allParams)) {
+            if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
+        }
+        const resp = await fetch(url.toString());
+        const data = await resp.json();
+        if (data.error) {
+            throw new Error(data.error.message || 'Meta API error');
+        }
+        return data;
+    }
+
+    async function metaPost(endpoint, params = {}) {
+        const allParams = metaParams(params);
+        const url = `${META_API_BASE}${endpoint}`;
+        const body = new URLSearchParams();
+        for (const [k, v] of Object.entries(allParams)) {
+            if (v != null) body.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+        }
+        console.log('[META POST]', endpoint, Object.fromEntries(body.entries()));
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body.toString(),
+        });
+        const data = await resp.json();
+        if (data.error) {
+            console.error('[META ERROR]', endpoint, JSON.stringify(data.error));
+            const msg = data.error.error_user_msg || data.error.message || 'Meta API error';
+            throw new Error(msg);
+        }
+        return data;
+    }
+
+    // =========================================================================
+    // ASSET UPLOAD VIA SERVER PROXY
+    // =========================================================================
+
+    // Get a CORS-friendly direct image URL from Google Drive
+    function getDriveLh3Url(driveUrl) {
+        const fileId = extractDriveFileId(driveUrl);
+        if (!fileId) throw new Error(`Could not extract Google Drive file ID from: ${driveUrl}`);
+        return `https://lh3.googleusercontent.com/d/${fileId}=s2000`;
+    }
+
+    // Upload image to Meta via server-side Drive download to avoid browser 429/CORS issues
+    async function uploadImageByUrl(driveUrl) {
+        const resp = await fetch('/api/upload-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ driveUrl }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.success) {
+            throw new Error(data.error || 'Image upload failed');
+        }
+        if (!data.imageHash) throw new Error('No image hash returned from Meta API');
+        return data.imageHash;
+    }
+
+    // Upload video to Meta via server-side Drive download to avoid browser-side rate limits
+    async function uploadVideoByUrl(driveUrl, title) {
+        const resp = await fetch('/api/upload-video', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ driveUrl, title }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.success) {
+            throw new Error(data.error || 'Video upload failed');
+        }
+        if (!data.videoId) throw new Error('No video ID returned from Meta API');
+        return data.videoId;
+    }
+
+    // Upload video file directly from browser (chunked upload)
+    const CHUNK_SIZE = 20 * 1024 * 1024; // 20MB
+    async function uploadVideoFile(file, title) {
+        const fileSize = file.size;
+        console.log(`[CHUNKED] Starting ${file.name} (${(fileSize / 1024 / 1024).toFixed(1)}MB)`);
+
+        // Step 1: Start session
+        const startResp = await metaPost(`/${META_AD_ACCOUNT_ID}/advideos`, {
+            upload_phase: 'start',
+            file_size: fileSize.toString(),
+        });
+        const { upload_session_id, video_id } = startResp;
+        console.log(`[CHUNKED] Session: ${upload_session_id}, video_id: ${video_id}`);
+
+        // Step 2: Upload chunks
+        let offset = 0;
+        let chunkNum = 0;
+        while (offset < fileSize) {
+            const end = Math.min(offset + CHUNK_SIZE, fileSize);
+            const chunk = file.slice(offset, end);
+            chunkNum++;
+            console.log(`[CHUNKED] Chunk ${chunkNum}: ${offset}-${end}`);
+
+            const formData = new FormData();
+            formData.append('upload_phase', 'transfer');
+            formData.append('upload_session_id', upload_session_id);
+            formData.append('start_offset', offset.toString());
+            formData.append('video_file_chunk', chunk, file.name);
+            formData.append('access_token', META_ACCESS_TOKEN);
+            if (META_APPSECRET_PROOF) formData.append('appsecret_proof', META_APPSECRET_PROOF);
+
+            const resp = await fetch(`${META_API_BASE}/${META_AD_ACCOUNT_ID}/advideos`, {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await resp.json();
+            if (data.error) throw new Error(`Chunk ${chunkNum}: ${data.error.message}`);
+            offset = parseInt(data.start_offset, 10);
+        }
+
+        // Step 3: Finish
+        const finishResp = await metaPost(`/${META_AD_ACCOUNT_ID}/advideos`, {
+            upload_phase: 'finish',
+            upload_session_id,
+            title: title || file.name,
+        });
+        console.log(`[CHUNKED] Done! video_id=${video_id}`);
+        return video_id;
+    }
+
+    // Poll video status until ready
+    async function pollVideoStatus(videoId, timeoutMs = 60000, pollInterval = 2000) {
+        const startTime = Date.now();
+        while (Date.now() - startTime < timeoutMs) {
+            await new Promise(resolve => setTimeout(resolve, pollInterval));
+            const statusResp = await metaGet(`/${videoId}`, { fields: 'status' });
+            if (statusResp.status && statusResp.status.video_status === 'ready') {
+                return true;
+            }
+            if (statusResp.status && statusResp.status.video_status === 'error') {
+                throw new Error(`Video processing error: ${JSON.stringify(statusResp.status)}`);
+            }
+        }
+        // Timed out but video may still be processing
+        return false;
+    }
+
+    // =========================================================================
+    // WRITE RESULT TO GOOGLE SHEET
+    // =========================================================================
+    async function writeResultToSheet(rowIndex, data, tabName) {
+        try {
+            const payload = {
+                row: rowIndex,
+                tab: tabName || 'Sheet1',
+                campaign_id: data.campaign_id || '',
+                adset_id: data.adset_id || '',
+                ad_id: data.ad_id || '',
+                upload_status: data.upload_status || '',
+                error_message: data.error_message || '',
+            };
+            await fetch(GOOGLE_APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                mode: 'no-cors',
+            });
+        } catch (err) {
+            console.error('Failed to write result to sheet:', err.message);
+        }
+    }
+
+    // =========================================================================
+    // SETTINGS
+    // =========================================================================
+    window.toggleSettings = function () {
+        const body = $('settingsBody');
+        const arrow = $('settingsToggle');
+        body.classList.toggle('collapsed');
+        arrow.classList.toggle('collapsed');
+    };
+
+    window.saveSettings = function () {
+        META_ACCESS_TOKEN = $('metaAccessToken').value.trim();
+        META_APPSECRET_PROOF = $('metaAppSecretProof').value.trim();
+        META_AD_ACCOUNT_ID = $('metaAdAccountId').value.trim() || DEFAULT_AD_ACCOUNT_ID;
+
+        localStorage.setItem('meta_access_token', META_ACCESS_TOKEN);
+        localStorage.setItem('meta_appsecret_proof', META_APPSECRET_PROOF);
+        localStorage.setItem('meta_ad_account_id', META_AD_ACCOUNT_ID);
+
+        const saved = $('settingsSaved');
+        saved.classList.add('show');
+        setTimeout(() => saved.classList.remove('show'), 2000);
+
+        checkConnection();
+        loadCampaigns();
+    };
+
+    window.clearSettings = function () {
+        localStorage.removeItem('meta_access_token');
+        localStorage.removeItem('meta_appsecret_proof');
+        localStorage.removeItem('meta_ad_account_id');
+        META_ACCESS_TOKEN = '';
+        META_APPSECRET_PROOF = '';
+        META_AD_ACCOUNT_ID = DEFAULT_AD_ACCOUNT_ID;
+        $('metaAccessToken').value = '';
+        $('metaAppSecretProof').value = '';
+        $('metaAdAccountId').value = DEFAULT_AD_ACCOUNT_ID;
+        $('statusDot').className = 'status-dot';
+        $('statusText').textContent = 'Not configured';
+    };
+
+    function loadSettingsIntoForm() {
+        if (META_ACCESS_TOKEN) $('metaAccessToken').value = META_ACCESS_TOKEN;
+        if (META_APPSECRET_PROOF) $('metaAppSecretProof').value = META_APPSECRET_PROOF;
+        $('metaAdAccountId').value = META_AD_ACCOUNT_ID;
+    }
+
+    // =========================================================================
+    // SECTION TOGGLE
+    // =========================================================================
+    window.toggleSection = function (header) {
+        const body = header.nextElementSibling;
+        const arrow = header.querySelector('.section-toggle');
+        body.classList.toggle('collapsed');
+        arrow.classList.toggle('collapsed');
+    };
+
+    // =========================================================================
+    // CONNECTION CHECK
+    // =========================================================================
+    async function checkConnection() {
+        if (!META_ACCESS_TOKEN) {
+            $('statusDot').className = 'status-dot';
+            $('statusText').textContent = 'Not configured';
+            return;
+        }
+        try {
+            const result = await metaGet(`/${META_AD_ACCOUNT_ID}`, { fields: 'id,name' });
+            $('statusDot').className = 'status-dot connected';
+            $('statusText').textContent = `Connected: ${result.name || result.id}`;
+        } catch (e) {
+            console.error('Meta connection error:', e);
+            $('statusDot').className = 'status-dot error';
+            $('statusText').textContent = 'Connection failed: ' + e.message;
+        }
+    }
+
+    // =========================================================================
+    // LOAD CAMPAIGNS
+    // =========================================================================
+    window.loadCampaigns = async function () {
+        if (!META_ACCESS_TOKEN) {
+            $('campaignId').innerHTML = '<option value="">Configure settings first...</option>';
+            return;
+        }
+        try {
+            const data = await metaGet(`/${META_AD_ACCOUNT_ID}/campaigns`, { fields: 'id,name,status,objective,special_ad_categories,bid_strategy,daily_budget,lifetime_budget', limit: 500 });
+            campaigns = data.data || [];
+            const sel = $('campaignId');
+            sel.innerHTML = '<option value="">-- Select Campaign --</option>';
+            campaigns.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = `${c.name} (${c.id})`;
+                opt.dataset.objective = c.objective || '';
+                opt.dataset.status = c.status || '';
+                opt.dataset.specialAdCategories = JSON.stringify(c.special_ad_categories || []);
+                opt.dataset.bidStrategy = c.bid_strategy || '';
+                sel.appendChild(opt);
+            });
+        } catch (e) {
+            $('campaignId').innerHTML = '<option value="">Failed to load campaigns</option>';
+        }
+    };
+
+    $('campaignId').addEventListener('change', function () {
+        const opt = this.selectedOptions[0];
+        if (opt && opt.value) {
+            $('campaignInfo').style.display = 'flex';
+            const objective = opt.dataset.objective || '';
+            const specialCats = JSON.parse(opt.dataset.specialAdCategories || '[]');
+            const hasFinserv = specialCats.includes('FINANCIAL_PRODUCTS_SERVICES');
+
+            $('campaignObjective').textContent = 'Objective: ' + (objective || 'N/A');
+            $('campaignStatus').textContent = 'Status: ' + (opt.dataset.status || 'N/A');
+
+            // Auto-set optimization_goal and billing_event based on objective
+            const goalMap = {
+                'OUTCOME_APP_PROMOTION': { goal: 'APP_INSTALLS', billing: 'IMPRESSIONS' },
+                'OUTCOME_SALES': { goal: 'OFFSITE_CONVERSIONS', billing: 'IMPRESSIONS' },
+                'OUTCOME_TRAFFIC': { goal: 'LINK_CLICKS', billing: 'IMPRESSIONS' },
+                'OUTCOME_LEADS': { goal: 'LEAD_GENERATION', billing: 'IMPRESSIONS' },
+                'OUTCOME_AWARENESS': { goal: 'REACH', billing: 'IMPRESSIONS' },
+            };
+            const mapping = goalMap[objective] || {};
+            if (mapping.goal) $('optimizationGoal').value = mapping.goal;
+            if (mapping.billing) $('billingEvent').value = mapping.billing;
+
+            // Auto-set bid strategy from campaign
+            if (opt.dataset.bidStrategy) {
+                const bs = $('bidStrategy');
+                for (const o of bs.options) {
+                    if (o.value === opt.dataset.bidStrategy) { bs.value = opt.dataset.bidStrategy; break; }
+                }
+                toggleBidAmount();
+            }
+
+            // Show FINSERV badge
+            const finservBadge = document.getElementById('campaignFinserv');
+            if (finservBadge) {
+                finservBadge.style.display = hasFinserv ? 'inline-block' : 'none';
+                finservBadge.textContent = hasFinserv ? 'FINSERV' : '';
+            }
+        } else {
+            $('campaignInfo').style.display = 'none';
+        }
+    });
+
+    // =========================================================================
+    // UPLOAD MODE (Ad/Adset vs Campaign)
+    // =========================================================================
+    let currentMode = 'ad'; // 'ad' or 'campaign'
+
+    window.switchUploadMode = function (mode) {
+        currentMode = mode;
+        // Hide/show form sections 2-4 (adset, targeting, creative, ad) based on mode
+        const adSections = document.querySelectorAll('.section-card');
+        // Sections: 0=Source, 1=Settings, 2=Campaign, 3=Adset, 4=Creative, 5=Preview, 6=Log
+        // In campaign mode, hide sections 2-4 (campaign select, adset config, creative/ad)
+        adSections.forEach((sec, i) => {
+            const header = sec.querySelector('.section-header h2');
+            if (!header) return;
+            const text = header.textContent.trim();
+            if (mode === 'campaign') {
+                // Hide Campaign Select, Adset, Targeting, Creative sections
+                if (text.includes('Campaign') || text.includes('Adset') || text.includes('Targeting') || text.includes('Creative') || text.includes('Ad Config')) {
+                    sec.style.display = 'none';
+                }
+            } else {
+                sec.style.display = '';
+            }
+        });
+        // Auto-switch sheet tab
+        $('tabName').value = mode === 'campaign' ? 'Campaign Creation' : 'sheet1';
+
+        // Update execute button text
+        const createBtn = $('createBtn');
+        if (createBtn) createBtn.innerHTML = mode === 'campaign' ? '&#9889; Create Campaign' : '&#9889; Create Ad';
+        const bulkBtn = $('bulkBtn');
+        if (bulkBtn) {
+            const count = $('bulkCount')?.textContent || '0';
+            bulkBtn.innerHTML = mode === 'campaign'
+                ? `&#9889; Create Selected Campaigns (<span id="bulkCount">${count}</span>)`
+                : `&#9889; Run Selected Rows (<span id="bulkCount">${count}</span>)`;
+        }
+    };
+
+    // Tab dropdown is hardcoded to the two known sheets
+    // Mode switch auto-selects the correct tab, and vice versa
+    window.fetchSheetTabs = function () {}; // no-op, kept for oninput compatibility
+
+    window.onTabChange = function (tabValue) {
+        const newMode = tabValue === 'Campaign Creation' ? 'campaign' : 'ad';
+        document.querySelector(`input[name="uploadMode"][value="${newMode}"]`).checked = true;
+        switchUploadMode(newMode);
+    };
+
+    // =========================================================================
+    // CAMPAIGN CREATION PIPELINE
+    // =========================================================================
+    async function executeCampaignRow(config, sheetRowIndex, sheetTabName) {
+        const logId = addLogEntry('Creating campaign...', 'pending');
+        console.log('[CAMPAIGN] config:', JSON.stringify(config));
+        try {
+            if (!config.campaign_name) throw new Error('campaign_name is empty. Check your sheet column header matches exactly.');
+            const params = {
+                name: config.campaign_name,
+                objective: config.objective || 'OUTCOME_APP_PROMOTION',
+                status: config.status || 'PAUSED',
+                special_ad_categories: JSON.stringify([config.special_ad_categories || 'FINANCIAL_PRODUCTS_SERVICES']),
+                buying_type: config.buying_type || 'AUCTION',
+            };
+
+            if (config.bid_strategy) params.bid_strategy = config.bid_strategy;
+
+            // Budget optimization (CBO)
+            const cbo = (config.budget_optimization || '').toUpperCase();
+            if (cbo === 'ON') {
+                params.campaign_budget_optimization = true;
+                if (config.daily_budget) params.daily_budget = Math.round(Number(config.daily_budget) * 100);
+                if (config.lifetime_budget) params.lifetime_budget = Math.round(Number(config.lifetime_budget) * 100);
+            }
+
+            if (config.spend_cap) params.spend_cap = Math.round(Number(config.spend_cap) * 100);
+
+            const data = await metaPost(`/${META_AD_ACCOUNT_ID}/campaigns`, params);
+            const campaignId = data.id;
+            updateLogEntry(logId, `Campaign created (${campaignId})`, 'success');
+
+            // Write result to sheet
+            if (sheetRowIndex) {
+                await writeResultToSheet(sheetRowIndex, {
+                    campaign_id: campaignId,
+                    upload_status: 'SUCCESS',
+                    error_message: '',
+                }, sheetTabName);
+            }
+
+            const acctNum = META_AD_ACCOUNT_ID.replace('act_', '');
+            addLogResult(
+                `Campaign created!<br>Campaign ID: <strong>${esc(campaignId)}</strong><br>Name: <strong>${esc(config.campaign_name)}</strong><br><a href="https://www.facebook.com/adsmanager/manage/campaigns?act=${acctNum}&selected_campaign_ids=${campaignId}" target="_blank">View in Ads Manager &#8594;</a>`,
+                'success'
+            );
+
+            return { campaignId };
+        } catch (err) {
+            updateLogEntry(logId, `Campaign creation failed: ${err.message}`, 'error');
+            addLogResult('Campaign failed: ' + esc(err.message), 'error');
+
+            if (sheetRowIndex) {
+                await writeResultToSheet(sheetRowIndex, {
+                    campaign_id: '',
+                    upload_status: 'FAILED',
+                    error_message: err.message,
+                }, sheetTabName);
+            }
+            throw err;
+        }
+    }
+
+    // =========================================================================
+    // GOOGLE SHEET DATA (client-side JSONP via Google Visualization API)
+    // =========================================================================
+    window.loadSheetData = async function () {
+        const sheetId = $('sheetId').value.trim();
+        const tabName = $('tabName').value.trim();
+        if (!sheetId) { $('sheetStatus').textContent = 'Please enter a Sheet ID.'; return; }
+
+        $('sheetStatus').textContent = 'Loading...';
+        try {
+            let url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
+            if (tabName) url += `&sheet=${encodeURIComponent(tabName)}`;
+
+            const resp = await fetch(url);
+            const text = await resp.text();
+
+            // Strip JSONP wrapper
+            const jsonMatch = text.match(/google\.visualization\.Query\.setResponse\((.+)\);?\s*$/s);
+            if (!jsonMatch) throw new Error('Failed to parse Google Sheets JSONP response');
+
+            const parsed = JSON.parse(jsonMatch[1]);
+            const table = parsed.table;
+            if (!table) throw new Error('No table data in Google Sheets response');
+
+            const cols = (table.cols || []).map(c => c.label || c.id || '');
+            const rows = (table.rows || []).map(row => {
+                const obj = {};
+                (row.c || []).forEach((cell, idx) => {
+                    const key = cols[idx] || `col_${idx}`;
+                    if (!cell) { obj[key] = null; return; }
+                    // For large numbers (IDs), prefer formatted string to avoid precision loss
+                    const v = cell.v;
+                    const f = cell.f;
+                    if (typeof v === 'number' && f && /^\d{10,}$/.test(f.replace(/,/g, ''))) {
+                        obj[key] = f.replace(/,/g, ''); // use formatted string, strip commas
+                    } else {
+                        obj[key] = v !== undefined ? v : (f || null);
+                    }
+                });
+                return obj;
+            });
+
+            sheetRows = rows;
+            if (sheetRows.length > 0) {
+                sheetHeaders = Object.keys(sheetRows[0]);
+                renderSheetTable();
+                $('sheetStatus').textContent = `Loaded ${sheetRows.length} row(s). Auto-fetching details from Meta...`;
+                console.log('[SHEET] Headers:', sheetHeaders);
+                console.log('[SHEET] First row:', JSON.stringify(sheetRows[0]));
+                // Auto-enrich rows that have adset_id or campaign_id
+                try {
+                    await enrichSheetRowsFromMeta();
+                    const enrichedCount = sheetRows.filter(r => r._enriched).length;
+                    console.log(`[ENRICH] Done. ${enrichedCount}/${sheetRows.length} rows enriched.`);
+                    console.log('[ENRICH] Row 1 after enrich:', JSON.stringify(sheetRows[0]));
+                    renderSheetTable();
+                    $('sheetStatus').textContent = `Loaded ${sheetRows.length} row(s). ${enrichedCount} enriched from Meta.`;
+                } catch (enrichErr) {
+                    console.error('[ENRICH] Fatal error:', enrichErr);
+                    $('sheetStatus').textContent = `Loaded ${sheetRows.length} row(s). Enrich failed: ${enrichErr.message}`;
+                }
+            } else {
+                $('sheetStatus').textContent = 'No rows found.';
+            }
+        } catch (e) {
+            $('sheetStatus').textContent = 'Error: ' + e.message;
+        }
+    };
+
+    // =========================================================================
+    // AUTO-ENRICH: fetch Meta details and fill empty sheet cells
+    // =========================================================================
+    function findHeader(keys) {
+        for (const k of keys) {
+            for (const h of sheetHeaders) {
+                if (h.toLowerCase().replace(/[\s_-]/g, '') === k.toLowerCase().replace(/[\s_-]/g, '')) return h;
+            }
+        }
+        return null;
+    }
+
+    function getRowVal(row, keys) {
+        const h = findHeader(keys);
+        return h && row[h] !== undefined && row[h] !== null && row[h] !== '' ? String(row[h]) : '';
+    }
+
+    function setRowVal(row, keys, val) {
+        if (!val && val !== 0) return;
+        let h = findHeader(keys);
+        if (!h) {
+            // Column doesn't exist in sheet — add it dynamically
+            h = keys[keys.length - 1]; // use the most readable key name (last one, e.g. 'campaign_id')
+            sheetHeaders.push(h);
+            // Initialize this column as empty for all existing rows
+            sheetRows.forEach(r => { if (!(h in r)) r[h] = ''; });
+        }
+        row[h] = String(val);
+    }
+
+    async function enrichSheetRowsFromMeta() {
+        // Save originals so we can highlight auto-filled cells
+        sheetRows.forEach(row => {
+            row._originals = {};
+            sheetHeaders.forEach(h => {
+                if (row[h] !== undefined && row[h] !== null && row[h] !== '') {
+                    row._originals[h] = row[h];
+                }
+            });
+        });
+
+        const promises = sheetRows.map(async (row, idx) => {
+            try {
+                // Check for adset_id first (gives us more data)
+                let adsetId = getRowVal(row, ['existingadsetid', 'existing_adset_id', 'adset_id', 'adsetid']).trim();
+                const campIdCheck = getRowVal(row, ['campaignid', 'campaign_id']).trim();
+                console.log(`[ENRICH] Row ${idx + 1}: adsetId="${adsetId}", campId="${campIdCheck}"`);
+                if (adsetId && /^\d{5,}$/.test(adsetId)) {
+                    const resp = await fetch(`/api/adset-details/${adsetId}`);
+                    const data = await resp.json();
+                    if (data.success && data.adset) {
+                        const a = data.adset;
+
+                        // Fill campaign_id from adset
+                        if (a.campaign_id) setRowVal(row, ['campaignid', 'campaign_id'], a.campaign_id);
+
+                        // Adset-level fields
+                        setRowVal(row, ['adsetname', 'adset_name'], a.name);
+                        setRowVal(row, ['adsetstatus', 'adset_status'], a.status);
+                        setRowVal(row, ['optimizationgoal', 'optimization_goal'], a.optimization_goal);
+                        setRowVal(row, ['billingevent', 'billing_event'], a.billing_event);
+                        setRowVal(row, ['bidstrategy', 'bid_strategy'], a.bid_strategy);
+                        if (a.bid_amount) setRowVal(row, ['bidamount', 'bid_amount'], (parseInt(a.bid_amount) / 100).toString());
+                        if (a.daily_budget) {
+                            setRowVal(row, ['budget', 'dailybudget', 'daily_budget'], (parseInt(a.daily_budget) / 100).toString());
+                            setRowVal(row, ['budgettype', 'budget_type'], 'daily');
+                        } else if (a.lifetime_budget) {
+                            setRowVal(row, ['budget', 'lifetimebudget', 'lifetime_budget'], (parseInt(a.lifetime_budget) / 100).toString());
+                            setRowVal(row, ['budgettype', 'budget_type'], 'lifetime');
+                        }
+
+                        // Targeting
+                        if (a.targeting) {
+                            const t = a.targeting;
+                            setRowVal(row, ['agemin', 'age_min'], t.age_min);
+                            setRowVal(row, ['agemax', 'age_max'], t.age_max);
+                            if (t.genders && t.genders.length) setRowVal(row, ['genders', 'gender'], t.genders.join(','));
+                            if (t.geo_locations && t.geo_locations.countries) {
+                                setRowVal(row, ['countries', 'geocountries', 'geo_countries'], t.geo_locations.countries.join(','));
+                            }
+                            if (t.device_platforms) setRowVal(row, ['deviceplatforms', 'device_platforms'], t.device_platforms.join('|'));
+                            if (t.publisher_platforms) setRowVal(row, ['publisherplatforms', 'publisher_platforms'], t.publisher_platforms.join('|'));
+                            if (t.facebook_positions) setRowVal(row, ['facebookpositions', 'facebook_positions'], t.facebook_positions.join('|'));
+                            if (t.instagram_positions) setRowVal(row, ['instagrampositions', 'instagram_positions'], t.instagram_positions.join('|'));
+                            if (t.user_os) {
+                                const osVal = Array.isArray(t.user_os) ? t.user_os[0] : t.user_os;
+                                setRowVal(row, ['os', 'operatingsystem', 'os_target'], osVal);
+                            }
+                            // Excluded geo
+                            if (t.excluded_geo_locations) {
+                                const ex = t.excluded_geo_locations;
+                                if (ex.countries && ex.countries.length) {
+                                    setRowVal(row, ['excludedcountries', 'excluded_countries'], ex.countries.join(','));
+                                }
+                                if (ex.regions && ex.regions.length) {
+                                    const regionKeys = ex.regions.map(r => r.key || r.name || r);
+                                    setRowVal(row, ['excludedregions', 'excluded_regions'], regionKeys.join(','));
+                                }
+                            }
+                            // Custom audiences
+                            if (t.custom_audiences && t.custom_audiences.length) {
+                                setRowVal(row, ['customaudiences', 'custom_audiences'], t.custom_audiences.map(a => a.id).join('|'));
+                            }
+                            if (t.excluded_custom_audiences && t.excluded_custom_audiences.length) {
+                                setRowVal(row, ['excludedaudiences', 'excluded_audiences'], t.excluded_custom_audiences.map(a => a.id).join('|'));
+                            }
+                        }
+
+                        // Promoted object
+                        if (a.promoted_object) {
+                            setRowVal(row, ['appid', 'application_id', 'app_id'], a.promoted_object.application_id);
+                            setRowVal(row, ['objectstoreurl', 'object_store_url', 'storeurl'], a.promoted_object.object_store_url);
+                            setRowVal(row, ['customeventtype', 'custom_event_type'], a.promoted_object.custom_event_type);
+                        }
+
+                        // Now fetch parent campaign details
+                        if (a.campaign_id) {
+                            const cResp = await fetch(`/api/campaign-details/${a.campaign_id}`);
+                            const cData = await cResp.json();
+                            if (cData.success && cData.campaign) {
+                                row._campaign = cData.campaign; // stash for display
+                            }
+                        }
+
+                        row._enriched = true;
+                        $('sheetStatus').textContent = `Enriched row ${idx + 1}...`;
+                    }
+                } else {
+                    // Try campaign_id only — fetch campaign and infer adset-level defaults
+                    const campId = getRowVal(row, ['campaignid', 'campaign_id']).trim();
+                    if (campId && /^\d{5,}$/.test(campId)) {
+                        const resp = await fetch(`/api/campaign-details/${campId}`);
+                        const data = await resp.json();
+                        if (data.success && data.campaign) {
+                            const c = data.campaign;
+                            row._campaign = c;
+
+                            // Set campaign-level fields into sheet row
+                            setRowVal(row, ['bidstrategy', 'bid_strategy'], c.bid_strategy);
+                            if (c.daily_budget) {
+                                setRowVal(row, ['budget', 'dailybudget', 'daily_budget'], (parseInt(c.daily_budget) / 100).toString());
+                                setRowVal(row, ['budgettype', 'budget_type'], 'daily');
+                            } else if (c.lifetime_budget) {
+                                setRowVal(row, ['budget', 'lifetimebudget', 'lifetime_budget'], (parseInt(c.lifetime_budget) / 100).toString());
+                                setRowVal(row, ['budgettype', 'budget_type'], 'lifetime');
+                            }
+                            setRowVal(row, ['status'], c.status);
+
+                            // Infer optimization_goal & billing_event from campaign objective
+                            const goalMap = {
+                                'OUTCOME_APP_PROMOTION': { goal: 'APP_INSTALLS', billing: 'IMPRESSIONS' },
+                                'OUTCOME_SALES': { goal: 'OFFSITE_CONVERSIONS', billing: 'IMPRESSIONS' },
+                                'OUTCOME_TRAFFIC': { goal: 'LINK_CLICKS', billing: 'IMPRESSIONS' },
+                                'OUTCOME_LEADS': { goal: 'LEAD_GENERATION', billing: 'IMPRESSIONS' },
+                                'OUTCOME_AWARENESS': { goal: 'REACH', billing: 'IMPRESSIONS' },
+                            };
+                            const mapping = goalMap[c.objective] || {};
+                            if (mapping.goal) setRowVal(row, ['optimizationgoal', 'optimization_goal'], mapping.goal);
+                            if (mapping.billing) setRowVal(row, ['billingevent', 'billing_event'], mapping.billing);
+
+                            row._enriched = true;
+                            $('sheetStatus').textContent = `Enriched row ${idx + 1} (campaign)...`;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn(`[ENRICH] Row ${idx + 1} failed:`, err.message);
+            }
+        });
+        await Promise.all(promises);
+    }
+
+    function renderSheetTable() {
+        const wrap = $('sheetTableWrap');
+        wrap.classList.remove('hidden');
+        const head = $('sheetHead');
+        const body = $('sheetBody');
+        head.innerHTML = '<th><input type="checkbox" id="selectAllRows" onclick="toggleAllRows(this)"></th><th>#</th>' + sheetHeaders.map(h => `<th>${esc(h)}</th>`).join('') + '<th></th>';
+        body.innerHTML = sheetRows.map((row, i) => {
+            // Track which cells were originally empty in the sheet (filled by Meta)
+            const cells = sheetHeaders.map(h => {
+                const val = row[h] || '';
+                const display = esc(String(val));
+                const wasAutoFilled = row._enriched && row._originals && !(h in row._originals) && val;
+                const style = wasAutoFilled ? ' style="color:var(--green);font-style:italic;"' : '';
+                return `<td title="${display}"${style}>${display}</td>`;
+            }).join('');
+            const enrichBadge = row._enriched ? '<span style="color:var(--green);font-size:10px;" title="Auto-filled from Meta">&#9679;</span> ' : '';
+            return `<tr><td><input type="checkbox" class="row-check" data-idx="${i}"></td><td>${enrichBadge}${i + 1}</td>${cells}<td><button class="btn btn-secondary" onclick="selectRow(${i})">Select</button></td></tr>`;
+        }).join('');
+        // Show/hide bulk run button
+        updateBulkButton();
+    }
+
+    // =========================================================================
+    // SELECT ROW (from sheet)
+    // =========================================================================
+    window.selectRow = async function (idx) {
+        const row = sheetRows[idx];
+        if (!row) return;
+        selectedSheetRowIndex = idx;
+
+        function val(keys) {
+            for (const k of keys) {
+                for (const h of sheetHeaders) {
+                    if (h.toLowerCase().replace(/[\s_-]/g, '') === k.toLowerCase().replace(/[\s_-]/g, '')) {
+                        if (row[h] !== undefined && row[h] !== '') return String(row[h]);
+                    }
+                }
+            }
+            return '';
+        }
+
+        function setVal(id, keys) {
+            const v = val(keys);
+            if (v) $(id).value = v;
+        }
+
+        function setSelect(id, keys) {
+            const v = val(keys);
+            if (v) {
+                const sel = $(id);
+                const normalizedValue = String(v).trim().toLowerCase().replace(/[\s-]+/g, '_');
+                for (const opt of sel.options) {
+                    const optValue = String(opt.value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+                    const optText = String(opt.textContent || '').trim().toLowerCase();
+                    if (optValue === normalizedValue || optText.includes(String(v).trim().toLowerCase())) {
+                        sel.value = opt.value;
+                        break;
+                    }
+                }
+                sel.dispatchEvent(new Event('change'));
+            }
+        }
+
+        function parseSheetDate(v) {
+            if (!v) return '';
+            const m = String(v).match(/^Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)$/);
+            if (m) {
+                const d = new Date(+m[1], +m[2], +m[3], +m[4], +m[5], +m[6]);
+                return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + 'T' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+            }
+            return v;
+        }
+
+        // Existing adset (skip creation) — clear first so stale values don't persist
+        $('existingAdsetId').value = '';
+        setVal('existingAdsetId', ['existingadsetid', 'existing_adset_id', 'adset_id', 'adsetid']);
+        // Fallback: if field is still empty, try direct column access
+        if (!$('existingAdsetId').value) {
+            for (const h of sheetHeaders) {
+                const norm = h.toLowerCase().replace(/[\s_-]/g, '');
+                if (norm === 'adsetid' || norm === 'existingadsetid') {
+                    const v = row[h];
+                    if (v !== undefined && v !== '' && v !== null) {
+                        $('existingAdsetId').value = String(v);
+                        break;
+                    }
+                }
+            }
+        }
+        console.log('[DEBUG] All headers:', sheetHeaders.join(', '));
+        console.log('[DEBUG] Adset-related:', sheetHeaders.filter(h => h.toLowerCase().includes('adset')).map(h => `${h}="${row[h]}"`).join(', '));
+        console.log('[DEBUG] existingAdsetId field =', $('existingAdsetId').value);
+        // Toggle adset fields visibility (but don't trigger debounced fetch — we'll await it directly below)
+        const adsetIdVal = $('existingAdsetId').value.trim();
+        const wrapper = document.getElementById('adsetFieldsWrapper');
+        if (wrapper) wrapper.style.display = adsetIdVal ? 'none' : '';
+
+        // Adset
+        setVal('adsetName', ['adsetname', 'adset_name', 'adsetName']);
+        setSelect('adsetStatus', ['adsetstatus', 'adset_status']);
+        setVal('budget', ['budget', 'dailybudget', 'daily_budget', 'lifetimebudget', 'lifetime_budget']);
+        setSelect('bidStrategy', ['bidstrategy', 'bid_strategy']);
+        setVal('bidAmount', ['bidamount', 'bid_amount']);
+        setSelect('billingEvent', ['billingevent', 'billing_event']);
+        setSelect('optimizationGoal', ['optimizationgoal', 'optimization_goal']);
+        setSelect('customEventType', ['customeventtype', 'custom_event_type']);
+        const stVal = val(['starttime', 'start_time']);
+        if (stVal) $('startTime').value = parseSheetDate(stVal);
+        const etVal = val(['endtime', 'end_time']);
+        if (etVal) $('endTime').value = parseSheetDate(etVal);
+        setVal('ageMin', ['agemin', 'age_min']);
+        setVal('ageMax', ['agemax', 'age_max']);
+        setSelect('genders', ['genders', 'gender']);
+        setVal('geoCountries', ['countries', 'geocountries', 'geo_countries']);
+        setSelect('osTarget', ['os', 'operatingsystem', 'os_target']);
+        setVal('minOsVersion', ['minosversion', 'min_os_version']);
+        setVal('appId', ['appid', 'application_id', 'app_id']);
+        setVal('objectStoreUrl', ['objectstoreurl', 'object_store_url', 'storeurl', 'store_url']);
+
+        // Ad
+        setVal('adName', ['adname', 'ad_name']);
+        setSelect('adStatus', ['adstatus', 'ad_status']);
+        setVal('creativeName', ['creativename', 'creative_name']);
+        setVal('primaryText', ['primarytext', 'primary_text', 'body', 'adcopy', 'ad_copy']);
+        setVal('headline', ['headline']);
+        setVal('description', ['description']);
+        setSelect('cta', ['cta', 'calltoaction', 'call_to_action']);
+        setVal('linkUrl', ['linkurl', 'link_url', 'link', 'deeplink']);
+        setVal('urlTags', ['urltags', 'url_tags', 'utmparams', 'utm']);
+
+        // Assets
+        setVal('assetHorizontal', ['horizontalasset', 'horizontal_asset', 'asset_horizontal', 'landscape', '169']);
+        setVal('assetVertical', ['verticalasset', 'vertical_asset', 'asset_vertical', 'portrait', '916']);
+        setVal('assetSquare', ['squareasset', 'square_asset', 'asset_square', 'square', '11']);
+
+        // Asset folder: single Drive folder URL that resolves to -H, -V, -S files
+        const folderUrl = val(['assetfolder', 'asset_folder', 'folder', 'folder_url', 'drive_folder', 'drivefolder']);
+        if (folderUrl) {
+            $('assetFolder').value = folderUrl;
+            // Resolve folder to individual file links via server API
+            try {
+                const resp = await fetch('/api/resolve-folder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ folderUrl }),
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    if (data.horizontal) $('assetHorizontal').value = data.horizontal;
+                    if (data.vertical) $('assetVertical').value = data.vertical;
+                    if (data.square) $('assetSquare').value = data.square;
+                    console.log('[FOLDER] Resolved:', data);
+                } else {
+                    console.warn('[FOLDER] Resolution failed:', data.error);
+                }
+            } catch (err) {
+                console.warn('[FOLDER] API error:', err.message);
+            }
+        }
+        setVal('thumbHorizontal', ['thumbhorizontal', 'thumbnail_horizontal', 'thumb_horizontal']);
+        setVal('thumbVertical', ['thumbvertical', 'thumbnail_vertical', 'thumb_vertical']);
+        setVal('thumbSquare', ['thumbsquare', 'thumbnail_square', 'thumb_square']);
+
+        // Creative type
+        const ct = val(['creativetype', 'creative_type', 'type']);
+        if (ct) {
+            const radio = qs(`input[name="creativeType"][value="${ct.toUpperCase()}"]`);
+            if (radio) { radio.checked = true; toggleCreativeType(); }
+        }
+
+        // Budget type
+        const bt = val(['budgettype', 'budget_type']);
+        if (bt) {
+            const radio = qs(`input[name="budgetType"][value="${bt.toLowerCase()}"]`);
+            if (radio) { radio.checked = true; toggleBudgetType(); }
+        }
+
+        // Audiences
+        const ca = val(['customaudiences', 'custom_audiences']);
+        if (ca) $('customAudiences').value = ca.split('|').join('\n');
+        const ea = val(['excludedaudiences', 'excluded_audiences']);
+        if (ea) $('excludedAudiences').value = ea.split('|').join('\n');
+
+        window._sheetExcludedCountries = val(['excludedcountries', 'excluded_countries']);
+        window._sheetExcludedRegions = val(['excludedregions', 'excluded_regions']);
+
+        // Platforms & positions
+        function setCheckboxes(nameAttr, keys) {
+            const v = val(keys);
+            if (!v) return;
+            const values = v.split('|').map(s => s.trim().toLowerCase());
+            document.querySelectorAll(`input[name="${nameAttr}"]`).forEach(cb => {
+                cb.checked = values.includes(cb.value.toLowerCase());
+            });
+        }
+        setCheckboxes('devicePlatform', ['deviceplatforms', 'device_platforms']);
+        setCheckboxes('publisherPlatform', ['publisherplatforms', 'publisher_platforms']);
+        setCheckboxes('fbPosition', ['facebookpositions', 'facebook_positions']);
+        setCheckboxes('igPosition', ['instagrampositions', 'instagram_positions']);
+
+        // Status
+        const st = val(['status']);
+        if (st) {
+            const sel = $('adsetStatus');
+            for (const opt of sel.options) {
+                if (opt.value === st) { sel.value = opt.value; break; }
+            }
+        }
+
+        // Page
+        const pageVal = val(['pageid', 'page_id', 'facebookpage', 'facebook_page']);
+        if (pageVal) $('pageId').value = pageVal;
+
+        // Auto-fetch from Meta — takes priority over sheet values
+        const adsetForFetch = $('existingAdsetId').value.trim();
+        if (adsetForFetch && /^\d{5,}$/.test(adsetForFetch)) {
+            $('sheetStatus').textContent = `Row ${idx + 1} loaded. Fetching adset details from Meta...`;
+            await fetchAndPopulateAdset(adsetForFetch);
+        } else {
+            // No adset ID — try campaign_id only
+            const campVal = val(['campaignid', 'campaign_id']);
+            if (campVal) {
+                await fetchAndPopulateCampaign(campVal);
+            }
+        }
+
+        $('sheetStatus').textContent = `Row ${idx + 1} loaded into form.`;
+    };
+
+    // =========================================================================
+    // TOGGLES
+    // =========================================================================
+    window.toggleManualEntry = function () {
+        isManualEntry = !isManualEntry;
+        const t = $('manualToggle');
+        t.classList.toggle('on', isManualEntry);
+        $('toggleLabelSheet').classList.toggle('active', !isManualEntry);
+        $('toggleLabelManual').classList.toggle('active', isManualEntry);
+    };
+
+    window._adsetFetchTimeout = null;
+    window.toggleExistingAdset = function () {
+        const id = $('existingAdsetId').value.trim();
+        const wrapper = document.getElementById('adsetFieldsWrapper');
+        if (wrapper) {
+            wrapper.style.display = id ? 'none' : '';
+        }
+        // Auto-fetch adset details when a valid ID is entered (debounced)
+        clearTimeout(window._adsetFetchTimeout);
+        if (id && /^\d{5,}$/.test(id)) {
+            window._adsetFetchTimeout = setTimeout(() => fetchAndPopulateAdset(id), 600);
+        }
+    };
+
+    async function fetchAndPopulateAdset(adsetId) {
+        try {
+            const resp = await fetch(`/api/adset-details/${adsetId}`);
+            const data = await resp.json();
+            if (!data.success || !data.adset) {
+                console.warn('[AUTO-FETCH] Adset not found:', data.error);
+                return;
+            }
+            const a = data.adset;
+            console.log('[AUTO-FETCH] Adset details:', a);
+
+            // Always set from Meta API (auto-fetch takes priority over sheet)
+            function setField(id, val) { if (val !== undefined && val !== null && val !== '') $(id).value = val; }
+            function setSelectField(id, val) {
+                if (!val) return;
+                const sel = $(id);
+                for (const opt of sel.options) { if (opt.value === val) { sel.value = val; return; } }
+            }
+
+            // Show a brief notification
+            const status = $('sheetStatus');
+            if (status) status.textContent = `Fetched adset details for ${adsetId}`;
+
+            // Populate campaign dropdown
+            if (a.campaign_id) {
+                await fetchAndPopulateCampaign(a.campaign_id);
+            }
+
+            // Optimization goal & billing event
+            if (a.optimization_goal) setSelectField('optimizationGoal', a.optimization_goal);
+            if (a.billing_event) setSelectField('billingEvent', a.billing_event);
+
+            // Bid strategy
+            if (a.bid_strategy) {
+                $('bidStrategy').value = a.bid_strategy;
+                toggleBidAmount();
+            }
+            if (a.bid_amount) setField('bidAmount', (parseInt(a.bid_amount) / 100).toString());
+
+            // Budget
+            if (a.daily_budget) {
+                const radio = document.querySelector('input[name="budgetType"][value="daily"]');
+                if (radio) { radio.checked = true; toggleBudgetType(); }
+                $('budget').value = (parseInt(a.daily_budget) / 100).toString();
+            } else if (a.lifetime_budget) {
+                const radio = document.querySelector('input[name="budgetType"][value="lifetime"]');
+                if (radio) { radio.checked = true; toggleBudgetType(); }
+                $('budget').value = (parseInt(a.lifetime_budget) / 100).toString();
+            }
+
+            // Name & status
+            setField('adsetName', a.name);
+            if (a.status) {
+                const sel = $('adsetStatus');
+                for (const opt of sel.options) {
+                    if (opt.value === a.status) { sel.value = a.status; break; }
+                }
+            }
+
+            // Targeting
+            if (a.targeting) {
+                const t = a.targeting;
+                setField('ageMin', t.age_min);
+                setField('ageMax', t.age_max);
+                if (t.genders && t.genders.length) $('genders').value = t.genders[0];
+                if (t.geo_locations && t.geo_locations.countries) {
+                    $('geoCountries').value = t.geo_locations.countries.join(',');
+                }
+                if (t.device_platforms) {
+                    document.querySelectorAll('input[name="devicePlatform"]').forEach(cb => {
+                        cb.checked = t.device_platforms.includes(cb.value);
+                    });
+                }
+                if (t.publisher_platforms) {
+                    document.querySelectorAll('input[name="publisherPlatform"]').forEach(cb => {
+                        cb.checked = t.publisher_platforms.includes(cb.value);
+                    });
+                }
+                if (t.facebook_positions) {
+                    document.querySelectorAll('input[name="fbPosition"]').forEach(cb => {
+                        cb.checked = t.facebook_positions.includes(cb.value);
+                    });
+                }
+                if (t.instagram_positions) {
+                    document.querySelectorAll('input[name="igPosition"]').forEach(cb => {
+                        cb.checked = t.instagram_positions.includes(cb.value);
+                    });
+                }
+                if (t.user_os) {
+                    const osVal = Array.isArray(t.user_os) ? t.user_os[0] : t.user_os;
+                    if (osVal) setField('osTarget', osVal);
+                }
+            }
+
+            // Promoted object (app_id, custom_event_type)
+            if (a.promoted_object) {
+                setField('appId', a.promoted_object.application_id);
+                setField('objectStoreUrl', a.promoted_object.object_store_url);
+                setSelectField('customEventType', a.promoted_object.custom_event_type);
+            }
+
+            // Schedule
+            if (a.start_time) {
+                const d = new Date(a.start_time);
+                $('startTime').value = d.toISOString().slice(0, 16);
+            }
+            if (a.end_time) {
+                const d = new Date(a.end_time);
+                $('endTime').value = d.toISOString().slice(0, 16);
+            }
+
+        } catch (err) {
+            console.warn('[AUTO-FETCH] Error fetching adset:', err.message);
+        }
+    }
+
+    async function fetchAndPopulateCampaign(campaignId) {
+        try {
+            // Check if already in dropdown
+            const campSel = $('campaignId');
+            let found = false;
+            for (const opt of campSel.options) {
+                if (opt.value === campaignId) { campSel.value = campaignId; campSel.dispatchEvent(new Event('change')); found = true; break; }
+            }
+            if (found) return;
+
+            // Fetch from Meta
+            const resp = await fetch(`/api/campaign-details/${campaignId}`);
+            const data = await resp.json();
+            if (!data.success || !data.campaign) return;
+            const c = data.campaign;
+
+            // Add to dropdown and select
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = `${c.name} (${c.id})`;
+            opt.dataset.objective = c.objective || '';
+            opt.dataset.status = c.status || '';
+            opt.dataset.specialAdCategories = JSON.stringify(c.special_ad_categories || []);
+            opt.dataset.bidStrategy = c.bid_strategy || '';
+            campSel.appendChild(opt);
+            campSel.value = c.id;
+            campSel.dispatchEvent(new Event('change'));
+        } catch (err) {
+            console.warn('[AUTO-FETCH] Error fetching campaign:', err.message);
+        }
+    }
+
+    window.toggleBudgetType = function () {
+        const isDaily = qs('input[name="budgetType"]:checked').value === 'daily';
+        $('budgetLabel').innerHTML = (isDaily ? 'Daily Budget' : 'Lifetime Budget') + ' (INR) <span class="required">*</span>';
+    };
+
+    window.toggleBidAmount = function () {
+        const strategy = $('bidStrategy').value;
+        const show = strategy === 'LOWEST_COST_WITH_BID_CAP' || strategy === 'COST_CAP';
+        $('bidAmountGroup').classList.toggle('hidden', !show);
+    };
+
+    window.toggleCreativeType = function () {
+        const isVideo = qs('input[name="creativeType"]:checked').value === 'VIDEO';
+        $('thumbnailFields').classList.toggle('hidden', !isVideo);
+    };
+
+    // =========================================================================
+    // COLLECT FORM DATA
+    // =========================================================================
+    function collectFormData() {
+        const budgetType = qs('input[name="budgetType"]:checked').value;
+        const creativeType = qs('input[name="creativeType"]:checked').value;
+        const genderVal = parseInt($('genders').value);
+        const gendersArr = genderVal === 0 ? [] : [genderVal];
+
+        return {
+            campaign_id: $('campaignId').value,
+            existing_adset_id: $('existingAdsetId').value.trim() || null,
+            adset_name: $('adsetName').value.trim(),
+            adset_status: $('adsetStatus').value,
+            budget_type: budgetType,
+            budget: $('budget').value,
+            bid_strategy: $('bidStrategy').value,
+            bid_amount: $('bidAmount').value || null,
+            billing_event: $('billingEvent').value,
+            optimization_goal: $('optimizationGoal').value,
+            custom_event_type: $('customEventType').value || null,
+            start_time: $('startTime').value,
+            end_time: $('endTime').value || null,
+            age_min: parseInt($('ageMin').value) || 18,
+            age_max: parseInt($('ageMax').value) || 65,
+            genders: gendersArr,
+            geo_countries: $('geoCountries').value.split(',').map(s => s.trim()).filter(Boolean),
+            device_platforms: getCheckedValues('devicePlatform'),
+            os_target: $('osTarget').value,
+            min_os_version: $('minOsVersion').value.trim() || null,
+            publisher_platforms: getCheckedValues('publisherPlatform'),
+            facebook_positions: getCheckedValues('fbPosition'),
+            instagram_positions: getCheckedValues('igPosition'),
+            custom_audiences: $('customAudiences').value.trim().split('\n').filter(Boolean),
+            excluded_audiences: $('excludedAudiences').value.trim().split('\n').filter(Boolean),
+            excluded_countries: window._sheetExcludedCountries || '',
+            excluded_regions: window._sheetExcludedRegions || '',
+            app_id: $('appId').value.trim(),
+            object_store_url: $('objectStoreUrl').value.trim(),
+            ad_name: $('adName').value.trim(),
+            ad_status: $('adStatus').value,
+            creative_name: $('creativeName').value.trim(),
+            primary_text: $('primaryText').value.trim(),
+            headline: $('headline').value.trim(),
+            description: $('description').value.trim(),
+            cta: $('cta').value,
+            link_url: $('linkUrl').value.trim(),
+            url_tags: $('urlTags').value.trim(),
+            creative_type: creativeType,
+            asset_folder: $('assetFolder') ? $('assetFolder').value.trim() : '',
+            asset_horizontal: $('assetHorizontal').value.trim(),
+            asset_vertical: $('assetVertical').value.trim(),
+            asset_square: $('assetSquare').value.trim(),
+            thumb_horizontal: $('thumbHorizontal').value.trim() || null,
+            thumb_vertical: $('thumbVertical').value.trim() || null,
+            thumb_square: $('thumbSquare').value.trim() || null,
+            page_id: $('pageId').value.trim(),
+        };
+    }
+
+    // =========================================================================
+    // VALIDATION
+    // =========================================================================
+    function validate() {
+        const hasExistingAdset = !!$('existingAdsetId').value.trim();
+
+        const required = [
+            ['adName', 'Ad Name'],
+            ['primaryText', 'Primary Text'],
+            ['pageId', 'Facebook Page ID'],
+        ];
+        const hasLandingTarget = !!($('linkUrl').value.trim() || $('objectStoreUrl').value.trim());
+        // Asset URLs required only if no folder URL provided
+        if (!($('assetFolder') && $('assetFolder').value.trim())) {
+            required.push(
+                ['assetHorizontal', 'Horizontal Asset'],
+                ['assetVertical', 'Vertical Asset'],
+                ['assetSquare', 'Square Asset'],
+            );
+        }
+
+        if (!hasExistingAdset) {
+            // Adset creation fields only required when not reusing an existing adset
+            required.push(
+                ['campaignId', 'Campaign'],
+                ['adsetName', 'Adset Name'],
+                ['budget', 'Budget'],
+                ['appId', 'Application ID'],
+                ['objectStoreUrl', 'Object Store URL'],
+            );
+            const strategy = $('bidStrategy').value;
+            if (strategy === 'LOWEST_COST_WITH_BID_CAP' || strategy === 'COST_CAP') {
+                required.push(['bidAmount', 'Bid Amount']);
+            }
+        }
+
+        if (!META_ACCESS_TOKEN || !META_APPSECRET_PROOF) {
+            alert('Please configure Meta API credentials in the Settings panel first.');
+            return false;
+        }
+
+        qsa('.invalid').forEach(el => el.classList.remove('invalid'));
+
+        const missing = [];
+        for (const [id, label] of required) {
+            const el = $(id);
+            const val = el.tagName === 'SELECT' ? el.value : el.value.trim();
+            if (!val) {
+                el.classList.add('invalid');
+                missing.push(label);
+            }
+        }
+
+        if (!hasLandingTarget) {
+            $('linkUrl').classList.add('invalid');
+            $('objectStoreUrl').classList.add('invalid');
+            missing.push('Link URL or Object Store URL');
+        }
+
+        if (missing.length) {
+            alert('Please fill in required fields:\n\n' + missing.join('\n'));
+            return false;
+        }
+        return true;
+    }
+
+    // =========================================================================
+    // PREVIEW
+    // =========================================================================
+    window.showPreview = function () {
+        const d = collectFormData();
+        const card = $('previewCard');
+        const grid = $('previewGrid');
+
+        function item(label, value) {
+            const cls = value ? 'value' : 'value empty';
+            const display = value || 'Not set';
+            return `<div class="preview-item"><div class="label">${label}</div><div class="${cls}">${esc(String(display))}</div></div>`;
+        }
+        function divider() { return '<div class="preview-divider"></div>'; }
+
+        const budgetLabel = d.budget_type === 'daily' ? 'Daily Budget' : 'Lifetime Budget';
+        const genderText = d.genders.length === 0 ? 'All' : (d.genders[0] === 1 ? 'Male' : 'Female');
+
+        grid.innerHTML = [
+            item('Campaign ID', d.campaign_id),
+            item('Adset Name', d.adset_name),
+            divider(),
+            item(budgetLabel, d.budget ? '\u20B9' + d.budget : ''),
+            item('Bid Strategy', d.bid_strategy),
+            item('Billing Event', d.billing_event),
+            item('Optimization Goal', d.optimization_goal),
+            item('Custom Event Type', d.custom_event_type || '(none)'),
+            item('Status', d.adset_status),
+            item('Start Time', d.start_time),
+            divider(),
+            item('Ages', d.age_min + ' - ' + d.age_max),
+            item('Gender', genderText),
+            item('Countries', d.geo_countries.join(', ')),
+            item('Devices', d.device_platforms.join(', ')),
+            item('OS', d.os_target + (d.min_os_version ? ' ' + d.min_os_version + '+' : '')),
+            item('Publishers', d.publisher_platforms.join(', ')),
+            divider(),
+            item('Ad Name', d.ad_name),
+            item('Creative Type', d.creative_type),
+            item('Headline', d.headline),
+            item('CTA', d.cta),
+            divider(),
+            d.asset_folder ? item('Asset Folder', d.asset_folder) : '',
+            item('Horizontal Asset', d.asset_horizontal),
+            item('Vertical Asset', d.asset_vertical),
+            item('Square Asset', d.asset_square),
+        ].join('');
+
+        card.classList.add('show');
+    };
+
+    // =========================================================================
+    // CONFIRM MODAL
+    // =========================================================================
+    window.confirmExecute = function () {
+        if (currentMode === 'campaign') {
+            // Campaign mode - just need a row selected
+            if (!META_ACCESS_TOKEN) return alert('Please configure Meta API credentials first.');
+            if (selectedSheetRowIndex == null) return alert('Please select a row from the sheet.');
+            $('confirmStatus').textContent = 'Campaign Creation';
+            $('confirmModal').classList.add('show');
+            return;
+        }
+        if (!validate()) return;
+        const existingId = $('existingAdsetId').value.trim();
+        if (existingId) {
+            $('confirmMsg').innerHTML = `This will create an ad inside <strong>existing adset ${existingId}</strong>. Continue?`;
+        } else {
+            $('confirmMsg').innerHTML = `This will create an adset and ad on your Meta account. The adset will be set to <strong id="confirmStatus">${$('adsetStatus').value}</strong>. Continue?`;
+        }
+        $('confirmModal').classList.add('show');
+    };
+
+    window.closeModal = function () {
+        $('confirmModal').classList.remove('show');
+    };
+
+    // =========================================================================
+    // EXECUTION LOG HELPERS
+    // =========================================================================
+    let logCounter = 0;
+
+    function clearLog() {
+        $('execLog').innerHTML = '';
+        logCounter = 0;
+    }
+
+    function addLogEntry(msg, status) {
+        const id = 'log-' + (++logCounter);
+        let icon = '';
+        if (status === 'pending') icon = '<span class="spinner"></span>';
+        else if (status === 'success') icon = '&#10003;';
+        else if (status === 'error') icon = '&#10007;';
+        else if (status === 'info') icon = '&#9679;';
+
+        const entry = document.createElement('div');
+        entry.className = 'log-entry ' + status;
+        entry.id = id;
+        entry.innerHTML = `<span class="log-time">${timeStamp()}</span><span class="log-icon">${icon}</span><span class="log-msg">${msg}</span>`;
+        $('execLog').appendChild(entry);
+        $('execLog').scrollTop = $('execLog').scrollHeight;
+        return id;
+    }
+
+    function updateLogEntry(id, msg, status) {
+        const entry = document.getElementById(id);
+        if (!entry) return;
+        let icon = '';
+        if (status === 'success') icon = '&#10003;';
+        else if (status === 'error') icon = '&#10007;';
+        else if (status === 'pending') icon = '<span class="spinner"></span>';
+        entry.className = 'log-entry ' + status;
+        entry.querySelector('.log-icon').innerHTML = icon;
+        if (msg) entry.querySelector('.log-msg').textContent = msg;
+    }
+
+    function addLogResult(html, status) {
+        const div = document.createElement('div');
+        div.className = 'log-result ' + status;
+        div.innerHTML = html;
+        $('execLog').appendChild(div);
+        $('execLog').scrollTop = $('execLog').scrollHeight;
+    }
+
+    // =========================================================================
+    // CORE PIPELINE (reusable for single + bulk)
+    // =========================================================================
+    async function executeSingleRow(config, sheetRowIndex, sheetTabName, existingAdsetId) {
+        let adsetId = existingAdsetId || config.existing_adset_id || config.adset_id || null;
+        console.log('[DEBUG] resolved adsetId:', adsetId, '| param:', existingAdsetId, '| config.existing_adset_id:', config.existing_adset_id, '| config.adset_id:', config.adset_id);
+        let creativeId = null;
+        let adId = null;
+
+        try {
+
+            // ------------------------------------------------------------------
+            // Parse Google Sheets Date() format
+            // ------------------------------------------------------------------
+            function parseGSheetsDate(val) {
+                if (!val) return val;
+                const str = String(val);
+                const m = str.match(/^Date\((\d+),(\d+),(\d+),(\d+),(\d+),(\d+)\)$/);
+                if (m) {
+                    const d = new Date(+m[1], +m[2], +m[3], +m[4], +m[5], +m[6]);
+                    return d.toISOString();
+                }
+                return str;
+            }
+            if (config.start_time) config.start_time = parseGSheetsDate(config.start_time);
+            if (config.end_time) config.end_time = parseGSheetsDate(config.end_time);
+
+            // ------------------------------------------------------------------
+            // Auto-resolve folder URL to individual asset links
+            // ------------------------------------------------------------------
+            const folderUrl = config.asset_folder || config.folder_url || null;
+            if (folderUrl && !config.asset_horizontal && !config.asset_vertical && !config.asset_square) {
+                const logId = addLogEntry('Resolving Drive folder to assets...', 'pending');
+                try {
+                    const resp = await fetch('/api/resolve-folder', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ folderUrl }),
+                    });
+                    const data = await resp.json();
+                    if (data.success) {
+                        if (data.horizontal) config.asset_horizontal = data.horizontal;
+                        if (data.vertical) config.asset_vertical = data.vertical;
+                        if (data.square) config.asset_square = data.square;
+                        updateLogEntry(logId, `Folder resolved: H=${!!data.horizontal} V=${!!data.vertical} S=${!!data.square}`, 'success');
+                    } else {
+                        updateLogEntry(logId, `Folder resolution failed: ${data.error}`, 'error');
+                    }
+                } catch (err) {
+                    updateLogEntry(logId, `Folder API error: ${err.message}`, 'error');
+                }
+            }
+
+            // ------------------------------------------------------------------
+            // Normalize field names (same as server)
+            // ------------------------------------------------------------------
+            const driveUrls = {
+                horizontal: config.asset_horizontal || null,
+                vertical: config.asset_vertical || null,
+                square: config.asset_square || null,
+            };
+            const thumbUrls = {
+                horizontal: config.thumb_horizontal || null,
+                vertical: config.thumb_vertical || null,
+                square: config.thumb_square || null,
+            };
+
+            const assetType = (config.creative_type || 'VIDEO').toLowerCase();
+
+            let dailyBudget = null;
+            let lifetimeBudget = null;
+            if (config.budget) {
+                if (config.budget_type === 'lifetime') {
+                    lifetimeBudget = config.budget;
+                } else {
+                    dailyBudget = config.budget;
+                }
+            }
+
+            // ------------------------------------------------------------------
+            // Build targeting
+            // ------------------------------------------------------------------
+            const targeting = {};
+
+            // Geo locations
+            const countries = config.geo_countries && config.geo_countries.length > 0 ? config.geo_countries : ['IN'];
+            targeting.geo_locations = { countries };
+
+            // Excluded geo locations
+            const excludedCountries = config.excluded_countries ? String(config.excluded_countries).split(/[,|]/).map(s => s.trim()).filter(s => s && s !== 'null') : [];
+            const excludedRegions = config.excluded_regions ? String(config.excluded_regions).split(/[,|]/).map(s => ({ key: s.trim() })).filter(r => r.key && r.key !== 'null') : [];
+            if (excludedCountries.length > 0 || excludedRegions.length > 0) {
+                targeting.excluded_geo_locations = {};
+                if (excludedCountries.length > 0) targeting.excluded_geo_locations.countries = excludedCountries;
+                if (excludedRegions.length > 0) targeting.excluded_geo_locations.regions = excludedRegions;
+            }
+
+            // Age
+            targeting.age_min = config.age_min || 18;
+            targeting.age_max = config.age_max || 65;
+
+            // Gender
+            if (config.genders && config.genders.length > 0) {
+                targeting.genders = config.genders;
+            }
+
+            // Device platforms
+            targeting.device_platforms = config.device_platforms || ['mobile'];
+
+            // OS
+            const osTarget = config.os_target || 'Android';
+            if (osTarget && osTarget !== 'All') {
+                targeting.user_os = [osTarget];
+                if (config.min_os_version) {
+                    targeting.os_version_min = config.min_os_version;
+                }
+            }
+
+            // Publisher platforms
+            targeting.publisher_platforms = config.publisher_platforms || ['facebook', 'instagram'];
+
+            // Positions
+            const videoOnlyFbPositions = ['video_feeds', 'instream_video'];
+            let fbPositions = config.facebook_positions || ['feed', 'video_feeds', 'story', 'facebook_reels', 'facebook_reels_overlay', 'profile_feed', 'instream_video', 'marketplace', 'search', 'right_hand_column'];
+            fbPositions = fbPositions.map(p => p === 'reels' ? 'facebook_reels' : p);
+            if (assetType === 'image') {
+                fbPositions = fbPositions.filter(p => !videoOnlyFbPositions.includes(p));
+            }
+            targeting.facebook_positions = fbPositions;
+
+            const igPositions = config.instagram_positions || ['stream', 'story', 'reels', 'ig_search', 'explore', 'explore_home', 'profile_feed', 'profile_reels'];
+            targeting.instagram_positions = igPositions;
+
+            // Custom audiences
+            const caList = (config.custom_audiences || []).map(s => String(s).trim()).filter(s => s && s !== 'null');
+            if (caList.length > 0) targeting.custom_audiences = caList.map(id => ({ id }));
+
+            const exList = (config.excluded_audiences || []).map(s => String(s).trim()).filter(s => s && s !== 'null');
+            if (exList.length > 0) targeting.excluded_custom_audiences = exList.map(id => ({ id }));
+
+            // ------------------------------------------------------------------
+            // Promoted object
+            // ------------------------------------------------------------------
+            let promotedObject = null;
+            if (config.app_id) {
+                promotedObject = {
+                    application_id: config.app_id,
+                    object_store_url: config.object_store_url || '',
+                };
+                if (config.custom_event_type) {
+                    promotedObject.custom_event_type = config.custom_event_type;
+                }
+            }
+
+            // Shared vars used by both parallel blocks and later steps
+            const linkUrl = config.link_url || '';
+            const storeUrl = config.object_store_url || '';
+
+            // ------------------------------------------------------------------
+            // Step 1 + 2: Upload assets AND create adset IN PARALLEL
+            // ------------------------------------------------------------------
+            const assets = {};
+            const sizes = ['horizontal', 'vertical', 'square'];
+
+            // --- Asset upload promise ---
+            const assetPromise = (async () => {
+                if (assetType === 'image') {
+                    // Upload images sequentially to avoid Drive 429 rate limits
+                    for (const size of sizes) {
+                        if (!driveUrls[size]) continue;
+                        const logId = addLogEntry(`Uploading ${size} image via URL...`, 'pending');
+                        try {
+                            const imageHash = await uploadImageByUrl(driveUrls[size]);
+                            assets[size] = { imageHash };
+                            updateLogEntry(logId, `${size} image uploaded (${imageHash.slice(0, 12)}...)`, 'success');
+                        } catch (err) {
+                            updateLogEntry(logId, `${size} image failed: ${err.message}`, 'error');
+                            throw err;
+                        }
+                    }
+                } else {
+                    // Upload videos sequentially to avoid Drive 429 rate limits
+                    const videoTitle = config.creative_name || config.adset_name || 'Ad Video';
+                    for (const size of sizes) {
+                        if (!driveUrls[size]) continue;
+                        const logId = addLogEntry(`Uploading ${size} video via URL...`, 'pending');
+                        try {
+                            const videoId = await uploadVideoByUrl(driveUrls[size], `${videoTitle} (${size})`);
+                            assets[size] = { videoId };
+                            updateLogEntry(logId, `${size} video uploaded (${videoId}), polling...`, 'success');
+                            const pollLogId = addLogEntry(`Polling ${size} video status...`, 'pending');
+                            const ready = await pollVideoStatus(videoId);
+                            updateLogEntry(pollLogId, ready ? `${size} video ready` : `${size} video may still be processing`, ready ? 'success' : 'info');
+                        } catch (err) {
+                            updateLogEntry(logId, `${size} video failed: ${err.message}`, 'error');
+                            throw err;
+                        }
+                    }
+
+                    // Upload thumbnails sequentially
+                    for (const size of sizes) {
+                        if (!thumbUrls[size]) continue;
+                        try {
+                            const thumbHash = await uploadImageByUrl(thumbUrls[size]);
+                            if (assets[size]) assets[size].thumbnailHash = thumbHash;
+                        } catch (err) { /* non-fatal */ }
+                    }
+                }
+            })();
+
+            // --- Adset creation promise (runs simultaneously, or skip if reusing) ---
+            const adsetPromise = (async () => {
+            if (adsetId) {
+                // Reusing existing adset
+                addLogEntry(`Reusing adset (${adsetId})`, 'success');
+                return adsetId;
+            }
+
+            const adsetLogId = addLogEntry('Creating adset...', 'pending');
+            const adsetParams = {
+                name: config.adset_name,
+                campaign_id: config.campaign_id,
+                status: config.adset_status || 'PAUSED',
+                billing_event: config.billing_event || 'IMPRESSIONS',
+                optimization_goal: config.optimization_goal || 'APP_INSTALLS',
+                bid_strategy: config.bid_strategy || 'LOWEST_COST_WITHOUT_CAP',
+            };
+
+            if (dailyBudget != null) adsetParams.daily_budget = Math.round(Number(dailyBudget) * 100);
+            if (lifetimeBudget != null) adsetParams.lifetime_budget = Math.round(Number(lifetimeBudget) * 100);
+            if (config.bid_amount != null && config.bid_amount !== '') {
+                adsetParams.bid_amount = Math.round(Number(config.bid_amount) * 100);
+            }
+            adsetParams.start_time = config.start_time || new Date().toISOString();
+            if (config.end_time) adsetParams.end_time = config.end_time;
+            adsetParams.targeting = JSON.stringify(targeting);
+
+            if (promotedObject) adsetParams.promoted_object = JSON.stringify(promotedObject);
+
+            // India finserv regulatory — always applied
+            adsetParams.regional_regulated_categories = JSON.stringify(['INDIA_FINSERV']);
+            const regulatoryId = DEFAULT_REGULATORY_ID;
+            adsetParams.regional_regulation_identities = JSON.stringify({
+                india_finserv_beneficiary: regulatoryId,
+                india_finserv_payer: regulatoryId,
+            });
+
+            try {
+                const adsetData = await metaPost(`/${META_AD_ACCOUNT_ID}/adsets`, adsetParams);
+                adsetId = adsetData.id;
+                updateLogEntry(adsetLogId, `Adset created (${adsetId})`, 'success');
+                return adsetId;
+            } catch (err) {
+                updateLogEntry(adsetLogId, `Adset creation failed: ${err.message}`, 'error');
+                throw err;
+            }
+            })();
+
+            // Wait for BOTH assets and adset to complete
+            const [_, adsetResult] = await Promise.all([assetPromise, adsetPromise]);
+            adsetId = adsetResult;
+
+            // ------------------------------------------------------------------
+            // Step 3: Create ad creative with asset customization
+            // ------------------------------------------------------------------
+            const creativeLogId = addLogEntry('Creating ad creative...', 'pending');
+
+            // When using asset_customization_rules with multiple texts, each text needs
+            // an adlabel and each rule needs body_label/title_label/link_url_label
+            const sharedLabel = [{ name: 'all_placements' }];
+            const bodies = (config.primary_text || '').split('|').map(s => s.trim()).filter(Boolean).map(t => ({ text: t, adlabels: sharedLabel }));
+            const titles = (config.headline || '').split('|').map(s => s.trim()).filter(Boolean).map(t => ({ text: t, adlabels: sharedLabel }));
+            const descs = (config.description || '').split('|').map(s => s.trim()).filter(Boolean).map(t => ({ text: t, adlabels: sharedLabel }));
+            if (bodies.length === 0) bodies.push({ text: '', adlabels: sharedLabel });
+            if (titles.length === 0) titles.push({ text: '', adlabels: sharedLabel });
+            if (descs.length === 0) descs.push({ text: '', adlabels: sharedLabel });
+            const textLabel = { name: 'all_placements' };
+            const ctaType = config.cta || 'SUBSCRIBE';
+            const feedLinkUrl = storeUrl || linkUrl;
+            const pageId = config.page_id || DEFAULT_PAGE_ID;
+
+            try {
+                const creativeParams = { name: config.creative_name || `${config.adset_name} Creative` };
+
+                if (assetType === 'video') {
+                    const videos = [];
+                    if (assets.horizontal && assets.horizontal.videoId) {
+                        const entry = { video_id: assets.horizontal.videoId, adlabels: [{ name: 'horizontal' }] };
+                        if (assets.horizontal.thumbnailHash) entry.thumbnail_hash = assets.horizontal.thumbnailHash;
+                        videos.push(entry);
+                    }
+                    if (assets.vertical && assets.vertical.videoId) {
+                        const entry = { video_id: assets.vertical.videoId, adlabels: [{ name: 'vertical' }] };
+                        if (assets.vertical.thumbnailHash) entry.thumbnail_hash = assets.vertical.thumbnailHash;
+                        videos.push(entry);
+                    }
+                    if (assets.square && assets.square.videoId) {
+                        const entry = { video_id: assets.square.videoId, adlabels: [{ name: 'square' }] };
+                        if (assets.square.thumbnailHash) entry.thumbnail_hash = assets.square.thumbnailHash;
+                        videos.push(entry);
+                    }
+
+                    const vidLinkUrl = { website_url: feedLinkUrl, display_url: '', adlabels: sharedLabel };
+                    if (linkUrl && linkUrl !== feedLinkUrl) vidLinkUrl.deeplink_url = linkUrl;
+
+                    const vidFeedSpec = {
+                        videos,
+                        ad_formats: ['AUTOMATIC_FORMAT'],
+                        bodies,
+                        titles,
+                        descriptions: descs,
+                        call_to_action_types: [ctaType],
+                        link_urls: [vidLinkUrl],
+                        optimization_type: 'PLACEMENT',
+                        asset_customization_rules: [
+                            {
+                                customization_spec: { publisher_platforms: ['facebook', 'instagram'], facebook_positions: ['story', 'facebook_reels'], instagram_positions: ['story', 'reels', 'profile_reels', 'ig_search'] },
+                                video_label: { name: 'vertical' },
+                                body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
+                                priority: 1,
+                            },
+                            {
+                                customization_spec: { publisher_platforms: ['facebook'], facebook_positions: ['search'] },
+                                video_label: { name: 'horizontal' },
+                                body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
+                                priority: 2,
+                            },
+                            {
+                                customization_spec: {},
+                                video_label: { name: 'square' },
+                                body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
+                                priority: 3,
+                            },
+                        ],
+                    };
+                    creativeParams.asset_feed_spec = JSON.stringify(vidFeedSpec);
+                } else {
+                    // Image creative
+                    const images = [];
+                    if (assets.horizontal && assets.horizontal.imageHash) {
+                        images.push({ hash: assets.horizontal.imageHash, adlabels: [{ name: 'horizontal' }] });
+                    }
+                    if (assets.vertical && assets.vertical.imageHash) {
+                        images.push({ hash: assets.vertical.imageHash, adlabels: [{ name: 'vertical' }] });
+                    }
+                    if (assets.square && assets.square.imageHash) {
+                        images.push({ hash: assets.square.imageHash, adlabels: [{ name: 'square' }] });
+                    }
+
+                    const imgLinkUrl = { website_url: feedLinkUrl, display_url: '', adlabels: sharedLabel };
+                    if (linkUrl && linkUrl !== feedLinkUrl) imgLinkUrl.deeplink_url = linkUrl;
+
+                    const imgFeedSpec = {
+                        images,
+                        ad_formats: ['AUTOMATIC_FORMAT'],
+                        bodies,
+                        titles,
+                        descriptions: descs,
+                        call_to_action_types: [ctaType],
+                        link_urls: [imgLinkUrl],
+                        optimization_type: 'PLACEMENT',
+                        asset_customization_rules: [
+                            {
+                                customization_spec: { publisher_platforms: ['facebook', 'instagram'], facebook_positions: ['story', 'facebook_reels'], instagram_positions: ['story', 'reels', 'profile_reels', 'ig_search'] },
+                                image_label: { name: 'vertical' },
+                                body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
+                                priority: 1,
+                            },
+                            {
+                                customization_spec: { publisher_platforms: ['facebook'], facebook_positions: ['search'] },
+                                image_label: { name: 'horizontal' },
+                                body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
+                                priority: 2,
+                            },
+                            {
+                                customization_spec: {},
+                                image_label: { name: 'square' },
+                                body_label: textLabel, title_label: textLabel, link_url_label: textLabel,
+                                priority: 3,
+                            },
+                        ],
+                    };
+                    creativeParams.asset_feed_spec = JSON.stringify(imgFeedSpec);
+                }
+
+                // Object story spec with page and instagram actor
+                if (pageId) {
+                    const storySpec = { page_id: pageId };
+                    storySpec.instagram_user_id = DEFAULT_INSTAGRAM_ACTOR_ID;
+                    creativeParams.object_story_spec = JSON.stringify(storySpec);
+                }
+
+                const creativeData = await metaPost(`/${META_AD_ACCOUNT_ID}/adcreatives`, creativeParams);
+                creativeId = creativeData.id;
+                updateLogEntry(creativeLogId, `Creative created (${creativeId})`, 'success');
+            } catch (err) {
+                updateLogEntry(creativeLogId, `Creative creation failed: ${err.message}`, 'error');
+                throw err;
+            }
+
+            // ------------------------------------------------------------------
+            // Step 4: Create ad
+            // ------------------------------------------------------------------
+            const adLogId = addLogEntry('Creating ad...', 'pending');
+
+            try {
+                const adParams = {
+                    name: config.ad_name || `${config.adset_name} Ad`,
+                    adset_id: adsetId,
+                    creative: JSON.stringify({ creative_id: creativeId }),
+                    status: config.ad_status || 'PAUSED',
+                };
+
+                if (config.app_id) {
+                    adParams.tracking_specs = JSON.stringify([{
+                        'action.type': ['mobile_app_install'],
+                        application: [config.app_id],
+                    }]);
+                }
+
+                const adData = await metaPost(`/${META_AD_ACCOUNT_ID}/ads`, adParams);
+                adId = adData.id;
+                updateLogEntry(adLogId, `Ad created (${adId})`, 'success');
+            } catch (err) {
+                updateLogEntry(adLogId, `Ad creation failed: ${err.message}`, 'error');
+                throw err;
+            }
+
+            // ------------------------------------------------------------------
+            // Write success to sheet
+            // ------------------------------------------------------------------
+            if (sheetRowIndex) {
+                await writeResultToSheet(sheetRowIndex, {
+                    adset_id: adsetId,
+                    ad_id: adId,
+                    upload_status: 'SUCCESS',
+                    error_message: '',
+                }, sheetTabName);
+            }
+
+            // Show final result
+            const acctNum = META_AD_ACCOUNT_ID.replace('act_', '');
+            const adsManagerUrl = `https://www.facebook.com/adsmanager/manage/ads?act=${acctNum}&selected_ad_ids=${adId}`;
+            addLogResult(
+                `Ad created successfully!<br>Adset ID: <strong>${esc(adsetId)}</strong><br>Creative ID: <strong>${esc(creativeId)}</strong><br>Ad ID: <strong>${esc(adId)}</strong><br><a href="${adsManagerUrl}" target="_blank">View in Ads Manager &#8594;</a>`,
+                'success'
+            );
+
+            return { adsetId, creativeId, adId };
+
+        } catch (err) {
+            addLogResult('Pipeline failed: ' + esc(err.message), 'error');
+
+            // Write error to sheet
+            if (sheetRowIndex) {
+                await writeResultToSheet(sheetRowIndex, {
+                    adset_id: adsetId || '',
+                    ad_id: adId || '',
+                    upload_status: 'FAILED',
+                    error_message: err.message,
+                }, sheetTabName);
+            }
+            throw err;
+        }
+    }
+
+    // Override browser-side orchestration with a single server-side pipeline call.
+    // This avoids long-running asset-upload fetch chains in the browser.
+    executeSingleRow = async function (config, sheetRowIndex, sheetTabName, existingAdsetId) {
+        const payload = {
+            ...config,
+            existing_adset_id: existingAdsetId || config.existing_adset_id || config.adset_id || null,
+            _sheetRowIndex: sheetRowIndex,
+            _sheetTabName: sheetTabName,
+        };
+
+        const pendingId = addLogEntry('Running server-side upload pipeline...', 'pending');
+        addLogEntry('Video uploads can take 3-5 minutes while Meta processes all placements. Keep this tab open.', 'info');
+
+        try {
+            const resp = await fetch('/api/execute-full', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await resp.json();
+
+            updateLogEntry(
+                pendingId,
+                data.success ? 'Server pipeline completed' : `Server pipeline failed: ${data.error || 'Unknown error'}`,
+                data.success ? 'success' : 'error'
+            );
+
+            const stepLabels = {
+                upload_image_horizontal: 'Horizontal image uploaded',
+                upload_image_vertical: 'Vertical image uploaded',
+                upload_image_square: 'Square image uploaded',
+                upload_video_horizontal: 'Horizontal video uploaded',
+                upload_video_vertical: 'Vertical video uploaded',
+                upload_video_square: 'Square video uploaded',
+                poll_video_horizontal: 'Horizontal video ready',
+                poll_video_vertical: 'Vertical video ready',
+                poll_video_square: 'Square video ready',
+                upload_thumbnail_horizontal: 'Horizontal thumbnail uploaded',
+                upload_thumbnail_vertical: 'Vertical thumbnail uploaded',
+                upload_thumbnail_square: 'Square thumbnail uploaded',
+                reuse_adset: 'Reused adset',
+                create_adset: 'Created adset',
+                create_creative: 'Created creative',
+                create_ad: 'Created ad',
+            };
+
+            (data.steps || []).forEach(step => {
+                const label = stepLabels[step.step] || step.step.replace(/_/g, ' ');
+                const value = step.error || step.adId || step.adsetId || step.creativeId || step.videoId || step.imageHash || step.thumbHash || '';
+                addLogEntry(value ? `${label}: ${value}` : label, step.success ? 'success' : 'error');
+            });
+
+            if (!resp.ok || !data.success) {
+                addLogResult('Pipeline failed: ' + esc(data.error || 'Unknown error'), 'error');
+                throw new Error(data.error || 'Unknown error');
+            }
+
+            const acctNum = META_AD_ACCOUNT_ID.replace('act_', '');
+            const adsManagerUrl = `https://www.facebook.com/adsmanager/manage/ads?act=${acctNum}&selected_ad_ids=${data.adId}`;
+            addLogResult(
+                `Ad created successfully!<br>Adset ID: <strong>${esc(data.adsetId)}</strong><br>Creative ID: <strong>${esc(data.creativeId)}</strong><br>Ad ID: <strong>${esc(data.adId)}</strong><br><a href="${adsManagerUrl}" target="_blank">View in Ads Manager &#8594;</a>`,
+                'success'
+            );
+
+            return { adsetId: data.adsetId, creativeId: data.creativeId, adId: data.adId };
+        } catch (err) {
+            updateLogEntry(pendingId, `Server pipeline failed: ${err.message}`, 'error');
+            throw err;
+        }
+    };
+
+    // =========================================================================
+    // EXECUTE SINGLE (wrapper for UI)
+    // =========================================================================
+    window.executeCreate = async function () {
+        if (window._bulkRows && window._bulkRows.length > 0) {
+            // Handled by bulk logic below
+            closeModal();
+            clearLog();
+            const rows = window._bulkRows;
+            window._bulkRows = null;
+            const createBtn = $('createBtn');
+            const bulkBtn = $('bulkBtn');
+            createBtn.disabled = true;
+            bulkBtn.disabled = true;
+
+            const isCampaignMode = currentMode === 'campaign';
+            addLogEntry(`Starting bulk ${isCampaignMode ? 'campaign' : 'ad'} creation: ${rows.length} rows`, 'info');
+            let successCount = 0, failCount = 0;
+
+            // Track adset name → ID for reuse (one adset, multiple ads)
+            const adsetCache = {};
+
+            for (let i = 0; i < rows.length; i++) {
+                const rowIdx = rows[i];
+                const row = sheetRows[rowIdx];
+                const rowName = isCampaignMode
+                    ? (row?.campaign_name || row?.['campaign_name'] || 'Row ' + (rowIdx + 1))
+                    : (row?.adset_name || row?.['adset_name'] || 'Row ' + (rowIdx + 1));
+                addLogEntry(`\u2501\u2501\u2501 Row ${i + 1}/${rows.length}: ${rowName} \u2501\u2501\u2501`, 'info');
+
+                const sheetTabName = $('tabName').value.trim() || 'Sheet1';
+
+                try {
+                    if (isCampaignMode) {
+                        // Campaign creation mode — use sheet row directly
+                        const config = {};
+                        for (const h of sheetHeaders) {
+                            config[h.toLowerCase().replace(/[\s-]/g, '_')] = row[h] != null ? String(row[h]) : null;
+                        }
+                        for (const key of Object.keys(config)) {
+                            if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
+                        }
+                        await executeCampaignRow(config, rowIdx + 2, sheetTabName);
+                        successCount++;
+                    } else {
+                        selectRow(rowIdx);
+                        await new Promise(r => setTimeout(r, 300));
+                        const config = collectFormData();
+                        for (const key of Object.keys(config)) {
+                            if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
+                        }
+                        const adsetName = config.adset_name || '';
+                        const existingAdsetId = config.existing_adset_id || adsetCache[adsetName] || null;
+                        const result = await executeSingleRow(config, rowIdx + 2, sheetTabName, existingAdsetId);
+                        if (adsetName && result && result.adsetId) {
+                            adsetCache[adsetName] = result.adsetId;
+                        }
+                        successCount++;
+                    }
+                } catch (err) {
+                    addLogEntry(`Row ${i + 1} failed: ${err.message}`, 'error');
+                    failCount++;
+                }
+            }
+
+            addLogEntry(`Bulk complete: ${successCount} succeeded, ${failCount} failed`, successCount === rows.length ? 'success' : 'info');
+            createBtn.disabled = false;
+            bulkBtn.disabled = false;
+            return;
+        }
+
+        // Single row execution
+        closeModal();
+        clearLog();
+        const createBtn = $('createBtn');
+        createBtn.disabled = true;
+        const sheetTabName = $('tabName').value.trim() || 'Sheet1';
+
+        if (currentMode === 'campaign') {
+            // Campaign mode — single row
+            const row = sheetRows[selectedSheetRowIndex];
+            if (!row) { addLogEntry('No row selected.', 'error'); createBtn.disabled = false; return; }
+            const config = {};
+            for (const h of sheetHeaders) {
+                config[h.toLowerCase().replace(/[\s-]/g, '_')] = row[h] != null ? String(row[h]) : null;
+            }
+            for (const key of Object.keys(config)) {
+                if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
+            }
+            addLogEntry('Starting campaign creation...', 'info');
+            try {
+                await executeCampaignRow(config, selectedSheetRowIndex + 2, sheetTabName);
+            } catch (err) {
+                addLogEntry(`Campaign creation failed: ${err.message}`, 'error');
+            }
+        } else {
+            // Ad mode — single row
+            const config = collectFormData();
+            const sheetRowIndex = selectedSheetRowIndex != null ? selectedSheetRowIndex + 2 : null;
+            addLogEntry('Starting ad creation pipeline...', 'info');
+            for (const key of Object.keys(config)) {
+                if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
+            }
+            try {
+                const existingAdsetId = config.existing_adset_id || null;
+                await executeSingleRow(config, sheetRowIndex, sheetTabName, existingAdsetId);
+            } catch (err) {
+                addLogEntry(`Pipeline failed: ${err.message}`, 'error');
+            }
+        }
+        createBtn.disabled = false;
+    };
+
+    // =========================================================================
+    // BULK EXECUTION
+    // =========================================================================
+    window.toggleAllRows = function (master) {
+        document.querySelectorAll('.row-check').forEach(cb => cb.checked = master.checked);
+        updateBulkButton();
+    };
+
+    function updateBulkButton() {
+        const checked = document.querySelectorAll('.row-check:checked').length;
+        const btn = $('bulkBtn');
+        const countEl = $('bulkCount');
+        if (checked > 0) {
+            btn.style.display = '';
+            countEl.textContent = checked;
+        } else {
+            btn.style.display = 'none';
+        }
+        // Update on any checkbox change
+        document.querySelectorAll('.row-check').forEach(cb => {
+            cb.onchange = updateBulkButton;
+        });
+    }
+
+    window.confirmBulkExecute = function () {
+        const checked = [...document.querySelectorAll('.row-check:checked')].map(cb => parseInt(cb.dataset.idx));
+        if (checked.length === 0) return alert('No rows selected.');
+        if (!META_ACCESS_TOKEN) return alert('Please configure Meta API credentials first.');
+        $('confirmStatus').textContent = `BULK: ${checked.length} rows (${$('adsetStatus').value})`;
+        $('confirmModal').classList.add('show');
+        window._bulkRows = checked;
+    };
+
+
+    // =========================================================================
+    // INITIALIZE
+    // =========================================================================
+    async function init() {
+        loadSettingsIntoForm();
+        toggleBidAmount();
+        toggleCreativeType();
+        toggleBudgetType();
+
+        // Set default start time to now + 1 hour
+        const now = new Date();
+        now.setHours(now.getHours() + 1);
+        now.setMinutes(0, 0, 0);
+        $('startTime').value = now.toISOString().slice(0, 16);
+
+        // Prefill settings inputs
+        if (META_ACCESS_TOKEN) $('metaAccessToken').value = META_ACCESS_TOKEN;
+        if (META_APPSECRET_PROOF) $('metaAppSecretProof').value = META_APPSECRET_PROOF;
+        if (META_AD_ACCOUNT_ID) $('metaAdAccountId').value = META_AD_ACCOUNT_ID;
+
+        // If credentials exist, collapse settings and check connection
+        if (META_ACCESS_TOKEN && META_APPSECRET_PROOF) {
+            $('settingsBody').classList.add('collapsed');
+            $('settingsToggle').classList.add('collapsed');
+            await Promise.allSettled([
+                checkConnection(),
+                loadCampaigns(),
+            ]);
+        }
+    }
+
+    init();
+
+})();
+</script>
+
+<script>
+async function checkAuth() {
+    const pw = document.getElementById('authPassword').value;
+    const encoder = new TextEncoder();
+    const data = encoder.encode(pw);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const VALID_HASH = '39ba33b84a7338e7599243abe1923642142706be7bd1a702d3b0fb0c01f91419';
+    if (hashHex === VALID_HASH) {
+        document.getElementById('authGate').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        sessionStorage.setItem('authed', '1');
+    } else {
+        document.getElementById('authError').style.display = 'block';
+    }
+}
+// Auto-unlock if already authed this session
+if (sessionStorage.getItem('authed') === '1') {
+    document.getElementById('authGate').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+}
+</script>
+
+</div><!-- /mainApp -->
+</body>
+</html>

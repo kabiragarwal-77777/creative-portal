@@ -1,0 +1,1163 @@
+[dotenv@17.3.1] injecting env (17) from uploader\.env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[Alert Cron] Scheduled daily at 9:00 AM IST
+[Scanner] Inventory scanner routes mounted
+[ci/engine] Scheduler started. Interval: 24h. Next run: 2026-03-28T12:41:43.125Z
+[CampaignSync] Ghost columns and sync_log table ensured
+[CampaignSync] Scheduler starting (every 24h)
+[CampaignSync] Ghost columns and sync_log table ensured
+[roas-tracker] Scheduler starting (every 1h)
+[Integrity] Scheduler armed — runs on start + every 6 hours
+[CI2] Creative Intelligence v2 routes mounted at /api/ci2
+[GC Scheduler] Initializing...
+[GC Scheduler] Cron jobs registered (6h fetch/classify/score, 12h recommendations, daily 6AM forecast+signals)
+[GC] Google Creative Intelligence routes mounted at /api/gc
+[MetaWrite] Meta write routes mounted at /api/meta-write
+[TrendScanner] Scheduler started — scans every 2h, concepts every 6h
+[TrendScanner] Trend scanner routes mounted at /api/trends
+[CompetitorScheduler] 2026-03-27T12:41:50.213Z — Starting scheduler
+[CompetitorScheduler] 2026-03-27T12:41:50.213Z — Cron jobs registered — pipeline every 6h, briefs every 12h
+[CompetitorIntel] All modules initialized, scheduler started
+[CompetitorIntel] Competitor intelligence routes mounted at /api/competitor
+[FeedbackEngine] Database initialized at c:\Users\Dell\Desktop\creative-portal\feedback-engine\feedback-engine.db
+[FE:Scheduler] Initializing scheduler with 10 jobs...
+[FE:Scheduler]   Registered: watcher-refresh (0 * * * *) — feWatcher incremental refresh
+[FE:Scheduler]   Registered: anomaly-check (0 */3 * * *) — feAnomalyDetector runAllChecks
+[FE:Scheduler]   Registered: proposal-generate (0 */6 * * *) — feProposalGenerator generateProposals
+[FE:Scheduler]   Registered: knowledge-crawl-tier1 (30 */6 * * *) — feKnowledgeCrawler crawlAll (Tier 1)
+[FE:Scheduler]   Registered: knowledge-crawl-all (0 */12 * * *) — feKnowledgeCrawler crawlAll (all tiers)
+[FE:Scheduler]   Registered: hypothesis-generate (0 0 * * *) — feSelfTester generateHypotheses
+[FE:Scheduler]   Registered: memory-consolidate (30 20 * * *) — feMemory nightly consolidation
+[FE:Scheduler]   Registered: accuracy-audit (0 3 * * 0) — feAccuracyAuditor runAudit
+[FE:Scheduler]   Registered: proposal-expiry (0 4 1 * *) — Expire old pending proposals (>30 days)
+[FE:Scheduler]   Registered: verify-applied-changes (0 5 * * 0) — feApprovalEngine verifyAppliedChanges
+[FE:Scheduler] Scheduler started. Initial checks will run in 30 seconds.
+[FeedbackEngine] Self-learning routes mounted at /api/fe
+[AudienceTesting] Routes mounted at /api/at, scheduler started
+Meta Ad Upload Server running on http://localhost:3000
+Ad Account: act_725019929189148
+API Version: v21.0
+
+============================================================
+[Integrity] Running 5 data integrity tests...
+============================================================
+  *** [FAIL] Campaign ID extraction (410ms) — No Facebook/Instagram rows found in user_additional_details (last 30 days)
+  [WARN] Campaign ID <-> Meta API match rate (742ms) — No campaign names found in Metabase for target campaigns
+  [WARN] ROAS sanity check (2ms) — WARN: 72.3% of ads (94/130) have null/zero D6 ROAS
+  [PASS] Revenue window alignment (1ms) — 130 ads checked — all revenue windows correctly ordered (D6 <= D15 <= D30 <= D60 <= Overall)
+  [WARN] Adset name normalization (260ms) — No adset names found in Metabase
+============================================================
+[Integrity] Done in 1416ms — FAIL (1 pass, 1 fail, 3 warn, 0 skip)
+[Integrity] *** FAILURES DETECTED — review data_integrity_results.json ***
+============================================================
+
+[Cache] Pre-warming insights cache (2026-02-25 to 2026-03-27)...
+[ad-funnel] Serving from disk (4064 rows, 83min old)
+[ad-insights] Serving from disk (13620 rows, 74min old)
+[Cache] Funnel pre-warmed: 4064 rows
+[Cache] Insights pre-warmed: 13620 rows
+[CompetitorScheduler] 2026-03-27T12:42:00.214Z — Running initial pipeline + briefs
+[CompetitorScheduler] 2026-03-27T12:42:00.214Z — Pipeline started
+[CompetitorScheduler] 2026-03-27T12:42:00.214Z — fetch — started
+[competitor-meta-fetcher] 2026-03-27T12:42:00.215Z Fetching ads for competitor: Samco
+[competitor-meta-fetcher] 2026-03-27T12:42:01.239Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"A6-iMLkTSKU4nXuWJL5bw79"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:01.239Z Failed to fetch ads for Samco: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"A6-iMLkTSKU4nXuWJL5bw79"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:01.746Z Fetching ads for competitor: StockGro
+[competitor-meta-fetcher] 2026-03-27T12:42:02.033Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"A88kgTYYjN1YRx_nj84j8sj"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:02.033Z Failed to fetch ads for StockGro: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"A88kgTYYjN1YRx_nj84j8sj"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:02.533Z Fetching ads for competitor: Sensibull
+[competitor-meta-fetcher] 2026-03-27T12:42:03.492Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"A5DFoJzJIc_nS5iMIhTUl46"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:03.492Z Failed to fetch ads for Sensibull: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"A5DFoJzJIc_nS5iMIhTUl46"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:03.997Z Fetching ads for competitor: Definedge
+[competitor-meta-fetcher] 2026-03-27T12:42:04.925Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AOMC3PrlcVXNG4VSaRKTOPH"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:04.925Z Failed to fetch ads for Definedge: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AOMC3PrlcVXNG4VSaRKTOPH"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:05.439Z Fetching ads for competitor: Weekend Investing
+[competitor-meta-fetcher] 2026-03-27T12:42:05.742Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AKrr5RBjJ-RsT7HmabA9Xr7"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:05.743Z Failed to fetch ads for Weekend Investing: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AKrr5RBjJ-RsT7HmabA9Xr7"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:06.245Z Fetching ads for competitor: Capitalmind
+[competitor-meta-fetcher] 2026-03-27T12:42:06.574Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"A5YY1sNmK9v3xPd0OTLrbZf"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:06.574Z Failed to fetch ads for Capitalmind: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"A5YY1sNmK9v3xPd0OTLrbZf"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:07.079Z Fetching ads for competitor: Dhan
+[competitor-meta-fetcher] 2026-03-27T12:42:07.334Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AwAhz5YKrGIoM2Zi8GKBZQ_"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:07.334Z Failed to fetch ads for Dhan: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AwAhz5YKrGIoM2Zi8GKBZQ_"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:07.839Z Fetching ads for competitor: Zerodha
+[competitor-meta-fetcher] 2026-03-27T12:42:08.153Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"A5zu3z0aNBV7ZXo8z6KyRDH"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:08.153Z Failed to fetch ads for Zerodha: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"A5zu3z0aNBV7ZXo8z6KyRDH"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:08.655Z Fetching ads for competitor: Groww
+[competitor-meta-fetcher] 2026-03-27T12:42:08.932Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"Ay74aiK5ZwNyytwDXOLT9Wx"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:08.932Z Failed to fetch ads for Groww: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"Ay74aiK5ZwNyytwDXOLT9Wx"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:09.446Z Fetching ads for competitor: Angel One
+[competitor-meta-fetcher] 2026-03-27T12:42:10.554Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"Ah4LLG0tTUAUXCOjWo-4U0h"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:10.554Z Failed to fetch ads for Angel One: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"Ah4LLG0tTUAUXCOjWo-4U0h"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:11.054Z Fetching ads for competitor: Upstox
+[competitor-meta-fetcher] 2026-03-27T12:42:11.373Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AnV_G4jQcsjAAYhFaU1i0M6"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:11.373Z Failed to fetch ads for Upstox: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AnV_G4jQcsjAAYhFaU1i0M6"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:11.877Z Fetching ads for competitor: 5paisa
+[competitor-meta-fetcher] 2026-03-27T12:42:12.198Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AIyoWo8K8nUJktD31Vt85_4"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:12.198Z Failed to fetch ads for 5paisa: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"AIyoWo8K8nUJktD31Vt85_4"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:12.716Z Fetching ads for competitor: Paytm Money
+[competitor-meta-fetcher] 2026-03-27T12:42:13.014Z FETCH ERROR: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"ATR-usANiDagTAkiIewjEUp"}}
+[competitor-meta-fetcher] 2026-03-27T12:42:13.014Z Failed to fetch ads for Paytm Money: {"error":{"message":"Application does not have permission for this action","type":"OAuthException","code":10,"error_subcode":2332002,"is_transient":false,"error_user_title":"Authorisation and login needed","error_user_msg":"To access the API, you'll need to follow the steps at facebook.com/ads/library/api.","fbtrace_id":"ATR-usANiDagTAkiIewjEUp"}}
+[CampaignSync] Running scheduled sync validation...
+[CampaignSync] Starting ghost campaign deduplication...
+[competitor-meta-fetcher] 2026-03-27T12:42:13.514Z API returned no ads — seeding cache with demo data for pipeline to work
+[competitor-meta-fetcher] 2026-03-27T12:42:13.515Z fetchAllCompetitorAds complete: 92 total ads from 13 competitors, 13 errors (DEMO DATA)
+[competitor-meta-fetcher] 2026-03-27T12:42:13.515Z Univest cache still valid, skipping fetch
+[CompetitorScheduler] 2026-03-27T12:42:13.526Z — fetch — done in 13312ms, records: 92
+[CompetitorScheduler] 2026-03-27T12:42:13.526Z — classify — started
+[GC Scheduler] Running initial data fetch...
+[gc/dataFetcher] === Step 1/4: Fetching Metabase adset data ===
+[gc/dataFetcher] Fetching Metabase adset performance for last 90 days...
+[gc/dataFetcher] Pipeline error: Metabase query failed (403): You don't have permissions to do that.
+[GC Scheduler] Initial cycle error: Metabase query failed (403): You don't have permissions to do that.
+[ads-status] Done. 11 pages, 5211 ads.
+[Cache] Ads-status pre-warmed: 5211 ads
+[FE:Scheduler] Running initial startup checks...
+[FE:Scheduler] Starting job: watcher-refresh
+[FE:Watcher] Refreshing Meta prediction accuracy...
+[FE:Watcher] Meta predictions: 0 processed, 290 skipped
+[FE:Watcher] Refreshing Google prediction accuracy...
+[FE:Watcher] Google predictions: 0 processed, 0 skipped
+[FE:Watcher] Refreshing recommendation tracking...
+[FE:Watcher] ci_recommendations not found: no such table: ci_recommendations
+[FE:Watcher] Recommendation tracking: 0 processed
+[FE:Watcher] Refreshing competitor signal accuracy...
+[FE:Watcher] Competitor signals: 0 processed
+[FE:Watcher] Full refresh complete: 0 records processed
+[FE:Scheduler] Completed job: watcher-refresh (229ms, 1 records)
+[FE:Scheduler] Starting job: anomaly-check
+[FE:AnomalyDetector] Running all anomaly detection checks...
+[FE:AnomalyDetector] No competitor signal data available. Skipping competitor checks.
+[FE:AnomalyDetector] All checks complete. 0 new anomalies detected.
+[FE:Scheduler] Completed job: anomaly-check (9ms, 0 records)
+[FE:Scheduler] Initial startup checks complete.
+[CampaignSync] Fetched 5211 ad IDs from Meta API (11 pages)
+[CampaignSync] Validation error: no such column: "" - should this be a string literal in single-quotes?
+[ad-insights] Serving from memory (13620 rows)
+[ad-funnel] Serving from memory (4064 rows)
+[gc-ad-funnel] Running Metabase query...
+[ads-status] Serving from memory cache (5211 ads)
+[AT Scheduler] Bootstrap: 0 meta adsets, 0 google adgroups in DB
+[AT Scheduler] No data yet — use Scan Now button in the UI to trigger first scan
+Metabase gc-ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async c:\Users\Dell\Desktop\creative-portal\uploader\server.js:4785:29 {
+  [cause]: Error: Client network socket disconnected before secure TLS connection was established
+      at TLSSocket.onConnectEnd (node:_tls_wrap:1748:19)
+      at TLSSocket.emit (node:events:536:35)
+      at endReadableNT (node:internal/streams/readable:1698:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+    code: 'ECONNRESET',
+    path: undefined,
+    host: 'analytics.univest.in',
+    port: 443,
+    localAddress: null
+  }
+}
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[competitor-trends] Computed trends: 0 ads, 0 competitors, 0 themes
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[ad-insights] Fetching page 2... (500 rows so far)
+[classifier] Classified 92 new ads (0 already cached)
+[CompetitorScheduler] 2026-03-27T12:43:16.503Z — classify — done in 62977ms, records: 92
+[CompetitorScheduler] 2026-03-27T12:43:16.503Z — trends — started
+[competitor-trends] Computed trends: 92 ads, 13 competitors, 6 themes
+[CompetitorScheduler] 2026-03-27T12:43:16.505Z — trends — done in 2ms, records: 0
+[CompetitorScheduler] 2026-03-27T12:43:16.505Z — radar — started
+[CompetitorScheduler] 2026-03-27T12:43:17.198Z — radar — done in 693ms, records: 0
+[CompetitorScheduler] 2026-03-27T12:43:17.198Z — Pipeline finished in 76984ms
+[CompetitorScheduler] 2026-03-27T12:43:17.198Z — briefs — started
+[ad-insights] Fetching page 3... (1000 rows so far)
+[CompetitorScheduler] 2026-03-27T12:43:23.171Z — briefs — done in 5973ms, records: 0
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-funnel] Done. 2295 rows returned. Truncated: false
+[ad-insights] Fetching page 4... (1500 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[ads-status] Serving from memory cache (5211 ads)
+[ad-insights] Serving from memory (13620 rows)
+[ad-funnel] Serving from memory (4064 rows)
+[ad-insights] Serving from memory (13620 rows)
+[ad-funnel] Serving from memory (4064 rows)
+[ads-status] Serving from memory cache (5211 ads)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 11... (5000 rows so far)
+[ad-insights] Fetching page 12... (5500 rows so far)
+[ad-insights] Fetching page 13... (6000 rows so far)
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Serving from disk (7770 rows, 79min old)
+[ad-funnel] Serving from memory (2295 rows)
+[roas-tracker] Fetched 5641 Meta rows, 2295 funnel rows.
+[roas-tracker] 1539 test campaign rows → 130 ads with go-live >= 2026-03-10 (607 daily rows).
+[ads-status] Serving from memory cache (5211 ads)
+[roas-tracker] Excluded 59 ads with truncated API data (too few daily rows).
+[roas-tracker] 132 creatives since 2026-03-10 (61 with funnel data).
+[snapshots] Skipped 59 rows with lower spend (partial API data protection)
+[roas-tracker] 132 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 132 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":132,"tracked":132,"newAds":0,"updated":132,"predicted":0}
+[ad-insights] Fetching page 14... (6500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 15... (7000 rows so far)
+[ad-insights] Fetching page 16... (7500 rows so far)
+[ad-insights] Done. 16 pages, 7773 total rows.
+[ad-insights] Saved to disk: 7773 rows
+[roas-tracker] Fetched 5643 Meta rows, 2295 funnel rows.
+[roas-tracker] 1539 test campaign rows → 130 ads with go-live >= 2026-03-10 (607 daily rows).
+[ads-status] Serving from memory cache (5211 ads)
+[roas-tracker] Excluded 59 ads with truncated API data (too few daily rows).
+[roas-tracker] 132 creatives since 2026-03-10 (61 with funnel data).
+[snapshots] Skipped 59 rows with lower spend (partial API data protection)
+[roas-tracker] 132 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 132 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":132,"tracked":132,"newAds":0,"updated":132,"predicted":0}
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[AT Learning] Retrieved 0 patterns for google.
+[AT Google Scanner] Starting full Google Ads audience scan...
+[AT Google Scanner] Fetching campaigns...
+[AT Google Scanner] Error fetching campaigns: undefined
+[AT Google Scanner] Fetching adgroups...
+[AT Google Scanner] Error fetching adgroups: undefined
+[AT Google Scanner] Fetching audience criteria...
+[AT Google Scanner] Fetched 478 audience criteria from Google Ads
+[AT Google Scanner] Stored 478 audience criteria
+[AT Google Scanner] Fetching breakdowns (device, network)...
+[AT Google Scanner] Error fetching breakdowns: undefined
+[AT Google Scanner] Scan complete: 0 campaigns, 0 adgroups, 478 audiences, 0 breakdown rows, 3 errors
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[AT Learning] Retrieved 0 patterns for google.
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[AT Learning] Retrieved 0 patterns for meta.
+[AT Meta Scanner] === Starting full Meta scan ===
+[AT Meta Scanner] Fetching all campaigns...
+[AT Meta Scanner] === Full scan FAILED after 0.3s: Meta API 400: {"error":{"message":"API calls from the server require an appsecret_proof argument","type":"GraphMethodException","code":100,"fbtrace_id":"AUtRjiEO3w9aPw4tUDoMOtk"}} ===
+[AT] meta scan error: Meta API 400: {"error":{"message":"API calls from the server require an appsecret_proof argument","type":"GraphMethodException","code":100,"fbtrace_id":"AUtRjiEO3w9aPw4tUDoMOtk"}}
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[AT Learning] Retrieved 0 patterns for meta.
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[AT Learning] Retrieved 0 patterns for google.
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[AT Learning] Retrieved 0 patterns for meta.
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[AT Learning] Retrieved 0 patterns for meta.
+[ad-insights] Serving from memory (13620 rows)
+[ad-funnel] Serving from memory (4064 rows)
+[ads-status] Serving from memory cache (5211 ads)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[gc-ad-funnel] Running Metabase query...
+[gc-ad-funnel] Done. 586 rows returned. Truncated: false
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[AT Meta Scanner] === Starting full Meta scan ===
+[AT Meta Scanner] Fetching all campaigns...
+[AT Meta Scanner] === Full scan FAILED after 0.3s: Meta API 400: {"error":{"message":"API calls from the server require an appsecret_proof argument","type":"GraphMethodException","code":100,"fbtrace_id":"A4fcwOAqyzg6S33hK8Bf4kn"}} ===
+[AT] meta scan error: Meta API 400: {"error":{"message":"API calls from the server require an appsecret_proof argument","type":"GraphMethodException","code":100,"fbtrace_id":"A4fcwOAqyzg6S33hK8Bf4kn"}}
+[ad-insights] Serving from memory (13620 rows)
+[ad-funnel] Serving from memory (4064 rows)
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ads-status] Serving from memory cache (5211 ads)
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[gc-ad-funnel] Serving from memory (586 rows)
+[ad-insights] Serving from memory (13620 rows)
+[ad-funnel] Serving from memory (4064 rows)
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ads-status] Serving from memory cache (5211 ads)
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[gc-ad-funnel] Serving from memory (586 rows)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Serving from memory (13620 rows)
+[ad-funnel] Serving from memory (4064 rows)
+[ads-status] Serving from memory cache (5211 ads)
+[ad-insights] Serving from memory (13620 rows)
+[ad-funnel] Serving from memory (4064 rows)
+[ads-status] Serving from memory cache (5211 ads)
+[AT Learning] Retrieved 0 patterns for meta.
+[AT Meta Scanner] === Starting full Meta scan ===
+[AT Meta Scanner] Fetching all campaigns...
+[AT Meta Scanner] === Full scan FAILED after 0.3s: Meta API 400: {"error":{"message":"API calls from the server require an appsecret_proof argument","type":"GraphMethodException","code":100,"fbtrace_id":"AEaly3x6X1WZTOSfDLggXyS"}} ===
+[AT] meta scan error: Meta API 400: {"error":{"message":"API calls from the server require an appsecret_proof argument","type":"GraphMethodException","code":100,"fbtrace_id":"AEaly3x6X1WZTOSfDLggXyS"}}
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 2... (500 rows so far)
+[ads-status] Serving from memory cache (5211 ads)
+[ad-insights] Serving from memory (13620 rows)
+[ad-funnel] Serving from memory (4064 rows)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-funnel] Done. 2295 rows returned. Truncated: false
+[ad-funnel] Done. 2295 rows returned. Truncated: false
+[ad-insights] Fetching page 4... (1500 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 5... (2000 rows so far)
+[AT Learning] Retrieved 0 patterns for meta.
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 9... (4000 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[ad-insights] Fetching page 12... (5500 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 13... (6000 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[ad-insights] Fetching page 14... (6500 rows so far)
+[ad-insights] Fetching page 12... (5500 rows so far)
+[ad-insights] Fetching page 15... (7000 rows so far)
+[ad-insights] Fetching page 13... (6000 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 16... (7500 rows so far)
+[ad-insights] Fetching page 14... (6500 rows so far)
+[AT Learning] Retrieved 0 patterns for meta.
+[ad-insights] Done. 16 pages, 7773 total rows.
+[ad-insights] Saved to disk: 7773 rows
+[roas-tracker] Fetched 5643 Meta rows, 2295 funnel rows.
+[roas-tracker] 1539 test campaign rows → 130 ads with go-live >= 2026-03-10 (607 daily rows).
+[ads-status] Serving from memory cache (5211 ads)
+[roas-tracker] Excluded 59 ads with truncated API data (too few daily rows).
+[roas-tracker] 132 creatives since 2026-03-10 (61 with funnel data).
+[snapshots] Skipped 59 rows with lower spend (partial API data protection)
+[roas-tracker] 132 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 132 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":132,"tracked":132,"newAds":0,"updated":132,"predicted":0}
+[ad-insights] Fetching page 15... (7000 rows so far)
+[ad-insights] Fetching page 16... (7500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Done. 16 pages, 7773 total rows.
+[ad-insights] Saved to disk: 7773 rows
+[roas-tracker] Fetched 5643 Meta rows, 2295 funnel rows.
+[roas-tracker] 1539 test campaign rows → 130 ads with go-live >= 2026-03-10 (607 daily rows).
+[ads-status] Serving from memory cache (5211 ads)
+[roas-tracker] Excluded 59 ads with truncated API data (too few daily rows).
+[roas-tracker] 132 creatives since 2026-03-10 (61 with funnel data).
+[snapshots] Skipped 59 rows with lower spend (partial API data protection)
+[roas-tracker] 132 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 132 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":132,"tracked":132,"newAds":0,"updated":132,"predicted":0}
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[AT Meta Scanner] === Starting full Meta scan ===
+[AT Meta Scanner] Fetching all campaigns...
+[AT Google Scanner] Starting full Google Ads audience scan...
+[AT Google Scanner] Fetching campaigns...
+[AT Meta Scanner] === Full scan FAILED after 0.3s: Meta API 400: {"error":{"message":"API calls from the server require an appsecret_proof argument","type":"GraphMethodException","code":100,"fbtrace_id":"A_HTgZyhTb28a1rs5FtCOUZ"}} ===
+[AT] meta scan error: Meta API 400: {"error":{"message":"API calls from the server require an appsecret_proof argument","type":"GraphMethodException","code":100,"fbtrace_id":"A_HTgZyhTb28a1rs5FtCOUZ"}}
+[AT Google Scanner] Error fetching campaigns: undefined
+[AT Google Scanner] Fetching adgroups...
+[AT Google Scanner] Error fetching adgroups: undefined
+[AT Google Scanner] Fetching audience criteria...
+[AT Google Scanner] Fetched 478 audience criteria from Google Ads
+[AT Google Scanner] Stored 478 audience criteria
+[AT Google Scanner] Fetching breakdowns (device, network)...
+[AT Google Scanner] Error fetching breakdowns: undefined
+[AT Google Scanner] Scan complete: 0 campaigns, 0 adgroups, 478 audiences, 0 breakdown rows, 3 errors
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:Scheduler] Starting job: watcher-refresh
+[FE:Watcher] Refreshing Meta prediction accuracy...
+[FE:Watcher] Meta predictions: 0 processed, 290 skipped
+[FE:Watcher] Refreshing Google prediction accuracy...
+[FE:Watcher] Google predictions: 0 processed, 0 skipped
+[FE:Watcher] Refreshing recommendation tracking...
+[FE:Watcher] ci_recommendations not found: no such table: ci_recommendations
+[FE:Watcher] Recommendation tracking: 0 processed
+[FE:Watcher] Refreshing competitor signal accuracy...
+[FE:Watcher] Competitor signals: 0 processed
+[FE:Watcher] Full refresh complete: 0 records processed
+[FE:Scheduler] Completed job: watcher-refresh (64ms, 1 records)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Serving from memory (13620 rows)
+[ad-funnel] Serving from memory (4064 rows)
+[gc-ad-funnel] Serving from memory (586 rows)
+[ads-status] Serving from memory cache (5211 ads)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ads-status] Serving from memory cache (5211 ads)
+[ad-insights] Serving from memory (13620 rows)
+[ad-funnel] Serving from memory (4064 rows)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Serving from disk (13620 rows, 107min old)
+[ad-funnel] Serving from disk (4064 rows, 115min old)
+[gc-ad-funnel] Serving from memory (586 rows)
+[ads-status] Serving from memory cache (5211 ads)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[ad-insights] Serving from memory (13620 rows)
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ads-status] Serving from memory cache (5211 ads)
+[ad-funnel] Serving from memory (4064 rows)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[ad-insights] Serving from memory (13620 rows)
+[ad-funnel] Serving from memory (4064 rows)
+[gc-ad-funnel] Serving from disk (586 rows, 31min old)
+[ads-status] Serving from memory cache (5211 ads)
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-funnel] Done. 2296 rows returned. Truncated: false
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 4... (1500 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 10... (4500 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[ad-insights] Fetching page 12... (5500 rows so far)
+[ad-insights] Fetching page 13... (6000 rows so far)
+[ad-insights] Fetching page 14... (6500 rows so far)
+[ad-insights] Fetching page 15... (7000 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 16... (7500 rows so far)
+[ad-insights] Done. 16 pages, 7773 total rows.
+[ad-insights] Saved to disk: 7773 rows
+[roas-tracker] Fetched 5643 Meta rows, 2296 funnel rows.
+[roas-tracker] 1539 test campaign rows → 130 ads with go-live >= 2026-03-10 (607 daily rows).
+[ads-status] Serving from memory cache (5211 ads)
+[roas-tracker] Excluded 59 ads with truncated API data (too few daily rows).
+[roas-tracker] 132 creatives since 2026-03-10 (61 with funnel data).
+[snapshots] Skipped 59 rows with lower spend (partial API data protection)
+[roas-tracker] 132 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 132 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":132,"tracked":132,"newAds":0,"updated":132,"predicted":0}
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Serving from memory (13620 rows)
+[ad-funnel] Serving from memory (4064 rows)
+[gc-ad-funnel] Serving from memory (586 rows)
+[ads-status] Serving from memory cache (5211 ads)
+[ad-insights] Serving from memory (13620 rows)
+[ad-funnel] Serving from memory (4064 rows)
+[ads-status] Serving from memory cache (5211 ads)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[AT Meta Scanner] === Starting full Meta scan ===
+[AT Meta Scanner] Fetching all campaigns...
+[AT Meta Scanner] === Full scan FAILED after 0.3s: Meta API 400: {"error":{"message":"API calls from the server require an appsecret_proof argument","type":"GraphMethodException","code":100,"fbtrace_id":"AxtGHDUgFApqZ9ZPrbk7QCG"}} ===
+[AT] meta scan error: Meta API 400: {"error":{"message":"API calls from the server require an appsecret_proof argument","type":"GraphMethodException","code":100,"fbtrace_id":"AxtGHDUgFApqZ9ZPrbk7QCG"}}
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Serving from memory (13620 rows)
+[ad-funnel] Serving from memory (4064 rows)
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ads-status] Serving from memory cache (5211 ads)
+[ad-funnel] Running Metabase query...
+[ad-insights] Fetching page 1...
+[gc-ad-funnel] Serving from memory (586 rows)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[AT Learning] Retrieved 0 patterns for meta.
+[AT Meta Scanner] === Starting full Meta scan ===
+[AT Meta Scanner] Fetching all campaigns...
+[AT Meta Scanner] === Full scan FAILED after 0.9s: Meta API 400: {"error":{"message":"API calls from the server require an appsecret_proof argument","type":"GraphMethodException","code":100,"fbtrace_id":"AVFQSZ6fUk1jSVW_Mp76BMU"}} ===
+[AT] meta scan error: Meta API 400: {"error":{"message":"API calls from the server require an appsecret_proof argument","type":"GraphMethodException","code":100,"fbtrace_id":"AVFQSZ6fUk1jSVW_Mp76BMU"}}
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-funnel] Done. 2297 rows returned. Truncated: false
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 4... (1500 rows so far)
+[AT Learning] Retrieved 0 patterns for meta.
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 9... (4000 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[AT Learning] Retrieved 0 patterns for meta.
+[ad-insights] Fetching page 12... (5500 rows so far)
+[ad-insights] Fetching page 13... (6000 rows so far)
+[ad-insights] Fetching page 14... (6500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 15... (7000 rows so far)
+[ad-insights] Fetching page 16... (7500 rows so far)
+[ad-insights] Done. 16 pages, 7773 total rows.
+[ad-insights] Saved to disk: 7773 rows
+[roas-tracker] Fetched 5643 Meta rows, 2297 funnel rows.
+[roas-tracker] 1539 test campaign rows → 130 ads with go-live >= 2026-03-10 (607 daily rows).
+[ads-status] Serving from memory cache (5211 ads)
+[roas-tracker] Excluded 59 ads with truncated API data (too few daily rows).
+[roas-tracker] 132 creatives since 2026-03-10 (61 with funnel data).
+[snapshots] Skipped 59 rows with lower spend (partial API data protection)
+[roas-tracker] 132 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 132 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":132,"tracked":132,"newAds":0,"updated":132,"predicted":0}
+[AT Recommendations] === Generating all recommendations ===
+[AT Recommendations] Cleared 0 old pending recommendations.
+[AT Recommendations] Generating future test recommendations for meta / MFA...
+[AT Recommendations] No ANTHROPIC_API_KEY
+[AT Recommendations] Failed to generate test recommendations for meta/MFA.
+[AT Recommendations] Generating future test recommendations for google / MFA...
+[AT Recommendations] No ANTHROPIC_API_KEY
+[AT Recommendations] Failed to generate test recommendations for google/MFA.
+[AT Recommendations] Generating future test recommendations for meta / Broking...
+[AT Recommendations] No ANTHROPIC_API_KEY
+[AT Recommendations] Failed to generate test recommendations for meta/Broking.
+[AT Recommendations] Generating future test recommendations for google / Broking...
+[AT Recommendations] No ANTHROPIC_API_KEY
+[AT Recommendations] Failed to generate test recommendations for google/Broking.
+[AT Recommendations] Generating future test recommendations for meta / RA...
+[AT Recommendations] No ANTHROPIC_API_KEY
+[AT Recommendations] Failed to generate test recommendations for meta/RA.
+[AT Recommendations] Generating future test recommendations for google / RA...
+[AT Recommendations] No ANTHROPIC_API_KEY
+[AT Recommendations] Failed to generate test recommendations for google/RA.
+[AT Recommendations] Generating optimization recommendations for meta...
+[AT Recommendations] No active adsets found for meta. Skipping optimizations.
+[AT Recommendations] Generating optimization recommendations for google...
+[AT Recommendations] No ANTHROPIC_API_KEY
+[AT Recommendations] Failed to generate optimizations for google.
+[AT Recommendations] === All recommendations generated in 0.0s === {"tests":0,"optimizations":0,"total":0,"elapsedSeconds":0}
+[AT Learning] Retrieved 0 patterns for meta.
+[AT Recommendations] === Generating all recommendations ===
+[AT Recommendations] Cleared 0 old pending recommendations.
+[AT Recommendations] Generating future test recommendations for meta / MFA...
+[AT Recommendations] No ANTHROPIC_API_KEY
+[AT Recommendations] Failed to generate test recommendations for meta/MFA.
+[AT Recommendations] Generating future test recommendations for google / MFA...
+[AT Recommendations] No ANTHROPIC_API_KEY
+[AT Recommendations] Failed to generate test recommendations for google/MFA.
+[AT Recommendations] Generating future test recommendations for meta / Broking...
+[AT Recommendations] No ANTHROPIC_API_KEY
+[AT Recommendations] Failed to generate test recommendations for meta/Broking.
+[AT Recommendations] Generating future test recommendations for google / Broking...
+[AT Recommendations] No ANTHROPIC_API_KEY
+[AT Recommendations] Failed to generate test recommendations for google/Broking.
+[AT Recommendations] Generating future test recommendations for meta / RA...
+[AT Recommendations] No ANTHROPIC_API_KEY
+[AT Recommendations] Failed to generate test recommendations for meta/RA.
+[AT Recommendations] Generating future test recommendations for google / RA...
+[AT Recommendations] No ANTHROPIC_API_KEY
+[AT Recommendations] Failed to generate test recommendations for google/RA.
+[AT Recommendations] Generating optimization recommendations for meta...
+[AT Recommendations] No active adsets found for meta. Skipping optimizations.
+[AT Recommendations] Generating optimization recommendations for google...
+[AT Recommendations] No ANTHROPIC_API_KEY
+[AT Recommendations] Failed to generate optimizations for google.
+[AT Recommendations] === All recommendations generated in 0.0s === {"tests":0,"optimizations":0,"total":0,"elapsedSeconds":0}
+[AT Learning] Retrieved 0 patterns for meta.
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Serving from memory (7773 rows)
+[ad-funnel] Serving from memory (2297 rows)
+[roas-tracker] Fetched 5643 Meta rows, 2297 funnel rows.
+[roas-tracker] 1539 test campaign rows → 130 ads with go-live >= 2026-03-10 (607 daily rows).
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ads-status] Serving from disk cache (5211 ads, 63min old)
+[roas-tracker] Excluded 59 ads with truncated API data (too few daily rows).
+[roas-tracker] 132 creatives since 2026-03-10 (61 with funnel data).
+[snapshots] Skipped 59 rows with lower spend (partial API data protection)
+[roas-tracker] 132 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 132 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":132,"tracked":132,"newAds":0,"updated":132,"predicted":0}
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[ads-status] Serving from memory cache (5211 ads)
+Meta ad-insights-daily error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async c:\Users\Dell\Desktop\creative-portal\uploader\server.js:2336:30 {
+  [cause]: Error: getaddrinfo ENOTFOUND graph.facebook.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'graph.facebook.com'
+  }
+}
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async c:\Users\Dell\Desktop\creative-portal\uploader\server.js:2683:29 {
+  [cause]: Error: getaddrinfo ENOTFOUND analytics.univest.in
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'analytics.univest.in'
+  }
+}
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+Meta ad-insights-daily error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async c:\Users\Dell\Desktop\creative-portal\uploader\server.js:2336:30 {
+  [cause]: Error: getaddrinfo ENOTFOUND graph.facebook.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'graph.facebook.com'
+  }
+}
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async c:\Users\Dell\Desktop\creative-portal\uploader\server.js:2683:29 {
+  [cause]: Error: getaddrinfo ENOTFOUND analytics.univest.in
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'analytics.univest.in'
+  }
+}
+[roas-tracker] Fetched 0 Meta rows, 0 funnel rows.
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[Integrity] Scheduled 6-hour run starting...
+
+============================================================
+[Integrity] Running 5 data integrity tests...
+============================================================
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[ad-funnel] Running Metabase query...
+[ad-insights] Fetching page 1...
+  *** [FAIL] Campaign ID extraction (543ms) — No Facebook/Instagram rows found in user_additional_details (last 30 days)
+[gc-ad-funnel] Running Metabase query...
+  [WARN] Campaign ID <-> Meta API match rate (933ms) — No campaign names found in Metabase for target campaigns
+  [WARN] ROAS sanity check (3ms) — WARN: 72.3% of ads (94/130) have null/zero D6 ROAS
+  [PASS] Revenue window alignment (1ms) — 130 ads checked — all revenue windows correctly ordered (D6 <= D15 <= D30 <= D60 <= Overall)
+[gc-insights] 383 rows fetched (2026-02-26 to 2026-03-28)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+  [WARN] Adset name normalization (619ms) — No adset names found in Metabase
+============================================================
+[Integrity] Done in 2100ms — FAIL (1 pass, 1 fail, 3 warn, 0 skip)
+[Integrity] *** FAILURES DETECTED — review data_integrity_results.json ***
+============================================================
+
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 2... (500 rows so far)
+[ads-status] Done. 11 pages, 5211 ads.
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ads-status] Done. 11 pages, 5211 ads.
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Pagination error on page 5 : Application request limit reached
+[ad-insights] Done. 5 pages, 2000 total rows. WARNING: pagination broke — data may be truncated!
+[ad-insights] Skipping disk write — pagination broke, data is truncated (2000 rows).
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Pagination error on page 5 : Application request limit reached
+[ad-insights] Done. 5 pages, 2000 total rows. WARNING: pagination broke — data may be truncated!
+[ad-insights] Skipping disk write — pagination broke, data is truncated (2000 rows).
+[ad-insights] Pagination error on page 5 : Application request limit reached
+[ad-insights] Done. 5 pages, 2000 total rows. WARNING: pagination broke — data may be truncated!
+[ad-insights] Skipping disk write — pagination broke, data is truncated (2000 rows).
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-funnel] Done. 3978 rows returned. Truncated: false
+[ad-funnel] Done. 2383 rows returned. Truncated: false
+[roas-tracker] Fetched 1366 Meta rows, 2383 funnel rows. WARNING: Meta data is truncated!
+[roas-tracker] Data likely truncated: 6 unique dates for 19-day range. Skipping snapshot to protect existing data.
+[ad-funnel] Done. 2383 rows returned. Truncated: false
+[roas-tracker] Fetched 1366 Meta rows, 2383 funnel rows. WARNING: Meta data is truncated!
+[roas-tracker] Data likely truncated: 6 unique dates for 19-day range. Skipping snapshot to protect existing data.
+[ad-funnel] Done. 3978 rows returned. Truncated: false
+[gc-ad-funnel] Done. 589 rows returned. Truncated: false
+[ad-insights] Fetching page 6... (2500 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[gc-ad-funnel] Serving from memory (589 rows)
+[ad-insights] Serving from memory (2000 rows)
+[ad-funnel] Serving from memory (3978 rows)
+[ads-status] Serving from memory cache (5211 ads)
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 9... (4000 rows so far)
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[ad-funnel] Done. 2383 rows returned. Truncated: false
+[ad-insights] Fetching page 4... (1500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 12... (5500 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 13... (6000 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[ad-insights] Fetching page 14... (6500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 15... (7000 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[ad-insights] Fetching page 16... (7500 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[ad-insights] Fetching page 17... (8000 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 11... (5000 rows so far)
+[ad-insights] Fetching page 18... (8500 rows so far)
+[ad-insights] Fetching page 12... (5500 rows so far)
+[ad-insights] Fetching page 19... (9000 rows so far)
+Meta ad-insights-daily error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at async c:\Users\Dell\Desktop\creative-portal\uploader\server.js:2336:30 {
+  [cause]: Error: read ECONNRESET
+      at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) {
+    errno: -4077,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+Meta ad-insights-daily error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at async c:\Users\Dell\Desktop\creative-portal\uploader\server.js:2336:30 {
+  [cause]: Error: read ECONNRESET
+      at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) {
+    errno: -4077,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+[roas-tracker] Fetched 0 Meta rows, 2383 funnel rows.
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ads-status] Serving from memory cache (5211 ads)
+[ad-insights] Serving from memory (2000 rows)
+[ad-funnel] Serving from memory (3978 rows)
+[ad-insights] Serving from memory (2000 rows)
+[ad-funnel] Serving from memory (3978 rows)
+[gc-ad-funnel] Serving from memory (589 rows)
+[ads-status] Serving from memory cache (5211 ads)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Serving from memory (2000 rows)
+[ad-funnel] Serving from memory (3978 rows)
+[gc-ad-funnel] Serving from memory (589 rows)
+[ads-status] Serving from memory cache (5211 ads)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ads-status] Serving from memory cache (5211 ads)
+[ad-insights] Serving from memory (2000 rows)
+[ad-funnel] Serving from memory (3978 rows)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[ad-insights] Fetching page 1...
+[ad-funnel] Serving from disk (3978 rows, 30min old)
+[gc-ad-funnel] Serving from disk (589 rows, 30min old)
+[ads-status] Serving from memory cache (5211 ads)
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-funnel] Done. 2385 rows returned. Truncated: false
+[ad-insights] Fetching page 4... (1500 rows so far)
+[ad-insights] Fetching page 4... (1500 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 5... (2000 rows so far)
+[ad-insights] Fetching page 6... (2500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 6... (2500 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 7... (3000 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[ad-insights] Fetching page 8... (3500 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[ad-insights] Fetching page 9... (4000 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[ad-insights] Fetching page 10... (4500 rows so far)
+[ad-insights] Fetching page 12... (5500 rows so far)
+[ad-insights] Fetching page 11... (5000 rows so far)
+[ad-insights] Fetching page 13... (6000 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 12... (5500 rows so far)
+[ad-insights] Fetching page 14... (6500 rows so far)
+[ad-insights] Fetching page 15... (7000 rows so far)
+[ad-insights] Fetching page 13... (6000 rows so far)
+[ad-insights] Fetching page 16... (7500 rows so far)
+[ad-insights] Fetching page 14... (6500 rows so far)
+[ad-insights] Fetching page 17... (8000 rows so far)
+[ad-insights] Done. 17 pages, 8088 total rows.
+[ad-insights] Saved to disk: 8088 rows
+[roas-tracker] Fetched 5888 Meta rows, 2385 funnel rows.
+[roas-tracker] 1572 test campaign rows → 130 ads with go-live >= 2026-03-10 (625 daily rows).
+[ads-status] Serving from memory cache (5211 ads)
+[roas-tracker] Excluded 64 ads with truncated API data (too few daily rows).
+[roas-tracker] 132 creatives since 2026-03-10 (61 with funnel data).
+[roas-tracker] 132 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 132 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":132,"tracked":132,"newAds":0,"updated":132,"predicted":0}
+[ad-insights] Fetching page 15... (7000 rows so far)
+[ad-insights] Fetching page 16... (7500 rows so far)
+[ad-insights] Fetching page 17... (8000 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 18... (8500 rows so far)
+[ad-insights] Fetching page 19... (9000 rows so far)
+[ad-insights] Fetching page 20... (9500 rows so far)
+[ad-insights] Fetching page 21... (10000 rows so far)
+[ad-insights] Fetching page 22... (10500 rows so far)
+[ad-insights] Fetching page 23... (11000 rows so far)
+[ad-insights] Fetching page 24... (11500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 25... (12000 rows so far)
+[ad-insights] Fetching page 26... (12500 rows so far)
+[ad-insights] Fetching page 27... (13000 rows so far)
+[ad-insights] Done. 27 pages, 13441 total rows.
+[ad-insights] Saved to disk: 13441 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Serving from memory (13441 rows)
+[ad-funnel] Serving from memory (3978 rows)
+[ads-status] Serving from memory cache (5211 ads)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Serving from memory (13441 rows)
+[ad-funnel] Serving from memory (3978 rows)
+[gc-ad-funnel] Serving from memory (589 rows)
+[ads-status] Serving from memory cache (5211 ads)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Serving from memory (13441 rows)
+[ad-funnel] Serving from memory (3978 rows)
+[gc-ad-funnel] Serving from memory (589 rows)
+[ads-status] Serving from memory cache (5211 ads)
+[ad-funnel] Serving from memory (3978 rows)
+[ad-insights] Serving from memory (13441 rows)
+[ads-status] Serving from memory cache (5211 ads)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:Scheduler] Starting job: watcher-refresh
+[FE:Watcher] Refreshing Meta prediction accuracy...
+[FE:Watcher] Meta predictions: 0 processed, 290 skipped
+[FE:Watcher] Refreshing Google prediction accuracy...
+[FE:Watcher] Google predictions: 0 processed, 0 skipped
+[FE:Watcher] Refreshing recommendation tracking...
+[FE:Watcher] ci_recommendations not found: no such table: ci_recommendations
+[FE:Watcher] Recommendation tracking: 0 processed
+[FE:Watcher] Refreshing competitor signal accuracy...
+[FE:Watcher] Competitor signals: 0 processed
+[FE:Watcher] Full refresh complete: 0 records processed
+[FE:Scheduler] Completed job: watcher-refresh (223ms, 1 records)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Serving from memory (8088 rows)
+[ad-funnel] Serving from memory (2385 rows)
+[roas-tracker] Fetched 5888 Meta rows, 2385 funnel rows.
+[roas-tracker] 1572 test campaign rows → 130 ads with go-live >= 2026-03-10 (625 daily rows).
+[ads-status] Serving from memory cache (5211 ads)
+[roas-tracker] Excluded 64 ads with truncated API data (too few daily rows).
+[roas-tracker] 132 creatives since 2026-03-10 (61 with funnel data).
+[roas-tracker] 132 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 132 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":132,"tracked":132,"newAds":0,"updated":132,"predicted":0}
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Serving from memory (13441 rows)
+[ad-funnel] Serving from memory (3978 rows)
+[ads-status] Serving from disk cache (5211 ads, 61min old)
+[gc-ad-funnel] Serving from memory (589 rows)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 2... (500 rows so far)
+[ad-insights] Fetching page 3... (1000 rows so far)
+[ad-funnel] Done. 2387 rows returned. Truncated: false
+[ad-insights] Fetching page 4... (1500 rows so far)
+[FE:ProposalGenerator] getProposals: returned 5 rows
+[FE:ProposalGenerator] getProposals: returned 8 rows
+[ad-insights] Fetching page 5... (2000 rows so far)
+c:\Users\Dell\Desktop\creative-portal\inventory-scanner\agents.js:2074
+    `).run(
+       ^
+
+RangeError: Too many parameter values were provided
+    at generateGuide (c:\Users\Dell\Desktop\creative-portal\inventory-scanner\agents.js:2074:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+Node.js v20.20.1

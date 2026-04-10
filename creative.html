@@ -6,7 +6,7 @@
     <title>Creative Performance Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=6">
+    <link rel="stylesheet" href="styles.css?v=7">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
     <link rel="stylesheet" href="creative-intelligence/public/ci-styles.css">
@@ -82,6 +82,7 @@
                     </div>
                 </div>
                 <div class="header-right">
+                    <span id="portalLoadState" class="context-chip context-chip-load context-chip-load-warn portal-load-tab">Loading</span>
                     <div class="search-box">
                         <input type="text" id="searchInput" placeholder="Search creatives...">
                     </div>
@@ -132,8 +133,9 @@
                 <div class="ai-dock-helper">Ask for diagnostics, scale calls, budget issues, or why optimizer actions are limited.</div>
                 <div class="ai-dock-input">
                     <input type="text" id="viewPromptInput" placeholder="Ask about this view. Example: I think data is wrong here.">
-                    <button id="viewPromptAskBtn" type="button">Ask</button>
+                    <button id="viewPromptAskBtn" type="button" onclick="runViewAssistantQuery()">Ask</button>
                 </div>
+                <div id="viewAssistantDebug" style="margin-top:8px;font-size:11px;color:#8b93a7;">Debug: idle</div>
                 <div class="ai-dock-quick">
                     <button type="button" class="ai-dock-chip" data-ai-prompt="Which meta campaign should I scale first for max ROAS?">Scale First</button>
                     <button type="button" class="ai-dock-chip" data-ai-prompt="I think data is wrong here. What should I check first?">Check Data</button>
@@ -502,24 +504,24 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="app.js?v=35"></script>
+    <script src="app.js?v=45"></script>
 
     <!-- AI Data Preparation & Cache (must load before AI views) -->
     <script src="ai-context.js?v=1" defer></script>
-    <script src="ai-cache.js?v=1" defer></script>
+    <script src="ai-cache.js?v=2" defer></script>
 
     <!-- Creative Intelligence Layer -->
     <script src="creative-intelligence/public/ci-main.js" defer></script>
     <script src="creative-intelligence/public/ci-dashboard.js" defer></script>
-    <script src="creative-intelligence/public/intelligence.js?v=2" defer></script>
-    <script src="creative-intelligence/public/simulator.js?v=11" defer></script>
+    <script src="creative-intelligence/public/intelligence.js?v=3" defer></script>
+    <script src="creative-intelligence/public/simulator.js?v=13" defer></script>
     <script src="creative-intelligence/public/recommendations.js?v=2" defer></script>
     <script src="optimizer.js?v=5" defer></script>
 
     <!-- Audience Testing Layer (Meta only) -->
     <script src="audience-testing/public/at-shared.js" defer></script>
-    <script src="audience-testing/public/at-meta.js" defer></script>
-    <script src="audience-testing/public/at-main.js" defer></script>
+    <script src="audience-testing/public/at-meta.js?v=11" defer></script>
+    <script src="audience-testing/public/at-main.js?v=7" defer></script>
 
 </body>
 </html>

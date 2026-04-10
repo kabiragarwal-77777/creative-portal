@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Ads Creative Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=6">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+    <link rel="stylesheet" href="google-creative/public/gc-styles.css">
+    <link rel="stylesheet" href="audience-testing/public/at-styles.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon" style="background: linear-gradient(135deg, #4285F4, #34A853); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;">G</span>
+                    <span class="logo-text">Google<br>Ads</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-view="gcDashboard">
+                    <span class="nav-icon">&#9632;</span> Dashboard
+                </a>
+                <a href="#" class="nav-item" data-view="gcCreatives">
+                    <span class="nav-icon">&#9654;</span> All Creatives
+                </a>
+                <a href="#" class="nav-item" data-view="gcNew">
+                    <span class="nav-icon">&#10022;</span> New This Week
+                </a>
+                <a href="#" class="nav-item" data-view="gcTop">
+                    <span class="nav-icon">&#9650;</span> Top Performers
+                </a>
+                <a href="#" class="nav-item" data-view="gcFailures">
+                    <span class="nav-icon">&#9660;</span> Underperformers
+                </a>
+                <a href="#" class="nav-item" data-view="gcScorecard">
+                    <span class="nav-icon">&#9733;</span> Scorecard
+                </a>
+                <a href="#" class="nav-item" data-view="gcAlerts">
+                    <span class="nav-icon">&#9888;</span> Alerts
+                </a>
+                <a href="#" class="nav-item" data-view="gcCampaignTree">
+                    <span class="nav-icon">&#9776;</span> Campaign Tree
+                </a>
+                <div class="nav-divider"></div>
+                <a href="#" class="nav-item" data-view="gcIntelligence">
+                    <span class="nav-icon">&#10024;</span> AI Intelligence
+                </a>
+                <a href="#" class="nav-item" data-view="gcSimulator">
+                    <span class="nav-icon">&#9670;</span> ROAS Simulator
+                </a>
+                <a href="#" class="nav-item" data-view="gcRecommendations">
+                    <span class="nav-icon">&#9998;</span> Recommendations
+                </a>
+                <a href="#" class="nav-item" data-view="gcOptimizer">
+                    <span class="nav-icon">&#9889;</span> Optimizer
+                </a>
+                <a href="#" class="nav-item" data-view="gcAudienceTesting">
+                    <span class="nav-icon">&#127919;</span> Audience Testing
+                </a>
+                <div class="nav-divider"></div>
+                <a href="#" class="nav-item" data-view="gcAccounts">
+                    <span class="nav-icon">&#9881;</span> Accounts
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="gcRefreshBtn" class="refresh-btn">&#8635; Refresh Data</button>
+                <p class="last-updated">Last updated: <span id="gcLastUpdated">--</span></p>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <h1 id="gcPageTitle">Dashboard</h1>
+                    <p class="header-subtitle" id="gcPageSubtitle">Overview of all Google Ads creatives</p>
+                    <div class="context-strip" id="gcViewContextStrip">
+                        <span class="context-chip context-chip-date" id="gcViewContextDate">Data: --</span>
+                        <span class="context-chip context-chip-mode" id="gcViewContextMode">Mode: --</span>
+                        <span class="context-chip context-chip-meta" id="gcViewContextMeta">Source: Google + Metabase</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="search-box">
+                        <input type="text" id="gcSearchInput" placeholder="Search creatives...">
+                    </div>
+                    <div class="date-filter">
+                        <label>From</label>
+                        <input type="text" id="gcDateFrom" placeholder="Pick start date">
+                        <label>To</label>
+                        <input type="text" id="gcDateTo" placeholder="Pick end date">
+                        <button id="gcClearDates" class="clear-dates-btn" title="Clear dates">&#10005;</button>
+                    </div>
+                    <div class="filters">
+                        <select id="gcTypeFilter">
+                            <option value="all">All Types</option>
+                            <option value="UAC">UAC</option>
+                            <option value="Search">Search</option>
+                            <option value="PMax">PMax</option>
+                            <option value="Video">Video</option>
+                            <option value="Display">Display</option>
+                        </select>
+                        <select id="gcStatusFilter">
+                            <option value="all">All Status</option>
+                            <option value="Enabled">Enabled</option>
+                            <option value="Paused">Paused</option>
+                        </select>
+                        <select id="gcPerfFilter">
+                            <option value="all">All Performance</option>
+                            <option value="Exceptional">Exceptional</option>
+                            <option value="Performed">Performed</option>
+                            <option value="Try">Try</option>
+                            <option value="Failed">Failed</option>
+                            <option value="Drop">Drop</option>
+                        </select>
+                    </div>
+                </div>
+            </header>
+            <section class="ai-dock">
+                <div class="ai-dock-topline">
+                    <div>
+                        <div class="ai-dock-kicker">AI Intelligent Analyzer</div>
+                        <div class="ai-dock-helper">Ask for diagnostics, scale calls, budget issues, or why optimizer actions are limited.</div>
+                    </div>
+                    <button class="ai-dock-reopen" id="gcViewAssistantReopenBtn" type="button" hidden>Open AI Analyzer</button>
+                </div>
+                <div class="ai-dock-input">
+                    <input type="text" id="gcViewPromptInput" placeholder="Ask about this view. Example: Which campaign should I scale right now?">
+                    <button id="gcViewPromptAskBtn" type="button">Ask</button>
+                </div>
+                <div class="ai-dock-quick">
+                    <button type="button" class="ai-dock-chip" data-ai-prompt="Which Google campaign should I scale first for max ROAS?">Scale First</button>
+                    <button type="button" class="ai-dock-chip" data-ai-prompt="I think data is wrong here. What should I check first?">Check Data</button>
+                    <button type="button" class="ai-dock-chip" data-ai-prompt="Why is the optimizer showing very limited actions?">Why Limited?</button>
+                </div>
+                <div class="ai-dock-panel" id="gcViewAssistantPanel" hidden>
+                    <div class="ai-dock-head">
+                        <div>
+                            <div class="ai-dock-title">AI Analysis</div>
+                            <div class="ai-dock-sub" id="gcViewAssistantQuestion">Question: --</div>
+                        </div>
+                        <button class="ai-dock-close" id="gcViewAssistantCloseBtn" type="button" title="Close AI analyzer">&#10005;</button>
+                    </div>
+                    <div class="ai-dock-answer" id="gcViewAssistantAnswer">Ask a question to get a structured answer here.</div>
+                    <div class="ai-dock-grid">
+                        <div class="ai-dock-card">
+                            <div class="ai-dock-card-title">Checks</div>
+                            <div class="ai-dock-list" id="gcViewAssistantChecks"></div>
+                        </div>
+                        <div class="ai-dock-card">
+                            <div class="ai-dock-card-title">Next Steps</div>
+                            <div class="ai-dock-list" id="gcViewAssistantNextSteps"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dashboard View -->
+            <div id="gcDashboardView" class="view active">
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-label">Total Creatives</div>
+                        <div class="kpi-value" id="gcKpiTotal">--</div>
+                        <div class="kpi-sub" id="gcKpiTotalSub"></div>
+                    </div>
+                    <div class="kpi-card accent-green">
+                        <div class="kpi-label">Live Creatives</div>
+                        <div class="kpi-value" id="gcKpiLive">--</div>
+                        <div class="kpi-sub" id="gcKpiLiveSub"></div>
+                    </div>
+                    <div class="kpi-card accent-blue">
+                        <div class="kpi-label">Total Spend</div>
+                        <div class="kpi-value" id="gcKpiSpend">--</div>
+                        <div class="kpi-sub" id="gcKpiSpendSub"></div>
+                    </div>
+                    <div class="kpi-card accent-purple">
+                        <div class="kpi-label">Total Installs</div>
+                        <div class="kpi-value" id="gcKpiInstalls">--</div>
+                        <div class="kpi-sub" id="gcKpiInstallsSub"></div>
+                    </div>
+                    <div class="kpi-card accent-orange">
+                        <div class="kpi-label">Avg CPI</div>
+                        <div class="kpi-value" id="gcKpiCPI">--</div>
+                        <div class="kpi-sub" id="gcKpiCPISub"></div>
+                    </div>
+                    <div class="kpi-card accent-teal">
+                        <div class="kpi-label">Avg CTR</div>
+                        <div class="kpi-value" id="gcKpiCTR">--</div>
+                        <div class="kpi-sub" id="gcKpiCTRSub"></div>
+                    </div>
+                    <div class="kpi-card accent-pink">
+                        <div class="kpi-label">Total Signups</div>
+                        <div class="kpi-value" id="gcKpiSignups">--</div>
+                        <div class="kpi-sub" id="gcKpiSignupsSub"></div>
+                    </div>
+                    <div class="kpi-card accent-gold">
+                        <div class="kpi-label">Avg D6 ROAS</div>
+                        <div class="kpi-value" id="gcKpiROAS">--</div>
+                        <div class="kpi-sub" id="gcKpiROASSub"></div>
+                    </div>
+                    <div class="kpi-card accent-emerald">
+                        <div class="kpi-label">Avg Overall ROAS</div>
+                        <div class="kpi-value" id="gcKpiOverallROAS">--</div>
+                        <div class="kpi-sub" id="gcKpiOverallROASSub"></div>
+                    </div>
+                    <div class="kpi-card accent-red">
+                        <div class="kpi-label">Avg Signup Cost</div>
+                        <div class="kpi-value" id="gcKpiSignupCost">--</div>
+                        <div class="kpi-sub" id="gcKpiSignupCostSub"></div>
+                    </div>
+                    <div class="kpi-card accent-indigo">
+                        <div class="kpi-label">Avg P0P1 Cost</div>
+                        <div class="kpi-value" id="gcKpiP0P1Cost">--</div>
+                        <div class="kpi-sub" id="gcKpiP0P1CostSub"></div>
+                    </div>
+                    <div class="kpi-card accent-cyan">
+                        <div class="kpi-label">Avg D0 CAC</div>
+                        <div class="kpi-value" id="gcKpiD0CAC">--</div>
+                        <div class="kpi-sub" id="gcKpiD0CACSub"></div>
+                    </div>
+                    <div class="kpi-card accent-amber">
+                        <div class="kpi-label">Avg D0 Trial Cost</div>
+                        <div class="kpi-value" id="gcKpiD0TrialCost">--</div>
+                        <div class="kpi-sub" id="gcKpiD0TrialCostSub"></div>
+                    </div>
+                    <div class="kpi-card accent-slate">
+                        <div class="kpi-label">Avg D6 CAC</div>
+                        <div class="kpi-value" id="gcKpiD6CAC">--</div>
+                        <div class="kpi-sub" id="gcKpiD6CACSub"></div>
+                    </div>
+                </div>
+
+                <!-- Alerts Section -->
+                <div class="alerts-section" id="gcAlertsSection"></div>
+
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <h3>Performance Distribution</h3>
+                        <div id="gcPerfDistribution" class="chart-area"></div>
+                    </div>
+                    <div class="card">
+                        <h3>Type Split</h3>
+                        <div id="gcTypeSplit" class="chart-area"></div>
+                    </div>
+                    <div class="card full-width">
+                        <h3>Recent Creatives (Last 7 Days)</h3>
+                        <div id="gcRecentTable"></div>
+                    </div>
+                    <div class="card">
+                        <h3>Top 5 by D6 ROAS</h3>
+                        <div id="gcTopROAS" class="ranking-list"></div>
+                    </div>
+                    <div class="card">
+                        <h3>Top 5 by Lowest CPI</h3>
+                        <div id="gcTopCPI" class="ranking-list"></div>
+                    </div>
+                </div>
+
+                <!-- Live Creatives Dashboard -->
+                <div class="live-section">
+                    <div class="section-divider">
+                        <span class="section-divider-dot"></span>
+                        <h2 class="section-title">Live Creatives Dashboard</h2>
+                        <span class="section-divider-line"></span>
+                    </div>
+
+                    <div class="kpi-grid">
+                        <div class="kpi-card accent-green">
+                            <div class="kpi-label">Live Count</div>
+                            <div class="kpi-value" id="gcLiveKpiCount">--</div>
+                            <div class="kpi-sub" id="gcLiveKpiCountSub"></div>
+                        </div>
+                        <div class="kpi-card accent-blue">
+                            <div class="kpi-label">Live Spend</div>
+                            <div class="kpi-value" id="gcLiveKpiSpend">--</div>
+                            <div class="kpi-sub" id="gcLiveKpiSpendSub"></div>
+                        </div>
+                        <div class="kpi-card accent-purple">
+                            <div class="kpi-label">Live Installs</div>
+                            <div class="kpi-value" id="gcLiveKpiInstalls">--</div>
+                            <div class="kpi-sub" id="gcLiveKpiInstallsSub"></div>
+                        </div>
+                        <div class="kpi-card accent-orange">
+                            <div class="kpi-label">Live Avg CPI</div>
+                            <div class="kpi-value" id="gcLiveKpiCPI">--</div>
+                            <div class="kpi-sub" id="gcLiveKpiCPISub"></div>
+                        </div>
+                        <div class="kpi-card accent-teal">
+                            <div class="kpi-label">Live Avg CTR</div>
+                            <div class="kpi-value" id="gcLiveKpiCTR">--</div>
+                            <div class="kpi-sub" id="gcLiveKpiCTRSub"></div>
+                        </div>
+                        <div class="kpi-card accent-pink">
+                            <div class="kpi-label">Live Signups</div>
+                            <div class="kpi-value" id="gcLiveKpiSignups">--</div>
+                            <div class="kpi-sub" id="gcLiveKpiSignupsSub"></div>
+                        </div>
+                        <div class="kpi-card accent-gold">
+                            <div class="kpi-label">Live Avg D6 ROAS</div>
+                            <div class="kpi-value" id="gcLiveKpiROAS">--</div>
+                            <div class="kpi-sub" id="gcLiveKpiROASSub"></div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Live Avg Hook%</div>
+                            <div class="kpi-value" id="gcLiveKpiHook">--</div>
+                            <div class="kpi-sub" id="gcLiveKpiHookSub"></div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="card full-width">
+                            <h3>All Live Creatives</h3>
+                            <div id="gcLiveCreativesTable"></div>
+                        </div>
+                        <div class="card">
+                            <h3>Live - Best by D6 ROAS</h3>
+                            <div id="gcLiveTopROAS" class="ranking-list"></div>
+                        </div>
+                        <div class="card">
+                            <h3>Live - Best by CPI</h3>
+                            <div id="gcLiveTopCPI" class="ranking-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- All Creatives View -->
+            <div id="gcCreativesView" class="view">
+                <div class="card full-width">
+                    <div class="table-controls">
+                        <span id="gcTableCount"></span>
+                        <button id="gcExportBtn" class="export-btn">Export CSV</button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="gcCreativesTable">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- New This Week View -->
+            <div id="gcNewView" class="view">
+                <div class="creative-cards" id="gcNewCreativeCards"></div>
+            </div>
+
+            <!-- Top Performers View -->
+            <div id="gcTopView" class="view">
+                <div class="creative-cards" id="gcTopCreativeCards"></div>
+            </div>
+
+            <!-- Underperformers View -->
+            <div id="gcFailuresView" class="view">
+                <div class="creative-cards" id="gcFailureCreativeCards"></div>
+            </div>
+
+            <!-- Scorecard View -->
+            <div id="gcScorecardView" class="view">
+                <div class="scorecard-controls">
+                    <select id="gcScorecardSelect">
+                        <option value="">Select a creative...</option>
+                    </select>
+                </div>
+                <div id="gcScorecardContent"></div>
+            </div>
+
+            <!-- Alerts View -->
+            <div id="gcAlertsView" class="view">
+                <div class="alerts-page-grid" id="gcAlertsPageContent"></div>
+            </div>
+
+            <!-- Campaign Tree View -->
+            <div id="gcCampaignTreeView" class="view">
+                <div class="card full-width" style="padding: 20px;">
+                    <div style="display:flex; gap:12px; align-items:center; margin-bottom:20px; flex-wrap:wrap;">
+                        <label style="font-weight:600;">Date Range:</label>
+                        <input type="date" id="gcTreeDateFrom" style="background:#1e1e2e; border:1px solid #444; color:#e0e0e0; padding:6px 10px; border-radius:6px;">
+                        <span style="color:#888;">to</span>
+                        <input type="date" id="gcTreeDateTo" style="background:#1e1e2e; border:1px solid #444; color:#e0e0e0; padding:6px 10px; border-radius:6px;">
+                        <label style="display:flex; align-items:center; gap:4px; cursor:pointer; font-size:13px; color:#aaa;"><input type="checkbox" id="gcTreeSpendFilter" checked> With Spend Only</label>
+                        <button class="btn btn-primary" onclick="gcFetchCampaignTree()" id="gcTreeAnalyzeBtn">&#9889; Analyze</button>
+                        <button class="btn btn-secondary" onclick="gcFetchWeeklyBreakdown()" id="gcWeeklyBtn">&#128197; Weekly Breakdown</button>
+                        <span id="gcTreeStatus" style="color:#888; font-size:13px;"></span>
+                    </div>
+                    <div id="gcTreeSummary" style="display:none; margin-bottom:20px;"></div>
+                    <div id="gcTreeContainer"></div>
+                    <div id="gcWeeklyTreeContainer" style="display:none; overflow-x:auto;"></div>
+                </div>
+            </div>
+
+            <!-- Accounts View -->
+            <div id="gcAccountsView" class="view">
+                <div class="accounts-container">
+                    <div class="account-card">
+                        <div class="account-card-header">
+                            <div class="account-platform-icon" style="background: linear-gradient(135deg, #4285F4, #34A853); color: #fff; font-weight: 800;">G</div>
+                            <div>
+                                <h3>Google Ads</h3>
+                                <p class="account-desc">Connect your Google Ads account to pull ad creative data directly from Google UAC, Search, PMax, Video & Display campaigns.</p>
+                            </div>
+                        </div>
+                        <div id="gcAccountStatus" class="account-status">
+                            <span class="status-dot disconnected"></span>
+                            <span class="status-text">Not connected</span>
+                        </div>
+                        <div id="gcAccountDetails" class="account-details" style="display:none;">
+                            <div class="account-info-row">
+                                <span class="account-info-label">User</span>
+                                <span class="account-info-value" id="gcUserName">--</span>
+                            </div>
+                            <div class="account-info-row">
+                                <span class="account-info-label">Campaigns</span>
+                                <span class="account-info-value" id="gcCampaignInfo">0 targeted</span>
+                            </div>
+                            <div class="account-info-row">
+                                <span class="account-info-label">Date Range</span>
+                                <select id="gcDateRange" class="account-select">
+                                    <option value="last_30d">Last 30 days</option>
+                                    <option value="last_14d">Last 14 days</option>
+                                    <option value="last_7d">Last 7 days</option>
+                                    <option value="last_90d">Last 90 days</option>
+                                </select>
+                            </div>
+                            <div class="account-info-row">
+                                <span class="account-info-label">Ads Fetched</span>
+                                <span class="account-info-value" id="gcCreativeCount">0</span>
+                            </div>
+                        </div>
+                        <div class="account-actions">
+                            <button id="gcConnectBtn" class="btn-meta" style="background: linear-gradient(135deg, #4285F4, #34A853);" onclick="gcConnect()">Connect Google Ads</button>
+                            <button id="gcDisconnectBtn" class="btn-disconnect" style="display:none;" onclick="gcDisconnect()">Disconnect</button>
+                            <button id="gcFetchBtn" class="btn-fetch" style="display:none;" onclick="gcFetchAds()">Fetch Ad Data</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Google Creative Intelligence Views -->
+            <div id="gcIntelligenceView" class="view"></div>
+            <div id="gcSimulatorView" class="view"></div>
+            <div id="gcRecommendationsView" class="view"></div>
+            <div id="gcOptimizerView" class="view">
+                <div id="gcOptimizerContent"></div>
+            </div>
+
+            <!-- Audience Testing View (Google) -->
+            <div id="gcAudienceTestingView" class="view">
+                <div id="ci-panel-audience-testing">
+                    <div id="atContent"></div>
+                </div>
+            </div>
+
+            <!-- Loading Overlay -->
+            <div id="gcLoadingOverlay" class="loading-overlay hidden">
+                <div class="spinner"></div>
+                <p id="gcLoadingText">Fetching live data from Google Ads API & Metabase...</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="google-creative/public/gc-app.js?v=5"></script>
+    <script src="google-creative/public/gc-intelligence.js" defer></script>
+    <script src="google-creative/public/gc-simulator.js" defer></script>
+    <script src="google-creative/public/gc-recommendations.js" defer></script>
+    <script src="google-creative/public/gc-optimizer.js" defer></script>
+
+    <!-- Audience Testing Layer (Google) -->
+    <script src="audience-testing/public/at-shared.js" defer></script>
+    <script src="audience-testing/public/at-google.js" defer></script>
+    <script src="audience-testing/public/at-main.js" defer></script>
+
+</body>
+</html>

@@ -1,0 +1,615 @@
+[gc/dataFetcher] Pipeline error: Metabase query failed (403): You don't have permissions to do that.
+[GC Scheduler] Initial cycle error: Metabase query failed (403): You don't have permissions to do that.
+[CampaignSync] Validation error: no such column: "" - should this be a string literal in single-quotes?
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+Meta ad-insights-daily error: DOMException [TimeoutError]: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:2761:32
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:3464:29 {
+  [cause]: Error: read ECONNRESET
+      at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) {
+    errno: -4077,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+[ad-insights] Page 1 fetch attempt 1 failed (ECONNRESET). Retrying...
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:3464:29 {
+  [cause]: Error: read ECONNRESET
+      at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) {
+    errno: -4077,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+[ad-insights] Page 1 fetch attempt 1 failed (ECONNRESET). Retrying...
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:3464:29 {
+  [cause]: Error: read ECONNRESET
+      at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) {
+    errno: -4077,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:3464:29 {
+  [cause]: Error: read ECONNRESET
+      at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) {
+    errno: -4077,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+Metabase gc-ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:6038:29 {
+  [cause]: Error: read ECONNRESET
+      at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) {
+    errno: -4077,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+[ad-insights] Page 1 fetch attempt 1 failed (ECONNRESET). Retrying...
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[ad-insights] Pagination error on page 14 : Application request limit reached
+[ad-insights] Pagination error on page 13 : Application request limit reached
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[ad-insights] Pagination error on page 11 : Application request limit reached
+[ad-insights] Pagination error on page 17 : Application request limit reached
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[gc/dataFetcher] Pipeline error: Metabase query failed (403): You don't have permissions to do that.
+[GC Scheduler] 6-hour cycle error: Metabase query failed (403): You don't have permissions to do that.
+YouTube API: failed for "stock market india today": Request failed with status code 403
+YouTube API: failed for "nifty banknifty analysis": Request failed with status code 403
+News RSS: failed for Moneycontrol Markets: Request timed out after 10000ms
+Google Trends RSS: failed: Request timed out after 10000ms
+Reddit: failed to fetch r/IndiaInvestments: timeout of 10000ms exceeded
+Trends24: failed: timeout of 10000ms exceeded
+Tickertape: failed: timeout of 10000ms exceeded
+YouTube API: failed for "options trading strategy": timeout of 10000ms exceeded
+ET Markets: failed: timeout of 12000ms exceeded
+YouTube RSS: failed for Pranjal Kamra: Status code 404
+YouTube API: failed for "sensex nifty tomorrow": Request failed with status code 403
+YouTube API: failed for "best stocks to buy india": Request failed with status code 403
+YouTube RSS: failed for Shankar Nath: Status code 404
+News RSS: failed for BS Markets: Status code 403
+YouTube RSS: failed for Groww: Status code 404
+YouTube RSS: failed for Zerodha Varsity: Status code 404
+YouTube RSS: failed for FinnovationZ: Status code 404
+YouTube RSS: failed for Asset Yogi: Status code 404
+News RSS: failed for Financial Express Markets: Invalid character in entity name
+Line: 0
+Column: 220
+Char: &
+News RSS: failed for Inc42 Fintech: Feed not recognized as RSS 1 or 2.
+News RSS: failed for Reuters Finance: getaddrinfo ENOTFOUND feeds.reuters.com
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[ad-insights] Pagination error on page 15 : Application request limit reached
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[ad-insights] Page 22 fetch attempt 1 failed (ECONNRESET). Retrying...
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:3464:29 {
+  [cause]: Error: getaddrinfo ENOTFOUND analytics.univest.in
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'analytics.univest.in'
+  }
+}
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[ad-insights] Page 14 fetch attempt 1 failed (ECONNRESET). Retrying...
+[ad-insights] Page 13 fetch attempt 1 failed (ECONNRESET). Retrying...
+[ad-insights] Page 13 fetch attempt 1 failed (ECONNRESET). Retrying...
+Meta ad-insights-daily error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:2761:32 {
+  [cause]: Error: getaddrinfo ENOTFOUND graph.facebook.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'graph.facebook.com'
+  }
+}
+Meta ad-insights-daily error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:2761:32 {
+  [cause]: Error: getaddrinfo ENOTFOUND graph.facebook.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'graph.facebook.com'
+  }
+}
+Meta ad-insights-daily error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:2761:32 {
+  [cause]: Error: getaddrinfo ENOTFOUND graph.facebook.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'graph.facebook.com'
+  }
+}
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+Meta ad-insights-daily error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:2761:32 {
+  [cause]: Error: getaddrinfo ENOTFOUND graph.facebook.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'graph.facebook.com'
+  }
+}
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:3464:29 {
+  [cause]: Error: getaddrinfo ENOTFOUND analytics.univest.in
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'analytics.univest.in'
+  }
+}
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:3464:29 {
+  [cause]: Error: getaddrinfo ENOTFOUND analytics.univest.in
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'analytics.univest.in'
+  }
+}
+Meta ad-insights-daily error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:2761:32 {
+  [cause]: Error: getaddrinfo ENOTFOUND graph.facebook.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'graph.facebook.com'
+  }
+}
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+Meta ad-insights-daily error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:2761:32 {
+  [cause]: Error: getaddrinfo ENOTFOUND graph.facebook.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'graph.facebook.com'
+  }
+}
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:3464:29 {
+  [cause]: Error: getaddrinfo ENOTFOUND analytics.univest.in
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'analytics.univest.in'
+  }
+}
+[gc-campaigns] Error: getaddrinfo ENOTFOUND googleads.googleapis.com
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+Meta ad-insights-daily error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:2761:32 {
+  [cause]: Error: getaddrinfo ENOTFOUND graph.facebook.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'graph.facebook.com'
+  }
+}
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:3464:29 {
+  [cause]: Error: getaddrinfo ENOTFOUND analytics.univest.in
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'analytics.univest.in'
+  }
+}
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:3464:29 {
+  [cause]: Error: getaddrinfo ENOTFOUND analytics.univest.in
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'analytics.univest.in'
+  }
+}
+Meta ad-insights-daily error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:2761:32 {
+  [cause]: Error: getaddrinfo ENOTFOUND graph.facebook.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'graph.facebook.com'
+  }
+}
+Meta ad-insights-daily error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:2761:32 {
+  [cause]: Error: getaddrinfo ENOTFOUND graph.facebook.com
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'graph.facebook.com'
+  }
+}
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:3464:29 {
+  [cause]: Error: getaddrinfo ENOTFOUND analytics.univest.in
+      at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:122:26) {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'analytics.univest.in'
+  }
+}
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[gc-campaigns] Error: request to https://oauth2.googleapis.com/token failed, reason: getaddrinfo ENOTFOUND oauth2.googleapis.com
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+YouTube API: failed for "stock market india today": Request failed with status code 403
+YouTube RSS: failed for Pranjal Kamra: Status code 404
+YouTube API: failed for "nifty banknifty analysis": Request failed with status code 403
+YouTube API: failed for "options trading strategy": Request failed with status code 403
+News RSS: failed for Moneycontrol Markets: Status code 503
+Google Trends RSS: failed: Status code 404
+YouTube API: failed for "sensex nifty tomorrow": Request failed with status code 403
+YouTube API: failed for "best stocks to buy india": Request failed with status code 403
+News RSS: failed for BS Markets: Status code 403
+YouTube RSS: failed for Shankar Nath: Status code 404
+YouTube RSS: failed for Groww: Status code 404
+YouTube RSS: failed for Zerodha Varsity: Status code 404
+YouTube RSS: failed for FinnovationZ: Status code 404
+YouTube RSS: failed for Asset Yogi: Status code 404
+News RSS: failed for Financial Express Markets: Invalid character in entity name
+Line: 0
+Column: 220
+Char: &
+News RSS: failed for Inc42 Fintech: Feed not recognized as RSS 1 or 2.
+News RSS: failed for Reuters Finance: getaddrinfo ENOTFOUND feeds.reuters.com
+Reddit: failed to fetch r/wallstreetbets: Request failed with status code 500
+[ad-insights] Pagination error on page 14 : Application request limit reached
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[ad-insights] Pagination error on page 14 : Application request limit reached
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[ad-insights] Pagination error on page 15 : Application request limit reached
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[ad-insights] Pagination error on page 19 : Application request limit reached
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[gcRecommendations] Could not load top performers: no such column: c.headline
+[gcRecommendations] Could not load underperformers: no such column: c.headline
+[gcRecommendations] Could not load market signals: no such column: signal_type
+[AT Metabase Enricher] Failed to fetch Google conversions: Metabase query failed (403): You don't have permissions to do that.
+[AT Scheduler] enrich-google error: Metabase query failed (403): You don't have permissions to do that.
+[AT Metabase Enricher] Failed to fetch Meta conversions: Metabase query failed (403): You don't have permissions to do that.
+[AT Scheduler] enrich-meta error: Metabase query failed (403): You don't have permissions to do that.
+[gc/dataFetcher] Pipeline error: Metabase query failed (403): You don't have permissions to do that.
+[GC Scheduler] 6-hour cycle error: Metabase query failed (403): You don't have permissions to do that.
+News RSS: failed for Moneycontrol Markets: Status code 403
+YouTube API: failed for "stock market india today": Request failed with status code 403
+YouTube API: failed for "nifty banknifty analysis": Request failed with status code 403
+YouTube API: failed for "options trading strategy": Request failed with status code 403
+Google Trends RSS: failed: Status code 404
+YouTube API: failed for "sensex nifty tomorrow": Request failed with status code 403
+YouTube API: failed for "best stocks to buy india": Request failed with status code 403
+YouTube RSS: failed for Pranjal Kamra: Status code 404
+News RSS: failed for BS Markets: Status code 403
+YouTube RSS: failed for Shankar Nath: Status code 404
+YouTube RSS: failed for Groww: Status code 404
+YouTube RSS: failed for Zerodha Varsity: Status code 404
+News RSS: failed for Financial Express Markets: Invalid character in entity name
+Line: 0
+Column: 220
+Char: &
+YouTube RSS: failed for FinnovationZ: Status code 404
+YouTube RSS: failed for Asset Yogi: Status code 404
+News RSS: failed for Inc42 Fintech: Feed not recognized as RSS 1 or 2.
+News RSS: failed for Reuters Finance: getaddrinfo ENOTFOUND feeds.reuters.com
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[ad-insights] Pagination error on page 20 : Application request limit reached
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:3464:29 {
+  [cause]: Error: read ECONNRESET
+      at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) {
+    errno: -4077,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:3464:29 {
+  [cause]: Error: read ECONNRESET
+      at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) {
+    errno: -4077,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+Metabase ad-funnel error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:3464:29 {
+  [cause]: Error: read ECONNRESET
+      at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) {
+    errno: -4077,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+[ad-insights] Page 1 fetch attempt 1 failed (ECONNRESET). Retrying...
+[ad-insights] Page 1 fetch attempt 1 failed (ECONNRESET). Retrying...
+[ad-insights] Page 1 fetch attempt 1 failed (ECONNRESET). Retrying...
+Meta ad-insights-daily error: DOMException [TimeoutError]: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14902:13
+    at runNextTicks (node:internal/process/task_queues:60:5)
+    at listOnTimeout (node:internal/timers:545:9)
+    at process.processTimers (node:internal/timers:519:7)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:2761:32
+Meta ad-insights-daily error: DOMException [TimeoutError]: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14902:13
+    at runNextTicks (node:internal/process/task_queues:60:5)
+    at listOnTimeout (node:internal/timers:545:9)
+    at process.processTimers (node:internal/timers:519:7)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:2761:32
+Meta ad-insights-daily error: DOMException [TimeoutError]: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14902:13
+    at runNextTicks (node:internal/process/task_queues:60:5)
+    at process.processTimers (node:internal/timers:516:9)
+    at async C:\Users\Dell\Desktop\creative-portal\uploader\server.js:2761:32
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+[roas-tracker] Meta returned 0 rows (likely rate limited). Skipping.
+[roas-tracker] Excluded 110 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[apex-breakdowns/age-gender] Pagination error on page 11: Application request limit reached
+[apex-breakdowns] hourly unavailable: Please reduce the amount of data you're asking for, then retry your request
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[ad-insights] Pagination error on page 10 : Application request limit reached
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+Metabase ad-funnel error: TypeError: terminated
+    at Fetch.onAborted (node:internal/deps/undici/undici:11322:53)
+    at Fetch.emit (node:events:524:28)
+    at Fetch.terminate (node:internal/deps/undici/undici:10480:14)
+    at Object.onError (node:internal/deps/undici/undici:11445:38)
+    at Request.onError (node:internal/deps/undici/undici:2210:31)
+    at Object.errorRequest (node:internal/deps/undici/undici:1707:17)
+    at TLSSocket.<anonymous> (node:internal/deps/undici/undici:6433:16)
+    at TLSSocket.emit (node:events:536:35)
+    at node:net:343:12
+    at TCP.done (node:_tls_wrap:665:7) {
+  [cause]: Error: read ECONNRESET
+      at TLSWrap.onStreamRead (node:internal/stream_base_commons:218:20) {
+    errno: -4077,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+[ad-insights] Pagination error on page 19 : Application request limit reached
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[ad-insights] Pagination error on page 9 : Application request limit reached
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[ad-insights] Pagination error on page 22 : Application request limit reached
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[gcRecommendations] Could not load top performers: no such column: c.headline
+[gcRecommendations] Could not load underperformers: no such column: c.headline
+[gcRecommendations] Could not load market signals: no such column: signal_type
+[gc/dataFetcher] Pipeline error: Metabase query failed (403): You don't have permissions to do that.
+[GC Scheduler] 6-hour cycle error: Metabase query failed (403): You don't have permissions to do that.
+YouTube API: failed for "stock market india today": Request failed with status code 403
+YouTube RSS: failed for Pranjal Kamra: Status code 404
+YouTube API: failed for "nifty banknifty analysis": Request failed with status code 403
+[AT Metabase Enricher] Failed to fetch Meta conversions: Metabase query failed (403): You don't have permissions to do that.
+[AT Scheduler] enrich-meta error: Metabase query failed (403): You don't have permissions to do that.
+YouTube API: failed for "options trading strategy": Request failed with status code 403
+Google Trends RSS: failed: Status code 404
+[AT Metabase Enricher] Failed to fetch Google conversions: Metabase query failed (403): You don't have permissions to do that.
+[AT Scheduler] enrich-google error: Metabase query failed (403): You don't have permissions to do that.
+YouTube API: failed for "sensex nifty tomorrow": Request failed with status code 403
+YouTube RSS: failed for Akshat Shrivastava: Status code 404
+YouTube API: failed for "best stocks to buy india": Request failed with status code 403
+News RSS: failed for Moneycontrol Markets: Status code 503
+YouTube RSS: failed for CA Rachana Phadke: Status code 404
+YouTube RSS: failed for Shankar Nath: Status code 404
+YouTube RSS: failed for Groww: Status code 404
+YouTube RSS: failed for Zerodha Varsity: Status code 404
+News RSS: failed for BS Markets: Status code 403
+YouTube RSS: failed for FinnovationZ: Status code 404
+YouTube RSS: failed for Asset Yogi: Status code 404
+News RSS: failed for Financial Express Markets: Invalid character in entity name
+Line: 0
+Column: 220
+Char: &
+News RSS: failed for Inc42 Fintech: Feed not recognized as RSS 1 or 2.
+News RSS: failed for Reuters Finance: getaddrinfo ENOTFOUND feeds.reuters.com
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).
+[roas-tracker] Excluded 114 ads with truncated API data (too few daily rows).

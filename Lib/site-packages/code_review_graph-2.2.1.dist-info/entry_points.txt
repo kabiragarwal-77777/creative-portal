@@ -1,0 +1,2 @@
+[console_scripts]
+code-review-graph = code_review_graph.cli:main
