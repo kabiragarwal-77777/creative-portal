@@ -51,67 +51,85 @@ function parseReply(buffer, start = 0) {
 async function getClient() {
     if (clientPromise) return clientPromise;
     clientPromise = (async () => {
-        const url = new URL(DEFAULT_URL);
-        const port = Number(url.port || 6379);
-        const host = url.hostname || '127.0.0.1';
-        const password = url.password || '';
-        const db = url.pathname && url.pathname !== '/' ? Number(url.pathname.replace('/', '')) || 0 : 0;
+        try {
+            const url = new URL(DEFAULT_URL);
+            const port = Number(url.port || 6379);
+            const host = url.hostname || '127.0.0.1';
+            const password = url.password || '';
+            const db = url.pathname && url.pathname !== '/' ? Number(url.pathname.replace('/', '')) || 0 : 0;
 
-        const socket = net.createConnection({ host, port });
-        socket.setNoDelay(true);
+            const socket = net.createConnection({ host, port });
+            socket.setNoDelay(true);
+            socket.setTimeout(1500);
 
-        let buffer = Buffer.alloc(0);
-        const queue = [];
-        let ready = false;
+            let buffer = Buffer.alloc(0);
+            const queue = [];
+            let ready = false;
+            let pendingConnect = null;
 
-        const send = async (parts) => {
-            if (!ready) {
-                await new Promise((resolve, reject) => {
-                    const onReady = () => {
-                        socket.off('error', onError);
-                        resolve();
-                    };
-                    const onError = (err) => {
-                        socket.off('connect', onReady);
-                        reject(err);
-                    };
-                    socket.once('connect', onReady);
-                    socket.once('error', onError);
+            const send = async (parts) => {
+                if (!ready) {
+                    if (!pendingConnect) {
+                        pendingConnect = new Promise((resolve, reject) => {
+                            const onReady = () => {
+                                socket.off('error', onError);
+                                pendingConnect = null;
+                                resolve();
+                            };
+                            const onError = (err) => {
+                                socket.off('connect', onReady);
+                                pendingConnect = null;
+                                reject(err);
+                            };
+                            socket.once('connect', onReady);
+                            socket.once('error', onError);
+                        });
+                    }
+                    await pendingConnect;
+                }
+                return new Promise((resolve, reject) => {
+                    queue.push({ resolve, reject });
+                    socket.write(encodeCommand(parts));
                 });
-            }
-            return new Promise((resolve, reject) => {
-                queue.push({ resolve, reject });
-                socket.write(encodeCommand(parts));
+            };
+
+            socket.on('data', chunk => {
+                buffer = Buffer.concat([buffer, chunk]);
+                while (queue.length) {
+                    const parsed = parseReply(buffer, 0);
+                    if (!parsed) return;
+                    buffer = buffer.slice(parsed[1]);
+                    const item = queue.shift();
+                    const value = parsed[0];
+                    if (value instanceof Error) item.reject(value);
+                    else item.resolve(value);
+                }
             });
-        };
 
-        socket.on('data', chunk => {
-            buffer = Buffer.concat([buffer, chunk]);
-            while (queue.length) {
-                const parsed = parseReply(buffer, 0);
-                if (!parsed) return;
-                buffer = buffer.slice(parsed[1]);
-                const item = queue.shift();
-                const value = parsed[0];
-                if (value instanceof Error) item.reject(value);
-                else item.resolve(value);
-            }
-        });
+            socket.on('error', err => {
+                while (queue.length) queue.shift().reject(err);
+            });
 
-        socket.on('error', err => {
-            while (queue.length) queue.shift().reject(err);
-        });
+            socket.on('close', () => {
+                clientPromise = null;
+                ready = false;
+                while (queue.length) queue.shift().reject(new Error('Redis connection closed'));
+            });
 
-        await new Promise((resolve, reject) => {
-            socket.once('connect', resolve);
-            socket.once('error', reject);
-        });
+            socket.on('timeout', () => {
+                socket.destroy(new Error('Redis connection timed out'));
+            });
 
-        if (password) await send(['AUTH', password]);
-        if (Number.isFinite(db) && db > 0) await send(['SELECT', db]);
-        ready = true;
+            await new Promise((resolve, reject) => {
+                socket.once('connect', resolve);
+                socket.once('error', reject);
+            });
 
-        return {
+            ready = true;
+            if (password) await send(['AUTH', password]);
+            if (Number.isFinite(db) && db > 0) await send(['SELECT', db]);
+
+            return {
             async get(key) {
                 try { return await send(['GET', key]); } catch (_) { return null; }
             },
@@ -140,7 +158,14 @@ async function getClient() {
                 } catch (_) { return []; }
             },
         };
+        } catch (err) {
+            clientPromise = null;
+            throw err;
+        }
     })();
+    clientPromise.catch(() => {
+        clientPromise = null;
+    });
     return clientPromise;
 }
 

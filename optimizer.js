@@ -20,7 +20,6 @@ window.OPTIMIZER_OVERVIEW_LEVEL = window.OPTIMIZER_OVERVIEW_LEVEL || 'campaign';
 window.OPTIMIZER_OVERVIEW_ADSET = window.OPTIMIZER_OVERVIEW_ADSET || '';
 window.OPTIMIZER_CHAT = window.OPTIMIZER_CHAT || [];
 window.OPTIMIZER_USER_PROMPT = window.OPTIMIZER_USER_PROMPT || '';
-try { window.OPTIMIZER_LAST_MATCH_RATE_PCT = Number(localStorage.getItem('optimizer_last_match_rate_pct') || 0); } catch (e) { window.OPTIMIZER_LAST_MATCH_RATE_PCT = 0; }
 
 var SERVER = 'http://localhost:3000';
 
@@ -7032,7 +7031,7 @@ async function generateOptimizationPlan(scanData) {
         window.OPTIMIZER_PLAN = trendPlan;
         if (trendPlan.data_integrity_gate && trendPlan.data_integrity_gate.entity_match_rate_pct != null) {
             window.OPTIMIZER_LAST_MATCH_RATE_PCT = Number(trendPlan.data_integrity_gate.entity_match_rate_pct || 0);
-            try { localStorage.setItem('optimizer_last_match_rate_pct', String(window.OPTIMIZER_LAST_MATCH_RATE_PCT)); } catch (e) {}
+            saveOptimizerLastMatchRatePct(window.OPTIMIZER_LAST_MATCH_RATE_PCT);
         }
         return trendPlan;
     }
@@ -7075,7 +7074,7 @@ async function generateOptimizationPlan(scanData) {
         window.OPTIMIZER_PLAN = metricPlan;
         if (metricPlan.data_integrity_gate && metricPlan.data_integrity_gate.entity_match_rate_pct != null) {
             window.OPTIMIZER_LAST_MATCH_RATE_PCT = Number(metricPlan.data_integrity_gate.entity_match_rate_pct || 0);
-            try { localStorage.setItem('optimizer_last_match_rate_pct', String(window.OPTIMIZER_LAST_MATCH_RATE_PCT)); } catch (e) {}
+            saveOptimizerLastMatchRatePct(window.OPTIMIZER_LAST_MATCH_RATE_PCT);
         }
         return metricPlan;
     }
@@ -7116,7 +7115,7 @@ async function generateOptimizationPlan(scanData) {
         window.OPTIMIZER_PLAN = growthPlan;
         if (growthPlan.data_integrity_gate && growthPlan.data_integrity_gate.entity_match_rate_pct != null) {
             window.OPTIMIZER_LAST_MATCH_RATE_PCT = Number(growthPlan.data_integrity_gate.entity_match_rate_pct || 0);
-            try { localStorage.setItem('optimizer_last_match_rate_pct', String(window.OPTIMIZER_LAST_MATCH_RATE_PCT)); } catch (e) {}
+            saveOptimizerLastMatchRatePct(window.OPTIMIZER_LAST_MATCH_RATE_PCT);
         }
         return growthPlan;
     }
@@ -7499,7 +7498,7 @@ async function generateOptimizationPlan(scanData) {
     setOptimizerBrainCache(brainCacheKey, plan);
     if (plan.data_integrity_gate && plan.data_integrity_gate.entity_match_rate_pct != null) {
         window.OPTIMIZER_LAST_MATCH_RATE_PCT = Number(plan.data_integrity_gate.entity_match_rate_pct || 0);
-        try { localStorage.setItem('optimizer_last_match_rate_pct', String(window.OPTIMIZER_LAST_MATCH_RATE_PCT)); } catch (e) {}
+        saveOptimizerLastMatchRatePct(window.OPTIMIZER_LAST_MATCH_RATE_PCT);
     }
     return plan;
 }
@@ -7579,23 +7578,89 @@ async function executeAllActions(actions) {
     return res;
 }
 
-function saveLog() { try { localStorage.setItem('optimizer_log', JSON.stringify((window.OPTIMIZER_LOG || []).slice(-200))); } catch (e) {} }
-function loadLog() { try { return JSON.parse(localStorage.getItem('optimizer_log') || '[]'); } catch (e) { return []; } }
-
+var OPTIMIZER_BROWSER_CACHE_NS = 'optimizer';
+var OPTIMIZER_BROWSER_CACHE_MEM = null;
 var OPTIMIZER_BRAIN_CACHE = {};
 var OPTIMIZER_BRAIN_CACHE_TTL_MS = 15 * 60 * 1000;
 var OPTIMIZER_SCAN_CACHE_KEY = 'optimizer_scan_cache';
 var OPTIMIZER_SCAN_CACHE_TTL_MS = 30 * 60 * 1000;
 var OPTIMIZER_SCAN_CACHE_MEM = null;
 
+function loadOptimizerBrowserCacheStore() {
+    if (OPTIMIZER_BROWSER_CACHE_MEM) return OPTIMIZER_BROWSER_CACHE_MEM;
+    OPTIMIZER_BROWSER_CACHE_MEM = {};
+    try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', SERVER + '/api/browser-cache/' + encodeURIComponent(OPTIMIZER_BROWSER_CACHE_NS), false);
+        xhr.send(null);
+        if (xhr.status >= 200 && xhr.status < 300) {
+            var parsed = JSON.parse(xhr.responseText || '{}');
+            OPTIMIZER_BROWSER_CACHE_MEM = parsed && parsed.data ? parsed.data : {};
+        }
+    } catch (e) {}
+    return OPTIMIZER_BROWSER_CACHE_MEM;
+}
+
+function getOptimizerBrowserCacheEntry(key) {
+    var store = loadOptimizerBrowserCacheStore();
+    var entry = store && store[key];
+    if (!entry) return null;
+    var ts = Number(entry.ts || 0);
+    var ttlMs = Number(entry.ttlMs || 0);
+    if (ttlMs > 0 && (Date.now() - ts) > ttlMs) {
+        delete store[key];
+        return null;
+    }
+    return entry;
+}
+
+function setOptimizerBrowserCacheEntry(key, value, ttlMs) {
+    var store = loadOptimizerBrowserCacheStore();
+    store[key] = { ts: Date.now(), ttlMs: Number(ttlMs || 0), value: value };
+    OPTIMIZER_BROWSER_CACHE_MEM = store;
+    try {
+        fetch(SERVER + '/api/browser-cache/' + encodeURIComponent(OPTIMIZER_BROWSER_CACHE_NS), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: key, value: store[key], ttlMs: ttlMs || 0 }),
+            keepalive: true
+        }).catch(function() {});
+    } catch (e) {}
+}
+
+function getOptimizerBrowserCacheValue(key, fallback) {
+    var entry = getOptimizerBrowserCacheEntry(key);
+    return entry && entry.value !== undefined ? entry.value : fallback;
+}
+
+function saveLog() { setOptimizerBrowserCacheEntry('optimizer_log', (window.OPTIMIZER_LOG || []).slice(-200), 7 * 24 * 60 * 60 * 1000); }
+function loadLog() {
+    var entry = getOptimizerBrowserCacheEntry('optimizer_log');
+    return entry && Array.isArray(entry.value) ? entry.value : [];
+}
+
 function loadOptimizerBrainCache() {
-    try { return JSON.parse(localStorage.getItem('optimizer_brain_cache') || '{}'); }
-    catch (e) { return {}; }
+    var entry = getOptimizerBrowserCacheEntry('optimizer_brain_cache');
+    return entry && entry.value && typeof entry.value === 'object' ? entry.value : {};
 }
 
 function saveOptimizerBrainCache(cache) {
-    try { localStorage.setItem('optimizer_brain_cache', JSON.stringify(cache || {})); } catch (e) {}
+    setOptimizerBrowserCacheEntry('optimizer_brain_cache', cache || {}, 24 * 60 * 60 * 1000);
 }
+
+function loadOptimizerLastMatchRatePct() {
+    var value = getOptimizerBrowserCacheValue('optimizer_last_match_rate_pct', 0);
+    var num = Number(value);
+    return isNaN(num) ? 0 : num;
+}
+
+function saveOptimizerLastMatchRatePct(value) {
+    var num = Number(value);
+    if (isNaN(num)) num = 0;
+    setOptimizerBrowserCacheEntry('optimizer_last_match_rate_pct', String(num), 30 * 24 * 60 * 60 * 1000);
+}
+
+window.OPTIMIZER_LAST_MATCH_RATE_PCT = loadOptimizerLastMatchRatePct();
 
 function hashOptimizerKey(value) {
     var str = String(value || '');
@@ -7685,12 +7750,12 @@ function cloneOptimizerScanForCache(scan) {
 }
 
 function loadOptimizerScanCacheStore() {
-    try { return JSON.parse(localStorage.getItem(OPTIMIZER_SCAN_CACHE_KEY) || '{}'); }
-    catch (e) { return {}; }
+    var entry = getOptimizerBrowserCacheEntry(OPTIMIZER_SCAN_CACHE_KEY);
+    return entry && entry.value && typeof entry.value === 'object' ? entry.value : {};
 }
 
 function saveOptimizerScanCacheStore(cache) {
-    try { localStorage.setItem(OPTIMIZER_SCAN_CACHE_KEY, JSON.stringify(cache || {})); } catch (e) {}
+    setOptimizerBrowserCacheEntry(OPTIMIZER_SCAN_CACHE_KEY, cache || {}, OPTIMIZER_SCAN_CACHE_TTL_MS);
 }
 
 function getCachedOptimizerScan(dateRange) {
@@ -7701,12 +7766,12 @@ function getCachedOptimizerScan(dateRange) {
 
     var candidates = [];
     try {
-        var sessionRaw = sessionStorage.getItem(OPTIMIZER_SCAN_CACHE_KEY + ':session');
-        if (sessionRaw) candidates.push(JSON.parse(sessionRaw));
+        var sessionRaw = getOptimizerBrowserCacheEntry(OPTIMIZER_SCAN_CACHE_KEY + ':session');
+        if (sessionRaw) candidates.push(sessionRaw.value || sessionRaw);
     } catch (e) {}
     try {
-        var localRaw = localStorage.getItem(OPTIMIZER_SCAN_CACHE_KEY + ':local');
-        if (localRaw) candidates.push(JSON.parse(localRaw));
+        var localRaw = getOptimizerBrowserCacheEntry(OPTIMIZER_SCAN_CACHE_KEY + ':local');
+        if (localRaw) candidates.push(localRaw.value || localRaw);
     } catch (e) {}
     if (!candidates.length) return null;
 
@@ -7732,8 +7797,8 @@ function setCachedOptimizerScan(scan, options) {
         scan: scan
     };
     OPTIMIZER_SCAN_CACHE_MEM = { key: key, ts: payload.ts, scan: scan };
-    try { sessionStorage.setItem(OPTIMIZER_SCAN_CACHE_KEY + ':session', JSON.stringify(payload)); } catch (e) {}
-    try { localStorage.setItem(OPTIMIZER_SCAN_CACHE_KEY + ':local', JSON.stringify({ key: key, ts: payload.ts, scan: cloneOptimizerScanForCache(scan) })); } catch (e) {}
+    setOptimizerBrowserCacheEntry(OPTIMIZER_SCAN_CACHE_KEY + ':session', payload, OPTIMIZER_SCAN_CACHE_TTL_MS);
+    setOptimizerBrowserCacheEntry(OPTIMIZER_SCAN_CACHE_KEY + ':local', { key: key, ts: payload.ts, scan: cloneOptimizerScanForCache(scan) }, OPTIMIZER_SCAN_CACHE_TTL_MS);
 }
 
 function hydrateOptimizerScanFromCache() {

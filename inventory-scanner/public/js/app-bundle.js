@@ -9,6 +9,29 @@
     discovery: '/inventory-scanner/',
     budget: '/inventory-scanner/budget-planner/'
   };
+  function resolveAuthHeader() {
+    const candidates = [
+      window.__ANALYTICS_AUTH_TOKEN__,
+      window.__AUTH_TOKEN__,
+      window.__PORTAL_AUTH_TOKEN__,
+      localStorage.getItem('analytics_auth_token'),
+      localStorage.getItem('auth_token'),
+      localStorage.getItem('portal_auth_token'),
+      localStorage.getItem('api_token'),
+      sessionStorage.getItem('analytics_auth_token'),
+      sessionStorage.getItem('auth_token'),
+      sessionStorage.getItem('portal_auth_token')
+    ];
+    const token = candidates.find(v => typeof v === 'string' && v.trim());
+    if (!token) return '';
+    return token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+  }
+  function buildAuthHeaders(extra = {}) {
+    const headers = { ...(extra || {}) };
+    const authHeader = resolveAuthHeader();
+    if (authHeader && !headers.Authorization) headers.Authorization = authHeader;
+    return headers;
+  }
   const COMPETITORS = ['Motilal Oswal', 'ICICI Direct', 'Mirae Asset', 'Axis MF', 'SBI MF'];
   const MODELS = ['CPM', 'CPC', 'CPL', 'CPV', 'Fixed'];
   const CURATED = [
@@ -263,7 +286,12 @@
     state.syncing = force;
     render();
     try {
-      const res = await fetch(force ? '/api/inventories/sync' : '/api/inventories/discovery', force ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' } : {});
+      const res = await fetch(force ? '/api/inventories/sync' : '/api/inventories/discovery', {
+        method: force ? 'POST' : 'GET',
+        credentials: 'include',
+        headers: buildAuthHeaders(force ? { 'Content-Type': 'application/json' } : {}),
+        body: force ? '{}' : undefined
+      });
       const json = await res.json();
       if (!json.success) throw new Error(json.error || 'scanner');
       const map = new Map((json.data?.inventories || []).map(item => [item.inventory_id, item]));

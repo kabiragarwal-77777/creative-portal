@@ -26,6 +26,8 @@ var GC_OPT_SCAN_CACHE_KEY_PREFIX = 'gc_optimizer_scan_cache.v8';
 var GC_OPT_SCAN_CACHE_TTL_MS = 30 * 60 * 1000;
 var GC_PORTAL_TREE_CACHE_PREFIX = 'googlePortal.tree.cache.v1';
 var GC_PORTAL_CACHE_TTL_MS = 15 * 60 * 1000;
+var GC_OPT_BROWSER_CACHE_NS = 'gc-optimizer';
+var GC_OPT_BROWSER_CACHE_MEM = null;
 
 // ── Helpers ──
 
@@ -171,27 +173,81 @@ function buildMaturityNote(summary, matureKey, earlyKey, entityName) {
     return 'Maturity-aware metrics';
 }
 
+function loadGcBrowserCacheStore() {
+    if (GC_OPT_BROWSER_CACHE_MEM) return GC_OPT_BROWSER_CACHE_MEM;
+    GC_OPT_BROWSER_CACHE_MEM = {};
+    try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', SERVER + '/api/browser-cache/' + encodeURIComponent(GC_OPT_BROWSER_CACHE_NS), false);
+        xhr.send(null);
+        if (xhr.status >= 200 && xhr.status < 300) {
+            var parsed = JSON.parse(xhr.responseText || '{}');
+            GC_OPT_BROWSER_CACHE_MEM = parsed && parsed.data ? parsed.data : {};
+        }
+    } catch (e) {}
+    return GC_OPT_BROWSER_CACHE_MEM;
+}
+
+function getGcBrowserCacheEntry(key) {
+    var store = loadGcBrowserCacheStore();
+    var entry = store && store[key];
+    if (!entry) return null;
+    var ts = Number(entry.ts || 0);
+    var ttlMs = Number(entry.ttlMs || 0);
+    if (ttlMs > 0 && (Date.now() - ts) > ttlMs) {
+        delete store[key];
+        return null;
+    }
+    return entry;
+}
+
+function setGcBrowserCacheEntry(key, value, ttlMs) {
+    var store = loadGcBrowserCacheStore();
+    store[key] = { ts: Date.now(), ttlMs: Number(ttlMs || 0), value: value };
+    GC_OPT_BROWSER_CACHE_MEM = store;
+    try {
+        fetch(SERVER + '/api/browser-cache/' + encodeURIComponent(GC_OPT_BROWSER_CACHE_NS), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: key, value: store[key], ttlMs: ttlMs || 0 }),
+            keepalive: true
+        }).catch(function() {});
+    } catch (e) {}
+}
+
+function deleteGcBrowserCacheEntry(key) {
+    var store = loadGcBrowserCacheStore();
+    if (store && Object.prototype.hasOwnProperty.call(store, key)) delete store[key];
+    GC_OPT_BROWSER_CACHE_MEM = store;
+    try {
+        fetch(SERVER + '/api/browser-cache/' + encodeURIComponent(GC_OPT_BROWSER_CACHE_NS) + '/' + encodeURIComponent(key), {
+            method: 'DELETE',
+            keepalive: true
+        }).catch(function() {});
+    } catch (e) {}
+}
+
 function loadGcExecLog() {
-    try { return JSON.parse(localStorage.getItem('gc_optimizer_exec_log') || '[]'); }
-    catch (e) { return []; }
+    var entry = getGcBrowserCacheEntry('gc_optimizer_exec_log');
+    return entry && Array.isArray(entry.value) ? entry.value : [];
 }
 
 function loadGcBrainCache() {
-    try { return JSON.parse(localStorage.getItem('gc_optimizer_brain_cache') || '{}'); }
-    catch (e) { return {}; }
+    var entry = getGcBrowserCacheEntry('gc_optimizer_brain_cache');
+    return entry && entry.value && typeof entry.value === 'object' ? entry.value : {};
 }
 
 function saveGcBrainCache(cache) {
-    try { localStorage.setItem('gc_optimizer_brain_cache', JSON.stringify(cache || {})); } catch (e) {}
+    setGcBrowserCacheEntry('gc_optimizer_brain_cache', cache || {}, GC_OPT_BRAIN_CACHE_TTL_MS);
 }
 
 function loadGcScanCache() {
-    try { return JSON.parse(localStorage.getItem(GC_OPT_SCAN_CACHE_KEY_PREFIX) || '{}'); }
-    catch (e) { return {}; }
+    var entry = getGcBrowserCacheEntry(GC_OPT_SCAN_CACHE_KEY_PREFIX);
+    return entry && entry.value && typeof entry.value === 'object' ? entry.value : {};
 }
 
 function saveGcScanCache(cache) {
-    try { localStorage.setItem(GC_OPT_SCAN_CACHE_KEY_PREFIX, JSON.stringify(cache || {})); } catch (e) {}
+    setGcBrowserCacheEntry(GC_OPT_SCAN_CACHE_KEY_PREFIX, cache || {}, GC_OPT_SCAN_CACHE_TTL_MS);
 }
 
 function isTrustworthyOptimizerScan(scan) {
@@ -207,7 +263,7 @@ function clearUntrustworthyOptimizerScan() {
         if (!GC_OPT_SCAN || isTrustworthyOptimizerScan(GC_OPT_SCAN)) return;
         GC_OPT_SCAN = null;
         GC_OPT_SCAN_ERROR = 'Discarded stale zero-spend Google optimizer scan. Refreshing live data...';
-        localStorage.removeItem(GC_OPT_SCAN_CACHE_KEY_PREFIX);
+        deleteGcBrowserCacheEntry(GC_OPT_SCAN_CACHE_KEY_PREFIX);
     } catch (e) {}
 }
 
@@ -236,9 +292,8 @@ function readGoogleTreeSnapshotForRange(dr) {
     ];
     for (var i = 0; i < keys.length; i++) {
         try {
-            var raw = localStorage.getItem(keys[i]);
-            if (!raw) continue;
-            var parsed = JSON.parse(raw);
+            var entry = getGcBrowserCacheEntry(keys[i]);
+            var parsed = entry && entry.value ? entry.value : null;
             if (parsed && parsed.ts && (Date.now() - Number(parsed.ts || 0)) <= GC_PORTAL_CACHE_TTL_MS && parsed.data && parsed.data.tree) {
                 return parsed.data;
             }
@@ -427,8 +482,7 @@ function setGcBrainCache(cacheKey, value) {
 }
 
 function saveGcExecLog() {
-    try { localStorage.setItem('gc_optimizer_exec_log', JSON.stringify((GC_OPT_EXEC_LOG || []).slice(-200))); }
-    catch (e) {}
+    setGcBrowserCacheEntry('gc_optimizer_exec_log', (GC_OPT_EXEC_LOG || []).slice(-200), 7 * 24 * 60 * 60 * 1000);
 }
 
 function budgetPctForRecommendation(action) {

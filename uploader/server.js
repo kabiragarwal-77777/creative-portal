@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { pipeline } = require('stream/promises');
-const { redisGetJson, redisSetJson, redisScan } = require('../utils/redis-cache');
+const { redisGetJson, redisSetJson, redisScan, redisDel } = require('../utils/redis-cache');
 let sharp = null;
 try { sharp = require('sharp'); } catch (_) { /* optional for image normalization */ }
 
@@ -68,6 +68,22 @@ let creativeDataCacheMirror = Object.create(null);
 
 function portalRedisKey(scope, key) {
     return `${REDIS_CACHE_PREFIX}:${scope}:${key}`;
+}
+
+function browserCacheRedisKey(namespace, key) {
+    return `${REDIS_CACHE_PREFIX}:browser:${namespace}:${key}`;
+}
+
+async function loadBrowserCacheNamespace(namespace) {
+    const prefix = `${REDIS_CACHE_PREFIX}:browser:${namespace}:`;
+    const keys = await redisScan(`${prefix}*`);
+    const out = {};
+    for (const fullKey of keys) {
+        const key = fullKey.slice(prefix.length);
+        const value = await redisGetJson(fullKey);
+        if (value !== null) out[key] = value;
+    }
+    return out;
 }
 
 async function hydratePortalCachesFromRedis() {
@@ -3362,6 +3378,48 @@ app.post('/api/cache/clear', async (req, res) => {
     } catch (e) {}
     console.log('[Cache] All caches cleared');
     res.json({ success: true, message: 'All caches cleared' });
+});
+
+app.get('/api/browser-cache/:namespace', async (req, res) => {
+    try {
+        const namespace = String(req.params.namespace || '').trim();
+        if (!namespace) return res.status(400).json({ success: false, error: 'namespace is required' });
+        const data = await loadBrowserCacheNamespace(namespace);
+        res.json({ success: true, namespace, data });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/api/browser-cache/:namespace', async (req, res) => {
+    try {
+        const namespace = String(req.params.namespace || '').trim();
+        const key = String(req.body && req.body.key || '').trim();
+        const value = req.body ? req.body.value : null;
+        const ttlMs = Number(req.body && req.body.ttlMs || 0);
+        if (!namespace || !key) {
+            return res.status(400).json({ success: false, error: 'namespace and key are required' });
+        }
+        const payload = { ts: Date.now(), value, ttlMs: ttlMs > 0 ? ttlMs : null };
+        await redisSetJson(browserCacheRedisKey(namespace, key), payload, ttlMs > 0 ? ttlMs : undefined);
+        res.json({ success: true, namespace, key, cached: true });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.delete('/api/browser-cache/:namespace/:key', async (req, res) => {
+    try {
+        const namespace = String(req.params.namespace || '').trim();
+        const key = String(req.params.key || '').trim();
+        if (!namespace || !key) {
+            return res.status(400).json({ success: false, error: 'namespace and key are required' });
+        }
+        await redisDel(browserCacheRedisKey(namespace, key));
+        res.json({ success: true, namespace, key, deleted: true });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 app.post('/api/meta/ad-insights-daily', async (req, res) => {
