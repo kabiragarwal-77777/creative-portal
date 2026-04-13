@@ -2581,7 +2581,7 @@ init();
 // =========================================================================
 // CAMPAIGN TREE — Hierarchical campaign → adset → ad analysis
 // =========================================================================
-const TREE_SERVER = 'http://localhost:3000';
+const TREE_SERVER = window.location.origin || `${window.location.protocol}//${window.location.host}`;
 
 function dateToExcelSerial(dateStr) {
     const [y, m, d] = dateStr.split('-').map(Number);

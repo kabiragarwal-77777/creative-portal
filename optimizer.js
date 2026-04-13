@@ -21,7 +21,7 @@ window.OPTIMIZER_OVERVIEW_ADSET = window.OPTIMIZER_OVERVIEW_ADSET || '';
 window.OPTIMIZER_CHAT = window.OPTIMIZER_CHAT || [];
 window.OPTIMIZER_USER_PROMPT = window.OPTIMIZER_USER_PROMPT || '';
 
-var SERVER = 'http://localhost:3000';
+var SERVER = window.__CREATIVE_PORTAL_SERVER__ || (window.location.origin || 'http://localhost:3000');
 
 // â”€â”€ Helpers â”€â”€
 

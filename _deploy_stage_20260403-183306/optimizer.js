@@ -13,7 +13,7 @@ window.OPTIMIZER_LOG = [];
 window.OPTIMIZER_PLAN_FILTER = 'all';
 window.OPTIMIZER_PLAN_SCOPE = 'all';
 
-var SERVER = 'http://localhost:3000';
+var SERVER = window.__CREATIVE_PORTAL_SERVER__ || (window.location.origin || 'http://localhost:3000');
 
 // â”€â”€ Helpers â”€â”€
 
