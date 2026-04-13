@@ -3255,6 +3255,32 @@
 </script>
 
 <script>
+const AUTH_TTL_MS = 24 * 60 * 60 * 1000;
+const AUTH_STORAGE_KEY = 'portal_auth_until';
+
+function getStoredAuthExpiry() {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return 0;
+    const expiry = Number(raw);
+    return Number.isFinite(expiry) ? expiry : 0;
+}
+
+function rememberAuthedBrowser() {
+    const expiry = Date.now() + AUTH_TTL_MS;
+    localStorage.setItem(AUTH_STORAGE_KEY, String(expiry));
+    sessionStorage.setItem('authed', '1');
+}
+
+function clearAuthedBrowser() {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    sessionStorage.removeItem('authed');
+}
+
+function unlockApp() {
+    document.getElementById('authGate').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+}
+
 async function checkAuth() {
     const pw = document.getElementById('authPassword').value;
     const encoder = new TextEncoder();
@@ -3263,17 +3289,23 @@ async function checkAuth() {
     const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
     const VALID_HASH = '39ba33b84a7338e7599243abe1923642142706be7bd1a702d3b0fb0c01f91419';
     if (hashHex === VALID_HASH) {
-        document.getElementById('authGate').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-        sessionStorage.setItem('authed', '1');
+        rememberAuthedBrowser();
+        unlockApp();
     } else {
+        clearAuthedBrowser();
         document.getElementById('authError').style.display = 'block';
     }
 }
-// Auto-unlock if already authed this session
-if (sessionStorage.getItem('authed') === '1') {
-    document.getElementById('authGate').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
+
+// Auto-unlock if still valid in this browser
+const authExpiry = getStoredAuthExpiry();
+if (sessionStorage.getItem('authed') === '1' || (authExpiry && authExpiry > Date.now())) {
+    if (authExpiry && authExpiry > Date.now()) {
+        sessionStorage.setItem('authed', '1');
+    }
+    unlockApp();
+} else if (authExpiry && authExpiry <= Date.now()) {
+    clearAuthedBrowser();
 }
 </script>
 

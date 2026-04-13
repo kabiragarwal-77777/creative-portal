@@ -949,6 +949,29 @@ body {
 <script>
 const API_BASE = window.location.origin.includes('localhost') ? `http://localhost:${window.location.port || 3000}` : '';
 
+function resolveAuthHeader() {
+  const candidates = [
+    window.__ANALYTICS_AUTH_TOKEN__,
+    window.__AUTH_TOKEN__,
+    window.__PORTAL_AUTH_TOKEN__,
+    localStorage.getItem('analytics_auth_token'),
+    localStorage.getItem('auth_token'),
+    localStorage.getItem('portal_auth_token'),
+    localStorage.getItem('api_token'),
+    sessionStorage.getItem('analytics_auth_token'),
+    sessionStorage.getItem('auth_token'),
+    sessionStorage.getItem('portal_auth_token')
+  ];
+  const token = candidates.find(v => typeof v === 'string' && v.trim());
+  if (!token) return '';
+  return token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+}
+
+function buildAuthHeaders() {
+  const authHeader = resolveAuthHeader();
+  return authHeader ? { Authorization: authHeader } : {};
+}
+
 let state = {
   synthesized: null,
   concepts: null,
@@ -963,7 +986,7 @@ let state = {
 // ═══════════════════════════════
 async function init() {
   try {
-    const res = await fetch(`${API_BASE}/api/trends/data`);
+    const res = await fetch(`${API_BASE}/api/trends/data`, { credentials: 'include', headers: buildAuthHeaders() });
     const data = await res.json();
     if (data.status === 'ok') {
       state.synthesized = data.synthesized;
@@ -988,7 +1011,7 @@ async function startScan() {
   showScanOverlay();
 
   try {
-    await fetch(`${API_BASE}/api/trends/scan`, { method: 'POST' });
+    await fetch(`${API_BASE}/api/trends/scan`, { method: 'POST', credentials: 'include', headers: buildAuthHeaders() });
     pollScanStatus();
   } catch (e) {
     hideScanOverlay();
@@ -1001,7 +1024,7 @@ async function startScan() {
 function pollScanStatus() {
   scanPollTimer = setInterval(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/trends/status`);
+      const res = await fetch(`${API_BASE}/api/trends/status`, { credentials: 'include', headers: buildAuthHeaders() });
       const status = await res.json();
       updateScanProgress(status);
 
@@ -1013,7 +1036,7 @@ function pollScanStatus() {
         document.getElementById('scanBtn').innerHTML = '&#128260; Scan Now';
 
         // Reload data
-        const dataRes = await fetch(`${API_BASE}/api/trends/data`);
+        const dataRes = await fetch(`${API_BASE}/api/trends/data`, { credentials: 'include', headers: buildAuthHeaders() });
         const data = await dataRes.json();
         if (data.status === 'ok') {
           state.synthesized = data.synthesized;
@@ -1384,7 +1407,10 @@ async function generateConcept(trendId, format) {
   try {
     const res = await fetch(`${API_BASE}/api/trends/concepts/${trendId}/${format}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...buildAuthHeaders()
+      },
       body: JSON.stringify(getProductionContext())
     });
     const data = await res.json();

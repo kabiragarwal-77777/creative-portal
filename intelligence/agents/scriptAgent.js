@@ -1,6 +1,7 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '..', '.env') });
 const OpenAI = require('openai');
 const { db, getAll, getOne, run, getRowCount } = require('../db');
+const { cachedAsync } = require('../../utils/ai-cache');
 
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -88,17 +89,23 @@ Generate exactly ${count} new creative briefs. Each brief MUST be a JSON object 
 
 Respond ONLY with a JSON array of ${count} briefs. No markdown, no extra text.`;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-5.4-mini',
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.8,
-    response_format: { type: 'json_object' },
-    timeout: 30000
-  });
+  const rawContent = await cachedAsync(
+    ['scriptAgent.generateNewBriefs', count, prompt],
+    async () => {
+      const response = await openai.chat.completions.create({
+        model: 'gpt-5.4-mini',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.8,
+        response_format: { type: 'json_object' },
+        timeout: 30000
+      });
+      return response.choices[0].message.content;
+    }
+  );
 
   let briefs;
   try {
-    const parsed = JSON.parse(response.choices[0].message.content);
+    const parsed = JSON.parse(rawContent);
     briefs = Array.isArray(parsed) ? parsed : (parsed.briefs || parsed.data || Object.values(parsed)[0]);
     if (!Array.isArray(briefs)) briefs = [parsed];
   } catch (e) {
@@ -196,17 +203,23 @@ Generate exactly 3 revamp options. Each option should change ONE thing about the
 
 Respond ONLY with a JSON array of 3 objects. No markdown, no extra text.`;
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-5.4-mini',
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.7,
-    response_format: { type: 'json_object' },
-    timeout: 30000
-  });
+  const rawContent = await cachedAsync(
+    ['scriptAgent.generateRevampSuggestion', adId, prompt],
+    async () => {
+      const response = await openai.chat.completions.create({
+        model: 'gpt-5.4-mini',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        response_format: { type: 'json_object' },
+        timeout: 30000
+      });
+      return response.choices[0].message.content;
+    }
+  );
 
   let suggestions;
   try {
-    const parsed = JSON.parse(response.choices[0].message.content);
+    const parsed = JSON.parse(rawContent);
     suggestions = Array.isArray(parsed) ? parsed : (parsed.options || parsed.suggestions || parsed.data || Object.values(parsed)[0]);
     if (!Array.isArray(suggestions)) suggestions = [parsed];
   } catch (e) {

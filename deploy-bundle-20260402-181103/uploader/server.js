@@ -633,7 +633,13 @@ app.get('/api/custom-audiences', async (req, res) => {
         });
         res.json({ success: true, audiences: data.data || [] });
     } catch (err) {
-        res.status(500).json({ success: false, error: err.message, metaError: err.metaError });
+        console.warn('[custom-audiences] Soft-failing enrichment:', err.message);
+        res.json({
+            success: true,
+            audiences: [],
+            warning: `Custom audiences unavailable: ${err.message}`,
+            metaError: err.metaError || null
+        });
     }
 });
 

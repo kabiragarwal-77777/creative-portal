@@ -1,11 +1,11 @@
 {
-  "runAt": "2026-04-10T11:55:39.439Z",
-  "duration": 13222,
+  "runAt": "2026-04-13T14:12:58.731Z",
+  "duration": 24121,
   "summary": {
     "total": 5,
-    "passed": 4,
+    "passed": 3,
     "failed": 1,
-    "warnings": 0,
+    "warnings": 1,
     "skipped": 0
   },
   "overallStatus": "FAIL",
@@ -15,35 +15,35 @@
       "pass": true,
       "level": "OK",
       "message": "All 10 rows have non-empty campaign ID extraction",
-      "durationMs": 154
+      "durationMs": 129
     },
     {
       "name": "Campaign ID <-> Meta API match rate",
       "pass": true,
       "level": "OK",
       "message": "Campaign match rate 100.0% (3/3)",
-      "durationMs": 6576
+      "durationMs": 13823
     },
     {
       "name": "ROAS sanity check",
       "pass": true,
-      "level": "OK",
-      "message": "58 ads checked — ROAS values within expected ranges (avg D6: 27.7%)",
-      "durationMs": 3
+      "level": "WARN",
+      "message": "WARN: 93.0% of ads (480/516) have null/zero D6 ROAS",
+      "durationMs": 10
     },
     {
       "name": "Revenue window alignment",
       "pass": true,
       "level": "OK",
-      "message": "27 ads checked — all revenue windows correctly ordered (D6 <= D15 <= D30 <= D60 <= Overall)",
-      "durationMs": 1
+      "message": "25 ads checked — all revenue windows correctly ordered (D6 <= D15 <= D30 <= D60 <= Overall)",
+      "durationMs": 2
     },
     {
       "name": "Adset name normalization",
       "pass": false,
       "level": "FAIL",
       "message": "Exception: Meta API 400: {\"error\":{\"message\":\"User request limit reached\",\"type\":\"OAuthException\",\"is_transient\":false,\"code\":17,\"error_subcode\":2446079,\"error_user_title\":\"Ad account has too many API calls\",\"error_user_msg\":",
-      "durationMs": 6484
+      "durationMs": 10156
     }
   ]
 }

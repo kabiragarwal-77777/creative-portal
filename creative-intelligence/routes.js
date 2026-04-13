@@ -585,9 +585,19 @@ module.exports = function (config) {
 
     router.post('/roas-simulator/refresh', async (req, res) => {
         try {
-            const snapshots = await engine.snapshotAndTrackLiveAds(true);
-            const checkpoints = await roasSimulatorV2.ensureCheckpointRuns(true);
-            res.json(ok({ snapshots, checkpoints }));
+            const runRefresh = Promise.allSettled([
+                engine.snapshotAndTrackLiveAds(true),
+                roasSimulatorV2.ensureCheckpointRuns(true)
+            ]).then(([snapshotsResult, checkpointsResult]) => {
+                if (snapshotsResult.status === 'rejected') {
+                    console.error('[CI] roas-simulator/refresh snapshot error:', snapshotsResult.reason && snapshotsResult.reason.message ? snapshotsResult.reason.message : snapshotsResult.reason);
+                }
+                if (checkpointsResult.status === 'rejected') {
+                    console.error('[CI] roas-simulator/refresh checkpoint error:', checkpointsResult.reason && checkpointsResult.reason.message ? checkpointsResult.reason.message : checkpointsResult.reason);
+                }
+            });
+            runRefresh.catch(err => console.error('[CI] roas-simulator/refresh async error:', err.message));
+            res.status(202).json(ok({ queued: true, message: 'Refresh started in background' }));
         } catch (err) {
             console.error('[CI] roas-simulator/refresh error:', err.message);
             res.status(500).json(fail(err));

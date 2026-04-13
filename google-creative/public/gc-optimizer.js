@@ -3939,8 +3939,20 @@ window.addEventListener('message', async function(event) {
 async function scanGoogleAccount(progressCb) {
     var dr = getSelectedDates();
     var scanCacheKey = buildGcScanCacheKey(dr);
-    setPortalLoadState('loading', 'Loading Google optimizer...');
-    progressCb('Fetching Google Ads insights, Metabase funnel, and Google settings layers...');
+    var cachedScan = getGcCachedScan(dr);
+    if (cachedScan && cachedScan.scan) {
+        GC_OPT_SCAN = cachedScan.scan;
+        GC_OPT_SCAN_ERROR = GC_OPT_SCAN_ERROR || 'Showing cached Google scan while fresh data loads.';
+        setPortalLoadState('cached', 'Cached Google optimizer');
+        if (typeof progressCb === 'function') progressCb('Showing cached Google scan while fresh data loads...');
+        if (typeof window.renderGcOptimizer === 'function') window.renderGcOptimizer();
+    }
+    if (!(cachedScan && cachedScan.scan)) {
+        setPortalLoadState('loading', 'Loading Google optimizer...');
+        progressCb('Fetching Google Ads insights, Metabase funnel, and Google settings layers...');
+    } else if (typeof progressCb === 'function') {
+        progressCb('Refreshing Google data in the background...');
+    }
 
     function safeFetchJson(url, options, fallback) {
         return fetch(url, options).then(function(r) {
@@ -4069,6 +4081,13 @@ async function scanGoogleAccount(progressCb) {
         searchTermsRes = auxResults[5] && auxResults[5].status === 'fulfilled' ? auxResults[5].value : { success: false, data: [] };
         assetGroupsRes = auxResults[6] && auxResults[6].status === 'fulfilled' ? auxResults[6].value : { success: false, data: [] };
     } catch (err) {
+        if (cachedScan && cachedScan.scan) {
+            GC_OPT_SCAN = cachedScan.scan;
+            GC_OPT_SCAN_ERROR = 'Showing cached Google scan while fresh data loads or recovers: ' + err.message;
+            setPortalLoadState('cached', 'Showing cached Google scan while fresh data loads');
+            if (typeof progressCb === 'function') progressCb('Fresh Google scan failed, keeping cached scan on screen...');
+            return GC_OPT_SCAN;
+        }
         throw new Error('Failed to fetch data: ' + err.message);
     }
 
@@ -4863,7 +4882,7 @@ window.renderGcOptimizer = function() {
     var optimizerUiMode = GC_OPT_EMBED_MODE === 'optimizer' || GC_OPT_URL_PARAMS.get('view') === 'gcOptimizer';
     clearUntrustworthyOptimizerScan();
 
-    if (optimizerUiMode && !GC_OPT_SCAN && !GC_OPT_AUTO_SCAN_PENDING) {
+    if (optimizerUiMode && !GC_OPT_SCAN) {
         var cached = getGcCachedScan(getSelectedDates());
         if (cached && cached.scan && isTrustworthyOptimizerScan(cached.scan)) {
             GC_OPT_SCAN = cached.scan;

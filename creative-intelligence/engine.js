@@ -5,6 +5,7 @@ const {
     upsertRoasTracker, updateRoasTrackerPrediction, updateRoasTrackerAccuracy,
     getRoasTrackerAds, getUnpredictedTrackerAds,
 } = require('./db');
+const { cachedAsync } = require('../utils/ai-cache');
 
 module.exports = function (config) {
     // config = { metaApiBase, metaAdAccountId, metaAccessToken, metaAppSecretProof,
@@ -749,22 +750,27 @@ Provide a comprehensive analysis in JSON format:
   "budget_reallocation": [{ "ad_name": "", "current_spend": X, "suggested_action": "increase/decrease/pause/kill", "reason": "" }]
 }`;
 
-            const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${OPENAI_API_KEY}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    model: 'gpt-5.4',
-                    messages: [{ role: 'user', content: prompt }],
-                    temperature: 0.3,
-                    response_format: { type: 'json_object' },
-                }),
-            });
+            const analysisText = await cachedAsync(
+                ['ci.engine.runGptAnalysis', dateFrom, dateTo, prompt],
+                async () => {
+                    const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            model: 'gpt-5.4',
+                            messages: [{ role: 'user', content: prompt }],
+                            temperature: 0.3,
+                            response_format: { type: 'json_object' },
+                        }),
+                    });
 
-            const gptData = await gptRes.json();
-            const analysisText = gptData.choices?.[0]?.message?.content || '{}';
+                    const gptData = await gptRes.json();
+                    return gptData.choices?.[0]?.message?.content || '{}';
+                }
+            );
             let parsed;
             try { parsed = JSON.parse(analysisText); } catch { parsed = { raw: analysisText }; }
 

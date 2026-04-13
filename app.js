@@ -3685,18 +3685,31 @@ window.fetchWeeklyBreakdown = async function () {
         // This is slower in theory, but much more reliable on local startup.
         status.textContent = explicitWeeklyRange ? 'Fetching weekly buckets for selected date range from Meta + Metabase...' : 'Fetching 5 weekly buckets from Meta + Metabase...';
         const bucketResults = [];
+        const fetchJsonSafe = async (url, body, cacheKey) => {
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return await res.json();
+            } catch (err) {
+                const cached = readJsonCache(cacheKey);
+                if (cached && cached.data) {
+                    return cached.data;
+                }
+                return { success: false, error: err.message };
+            }
+        };
         for (let idx = 0; idx < buckets.length; idx++) {
             const bkt = buckets[idx];
             status.textContent = `Fetching weekly bucket ${idx + 1}/${buckets.length}: ${bkt.label}...`;
+            const bucketMetaCacheKey = `creativePortal.meta.weekly.bucket.${bkt.from}.${bkt.to}`;
+            const bucketMbCacheKey = `creativePortal.metabase.weekly.bucket.${bkt.from}.${bkt.to}`;
             const [metaRes, mbRes] = await Promise.all([
-                fetch(`${TREE_SERVER}/api/meta/ad-insights-daily`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dateFrom: bkt.from, dateTo: bkt.to }),
-                }).then(r => r.json()),
-                fetch(`${TREE_SERVER}/api/metabase/ad-funnel`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dateFrom: bkt.from, dateTo: bkt.to }),
-                }).then(r => r.json()),
+                fetchJsonSafe(`${TREE_SERVER}/api/meta/ad-insights-daily`, { dateFrom: bkt.from, dateTo: bkt.to }, bucketMetaCacheKey),
+                fetchJsonSafe(`${TREE_SERVER}/api/metabase/ad-funnel`, { dateFrom: bkt.from, dateTo: bkt.to }, bucketMbCacheKey),
             ]);
             console.log(`[Weekly] Bucket ${idx} (${bkt.label}): Meta=${metaRes.total || 0} MB=${mbRes.total || 0}`);
             bucketResults.push({ meta: metaRes, mb: mbRes, bucketIdx: idx });

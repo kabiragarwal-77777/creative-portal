@@ -382,7 +382,7 @@
                         <input type="date" id="gcTreeDateTo" style="background:#1e1e2e; border:1px solid #444; color:#e0e0e0; padding:6px 10px; border-radius:6px;">
                         <label style="display:flex; align-items:center; gap:4px; cursor:pointer; font-size:13px; color:#aaa;"><input type="checkbox" id="gcTreeSpendFilter" checked> With Spend Only</label>
                         <button class="btn btn-primary" onclick="gcFetchCampaignTree()" id="gcTreeAnalyzeBtn">&#9889; Analyze</button>
-                        <button class="btn btn-secondary" onclick="gcFetchWeeklyBreakdown()" id="gcWeeklyBtn">&#128197; Weekly Breakdown</button>
+                        <button class="btn btn-secondary" onclick="fetchWeeklyBreakdown()" id="gcWeeklyBtn">&#128197; Weekly Breakdown</button>
                         <span id="gcTreeStatus" style="color:#888; font-size:13px;"></span>
                     </div>
                     <div id="gcTreeSummary" style="display:none; margin-bottom:20px;"></div>
@@ -462,11 +462,11 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="google-creative/public/gc-app.js?v=34"></script>
+    <script src="google-creative/public/gc-app.js?v=36"></script>
     <script src="google-creative/public/gc-intelligence.js?v=2" defer></script>
     <script src="google-creative/public/gc-simulator.js" defer></script>
     <script src="google-creative/public/gc-recommendations.js" defer></script>
-    <script src="google-creative/public/gc-optimizer.js?v=41" defer></script>
+    <script src="google-creative/public/gc-optimizer.js?v=42" defer></script>
 
     <!-- Audience Testing Layer (Google) -->
     <script src="audience-testing/public/at-shared.js" defer></script>

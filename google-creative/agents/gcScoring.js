@@ -4,6 +4,7 @@
  */
 
 const { getGcDb } = require('../db/gc-db');
+const { cachedAsync } = require('../../utils/ai-cache');
 
 const ASSET_LABEL_SCORES = {
     'BEST': 1.0,
@@ -151,31 +152,36 @@ module.exports = function(config) {
         }));
 
         try {
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${openaiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: 'gpt-5.4-mini',
-                    messages: [
-                        {
-                            role: 'system',
-                            content: 'You are a Google Ads performance analyst. Analyze correlations between creative signals and performance scores.'
+            const content = await cachedAsync(
+                ['gcScoring.runCorrelationAnalysis', top20, bottom20],
+                async () => {
+                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${openaiKey}`,
+                            'Content-Type': 'application/json'
                         },
-                        {
-                            role: 'user',
-                            content: `Top 20 by G-CPS: ${JSON.stringify(top20)}\nBottom 20 by G-CPS: ${JSON.stringify(bottom20)}\nFind patterns. Return JSON: { "winning_patterns": [...], "losing_patterns": [...], "key_correlations": [...] }`
-                        }
-                    ],
-                    temperature: 0.3,
-                    max_completion_tokens: 2000
-                })
-            });
+                        body: JSON.stringify({
+                            model: 'gpt-5.4-mini',
+                            messages: [
+                                {
+                                    role: 'system',
+                                    content: 'You are a Google Ads performance analyst. Analyze correlations between creative signals and performance scores.'
+                                },
+                                {
+                                    role: 'user',
+                                    content: `Top 20 by G-CPS: ${JSON.stringify(top20)}\nBottom 20 by G-CPS: ${JSON.stringify(bottom20)}\nFind patterns. Return JSON: { "winning_patterns": [...], "losing_patterns": [...], "key_correlations": [...] }`
+                                }
+                            ],
+                            temperature: 0.3,
+                            max_completion_tokens: 2000
+                        })
+                    });
 
-            const data = await response.json();
-            const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+                    const data = await response.json();
+                    return data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+                }
+            );
             if (!content) return null;
 
             // Extract JSON from response (handle markdown fences)

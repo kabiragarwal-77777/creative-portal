@@ -1,5 +1,6 @@
 ﻿const db = require('./db');
 const path = require('path');
+const { cachedAsync } = require('../utils/ai-cache');
 
 module.exports = function (config) {
     const OPENAI_API_KEY = config.openaiApiKey || '';
@@ -399,27 +400,32 @@ Return ONLY valid JSON:
 }`;
 
         try {
-            const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${OPENAI_API_KEY}`,
-                },
-                body: JSON.stringify({
-                    model: 'gpt-5.4-mini',
-                    messages: [{ role: 'user', content: prompt }],
-                    temperature: 0.3,
-                    response_format: { type: 'json_object' },
-                }),
-            });
+            const content = await cachedAsync(
+                ['predictor.predictNewAd', adSnapshot?.ad_id || adSnapshot?.ad_name || 'unknown', prompt],
+                async () => {
+                    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                        },
+                        body: JSON.stringify({
+                            model: 'gpt-5.4-mini',
+                            messages: [{ role: 'user', content: prompt }],
+                            temperature: 0.3,
+                            response_format: { type: 'json_object' },
+                        }),
+                    });
 
-            if (!resp.ok) {
-                console.error('[predictor] AI prediction API error:', resp.status);
-                return null;
-            }
+                    if (!resp.ok) {
+                        console.error('[predictor] AI prediction API error:', resp.status);
+                        return null;
+                    }
 
-            const data = await resp.json();
-            const content = data.choices?.[0]?.message?.content;
+                    const data = await resp.json();
+                    return data.choices?.[0]?.message?.content || null;
+                }
+            );
             if (!content) return null;
 
             const parsed = JSON.parse(content);
@@ -1302,27 +1308,32 @@ Respond in JSON with these fields:
 - confidence_note: how reliable this prediction is and why`;
 
         try {
-            const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${OPENAI_API_KEY}`,
-                },
-                body: JSON.stringify({
-                    model: 'gpt-5.4',
-                    messages: [{ role: 'user', content: prompt }],
-                    temperature: 0.3,
-                    response_format: { type: 'json_object' },
-                }),
-            });
+            const content = await cachedAsync(
+                ['predictor.enhanceWithGpt', prediction?.ad_id || adSnapshot?.ad_id || adSnapshot?.ad_name || 'unknown', prompt],
+                async () => {
+                    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                        },
+                        body: JSON.stringify({
+                            model: 'gpt-5.4',
+                            messages: [{ role: 'user', content: prompt }],
+                            temperature: 0.3,
+                            response_format: { type: 'json_object' },
+                        }),
+                    });
 
-            if (!resp.ok) {
-                console.error('[predictor] GPT API error:', resp.status, await resp.text());
-                return prediction;
-            }
+                    if (!resp.ok) {
+                        console.error('[predictor] GPT API error:', resp.status, await resp.text());
+                        return null;
+                    }
 
-            const data = await resp.json();
-            const content = data.choices?.[0]?.message?.content;
+                    const data = await resp.json();
+                    return data.choices?.[0]?.message?.content || null;
+                }
+            );
             if (content) {
                 prediction.gpt_qualitative = content;
             }

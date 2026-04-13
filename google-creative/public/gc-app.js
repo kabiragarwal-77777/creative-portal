@@ -2383,16 +2383,28 @@ window.fetchWeeklyBreakdown = async function () {
     try {
         status.textContent = explicitWeeklyRange ? 'Fetching weekly buckets for selected date range from Google Ads + Metabase...' : 'Fetching 5 weekly buckets from Google Ads + Metabase...';
 
+        const fetchJsonSafe = async (url, body, cacheKey) => {
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return await res.json();
+            } catch (err) {
+                const cached = readGoogleViewCache(GC_PORTAL_WEEKLY_CACHE_PREFIX, cacheKey);
+                if (cached && cached.data) return cached.data;
+                return { success: false, error: err.message };
+            }
+        };
+
         const bucketResults = await Promise.all(buckets.map(async (bkt, idx) => {
+            const bucketGoogleCacheKey = `${dateFrom}.${dateTo}.${idx}.google`;
+            const bucketMbCacheKey = `${dateFrom}.${dateTo}.${idx}.mb`;
             const [googleRes, mbRes] = await Promise.all([
-                fetch(`${TREE_SERVER}/api/google/ad-insights-daily`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dateFrom: bkt.from, dateTo: bkt.to }),
-                }).then(r => r.json()),
-                fetch(`${TREE_SERVER}/api/google/ad-funnel`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dateFrom: bkt.from, dateTo: bkt.to }),
-                }).then(r => r.json()),
+                fetchJsonSafe(`${TREE_SERVER}/api/google/ad-insights-daily`, { dateFrom: bkt.from, dateTo: bkt.to }, bucketGoogleCacheKey),
+                fetchJsonSafe(`${TREE_SERVER}/api/google/ad-funnel`, { dateFrom: bkt.from, dateTo: bkt.to }, bucketMbCacheKey),
             ]);
             console.log(`[Weekly] Bucket ${idx} (${bkt.label}): Google=${googleRes.total || 0} MB=${mbRes.total || 0}`);
             return { google: googleRes, mb: mbRes, bucketIdx: idx };

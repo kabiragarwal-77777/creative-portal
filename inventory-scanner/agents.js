@@ -2070,13 +2070,23 @@ Return ONLY the JSON array.`
       INSERT INTO onboarding_guides (id, inventory_id, step_number, step_title, step_description,
         estimated_time, contact_name, contact_email, contact_phone, contact_url,
         minimum_commitment, documents_required, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `).run(
-      uuidv4(), inventoryId, step.step_number, step.step_title, step.step_description,
-      step.estimated_time, step.contact_name || null, step.contact_email || null,
-      step.contact_phone || null, step.contact_url || null,
-      step.minimum_commitment || null, step.documents_required || null
-    );
+      VALUES ($id, $inventory_id, $step_number, $step_title, $step_description,
+        $estimated_time, $contact_name, $contact_email, $contact_phone, $contact_url,
+        $minimum_commitment, $documents_required, datetime('now'))
+    `).run({
+      id: uuidv4(),
+      inventory_id: inventoryId,
+      step_number: step.step_number,
+      step_title: step.step_title,
+      step_description: step.step_description,
+      estimated_time: step.estimated_time,
+      contact_name: step.contact_name || null,
+      contact_email: step.contact_email || null,
+      contact_phone: step.contact_phone || null,
+      contact_url: step.contact_url || null,
+      minimum_commitment: step.minimum_commitment || null,
+      documents_required: step.documents_required ? JSON.stringify(step.documents_required) : null,
+    });
   }
 
   return guideSteps;

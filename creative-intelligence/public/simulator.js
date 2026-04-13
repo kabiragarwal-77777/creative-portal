@@ -243,9 +243,8 @@
                 }
             });
 
-        if (Date.now() - _lastRefreshRequestAt > 15 * 60 * 1000) {
-            runRefresh(false);
-        }
+        // Do not auto-trigger the heavy refresh route on page load.
+        // Manual refresh stays available via the button.
     }
 
     function runRefresh(manual) {
@@ -267,6 +266,12 @@
 
                 if (!result.success) {
                     showFlash('Refresh failed: ' + (result.error || 'Unknown error'), 'var(--red, #ef4444)');
+                    return;
+                }
+
+                if (result.data && result.data.queued) {
+                    showFlash('Refresh queued in background. Cached data remains visible until rebuild lands.', 'var(--green, #10b981)');
+                    fetchDashboard();
                     return;
                 }
 

@@ -5,38 +5,43 @@
  */
 
 const { getGcDb } = require('../db/gc-db');
+const { cachedAsync } = require('../../utils/ai-cache');
 
 const BRIEF_TYPES = ['rsa', 'video', 'pmax'];
 
 // ── OpenAI helper ───────────────────────────────────────────────────────────
 
 async function callOpenAI(systemPrompt, userPrompt, apiKey) {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            model: 'gpt-5.4-mini',
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-            ],
-            temperature: 0.7,
-            max_completion_tokens: 4000
-        })
-    });
+    const raw = await cachedAsync(
+        ['gcRecommendations.callOpenAI', systemPrompt, userPrompt],
+        async () => {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'gpt-5.4-mini',
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt }
+                    ],
+                    temperature: 0.7,
+                    max_completion_tokens: 4000
+                })
+            });
 
-    if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`OpenAI API error ${response.status}: ${errText}`);
-    }
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`OpenAI API error ${response.status}: ${errText}`);
+            }
 
-    const data = await response.json();
-    const raw = (data.choices?.[0]?.message?.content || '').trim();
+            const data = await response.json();
+            return (data.choices?.[0]?.message?.content || '').trim();
+        }
+    );
 
-    // Strip markdown fences if present
     const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
     try {
         return JSON.parse(cleaned);

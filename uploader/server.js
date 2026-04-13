@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { pipeline } = require('stream/promises');
+const { redisGetJson, redisSetJson, redisScan } = require('../utils/redis-cache');
 let sharp = null;
 try { sharp = require('sharp'); } catch (_) { /* optional for image normalization */ }
 
@@ -46,6 +47,9 @@ try { OpenAI = require('openai'); } catch(e) { console.warn('OpenAI SDK not inst
 const OPTIMIZER_BRAIN_CACHE = new Map();
 const OPTIMIZER_BRAIN_CACHE_TTL_MS = 15 * 60 * 1000;
 const OPTIMIZER_BRAIN_CACHE_VERSION = 3;
+const AI_ANALYZE_CACHE = new Map();
+const AI_ANALYZE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const REDIS_CACHE_PREFIX = 'creative-portal';
 
 const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID || '';
 const GOOGLE_SHEET_TAB = process.env.GOOGLE_SHEET_TAB || '';
@@ -60,6 +64,76 @@ const METABASE_URL = 'https://analytics.univest.in';
 const ASSET_UPLOAD_CACHE_PATH = path.join(__dirname, 'asset-upload-cache.json');
 const ASSET_UPLOAD_CACHE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 let assetUploadCache = null;
+let creativeDataCacheMirror = Object.create(null);
+
+function portalRedisKey(scope, key) {
+    return `${REDIS_CACHE_PREFIX}:${scope}:${key}`;
+}
+
+async function hydratePortalCachesFromRedis() {
+    try {
+        const apiKeys = await redisScan(`${REDIS_CACHE_PREFIX}:api:*`);
+        for (const fullKey of apiKeys) {
+            const key = fullKey.slice(`${REDIS_CACHE_PREFIX}:api:`.length);
+            const cached = await redisGetJson(fullKey);
+            if (cached && cached.data && cached.ts) {
+                _apiCache[key] = cached;
+            }
+        }
+    } catch (err) {
+        console.warn(`[RedisCache] API cache hydrate failed: ${err.message}`);
+    }
+
+    try {
+        const brainKeys = await redisScan(`${REDIS_CACHE_PREFIX}:optimizer-brain:*`);
+        for (const fullKey of brainKeys) {
+            const key = fullKey.slice(`${REDIS_CACHE_PREFIX}:optimizer-brain:`.length);
+            const cached = await redisGetJson(fullKey);
+            if (cached && cached.value) {
+                OPTIMIZER_BRAIN_CACHE.set(key, cached);
+            }
+        }
+    } catch (err) {
+        console.warn(`[RedisCache] Optimizer brain hydrate failed: ${err.message}`);
+    }
+
+    try {
+        const aiKeys = await redisScan(`${REDIS_CACHE_PREFIX}:ai-analyze:*`);
+        for (const fullKey of aiKeys) {
+            const key = fullKey.slice(`${REDIS_CACHE_PREFIX}:ai-analyze:`.length);
+            const cached = await redisGetJson(fullKey);
+            if (cached && cached.value) {
+                AI_ANALYZE_CACHE.set(key, cached);
+            }
+        }
+    } catch (err) {
+        console.warn(`[RedisCache] AI analyze hydrate failed: ${err.message}`);
+    }
+
+    try {
+        const assetCache = await redisGetJson(portalRedisKey('asset-upload', 'cache'));
+        if (assetCache && assetCache.items) {
+            assetUploadCache = assetCache;
+        }
+    } catch (err) {
+        console.warn(`[RedisCache] Asset cache hydrate failed: ${err.message}`);
+    }
+
+    try {
+        const creativeKeys = await redisScan(`${REDIS_CACHE_PREFIX}:ci-data:*`);
+        for (const fullKey of creativeKeys) {
+            const key = fullKey.slice(`${REDIS_CACHE_PREFIX}:ci-data:`.length);
+            const cached = await redisGetJson(fullKey);
+            if (cached && cached.creatives && cached.dateFrom && cached.dateTo) {
+                creativeDataCacheMirror[key] = cached;
+            }
+        }
+    } catch (err) {
+        console.warn(`[RedisCache] Creative data hydrate failed: ${err.message}`);
+    }
+}
+
+let PORTAL_CACHE_HYDRATION = Promise.resolve();
 
 function parseGvizResponse(text) {
     const start = text.indexOf('setResponse(');
@@ -97,6 +171,7 @@ function saveAssetUploadCache() {
     } catch (err) {
         console.warn(`[AssetCache] Failed to save cache: ${err.message}`);
     }
+    void redisSetJson(portalRedisKey('asset-upload', 'cache'), assetUploadCache, ASSET_UPLOAD_CACHE_TTL_MS);
 }
 
 function pruneAssetUploadCache() {
@@ -217,6 +292,31 @@ function getOptimizerBrainCache(cacheKey) {
 
 function setOptimizerBrainCache(cacheKey, value) {
     OPTIMIZER_BRAIN_CACHE.set(cacheKey, { ts: Date.now(), value });
+    void redisSetJson(portalRedisKey('optimizer-brain', cacheKey), { ts: Date.now(), value }, OPTIMIZER_BRAIN_CACHE_TTL_MS);
+}
+
+function buildAiAnalyzeCacheKey(system, prompt, maxTokens) {
+    return hashString(stableStringify({
+        version: 1,
+        system: String(system || ''),
+        prompt: String(prompt || ''),
+        max_tokens: Number(maxTokens || 0)
+    }));
+}
+
+function getAiAnalyzeCache(cacheKey) {
+    const cached = AI_ANALYZE_CACHE.get(cacheKey);
+    if (!cached) return null;
+    if ((Date.now() - cached.ts) > AI_ANALYZE_CACHE_TTL_MS) {
+        AI_ANALYZE_CACHE.delete(cacheKey);
+        return null;
+    }
+    return cached.value;
+}
+
+function setAiAnalyzeCache(cacheKey, value) {
+    AI_ANALYZE_CACHE.set(cacheKey, { ts: Date.now(), value });
+    void redisSetJson(portalRedisKey('ai-analyze', cacheKey), { ts: Date.now(), value }, AI_ANALYZE_CACHE_TTL_MS);
 }
 
 function topItems(list, sortKey, limit) {
@@ -378,6 +478,7 @@ function buildOptimizerBrainEvidence(runtimeContext) {
         platform,
         user_request: runtimeContext && runtimeContext.user_request || '',
         request_scope: requestScope,
+        analysis_scope: runtimeContext && runtimeContext.analysis_scope ? runtimeContext.analysis_scope : null,
         target_slice: targetSlice,
         historical_winners: historicalWinners,
         weak_points: weakPoints,
@@ -1226,7 +1327,13 @@ app.get('/api/custom-audiences', async (req, res) => {
         });
         res.json({ success: true, audiences: data.data || [] });
     } catch (err) {
-        res.status(500).json({ success: false, error: err.message, metaError: err.metaError });
+        console.warn('[custom-audiences] Soft-failing enrichment:', err.message);
+        res.json({
+            success: true,
+            audiences: [],
+            warning: `Custom audiences unavailable: ${err.message}`,
+            metaError: err.metaError || null
+        });
     }
 });
 
@@ -3065,6 +3172,9 @@ console.log('[Alert Cron] Scheduled daily at 9:00 AM IST');
 
 // In-memory cache for heavy API calls (30-min TTL default)
 const _apiCache = {};
+PORTAL_CACHE_HYDRATION = hydratePortalCachesFromRedis().catch(err => {
+    console.warn(`[RedisCache] Initial hydrate failed: ${err.message}`);
+});
 function getCached(key, maxAgeMs = 1800000) {
     const entry = _apiCache[key];
     if (entry && Date.now() - entry.ts < maxAgeMs) return entry.data;
@@ -3074,7 +3184,11 @@ function getCacheAge(key) {
     const entry = _apiCache[key];
     return entry ? Date.now() - entry.ts : null;
 }
-function setCache(key, data) { _apiCache[key] = { data, ts: Date.now() }; }
+function setCache(key, data) {
+    const payload = { data, ts: Date.now() };
+    _apiCache[key] = payload;
+    void redisSetJson(portalRedisKey('api', key), payload, 30 * 60 * 1000);
+}
 
 function extractMetaInstallMetrics(row) {
     const actions = row.actions || [];
@@ -3228,15 +3342,24 @@ async function fetchMetaInsightsRows({
 }
 
 // Force clear all caches
-app.post('/api/cache/clear', (req, res) => {
+app.post('/api/cache/clear', async (req, res) => {
     Object.keys(_apiCache).forEach(k => delete _apiCache[k]);
+    OPTIMIZER_BRAIN_CACHE.clear();
+    AI_ANALYZE_CACHE.clear();
+    creativeDataCacheMirror = Object.create(null);
+    assetUploadCache = null;
     // Delete disk caches
     const ciDir = path.join(__dirname, '..', 'creative-intelligence');
     try {
-        fs.readdirSync(ciDir).filter(f => f.startsWith('insights-cache-') || f.startsWith('funnel-cache-') || f.startsWith('apex-breakdowns-cache-')).forEach(f => {
+        fs.readdirSync(ciDir).filter(f => f.startsWith('insights-cache-') || f.startsWith('funnel-cache-') || f.startsWith('apex-breakdowns-cache-') || f === 'data-cache.json' || f === 'asset-upload-cache.json').forEach(f => {
             try { fs.unlinkSync(path.join(ciDir, f)); } catch(e) {}
         });
     } catch(e) {}
+    try { fs.unlinkSync(path.join(__dirname, 'asset-upload-cache.json')); } catch(e) {}
+    try {
+        const keys = await redisScan(`${REDIS_CACHE_PREFIX}:*`);
+        await Promise.all(keys.map(key => redisDel(key)));
+    } catch (e) {}
     console.log('[Cache] All caches cleared');
     res.json({ success: true, message: 'All caches cleared' });
 });
@@ -3418,7 +3541,12 @@ app.post('/api/meta/ad-insights-daily', async (req, res) => {
             }
         } catch(e2) {}
         console.error('Meta ad-insights-daily error:', err);
-        res.status(500).json({ success: false, error: err.message });
+        res.json({
+            success: true,
+            data: [],
+            total: 0,
+            warning: `Meta insights unavailable: ${err.message}`
+        });
     }
 });
 
@@ -4240,6 +4368,15 @@ const CI_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Helper: read cached creative data if fresh
 function getCachedCreativeData(dateFrom, dateTo) {
+    const mirrorKey = `${dateFrom}|${dateTo}`;
+    if (creativeDataCacheMirror[mirrorKey] && creativeDataCacheMirror[mirrorKey].creatives) {
+        const mirrored = creativeDataCacheMirror[mirrorKey];
+        const age = Date.now() - new Date(mirrored.cachedAt).getTime();
+        if (age < CI_CACHE_MAX_AGE_MS) {
+            console.log(`[ci/cache] Using mirrored Redis data (${mirrored.creatives.length} creatives, cached ${Math.round(age / 60000)}min ago)`);
+            return mirrored.creatives;
+        }
+    }
     try {
         if (!fs.existsSync(CI_DATA_CACHE_FILE)) return null;
         const raw = JSON.parse(fs.readFileSync(CI_DATA_CACHE_FILE, 'utf-8'));
@@ -4261,13 +4398,17 @@ function getCachedCreativeData(dateFrom, dateTo) {
 
 // Helper: save creative data to cache
 function saveCacheCreativeData(dateFrom, dateTo, creatives) {
+    const mirrorKey = `${dateFrom}|${dateTo}`;
+    const payload = {
+        dateFrom, dateTo,
+        cachedAt: new Date().toISOString(),
+        creativeCount: creatives.length,
+        creatives
+    };
     try {
-        fs.writeFileSync(CI_DATA_CACHE_FILE, JSON.stringify({
-            dateFrom, dateTo,
-            cachedAt: new Date().toISOString(),
-            creativeCount: creatives.length,
-            creatives
-        }));
+        fs.writeFileSync(CI_DATA_CACHE_FILE, JSON.stringify(payload));
+        creativeDataCacheMirror[mirrorKey] = payload;
+        void redisSetJson(portalRedisKey('ci-data', mirrorKey), payload, CI_CACHE_MAX_AGE_MS);
         console.log(`[ci/cache] Saved ${creatives.length} creatives to cache`);
     } catch (e) {
         console.warn('[ci/cache] Failed to save cache:', e.message);
@@ -5574,6 +5715,12 @@ app.post('/api/ai/analyze', async (req, res) => {
             return res.status(500).json({ success: false, error: 'OpenAI not configured. Set OPENAI_API_KEY env var.' });
         }
 
+        const cacheKey = buildAiAnalyzeCacheKey(system, prompt, max_tokens || 0);
+        const cached = getAiAnalyzeCache(cacheKey);
+        if (cached) {
+            return res.json(Object.assign({ success: true, cached: true }, cached));
+        }
+
         const openai = new OpenAI({ apiKey: OPENAI_API_KEY, timeout: 240000 });
         console.log(`[ai/analyze] Running AI analysis (prompt length: ${prompt.length} chars)...`);
 
@@ -5589,7 +5736,9 @@ app.post('/api/ai/analyze', async (req, res) => {
 
         const content = completion.choices[0].message.content;
         console.log(`[ai/analyze] Done. Response length: ${content.length} chars`);
-        res.json({ success: true, content: content });
+        const payload = { success: true, content: content };
+        setAiAnalyzeCache(cacheKey, payload);
+        res.json(payload);
     } catch (err) {
         console.error('[ai/analyze] Error:', err.message);
         res.status(500).json({ success: false, error: err.message });
@@ -6217,6 +6366,15 @@ try {
     app.use('/api/meta', scannerRoutes.metaRouter);
     app.use('/api/google', scannerRoutes.googleRouter);
     app.use('/api/synthesis', scannerRoutes.synthesisRouter);
+    app.get('/inventory-scanner/scanner-catalog.json', (req, res) => {
+        const catalogPath = path.join(parentDir, 'inventory-scanner', 'public', 'data', 'scanner-catalog.json');
+        res.sendFile(catalogPath, err => {
+            if (err) {
+                console.error('[Scanner] Catalog alias failed:', err.message);
+                res.status(err.statusCode || 404).json({ success: false, error: 'scanner catalog not found' });
+            }
+        });
+    });
 
     // Scheduler routes
     app.get('/api/scheduler/status', (req, res) => {
@@ -6885,33 +7043,35 @@ try {
 if (process.env.VERCEL) {
     module.exports = app;
 } else {
-    app.listen(PORT, () => {
-        console.log(`Meta Ad Upload Server running on http://localhost:${PORT}`);
-        console.log(`Ad Account: ${META_AD_ACCOUNT_ID}`);
-        console.log(`API Version: ${META_API_VERSION}`);
+    PORTAL_CACHE_HYDRATION.finally(() => {
+        app.listen(PORT, () => {
+            console.log(`Meta Ad Upload Server running on http://localhost:${PORT}`);
+            console.log(`Ad Account: ${META_AD_ACCOUNT_ID}`);
+            console.log(`API Version: ${META_API_VERSION}`);
 
-        // Pre-warm cache after 5 seconds (let server settle + avoid competing with ROAS tracker)
-        setTimeout(() => {
-            const warmTo = new Date().toISOString().slice(0, 10);
-            const warmFrom = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-            console.log(`[Cache] Pre-warming insights cache (${warmFrom} to ${warmTo})...`);
-            Promise.all([
-                fetch(`http://localhost:${PORT}/api/meta/ad-insights-daily`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dateFrom: warmFrom, dateTo: warmTo })
-                }).then(r => r.json()).then(d => {
-                    console.log(`[Cache] Insights pre-warmed: ${d.total || 0} rows`);
-                }),
-                fetch(`http://localhost:${PORT}/api/metabase/ad-funnel`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dateFrom: warmFrom, dateTo: warmTo })
-                }).then(r => r.json()).then(d => {
-                    console.log(`[Cache] Funnel pre-warmed: ${d.total || 0} rows`);
-                }),
-                fetch(`http://localhost:${PORT}/api/meta/ads-status`).then(r => r.json()).then(d => {
-                    console.log(`[Cache] Ads-status pre-warmed: ${d.total || 0} ads`);
-                })
-            ]).catch(e => console.warn('[Cache] Pre-warm failed:', e.message));
-        }, 5000);
+            // Pre-warm cache after 5 seconds (let server settle + avoid competing with ROAS tracker)
+            setTimeout(() => {
+                const warmTo = new Date().toISOString().slice(0, 10);
+                const warmFrom = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+                console.log(`[Cache] Pre-warming insights cache (${warmFrom} to ${warmTo})...`);
+                Promise.all([
+                    fetch(`http://localhost:${PORT}/api/meta/ad-insights-daily`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ dateFrom: warmFrom, dateTo: warmTo })
+                    }).then(r => r.json()).then(d => {
+                        console.log(`[Cache] Insights pre-warmed: ${d.total || 0} rows`);
+                    }),
+                    fetch(`http://localhost:${PORT}/api/metabase/ad-funnel`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ dateFrom: warmFrom, dateTo: warmTo })
+                    }).then(r => r.json()).then(d => {
+                        console.log(`[Cache] Funnel pre-warmed: ${d.total || 0} rows`);
+                    }),
+                    fetch(`http://localhost:${PORT}/api/meta/ads-status`).then(r => r.json()).then(d => {
+                        console.log(`[Cache] Ads-status pre-warmed: ${d.total || 0} ads`);
+                    })
+                ]).catch(e => console.warn('[Cache] Pre-warm failed:', e.message));
+            }, 5000);
+        });
     });
 }

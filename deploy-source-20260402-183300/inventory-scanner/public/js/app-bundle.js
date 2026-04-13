@@ -1220,13 +1220,45 @@ const state = {
 };
 
 // API helper
+function resolveAuthHeader() {
+  const candidates = [
+    window.__ANALYTICS_AUTH_TOKEN__,
+    window.__AUTH_TOKEN__,
+    window.__PORTAL_AUTH_TOKEN__,
+    localStorage.getItem('analytics_auth_token'),
+    localStorage.getItem('auth_token'),
+    localStorage.getItem('portal_auth_token'),
+    localStorage.getItem('api_token'),
+    sessionStorage.getItem('analytics_auth_token'),
+    sessionStorage.getItem('auth_token'),
+    sessionStorage.getItem('portal_auth_token')
+  ];
+  const token = candidates.find(v => typeof v === 'string' && v.trim());
+  if (!token) return '';
+  return token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+}
+
 async function api(path, options = {}) {
   try {
+    const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+    const authHeader = resolveAuthHeader();
+    if (authHeader && !headers.Authorization) headers.Authorization = authHeader;
     const res = await fetch(`/api${path}`, {
-      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      headers,
       ...options
     });
-    const json = await res.json();
+    let json = null;
+    try {
+      json = await res.json();
+    } catch {
+      json = null;
+    }
+    if (res.status === 401) {
+      console.warn(`API Unauthorized [${path}]`);
+      return null;
+    }
+    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
     if (!json.success) throw new Error(json.error || 'API error');
     return json.data;
   } catch (err) {

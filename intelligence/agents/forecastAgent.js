@@ -6,6 +6,7 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '..', '.env') });
 const OpenAI = require('openai');
 const { db, getAll, getOne, run, getRowCount } = require('../db');
+const { cachedAsync } = require('../../utils/ai-cache');
 
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -266,17 +267,21 @@ Predict the following and return ONLY valid JSON (no markdown):
   "reasoning_90d": "<1-2 sentences>"
 }`;
 
-    const response = await Promise.race([
-      openai.chat.completions.create({
-        model: 'gpt-5.4-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-        max_completion_tokens: 800
-      }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('OpenAI timeout (30s)')), 30000))
-    ]);
-
-    const raw = response.choices[0].message.content.trim();
+    const raw = await cachedAsync(
+      ['forecastAgent.forecastCreativeROAS', adId, prompt],
+      async () => {
+        const response = await Promise.race([
+          openai.chat.completions.create({
+            model: 'gpt-5.4-mini',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+            max_completion_tokens: 800
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('OpenAI timeout (30s)')), 30000))
+        ]);
+        return response.choices[0].message.content.trim();
+      }
+    );
     try {
       prediction = JSON.parse(raw);
     } catch {

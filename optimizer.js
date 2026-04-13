@@ -1618,6 +1618,13 @@ async function enrichOptimizerSettings(scanData, commandType) {
 async function scanAccount(progressCb, rangeOverride, options) {
     options = options || {};
     var dr = rangeOverride || getSelectedDates();
+    var cachedScan = getCachedOptimizerScan(dr);
+    if (cachedScan) {
+        window.OPTIMIZER_SCAN = cachedScan;
+        setPortalLoadState('cached', 'Showing cached scan while fresh data loads');
+        if (typeof progressCb === 'function') progressCb('Showing cached scan while fresh data loads...');
+        if (typeof renderOptimizer === 'function') renderOptimizer();
+    }
     progressCb('Fetching data from Meta API + Metabase...');
 
     var metaRes, funnelRes, adsStatusRes;
@@ -1637,6 +1644,13 @@ async function scanAccount(progressCb, rangeOverride, options) {
         funnelRes = results[1];
         adsStatusRes = results[2];
     } catch (err) {
+        if (cachedScan) {
+            window.OPTIMIZER_SCAN = cachedScan;
+            window.OPTIMIZER_SCAN_ERROR = 'Showing cached scan while fresh data loads or recovers: ' + err.message;
+            setPortalLoadState('cached', 'Showing cached scan while fresh data loads');
+            if (typeof progressCb === 'function') progressCb('Fresh scan failed, keeping cached scan on screen...');
+            return cachedScan;
+        }
         throw new Error('Failed to fetch data: ' + err.message);
     }
 
@@ -6604,6 +6618,115 @@ function buildApexRuntimeContext(scanData, benchmarks, campaignActions, adsetAct
     };
 }
 
+function textIncludesAny(value, terms) {
+    var text = String(value || '').toLowerCase();
+    return (Array.isArray(terms) ? terms : []).some(function(term) {
+        return text.indexOf(String(term || '').toLowerCase()) !== -1;
+    });
+}
+
+function narrowOptimizerRuntimeContextForCommand(runtimeContext) {
+    if (!runtimeContext) return runtimeContext;
+    var target = runtimeContext.request_scope || {};
+    var targetType = String(target.target_type || 'account').toLowerCase();
+    var targetQuery = String(target.target_query || '').trim().toLowerCase();
+    var commandType = String(runtimeContext.command_type || '').toLowerCase();
+    var campaigns = Array.isArray(runtimeContext.campaigns) ? runtimeContext.campaigns.slice() : [];
+    var adSets = Array.isArray(runtimeContext.ad_sets) ? runtimeContext.ad_sets.slice() : [];
+    var ads = Array.isArray(runtimeContext.ads) ? runtimeContext.ads.slice() : [];
+    var analysisScope = {
+        command_type: commandType,
+        target_type: targetType,
+        target_query: target.target_query || '',
+        focus: 'account'
+    };
+
+    function campaignMatches(item) {
+        if (!item) return false;
+        if (!targetQuery) return true;
+        return textIncludesAny(item.name, [targetQuery]) || textIncludesAny(item.id, [targetQuery]);
+    }
+
+    function adsetMatches(item) {
+        if (!item) return false;
+        if (!targetQuery) return true;
+        return textIncludesAny(item.name, [targetQuery]) ||
+            textIncludesAny(item.id, [targetQuery]) ||
+            textIncludesAny(item.campaign_name, [targetQuery]);
+    }
+
+    function adMatches(item) {
+        if (!item) return false;
+        if (!targetQuery) return true;
+        return textIncludesAny(item.name, [targetQuery]) ||
+            textIncludesAny(item.ad_name, [targetQuery]) ||
+            textIncludesAny(item.adset_name, [targetQuery]) ||
+            textIncludesAny(item.campaign_name, [targetQuery]) ||
+            textIncludesAny(item.ad_id, [targetQuery]);
+    }
+
+    if (targetType === 'campaign') {
+        analysisScope.focus = 'campaign';
+        campaigns = campaigns.filter(campaignMatches).slice(0, 4);
+        var campaignNames = campaigns.map(function(c) { return c.name; });
+        adSets = adSets.filter(function(a) {
+            return campaignNames.indexOf(a.campaign_name) !== -1 && (!targetQuery || adsetMatches(a));
+        }).slice(0, 8);
+        var adSetKeys = adSets.map(function(a) { return a.campaign_name + '::' + a.name; });
+        ads = ads.filter(function(ad) {
+            return campaignNames.indexOf(ad.campaign_name) !== -1 &&
+                adSetKeys.indexOf(ad.campaign_name + '::' + ad.adset_name) !== -1 &&
+                adMatches(ad);
+        }).slice(0, 16);
+    } else if (targetType === 'adset') {
+        analysisScope.focus = 'adset';
+        adSets = adSets.filter(adsetMatches).slice(0, 4);
+        var keptCampaignNames = [];
+        adSets.forEach(function(a) {
+            if (keptCampaignNames.indexOf(a.campaign_name) === -1) keptCampaignNames.push(a.campaign_name);
+        });
+        campaigns = campaigns.filter(function(c) {
+            return keptCampaignNames.indexOf(c.name) !== -1 || campaignMatches(c);
+        }).slice(0, 4);
+        var keptAdSetKeys = adSets.map(function(a) { return a.campaign_name + '::' + a.name; });
+        ads = ads.filter(function(ad) {
+            return keptAdSetKeys.indexOf(ad.campaign_name + '::' + ad.adset_name) !== -1 && adMatches(ad);
+        }).slice(0, 12);
+    } else if (targetType === 'ad') {
+        analysisScope.focus = 'ad';
+        ads = ads.filter(adMatches).slice(0, 8);
+        var adCampaignNames = [];
+        var adSetNames = [];
+        ads.forEach(function(ad) {
+            if (ad.campaign_name && adCampaignNames.indexOf(ad.campaign_name) === -1) adCampaignNames.push(ad.campaign_name);
+            var adsetKey = ad.campaign_name + '::' + ad.adset_name;
+            if (ad.adset_name && adSetNames.indexOf(adsetKey) === -1) adSetNames.push(adsetKey);
+        });
+        adSets = adSets.filter(function(a) {
+            return adSetNames.indexOf(a.campaign_name + '::' + a.name) !== -1 || adsetMatches(a);
+        }).slice(0, 4);
+        campaigns = campaigns.filter(function(c) {
+            return adCampaignNames.indexOf(c.name) !== -1 || campaignMatches(c);
+        }).slice(0, 2);
+    } else if (/underperformance_rca|change_impact_analysis|creative_brief|scale_check/.test(commandType)) {
+        analysisScope.focus = 'issue-slice';
+        campaigns = campaigns.slice(0, 8);
+        adSets = adSets.slice(0, 12);
+        ads = ads.slice(0, 20);
+    } else if (/morning_account_review|full_account_review|account_overview|daily_optimisation/.test(commandType)) {
+        analysisScope.focus = 'account';
+        campaigns = campaigns.slice(0, 12);
+        adSets = adSets.slice(0, 24);
+        ads = ads.slice(0, 36);
+    }
+
+    runtimeContext.campaigns = campaigns;
+    runtimeContext.ad_sets = adSets;
+    runtimeContext.ads = ads;
+    runtimeContext.analysis_scope = analysisScope;
+    return runtimeContext;
+}
+
 function buildApexPrompts(runtimeContext) {
     var mode = runtimeContext && runtimeContext.session_mode ? runtimeContext.session_mode : 'daily_review';
     var commandType = runtimeContext && runtimeContext.command_type ? runtimeContext.command_type : 'daily_optimisation';
@@ -7250,8 +7373,12 @@ async function generateOptimizationPlan(scanData) {
     }
 
     var runtimeRange = scanData && scanData.date_range ? scanData.date_range : getSelectedDates();
-    var needExternalContext = /morning_account_review|deep_dive|predict_30_days/.test(String(commandType || ''));
-    var needBreakdowns = commandType !== 'trend_search';
+    var scopedTargetType = String((target && target.type) || 'account').toLowerCase();
+    var needsTargetContext = scopedTargetType !== 'account';
+    var needExternalContext = /morning_account_review|deep_dive|predict_30_days/.test(String(commandType || '')) ||
+        (needsTargetContext && /underperformance_rca|change_impact_analysis|creative_brief|scale_check/.test(String(commandType || '')));
+    var needBreakdowns = /morning_account_review|account_overview|deep_dive|underperformance_rca|change_impact_analysis|creative_brief|scale_check|full_account_review/.test(String(commandType || '')) ||
+        needsTargetContext;
     var contextResults = await Promise.allSettled([
         needExternalContext ? fetchApexExternalContext() : Promise.resolve({
             available: false,
@@ -7286,6 +7413,7 @@ async function generateOptimizationPlan(scanData) {
 
     var runtimeContext = buildApexRuntimeContext(scanData, benchmarks, campaignActions, adsetActions, rulesActions, compactTree, externalContext, breakdownContext);
     if (scoped.targetSummary) runtimeContext.target_scope = scoped.targetSummary;
+    runtimeContext = narrowOptimizerRuntimeContextForCommand(runtimeContext);
     var brainCacheKey = buildOptimizerBrainCacheKey(scanData, window.OPTIMIZER_USER_PROMPT || '', runtimeContext);
     var cachedBrain = getOptimizerBrainCache(brainCacheKey);
     if (cachedBrain) {
@@ -10048,6 +10176,14 @@ function bindScanEvents(container) {
             var prog = document.getElementById('optScanProgress');
             prog.style.display = '';
             try {
+                var cached = getCachedOptimizerScan(getSelectedDates());
+                if (cached) {
+                    window.OPTIMIZER_SCAN = cached;
+                    window.OPTIMIZER_STAGE = 'scan';
+                    setPortalLoadState('cached', 'Showing cached scan while fresh data loads');
+                    if (typeof renderOptimizer === 'function') renderOptimizer();
+                    prog.textContent = 'Showing cached scan while fresh data loads...';
+                }
                 await scanAccount(function(msg) { prog.textContent = msg; });
                 window.OPTIMIZER_STAGE = 'scan';
                 renderOptimizer();

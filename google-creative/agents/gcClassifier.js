@@ -8,6 +8,7 @@
  */
 
 const { getGcDb } = require('../db/gc-db');
+const { cachedAsync } = require('../../utils/ai-cache');
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
@@ -117,31 +118,36 @@ function classifyRSARuleBased(content) {
 // ── AI classification via OpenAI ─────────────────────────────────────────────
 
 async function callOpenAI(systemPrompt, userPrompt) {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            model: 'gpt-5.4-mini',
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt },
-            ],
-            temperature: 0.3,
-            max_completion_tokens: 1000,
-            response_format: { type: 'json_object' },
-        }),
-    });
+    const content = await cachedAsync(
+        ['gcClassifier.callOpenAI', systemPrompt, userPrompt],
+        async () => {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model: 'gpt-5.4-mini',
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt },
+                    ],
+                    temperature: 0.3,
+                    max_completion_tokens: 1000,
+                    response_format: { type: 'json_object' },
+                }),
+            });
 
-    if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`OpenAI API ${response.status}: ${errText}`);
-    }
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`OpenAI API ${response.status}: ${errText}`);
+            }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '{}';
+            const data = await response.json();
+            return data.choices?.[0]?.message?.content || '{}';
+        }
+    );
     return JSON.parse(content);
 }
 

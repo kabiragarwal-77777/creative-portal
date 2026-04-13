@@ -2296,11 +2296,18 @@ if(document.readyState!=='loading')renderModuleE();
 <script>
 (function(){
 var currentFilter='all';
-function getInsights(){return window.UNIVEST_DATA&&window.UNIVEST_DATA.insights||[];}
+function getInsights(){
+  var raw = window.UNIVEST_DATA&&window.UNIVEST_DATA.insights;
+  if (Array.isArray(raw)) return raw;
+  if (raw && Array.isArray(raw.items)) return raw.items;
+  if (raw && Array.isArray(raw.data)) return raw.data;
+  return [];
+}
 function getCompMap(){var m={};(window.UNIVEST_DATA&&window.UNIVEST_DATA.competitors||[]).forEach(function(c){m[c.id]=c;});return m;}
 function isDone(id){return localStorage.getItem('insight_done_'+id)==='yes';}
 function renderSummary(insights){
   var el=document.getElementById('mf-summary-bar');if(!el)return;
+  insights = Array.isArray(insights) ? insights : [];
   var red=insights.filter(function(i){return i.priority==='red';}).length;
   var yellow=insights.filter(function(i){return i.priority==='yellow';}).length;
   var green=insights.filter(function(i){return i.priority==='green';}).length;
