@@ -13,6 +13,10 @@ let currentDataMode = { type: 'na', label: 'Mode: --', detail: '' };
 let currentDiagnostics = { source: 'Google + Metabase', matchedKeys: 0, unmatchedKeys: 0 };
 window.__portalExplicitDateRange = false;
 window.__portalSelectedDateRange = null;
+function portalAuthHeaders(extra) {
+    const base = (window.PortalAuth && typeof window.PortalAuth.getHeaders === 'function') ? window.PortalAuth.getHeaders() : {};
+    return Object.assign({}, base, extra || {});
+}
 const GC_URL_PARAMS = new URLSearchParams(window.location.search || '');
 const GC_INITIAL_VIEW = GC_URL_PARAMS.get('view') || 'gcDashboard';
 const GC_EMBED_MODE = GC_URL_PARAMS.get('embed') || '';
@@ -259,13 +263,13 @@ async function runViewAssistantQuery() {
             if (nextCard) nextCard.style.display = 'none';
             return;
         }
-        const res = await fetch('/api/ai/analyze', {
+        const res = await fetch('api/ai/analyze', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
                 system: 'You are an AI intelligent analyzer for the current Google portal view. Answer like a sharp performance marketing analyst. Prioritize practical decisions, especially scale/cut/debug questions. Return strict JSON with keys answer, checks, next_steps.',
                 prompt: `Active Google portal context:\n${JSON.stringify(context, null, 2)}\n\nUser question:\n${prompt}`,
-                max_tokens: 2200
+                max_tokens: 1800
             })
         });
         const data = await res.json();
@@ -359,17 +363,17 @@ async function fetchLiveData(customDateFrom, customDateTo) {
 
         // Parallel fetch: Google insights + Metabase funnel + Campaign statuses
         const [googleRes, funnelRes, campaignsRes] = await Promise.all([
-            fetch('/api/google/ad-insights-daily', {
+            fetch('api/google/ad-insights-daily', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ dateFrom, dateTo })
             }).then(r => r.json()),
-            fetch('/api/google/ad-funnel', {
+            fetch('api/google/ad-funnel', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ dateFrom, dateTo })
             }).then(r => r.json()),
-            fetch('/api/google/campaigns').then(r => r.json()).catch(() => ({ success: false, data: [] }))
+            fetch('api/google/campaigns', { headers: portalAuthHeaders() }).then(r => r.json()).catch(() => ({ success: false, data: [] }))
         ]);
 
         const googleRows = googleRes.data || [];
@@ -388,11 +392,11 @@ async function fetchLiveData(customDateFrom, customDateTo) {
         campaignsData.forEach(c => { campaignStatusMap[c.campaign_id] = c; });
 
         // Build Metabase daily lookup: date|||campaign_name|||adset_name
-        // Google matches at adset level (no tracker_name/ad_name level)
+        // Google matches at adset level only.
         const mbDaily = {};
         for (const row of funnelRows) {
             const d = String(row.date || '').substring(0, 10);
-            const key = d + '|||' + normalizeGoogleJoinText(row.campaign_name) + '|||' + normalizeGoogleJoinText(row.ad_set_name || row.adgroup_name || row.tracker_name);
+            const key = d + '|||' + normalizeGoogleJoinText(row.campaign_name) + '|||' + normalizeGoogleJoinText(row.ad_set_name || row.adgroup_name);
             if (!mbDaily[key]) {
                 mbDaily[key] = { signups: 0, d0_trial: 0, d0: 0, d0_revenue: 0, d6: 0, d6_revenue: 0, overall_revenue: 0, p0_signup: 0, p1_signup: 0, total_trial: 0, d6_overall_con: 0, d6_overall_revenue: 0, d15_overall_con: 0, d15_overall_revenue: 0, d30_overall_con: 0, d30_overall_revenue: 0, d60_overall_con: 0, d60_overall_revenue: 0 };
             }
@@ -420,10 +424,10 @@ async function fetchLiveData(customDateFrom, customDateTo) {
         // Aggregate per campaign|||adset (adset-level for Google)
         const adAgg = {};
         for (const row of googleRows) {
-            const adUid = normalizeGoogleJoinText(row.campaign_name) + '|||' + normalizeGoogleJoinText(row.adset_name || row.adgroup_name || row.tracker_name);
+            const adUid = normalizeGoogleJoinText(row.campaign_name) + '|||' + normalizeGoogleJoinText(row.adset_name || row.adgroup_name);
             if (!adAgg[adUid]) {
                 adAgg[adUid] = {
-                    adset_name: row.adset_name || row.adgroup_name || row.tracker_name || '',
+                    adset_name: row.adset_name || row.adgroup_name || '',
                     campaign_name: row.campaign_name || '',
                     campaign_id: row.campaign_id || '',
                     adset_id: row.adset_id || row.adgroup_id || '',
@@ -448,7 +452,7 @@ async function fetchLiveData(customDateFrom, customDateTo) {
 
             // Daily key match to Metabase (adset level for Google)
             const dateKey = row.date_start || row.date || row.segments_date || '';
-            const mbKey = dateKey + '|||' + normalizeGoogleJoinText(row.campaign_name) + '|||' + normalizeGoogleJoinText(row.adset_name || row.adgroup_name || row.tracker_name);
+            const mbKey = dateKey + '|||' + normalizeGoogleJoinText(row.campaign_name) + '|||' + normalizeGoogleJoinText(row.adset_name || row.adgroup_name);
             const mb = mbDaily[mbKey];
             if (mb) {
                 a._matched = true;
@@ -478,11 +482,11 @@ async function fetchLiveData(customDateFrom, customDateTo) {
             // Group funnel by campaign|||adset
             for (const row of funnelRows) {
                 const campName = row.campaign_name || '';
-            const adsetName = (row.ad_set_name || row.adgroup_name || row.tracker_name || '').toLowerCase().trim();
+            const adsetName = (row.ad_set_name || row.adgroup_name || '').toLowerCase().trim();
                 const adUid = campName + '|||' + adsetName;
                 if (!adAgg[adUid]) {
                     adAgg[adUid] = {
-                        adset_name: row.ad_set_name || row.adgroup_name || row.tracker_name || '',
+                        adset_name: row.ad_set_name || row.adgroup_name || '',
                         campaign_name: campName,
                         campaign_id: '',
                         adset_id: '',
@@ -1837,7 +1841,7 @@ init();
 // =========================================================================
 // CAMPAIGN TREE — Hierarchical campaign -> adset analysis
 // =========================================================================
-const TREE_SERVER = window.location.origin || 'http://localhost:3000';
+const TREE_SERVER = '';
 
 window.fetchCampaignTree = async function () {
     const dateFrom = document.getElementById('gcTreeDateFrom').value;
@@ -1867,16 +1871,16 @@ window.fetchCampaignTree = async function () {
 
     try {
         const [googleRes, funnelRes] = await Promise.all([
-            fetch(`${TREE_SERVER}/api/google/ad-insights-daily`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dateFrom, dateTo }),
-            }).then(r => r.json()),
-            fetch(`${TREE_SERVER}/api/google/ad-funnel`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dateFrom, dateTo }),
-            }).then(r => r.json()),
+        fetch(`${TREE_SERVER}api/google/ad-insights-daily`, {
+            method: 'POST',
+            headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ dateFrom, dateTo }),
+        }).then(r => r.json()),
+        fetch(`${TREE_SERVER}api/google/ad-funnel`, {
+            method: 'POST',
+            headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ dateFrom, dateTo }),
+        }).then(r => r.json()),
         ]);
 
         if (!googleRes.success) throw new Error('Google Ads API: ' + googleRes.error);
@@ -1888,7 +1892,7 @@ window.fetchCampaignTree = async function () {
         const mbDaily = {};
         for (const row of funnelRes.data) {
             const d = String(row.date).substring(0, 10);
-            const key = d + '|||' + normalizeGoogleJoinText(row.campaign_name) + '|||' + normalizeGoogleJoinText(row.ad_set_name || row.adgroup_name || row.tracker_name);
+            const key = d + '|||' + normalizeGoogleJoinText(row.campaign_name) + '|||' + normalizeGoogleJoinText(row.ad_set_name || row.adgroup_name);
             if (!mbDaily[key]) {
                 mbDaily[key] = { signups: 0, d0_trial: 0, d0: 0, d0_revenue: 0, d6: 0, d6_revenue: 0, overall_revenue: 0, d6_overall_con: 0, d6_overall_revenue: 0 };
             }
@@ -1913,7 +1917,7 @@ window.fetchCampaignTree = async function () {
         const googleRows = googleRes.data;
 
         for (const row of googleRows) {
-            const adsetName = row.adset_name || row.adgroup_name || row.tracker_name || '';
+            const adsetName = row.adset_name || row.adgroup_name || '';
             const adUid = normalizeGoogleJoinText(row.campaign_name) + '|||' + normalizeGoogleJoinText(adsetName);
             if (!adAgg[adUid]) {
                 adAgg[adUid] = {
@@ -2263,9 +2267,9 @@ window.updateGoogleBudget = async function(campaignId, action, btn) {
     btn.innerHTML = '\u231B Updating...';
     btn.disabled = true;
     try {
-        const res = await fetch('/api/google/campaign-budget', {
+        const res = await fetch('api/google/campaign-budget', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ campaign_id: campaignId, action })
         });
         const data = await res.json();
@@ -2385,9 +2389,9 @@ window.fetchWeeklyBreakdown = async function () {
 
         const fetchJsonSafe = async (url, body, cacheKey) => {
             try {
-                const res = await fetch(url, {
+                const res = await fetch(url.replace(/^\//, ''), {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify(body)
                 });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -2403,8 +2407,8 @@ window.fetchWeeklyBreakdown = async function () {
             const bucketGoogleCacheKey = `${dateFrom}.${dateTo}.${idx}.google`;
             const bucketMbCacheKey = `${dateFrom}.${dateTo}.${idx}.mb`;
             const [googleRes, mbRes] = await Promise.all([
-                fetchJsonSafe(`${TREE_SERVER}/api/google/ad-insights-daily`, { dateFrom: bkt.from, dateTo: bkt.to }, bucketGoogleCacheKey),
-                fetchJsonSafe(`${TREE_SERVER}/api/google/ad-funnel`, { dateFrom: bkt.from, dateTo: bkt.to }, bucketMbCacheKey),
+                fetchJsonSafe(`${TREE_SERVER}api/google/ad-insights-daily`, { dateFrom: bkt.from, dateTo: bkt.to }, bucketGoogleCacheKey),
+                fetchJsonSafe(`${TREE_SERVER}api/google/ad-funnel`, { dateFrom: bkt.from, dateTo: bkt.to }, bucketMbCacheKey),
             ]);
             console.log(`[Weekly] Bucket ${idx} (${bkt.label}): Google=${googleRes.total || 0} MB=${mbRes.total || 0}`);
             return { google: googleRes, mb: mbRes, bucketIdx: idx };
@@ -2434,7 +2438,7 @@ window.fetchWeeklyBreakdown = async function () {
             for (const row of mb.data) {
                 if (!campMB[row.campaign_name]) campMB[row.campaign_name] = buckets.map(() => emptyRaw());
                 addMBToRaw(campMB[row.campaign_name][bucketIdx], row);
-                const asKey = normalizeGoogleJoinText(row.campaign_name) + '|||' + normalizeGoogleJoinText(row.ad_set_name || row.adgroup_name || row.tracker_name);
+                const asKey = normalizeGoogleJoinText(row.campaign_name) + '|||' + normalizeGoogleJoinText(row.ad_set_name || row.adgroup_name);
                 if (!adsetMB[asKey]) adsetMB[asKey] = buckets.map(() => emptyRaw());
                 addMBToRaw(adsetMB[asKey][bucketIdx], row);
             }
@@ -2442,7 +2446,7 @@ window.fetchWeeklyBreakdown = async function () {
             // Adset-level: Google spend + matched Metabase funnel
             const mbLookup = {};
             for (const row of mb.data) {
-                const key = normalizeGoogleJoinText(row.campaign_name) + '|||' + normalizeGoogleJoinText(row.ad_set_name || row.adgroup_name || row.tracker_name);
+                const key = normalizeGoogleJoinText(row.campaign_name) + '|||' + normalizeGoogleJoinText(row.ad_set_name || row.adgroup_name);
                 if (!mbLookup[key]) mbLookup[key] = emptyRaw();
                 addMBToRaw(mbLookup[key], row);
             }
@@ -2450,7 +2454,7 @@ window.fetchWeeklyBreakdown = async function () {
             const googleRows = google.data;
             const googleByAdset = {};
             for (const row of googleRows) {
-                const adsetName = row.adset_name || row.adgroup_name || row.tracker_name || '';
+                const adsetName = row.adset_name || row.adgroup_name || '';
                 const adUid = normalizeGoogleJoinText(row.campaign_name) + '|||' + normalizeGoogleJoinText(adsetName);
                 if (!googleByAdset[adUid]) {
                     googleByAdset[adUid] = { ...row, adset_name: adsetName, spend: 0, impressions: 0, clicks: 0, conversions: 0 };

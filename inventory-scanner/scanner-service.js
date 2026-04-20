@@ -18,6 +18,9 @@ const LEARNING_PHASE_BUFFER = 0.85;
 const SCHEDULER_INTERVAL_MS = 60 * 60 * 1000;
 const DAILY_WINDOW_MS = 20 * 60 * 60 * 1000;
 const LOCAL_PORT = process.env.PORT || 3000;
+const { getInternalBase, getInternalAuthHeader } = require('../config/env');
+const SCANNER_BASE = getInternalBase(process.env.SCANNER_PORT || process.env.PORT || 3000);
+const AUTH_HEADERS = getInternalAuthHeader();
 
 const META_PLACEMENT_MAP = {
   facebook_feed: 'facebook-feed',
@@ -103,9 +106,9 @@ function unwrapData(payload) {
 
 async function postLocalJson(endpoint, body) {
   try {
-    const response = await fetch(`http://127.0.0.1:${LOCAL_PORT}${endpoint}`, {
+    const response = await fetch(`${SCANNER_BASE}${endpoint}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...AUTH_HEADERS },
       body: JSON.stringify(body)
     });
     if (!response.ok) return null;

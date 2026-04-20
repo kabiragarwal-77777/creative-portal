@@ -6,6 +6,7 @@
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const { getMetabaseSessionToken, refreshMetabaseSessionToken } = require('./config/env');
 
 // Load .env for local development
 try { require('dotenv').config({ path: path.join(__dirname, '.env') }); } catch (e) { /* use env vars directly */ }
@@ -20,8 +21,7 @@ const META_API_VERSION = 'v19.0';
 const META_API_BASE = `https://graph.facebook.com/${META_API_VERSION}`;
 
 const METABASE_URL = process.env.METABASE_URL || 'https://analytics.univest.in';
-const METABASE_SESSION = process.env.METABASE_SESSION || process.env.METABASE_SESSION_TOKEN || '';
-
+const METABASE_SESSION = getMetabaseSessionToken();
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
 
@@ -116,17 +116,23 @@ function buildMetricsResult({
 // =============================================================================
 
 async function runMetabaseQuery(sqlString) {
+    const token = METABASE_SESSION;
     if (!METABASE_SESSION) {
         throw new Error('METABASE_SESSION not configured — cannot query Metabase');
     }
-    const resp = await axios.post(`${METABASE_URL}/api/dataset`, {
+    const request = (sessionToken) => axios.post(`${METABASE_URL}/api/dataset`, {
         database: 1,
         type: 'native',
         native: { query: sqlString }
     }, {
-        headers: { 'X-Metabase-Session': METABASE_SESSION },
+        headers: { 'X-Metabase-Session': sessionToken },
         timeout: 60000
     });
+    let resp = await request(token);
+    if (resp.status === 401) {
+        const refreshed = await refreshMetabaseSessionToken('inventory engine 401').catch(() => '');
+        if (refreshed) resp = await request(refreshed);
+    }
 
     const data = resp.data;
     if (!data || !data.data || !data.data.rows) {
@@ -893,3 +899,5 @@ module.exports = {
     // Agent 3 — AI Advisor
     generateInventoryRecommendations
 };
+
+

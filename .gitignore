@@ -9,3 +9,4 @@ inventory-scanner/.env
 .claude/
 mb_*.json
 node_modules
+logs/*.log

@@ -1,0 +1,216 @@
+[dotenv@17.3.1] injecting env (10) from uploader\.env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[Alert Cron] Scheduled daily at 9:00 AM IST
+[Scanner] Inventory scanner routes mounted
+[ci/engine] Scheduler started. Interval: 24h. Next run: 2026-04-15T09:26:21.285Z
+[CampaignSync] Ghost columns and sync_log table ensured
+[CampaignSync] Scheduler starting (every 24h)
+[CampaignSync] Ghost columns and sync_log table ensured
+[roas-tracker] Scheduler starting (every 1h)
+[Integrity] Scheduler armed — runs on start + every 6 hours
+[CI2] Creative Intelligence v2 routes mounted at /api/ci2
+[GC Scheduler] Initializing...
+[GC Scheduler] Cron jobs registered (data fetch, classify, score, briefs by type, forecast, signals)
+[GC] Google Creative Intelligence routes mounted at /api/gc
+[MetaWrite] Meta write routes mounted at /api/meta-write
+[TrendScanner] Scheduler started — scans every 2h, concepts every 6h
+[TrendScanner] Trend scanner routes mounted at /api/trends
+[CompetitorScheduler] 2026-04-14T09:26:22.016Z — Starting scheduler
+[CompetitorScheduler] 2026-04-14T09:26:22.018Z — Cron jobs registered — pipeline every 6h, briefs every 12h
+[CompetitorIntel] All modules initialized, scheduler started
+[CompetitorIntel] Competitor intelligence routes mounted at /api/competitor
+[FeedbackEngine] Database initialized at C:\Users\Dell\Desktop\creative-portal\feedback-engine\feedback-engine.db
+[FE:Scheduler] Initializing scheduler with 11 jobs...
+[FE:Scheduler]   Registered: watcher-refresh (0 * * * *) — feWatcher incremental refresh
+[FE:Scheduler]   Registered: anomaly-check (0 */3 * * *) — feAnomalyDetector runAllChecks
+[FE:Scheduler]   Registered: data-quality-check (15 * * * *) — feDataQualityMonitor runAudit
+[FE:Scheduler]   Registered: proposal-generate (0 */6 * * *) — feProposalGenerator generateProposals
+[FE:Scheduler]   Registered: knowledge-crawl-tier1 (30 */6 * * *) — feKnowledgeCrawler crawlAll (Tier 1)
+[FE:Scheduler]   Registered: knowledge-crawl-all (0 */12 * * *) — feKnowledgeCrawler crawlAll (all tiers)
+[FE:Scheduler]   Registered: hypothesis-generate (0 0 * * *) — feSelfTester generateHypotheses
+[FE:Scheduler]   Registered: memory-consolidate (30 20 * * *) — feMemory nightly consolidation
+[FE:Scheduler]   Registered: accuracy-audit (0 3 * * 0) — feAccuracyAuditor runAudit
+[FE:Scheduler]   Registered: proposal-expiry (0 4 1 * *) — Expire old pending proposals (>30 days)
+[FE:Scheduler]   Registered: verify-applied-changes (0 5 * * 0) — feApprovalEngine verifyAppliedChanges
+[FE:Scheduler] Scheduler started. Initial checks will run in 30 seconds.
+[FeedbackEngine] Self-learning routes mounted at /api/fe
+[AudienceTesting] Routes mounted at /api/at, scheduler started
+Meta Ad Upload Server running on port 3000
+Ad Account: act_725019929189148
+API Version: v21.0
+[apex-breakdowns/age-gender] Fetching page 1...
+[apex-breakdowns/placement] Fetching page 1...
+[apex-breakdowns/device] Fetching page 1...
+[apex-breakdowns/geography] Fetching page 1...
+[apex-breakdowns/hourly] Fetching page 1...
+[ad-insights] Fetching page 1...
+[ad-funnel] Running Metabase query...
+[gc-ad-funnel] Running Metabase query...
+
+============================================================
+[Integrity] Running 5 data integrity tests...
+============================================================
+  [PASS] Campaign ID extraction (228ms) — All 10 rows have non-empty campaign ID extraction
+[Cache] Pre-warming insights cache (2026-03-15 to 2026-04-14)...
+[ad-insights] Serving from disk (11151 rows, 187min old)
+[ad-funnel] Serving from disk (3439 rows, 37min old)
+[ads-status] Serving from disk cache (5000 ads, 152min old)
+[Cache] Funnel pre-warmed: 3439 rows
+[Cache] Insights pre-warmed: 11151 rows
+[Cache] Ads-status pre-warmed: 5000 ads
+[gc-insights] 455 rows fetched (2026-03-15 to 2026-04-14)
+[CompetitorScheduler] 2026-04-14T09:26:32.030Z — Running initial pipeline + briefs
+[CompetitorScheduler] 2026-04-14T09:26:32.039Z — Pipeline started
+[CompetitorScheduler] 2026-04-14T09:26:32.040Z — fetch — started
+[competitor-meta-fetcher] 2026-04-14T09:26:32.043Z Fetching ads for competitor: Samco
+  *** [FAIL] Campaign ID <-> Meta API match rate (5270ms) — Exception: Meta API 400: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:31 PDT.","type":"OAuthException","code":190,"er
+  [PASS] ROAS sanity check (9ms) — 48 ads checked — ROAS values within expected ranges (avg D6: 30.4%)
+  [PASS] Revenue window alignment (2ms) — 23 ads checked — all revenue windows correctly ordered (D6 <= D15 <= D30 <= D60 <= Overall)
+[competitor-meta-fetcher] 2026-04-14T09:26:32.413Z FETCH ERROR: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:32 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"ASH2aZ7Vb5gB3-zZJrs1bsr"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:32.421Z Failed to fetch ads for Samco: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:32 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"ASH2aZ7Vb5gB3-zZJrs1bsr"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:32.938Z Fetching ads for competitor: StockGro
+[competitor-meta-fetcher] 2026-04-14T09:26:33.281Z FETCH ERROR: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:32 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AkggA3rdGtIbssSFNMPundP"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:33.289Z Failed to fetch ads for StockGro: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:32 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AkggA3rdGtIbssSFNMPundP"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:33.797Z Fetching ads for competitor: Sensibull
+[competitor-meta-fetcher] 2026-04-14T09:26:34.067Z FETCH ERROR: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:33 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"A5hNVdwxCNAcCcUWC3cJ_8y"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:34.076Z Failed to fetch ads for Sensibull: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:33 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"A5hNVdwxCNAcCcUWC3cJ_8y"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:34.587Z Fetching ads for competitor: Definedge
+[competitor-meta-fetcher] 2026-04-14T09:26:34.914Z FETCH ERROR: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:34 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AjbKtz_UpCQVlxkpIQxYu7y"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:34.915Z Failed to fetch ads for Definedge: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:34 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AjbKtz_UpCQVlxkpIQxYu7y"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:35.418Z Fetching ads for competitor: Weekend Investing
+[competitor-meta-fetcher] 2026-04-14T09:26:35.674Z FETCH ERROR: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:35 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AEKSEWpIjzXl_7cxEwPqSnD"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:35.683Z Failed to fetch ads for Weekend Investing: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:35 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AEKSEWpIjzXl_7cxEwPqSnD"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:36.188Z Fetching ads for competitor: Capitalmind
+[competitor-meta-fetcher] 2026-04-14T09:26:36.465Z FETCH ERROR: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:36 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AicOIZTKpSyuUo6TOwI6dQA"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:36.466Z Failed to fetch ads for Capitalmind: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:36 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AicOIZTKpSyuUo6TOwI6dQA"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:36.973Z Fetching ads for competitor: Dhan
+[competitor-meta-fetcher] 2026-04-14T09:26:37.299Z FETCH ERROR: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:36 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"ABVs-pfXua_7rBljJ00Ns2Q"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:37.300Z Failed to fetch ads for Dhan: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:36 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"ABVs-pfXua_7rBljJ00Ns2Q"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:37.808Z Fetching ads for competitor: Zerodha
+[competitor-meta-fetcher] 2026-04-14T09:26:38.574Z FETCH ERROR: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:38 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AdhPf7Bq6krYQlcZg6dPe5e"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:38.575Z Failed to fetch ads for Zerodha: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:38 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AdhPf7Bq6krYQlcZg6dPe5e"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:39.083Z Fetching ads for competitor: Groww
+  *** [FAIL] Adset name normalization (7126ms) — Exception: Meta API 400: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:38 PDT.","type":"OAuthException","code":190,"er
+============================================================
+[Integrity] Done in 12642ms — FAIL (3 pass, 2 fail, 0 warn, 0 skip)
+[Integrity] *** FAILURES DETECTED — review data_integrity_results.json ***
+============================================================
+
+[competitor-meta-fetcher] 2026-04-14T09:26:40.249Z FETCH ERROR: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:39 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AUFy0f0V6CDLTn_BpsV1mjB"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:40.259Z Failed to fetch ads for Groww: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:39 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AUFy0f0V6CDLTn_BpsV1mjB"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:40.783Z Fetching ads for competitor: Angel One
+[competitor-meta-fetcher] 2026-04-14T09:26:42.084Z FETCH ERROR: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:41 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"A8s-7-5Hnf_XlQffu7nd8IT"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:42.094Z Failed to fetch ads for Angel One: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:41 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"A8s-7-5Hnf_XlQffu7nd8IT"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:42.602Z Fetching ads for competitor: Upstox
+[competitor-meta-fetcher] 2026-04-14T09:26:42.867Z FETCH ERROR: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:42 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AQKCALQxa_vkTLHrCcB6hbg"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:42.876Z Failed to fetch ads for Upstox: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:42 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AQKCALQxa_vkTLHrCcB6hbg"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:43.386Z Fetching ads for competitor: 5paisa
+[competitor-meta-fetcher] 2026-04-14T09:26:43.678Z FETCH ERROR: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:43 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AbB-ulNj8adI6LGuUrX3kGP"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:43.689Z Failed to fetch ads for 5paisa: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:43 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AbB-ulNj8adI6LGuUrX3kGP"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:44.200Z Fetching ads for competitor: Paytm Money
+[competitor-meta-fetcher] 2026-04-14T09:26:44.452Z FETCH ERROR: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:44 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"A0C4tzTMNzh0IV_ROkwSgQD"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:44.461Z Failed to fetch ads for Paytm Money: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:44 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"A0C4tzTMNzh0IV_ROkwSgQD"}}
+[competitor-meta-fetcher] 2026-04-14T09:26:44.968Z API returned no ads — seeding cache with demo data for pipeline to work
+[competitor-meta-fetcher] 2026-04-14T09:26:44.980Z fetchAllCompetitorAds complete: 92 total ads from 13 competitors, 13 errors (DEMO DATA)
+[competitor-meta-fetcher] 2026-04-14T09:26:44.982Z Univest cache still valid, skipping fetch
+[CompetitorScheduler] 2026-04-14T09:26:44.990Z — fetch — done in 12950ms, records: 92
+[CompetitorScheduler] 2026-04-14T09:26:44.991Z — classify — started
+[CampaignSync] Running scheduled sync validation...
+[CampaignSync] Starting ghost campaign deduplication...
+[GC Scheduler] Starting data-fetch...
+[gc/dataFetcher] === Step 1/4: Fetching Metabase adset data ===
+[gc/dataFetcher] Fetching Metabase adset performance for last 90 days...
+[FE:Scheduler] Running initial startup checks...
+[FE:Scheduler] Starting job: watcher-refresh
+[FE:Watcher] Refreshing Meta prediction accuracy...
+[FE:Watcher] Meta predictions: 0 processed, 1337 skipped
+[FE:Watcher] Refreshing Google prediction accuracy...
+[FE:Watcher] Google predictions: 0 processed, 0 skipped
+[FE:Watcher] Refreshing recommendation tracking...
+[FE:Watcher] ci_recommendations not found: no such table: ci_recommendations
+[FE:Watcher] Recommendation tracking: 0 processed
+[FE:Watcher] Refreshing competitor signal accuracy...
+[FE:Watcher] Competitor signals: 0 processed
+[FE:Watcher] Full refresh complete: 0 records processed
+[FE:Scheduler] Completed job: watcher-refresh (1156ms, 1 records)
+[FE:Scheduler] Starting job: anomaly-check
+[FE:AnomalyDetector] Running all anomaly detection checks...
+[FE:AnomalyDetector] Duplicate anomaly "Model drift detected for meta predictions" (unresolved or recently resolved) — skipping.
+[FE:AnomalyDetector] No competitor signal data available. Skipping competitor checks.
+[FE:AnomalyDetector] All checks complete. 0 new anomalies detected.
+[FE:Scheduler] Completed job: anomaly-check (17ms, 0 records)
+[FE:Scheduler] Starting job: data-quality-check
+[FE:DataQuality] Running audit (2026-03-15 -> 2026-04-14, forceFresh=false)
+[ad-insights] Serving from memory (11151 rows)
+[ad-funnel] Serving from memory (3439 rows)
+[gc-ad-funnel] Serving from disk (668 rows, 86min old)
+[ads-status] Serving from memory cache (5000 ads)
+[CampaignSync] Fetched 0 ad IDs from Meta API (1 pages)
+[FE:DataQuality] Audit complete. status=FAIL findings=14
+[FE:Scheduler] Completed job: data-quality-check (2532ms, 14 records)
+[FE:Scheduler] Initial startup checks complete.
+[gc-ad-funnel] Done. 670 rows returned. Truncated: false
+[ad-funnel] Done. 3443 rows returned. Truncated: false
+[AT Scheduler] Bootstrap: 367 meta adsets, 26 google adgroups in DB
+[AT Scheduler] Running initial optimizer health check...
+[AT Scheduler] Starting optimizer-health...
+[AT Optimizer] === Starting health check ===
+[AT Optimizer] Fetching live ACTIVE Meta adsets...
+[AT Optimizer] Error fetching live Meta adsets: Meta API 401: {"error":{"message":"Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:27:07 PDT.","type":"OAuthException","code":190,"error_subcode":463,"fbtrace_id":"AZosLIvLNow95VRgllATAZP"}}
+[AT Optimizer] Fetching live ENABLED Google adgroups from local DB (last 7 days)...
+[AT Optimizer] Found 26 enabled Google adgroups
+[AT Optimizer] Health check complete: 1 flags generated
+[AT Scheduler] optimizer-health completed
+[GC Scheduler] Starting classify...
+[gcClassifier] No creatives to classify
+[GC Scheduler] classify completed 
+[classifier] Classified 92 new ads (0 already cached)
+[CompetitorScheduler] 2026-04-14T09:27:24.071Z — classify — done in 39080ms, records: 92
+[CompetitorScheduler] 2026-04-14T09:27:24.072Z — trends — started
+[competitor-trends] Computed trends: 92 ads, 13 competitors, 6 themes
+[CompetitorScheduler] 2026-04-14T09:27:24.090Z — trends — done in 18ms, records: 0
+[CompetitorScheduler] 2026-04-14T09:27:24.091Z — radar — started
+[CompetitorScheduler] 2026-04-14T09:27:25.172Z — radar — done in 1081ms, records: 0
+[CompetitorScheduler] 2026-04-14T09:27:25.172Z — Pipeline finished in 53132ms
+[CompetitorScheduler] 2026-04-14T09:27:25.173Z — briefs — started
+[CompetitorScheduler] 2026-04-14T09:27:31.604Z — briefs — done in 6431ms, records: 0
+[ad-insights] Serving from disk (3919 rows, 225min old)
+[ad-insights] Serving from memory (3919 rows)
+[ad-funnel] Serving from disk (1301 rows, 87min old)
+[ad-insights] Serving from memory (3919 rows)
+[ad-funnel] Serving from memory (1301 rows)
+[ad-funnel] Serving from memory (1301 rows)
+[ads-status] Serving from memory cache (5000 ads)
+[gc-ad-funnel] Serving from memory (670 rows)
+[FE:ProposalGenerator] getProposals: returned 86 rows
+[FE:ProposalGenerator] getProposals: returned 96 rows
+[ad-insights] Serving from disk (602 rows, 225min old)
+[ad-funnel] Serving from disk (151 rows, 87min old)
+[ad-insights] Serving from memory (602 rows)
+[ad-funnel] Serving from memory (151 rows)
+[ad-insights] Serving from memory (602 rows)
+[ad-funnel] Serving from memory (151 rows)
+[ads-status] Serving from memory cache (5000 ads)
+[ads-status] Serving from memory cache (5000 ads)
+[ad-insights] Serving from memory (602 rows)
+[ad-funnel] Serving from memory (151 rows)
+[ad-insights] Serving from memory (602 rows)
+[ad-funnel] Serving from memory (151 rows)
+[GC Scheduler] Starting score...
+[gcScoring] No creatives found, skipping scoring.
+[GC Scheduler] score completed 
+[GC Scheduler] Starting signals...
+[GC Signals] Fetching market signals for 2026-04-14...
+[GC Signals] Fetched signals independently
+[GC Signals] Stored: Nifty=23842.65, VIX=20.5, DXY=98.144, Sentiment=High Volatility/Bearish, Corr=null
+[GC Scheduler] signals completed 
+[roas-tracker] Starting snapshot. Only test campaign ads with go-live >= 2026-03-10
+[ad-insights] Serving from disk (13025 rows, 223min old)
+[ad-funnel] Running Metabase query...
+[ad-funnel] Done. 4055 rows returned. Truncated: false
+[roas-tracker] Fetched 9867 Meta rows, 4055 funnel rows.
+[roas-tracker] 1777 test campaign rows → 149 ads with go-live >= 2026-03-10 (781 daily rows).
+[ads-status] Serving from memory cache (5000 ads)
+[roas-tracker] 153 creatives since 2026-03-10 (22 with funnel data).
+[roas-tracker] 155 ads since 2026-03-10.
+[roas-tracker] Upserted: 0 new, 155 updated. 0 need predictions.
+[roas-tracker] Done. {"snapshots":153,"tracked":155,"newAds":0,"updated":155,"predicted":0}

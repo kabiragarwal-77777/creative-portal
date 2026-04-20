@@ -1,13 +1,13 @@
 {
-  "lastRunAt": "2026-04-13T14:18:41.946Z",
-  "nextRunAt": "2026-04-14T14:18:41.946Z",
-  "previousRunAt": "2026-04-13T13:53:10.578Z",
+  "lastRunAt": "2026-04-20T07:13:07.254Z",
+  "nextRunAt": "2026-04-21T07:13:07.254Z",
+  "previousRunAt": "2026-04-20T06:53:47.970Z",
   "candidates": [
     {
       "id": "cnbctv18",
       "name": "CNBC TV18 Digital",
       "url": "https://www.cnbctv18.com/",
-      "status": "watching"
+      "status": "candidate"
     },
     {
       "id": "financial-express",

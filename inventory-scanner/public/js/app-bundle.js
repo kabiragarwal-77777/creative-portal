@@ -10,6 +10,10 @@
     budget: '/inventory-scanner/budget-planner/'
   };
   function resolveAuthHeader() {
+    if (window.PortalAuth && typeof window.PortalAuth.getHeaders === 'function') {
+      const helperHeaders = window.PortalAuth.getHeaders() || {};
+      if (helperHeaders.Authorization) return helperHeaders.Authorization;
+    }
     const candidates = [
       window.__ANALYTICS_AUTH_TOKEN__,
       window.__AUTH_TOKEN__,
@@ -75,7 +79,7 @@
     loading: true,
     syncing: false,
     warning: false,
-    lastSyncedAt: '',
+    lastSyncedAt: localStorage.getItem('univest.inventoryScanner.lastSyncedAt') || '',
     discovery: [],
     catalog: { inventories: [], watchlist: [] },
     inventories: CURATED,
@@ -242,6 +246,21 @@
     return mid ? `${item.primary_cost_model} ${fmtINR(mid)}` : `${item.primary_cost_model} loading`;
   }
 
+  function cacObjectiveLabel(item) {
+    const name = String(item?.name || '').toLowerCase();
+    const buyType = String(item?.buy_type || '').toLowerCase();
+    const costModel = String(item?.primary_cost_model || '').toUpperCase();
+    if (/(shopping|purchase|commerce|retail)/.test(name)) return 'Purchase';
+    if (buyType === 'programmatic') return 'Purchase';
+    if (costModel === 'CPL' || costModel === 'CPC' || buyType === 'self-serve' || /lead|signup|lead gen/.test(name)) return 'Signup';
+    if (buyType === 'direct') return 'Purchase';
+    return 'Signup';
+  }
+
+  function cacLabel(item) {
+    return `Predicted CAC (${cacObjectiveLabel(item)})`;
+  }
+
   function rangeText(range) {
     if (!range) return '\u2014';
     return `${fmtINR(range.low)} \u2013 ${fmtINR(range.high)}`;
@@ -300,6 +319,7 @@
         : CURATED.map(item => buildInventoryEntry(item, map.get(item.inventory_id)));
       state.warning = Boolean(json.data?.warning);
       state.lastSyncedAt = json.data?.lastSyncedAt || json.data?.generatedAt || state.lastSyncedAt;
+      if (state.lastSyncedAt) localStorage.setItem('univest.inventoryScanner.lastSyncedAt', state.lastSyncedAt);
       state.discovery = Array.isArray(json.data?.discovery?.candidates) ? json.data.discovery.candidates : [];
       state.loading = false;
       state.syncing = false;
@@ -385,6 +405,7 @@
 
   function renderDiscovery() {
     const cards = filterInventories();
+    const cachedLabel = state.lastSyncedAt ? fmtDate(state.lastSyncedAt) : 'Not synced yet';
     return `
       <section class="page">
         <header class="header">
@@ -395,10 +416,11 @@
           </div>
           <div class="header-right">
             <div class="synced">Last synced: <strong>${esc(fmtDate(state.lastSyncedAt))}</strong></div>
+            <div class="synced" style="opacity:.85">Cached version: <strong>${esc(cachedLabel)}</strong></div>
             <button type="button" class="btn primary" data-action="sync" ${state.syncing ? 'disabled' : ''}>${state.syncing ? 'Syncing...' : 'Sync with Google & Meta'}</button>
           </div>
         </header>
-        ${state.warning ? '<div class="banner">API unavailable - showing last synced data</div>' : ''}
+        ${state.warning ? `<div class="banner">API unavailable - showing cached data from ${esc(cachedLabel)} while fresh data loads.</div>` : ''}
         ${renderDiscoverySuggestions()}
         <div class="filters">
           ${filterSelect('costModel', 'Cost Model', ['ALL', ...MODELS])}
@@ -454,7 +476,7 @@
         <div class="price">${esc(priceLabel(item))}</div>
         <div class="meta">
           <span class="score ${scoreClass(item.audience_quality_score)}">${item.audience_quality_score}/10</span>
-          <span>Predicted CAC ${esc(rangeText(item.predicted_cac_range))}</span>
+          <span>${esc(cacLabel(item))} ${esc(rangeText(item.predicted_cac_range))}</span>
         </div>
         <div class="meta">
           <span>${String(item.competitors_active?.length || 0)} competitors active</span>
@@ -502,7 +524,7 @@
           </section>
           <section>
             <h3>Predicted Performance (D6 estimates)</h3>
-            <div class="metric"><span>Predicted CAC</span><strong>${esc(rangeText(item.predicted_cac_range))}</strong></div>
+            <div class="metric"><span>${esc(cacLabel(item))}</span><strong>${esc(rangeText(item.predicted_cac_range))}</strong></div>
             <div class="metric"><span>Predicted ROAS (D6)</span><strong>${esc(roasText(item.predicted_roas_d6))}x</strong></div>
             <div class="line">Basis: Calculated using Univest's observed CVR of ${fmtNum((item.observed_cvr || 0.032) * 100, 1)}% and ₹8,000 avg D6 revenue.</div>
             <div class="line">Confidence level: <strong>${esc(item.confidence_level || 'Low')}</strong></div>
@@ -563,7 +585,7 @@
                 <div class="row">
                   <div>
                     <div class="sel-name">${esc(item.name)}</div>
-                    <div class="sel-meta">${esc(item.primary_cost_model)} · Predicted CAC ${esc(rangeText(item.predicted_cac_range))}</div>
+                    <div class="sel-meta">${esc(item.primary_cost_model)} · ${esc(cacLabel(item))} ${esc(rangeText(item.predicted_cac_range))}</div>
                   </div>
                   <button type="button" class="icon small" data-action="remove" data-id="${esc(item.inventory_id)}">×</button>
                 </div>

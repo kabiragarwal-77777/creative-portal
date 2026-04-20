@@ -1,0 +1,11 @@
+[apex-breakdowns] age_gender unavailable: Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:26 PDT.
+[apex-breakdowns] placement unavailable: Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:26 PDT.
+[apex-breakdowns] device unavailable: Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:26 PDT.
+[apex-breakdowns] geography unavailable: Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:26 PDT.
+[apex-breakdowns] hourly unavailable: Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:26 PDT.
+[gc/dataFetcher] Pipeline error: Metabase query failed (403): You don't have permissions to do that.
+[GC Scheduler] data-fetch error: Metabase query failed (403): You don't have permissions to do that.
+[GC Scheduler] Initial data fetch error: Metabase query failed (403): You don't have permissions to do that.
+[CampaignSync] Meta API error: Error validating access token: Session has expired on Tuesday, 24-Mar-26 04:00:00 PDT. The current time is Tuesday, 14-Apr-26 02:26:53 PDT.
+[CampaignSync] Validation error: no such column: "" - should this be a string literal in single-quotes?
+[roas-tracker] Excluded 126 ads with truncated API data (too few daily rows).

@@ -52,7 +52,7 @@ module.exports = function(config) {
         return JSON.parse(clean);
     }
 
-    function buildContext(trends, classifiedAds, radar) {
+    function buildContext(trends, classifiedAds, radar, apifySignals) {
         // trends is an object like { rising_themes, theme_distribution, hook_frequency, univest_gap_themes, evergreen_ads, ... }
         const t = trends || {};
 
@@ -112,7 +112,7 @@ module.exports = function(config) {
                 .join(', ') || 'UGC-style testimonials, Hinglish copy, Short-form video hooks, Price-anchoring with trial offer';
         }
 
-        return { topThemes, topHooksStr, evergreenText, gapThemes };
+        return { topThemes, topHooksStr, evergreenText, gapThemes, apifySignals: apifySignals || null };
     }
 
     // ── Static Brief Generation ─────────────────────────────────────────────
@@ -125,6 +125,7 @@ module.exports = function(config) {
 - Top hooks: ${ctx.topHooksStr}
 - Evergreen ad examples: ${ctx.evergreenText}
 - Univest gaps: ${ctx.gapThemes}
+${ctx.apifySignals ? `- Apify enrichment: ${JSON.stringify(ctx.apifySignals, null, 2)}` : ''}
 
 Generate 3 static ad briefs for Univest (Research Advisory product, ₹1 trial offer). Each brief must include:
 - concept_name: creative concept name
@@ -161,6 +162,7 @@ Return ONLY valid JSON array of 3 objects with these exact keys, no preamble.`;
 - Top hooks: ${ctx.topHooksStr}
 - Evergreen ad examples: ${ctx.evergreenText}
 - Univest gaps: ${ctx.gapThemes}
+${ctx.apifySignals ? `- Apify enrichment: ${JSON.stringify(ctx.apifySignals, null, 2)}` : ''}
 
 Generate 3 video ad script briefs for Univest (Research Advisory product, ₹1 trial offer). Each brief must include:
 - concept_name: creative concept name
@@ -385,7 +387,7 @@ Return ONLY valid JSON array of 2 objects with these exact keys, no preamble.`;
     // ── Main Orchestrator ───────────────────────────────────────────────────
 
     async function generateBriefs() {
-        let trends, classifiedAds, radar;
+        let trends, classifiedAds, radar, apifySignals;
 
         try {
             [trends, classifiedAds, radar] = await Promise.all([
@@ -393,6 +395,7 @@ Return ONLY valid JSON array of 2 objects with these exact keys, no preamble.`;
                 safeCall(config.getClassifiedAds),
                 safeCall(config.getRadar)
             ]);
+            apifySignals = await safeCall(config.getApifyInsights);
         } catch (err) {
             console.error('[Briefs] Failed to gather input data:', err.message);
             if (cache.timestamp) {
@@ -402,7 +405,7 @@ Return ONLY valid JSON array of 2 objects with these exact keys, no preamble.`;
             throw new Error('Cannot generate briefs: failed to load input data — ' + err.message);
         }
 
-        const ctx = buildContext(trends, classifiedAds, radar);
+        const ctx = buildContext(trends, classifiedAds, radar, apifySignals);
 
         let staticBriefs, videoBriefs;
         let staticErr = null, videoErr = null;

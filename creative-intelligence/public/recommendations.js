@@ -218,7 +218,10 @@
                 renderResults(window.AI_CACHE[CACHE_KEY], contentEl);
                 var statusEl = document.getElementById('ciRecStatus');
                 if (statusEl) {
-                    statusEl.textContent = 'Loaded from cache';
+                    var cachedAt = window.AI_CACHE.timestamps ? window.AI_CACHE.timestamps[CACHE_KEY] : null;
+                    statusEl.textContent = cachedAt
+                        ? 'Loaded from cache at ' + new Date(cachedAt).toLocaleString('en-IN')
+                        : 'Loaded from cache';
                     statusEl.style.color = 'var(--text-dim,#71717a)';
                 }
             } catch (e) { /* ignore */ }

@@ -6,9 +6,9 @@
 const path = require('path');
 const axios = require('axios');
 const { getFeDb, insert, update, getAll, count, query, run, logSchedulerStart, logSchedulerEnd } = require('../db/fe-db');
+const { getMetabaseSessionToken, refreshMetabaseSessionToken } = require('../../config/env');
 
 const METABASE_URL = process.env.METABASE_URL || 'https://analytics.univest.in';
-const METABASE_SESSION = process.env.METABASE_SESSION_TOKEN;
 
 const CI_DB_PATH = path.resolve(__dirname, '../../creative-intelligence/ci.db');
 const GC_DB_PATH = path.resolve(__dirname, '../../google-creative/google-creative.db');
@@ -28,19 +28,26 @@ module.exports = function (config) {
 
     // ── Metabase query helper ──
     async function queryMetabase(sql) {
-        if (!METABASE_SESSION) {
+        let token = getMetabaseSessionToken();
+        if (!token) token = await refreshMetabaseSessionToken('feedback watcher').catch(() => '');
+        if (!token) {
             console.log('[FE:Watcher] No METABASE_SESSION_TOKEN, skipping Metabase query');
             return null;
         }
         try {
-            const resp = await axios.post(`${METABASE_URL}/api/dataset`, {
+            const request = (sessionToken) => axios.post(`${METABASE_URL}/api/dataset`, {
                 database: 1,
                 type: 'native',
                 native: { query: sql }
             }, {
-                headers: { 'X-Metabase-Session': METABASE_SESSION },
+                headers: { 'X-Metabase-Session': sessionToken },
                 timeout: 30000
             });
+            let resp = await request(token);
+            if (resp.status === 401) {
+                const refreshed = await refreshMetabaseSessionToken('feedback watcher 401').catch(() => '');
+                if (refreshed) resp = await request(refreshed);
+            }
             const cols = resp.data.data.cols.map(c => c.name);
             return resp.data.data.rows.map(row => {
                 const obj = {};

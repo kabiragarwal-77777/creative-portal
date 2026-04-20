@@ -1714,7 +1714,10 @@ module.exports = function(config) {
     // POST /recommendations/generate — Generate all recommendations
     router.post('/recommendations/generate', async (req, res) => {
         try {
-            const result = await recommendationEngine.generateAll();
+            const platform = String((req.body && req.body.platform) || req.query.platform || 'all').toLowerCase();
+            const result = platform === 'meta' || platform === 'google'
+                ? await recommendationEngine.generatePlatformRecommendations(platform)
+                : await recommendationEngine.generateAll();
             res.json({ success: true, data: result });
         } catch (err) {
             res.status(500).json({ success: false, error: err.message });

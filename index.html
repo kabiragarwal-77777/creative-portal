@@ -6,6 +6,7 @@
     <title>Performance Marketing Auto</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="shared/auth-helper.js"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -852,9 +853,11 @@
             const promptBody = `Active view context:\n${JSON.stringify(assistantContext, null, 2)}\n\nUser question:\n${prompt}`;
 
             try {
-                const res = await fetch('/api/ai/analyze', {
+                const res = await fetch('api/ai/analyze', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: (window.PortalAuth && typeof window.PortalAuth.getHeaders === 'function')
+                        ? window.PortalAuth.getHeaders({ 'Content-Type': 'application/json' })
+                        : { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ system, prompt: promptBody, max_tokens: 2200 }),
                 });
                 const data = await res.json();

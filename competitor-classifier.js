@@ -327,7 +327,8 @@ module.exports = function (config) {
     const intermediate = rawAds.map(ad => {
       const adId = ad.id || ad.ad_archive_id || ad.adlib_id || `ad_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const { classification, missing, text } = keywordClassify(ad);
-      return { ad, adId, classification, missing, text };
+      const sourceHash = ad.content_hash || ad._content_hash || ad.snapshot_hash || null;
+      return { ad, adId, classification, missing, text, sourceHash };
     });
 
     // Phase 2: collect ads that need AI help
@@ -373,7 +374,8 @@ module.exports = function (config) {
         status: c.status,
         is_evergreen: c.is_evergreen,
         platform: c.platform,
-        classification: c
+        classification: c,
+        _source_hash: item.sourceHash
       };
       cache.set(item.adId, classified);
       return classified;
@@ -390,7 +392,12 @@ module.exports = function (config) {
 
     const newAds = rawAds.filter(ad => {
       const adId = ad.id || ad.ad_archive_id || ad.adlib_id;
-      return adId && !cache.has(adId);
+      if (!adId) return false;
+      if (!cache.has(adId)) return true;
+      const incomingHash = ad.content_hash || ad._content_hash || ad.snapshot_hash || null;
+      if (!incomingHash) return false;
+      const cached = cache.get(adId);
+      return Boolean(cached && cached._source_hash && cached._source_hash !== incomingHash);
     });
 
     if (newAds.length === 0) return getCachedAds();

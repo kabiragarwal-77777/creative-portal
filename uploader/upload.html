@@ -1128,8 +1128,8 @@
     let selectedSheetRowIndex = null;
 
     // Credentials — hardcoded defaults, overridable via settings panel
-    let META_ACCESS_TOKEN = localStorage.getItem('meta_access_token') || 'EAAHDBv0GZCRYBQyK7aPCLInqIH1BCZAl5p3CLHZAngLOWT00ZAcXe84uW9CHogplylkwyovDH9473hg6CMEArA9ZAyR6wKJK3MIrLvb9YHqQDiLVSDw08MMSEBu5kucQr9TNZClZATU8FvB8XHVHuDyEKzZBhjFYA4saidojpVmZAQYpwd1ukGsGkuCvg56MDLwZDZD';
-    let META_APPSECRET_PROOF = localStorage.getItem('meta_appsecret_proof') || '90ac6dda5c28ea7294af38156e56aa6f48d3027b6cbf86763f02e364e55bd414';
+    let META_ACCESS_TOKEN = localStorage.getItem('meta_access_token') || '';
+    let META_APPSECRET_PROOF = localStorage.getItem('meta_appsecret_proof') || '';
     let META_AD_ACCOUNT_ID = localStorage.getItem('meta_ad_account_id') || DEFAULT_AD_ACCOUNT_ID;
 
     // =========================================================================
@@ -1463,6 +1463,29 @@
         $('metaAdAccountId').value = META_AD_ACCOUNT_ID;
     }
 
+    async function loadServerMetaSettings() {
+        try {
+            const resp = await fetch('/api/meta/settings', { credentials: 'include' });
+            const data = await resp.json();
+            if (!resp.ok || !data.success) return;
+
+            if (data.meta_access_token && !META_ACCESS_TOKEN) {
+                META_ACCESS_TOKEN = String(data.meta_access_token || '').trim();
+                $('metaAccessToken').value = META_ACCESS_TOKEN;
+            }
+            if (data.meta_appsecret_proof && !META_APPSECRET_PROOF) {
+                META_APPSECRET_PROOF = String(data.meta_appsecret_proof || '').trim();
+                $('metaAppSecretProof').value = META_APPSECRET_PROOF;
+            }
+            if (data.meta_ad_account_id) {
+                META_AD_ACCOUNT_ID = String(data.meta_ad_account_id || '').trim() || DEFAULT_AD_ACCOUNT_ID;
+                $('metaAdAccountId').value = META_AD_ACCOUNT_ID;
+            }
+        } catch (err) {
+            console.warn('[MetaSettings] server auto-fill failed:', err.message);
+        }
+    }
+
     // =========================================================================
     // SECTION TOGGLE
     // =========================================================================
@@ -1477,15 +1500,12 @@
     // CONNECTION CHECK
     // =========================================================================
     async function checkConnection() {
-        if (!META_ACCESS_TOKEN) {
-            $('statusDot').className = 'status-dot';
-            $('statusText').textContent = 'Not configured';
-            return;
-        }
         try {
-            const result = await metaGet(`/${META_AD_ACCOUNT_ID}`, { fields: 'id,name' });
+            const resp = await fetch('/api/campaigns', { credentials: 'include' });
+            const result = await resp.json();
+            if (!resp.ok || !result.success) throw new Error(result.error || 'Failed to load campaigns');
             $('statusDot').className = 'status-dot connected';
-            $('statusText').textContent = `Connected: ${result.name || result.id}`;
+            $('statusText').textContent = `Connected: ${Array.isArray(result.campaigns) ? result.campaigns.length : 0} campaigns loaded`;
         } catch (e) {
             console.error('Meta connection error:', e);
             $('statusDot').className = 'status-dot error';
@@ -1497,13 +1517,11 @@
     // LOAD CAMPAIGNS
     // =========================================================================
     window.loadCampaigns = async function () {
-        if (!META_ACCESS_TOKEN) {
-            $('campaignId').innerHTML = '<option value="">Configure settings first...</option>';
-            return;
-        }
         try {
-            const data = await metaGet(`/${META_AD_ACCOUNT_ID}/campaigns`, { fields: 'id,name,status,objective,special_ad_categories,bid_strategy,daily_budget,lifetime_budget', limit: 500 });
-            campaigns = data.data || [];
+            const resp = await fetch('/api/campaigns', { credentials: 'include' });
+            const data = await resp.json();
+            if (!resp.ok || !data.success) throw new Error(data.error || 'Failed to load campaigns');
+            campaigns = data.campaigns || [];
             const sel = $('campaignId');
             sel.innerHTML = '<option value="">-- Select Campaign --</option>';
             campaigns.forEach(c => {
@@ -1641,8 +1659,15 @@
 
             if (config.spend_cap) params.spend_cap = Math.round(Number(config.spend_cap) * 100);
 
-            const data = await metaPost(`/${META_AD_ACCOUNT_ID}/campaigns`, params);
-            const campaignId = data.id;
+            const resp = await fetch('/api/create-campaign', {
+                credentials: 'include',
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(params),
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.success) throw new Error(data.error || 'Campaign creation failed');
+            const campaignId = data.campaign_id;
             updateLogEntry(logId, `Campaign created (${campaignId})`, 'success');
 
             // Write result to sheet
@@ -2600,11 +2625,6 @@
             );
         }
 
-        if (!META_ACCESS_TOKEN || !META_APPSECRET_PROOF) {
-            alert('Please configure Meta API credentials in the Settings panel first.');
-            return false;
-        }
-
         qsa('.invalid').forEach(el => el.classList.remove('invalid'));
 
         const missing = [];
@@ -2688,8 +2708,7 @@
     window.confirmExecute = function () {
         if (currentMode === 'campaign') {
             // Campaign mode - just need a row selected
-            if (!META_ACCESS_TOKEN) return alert('Please configure Meta API credentials first.');
-            if (selectedSheetRowIndex == null) return alert('Please select a row from the sheet.');
+        if (selectedSheetRowIndex == null) return alert('Please select a row from the sheet.');
             $('confirmStatus').textContent = 'Campaign Creation';
             $('confirmModal').classList.add('show');
             return;
@@ -3383,7 +3402,7 @@
                         }
                         const adsetName = config.adset_name || '';
                         const existingAdsetId = config.existing_adset_id || adsetCache[adsetName] || null;
-                        const result = await executeSingleRow(config, rowIdx + 2, sheetTabName, existingAdsetId);
+                        const result = await executeSingleRowServer(config, rowIdx + 2, sheetTabName, existingAdsetId);
                         if (adsetName && result && result.adsetId) {
                             adsetCache[adsetName] = result.adsetId;
                         }
@@ -3443,7 +3462,7 @@
                     if (config[key] === 'null' || config[key] === 'undefined') config[key] = null;
                 }
                 const existingAdsetId = config.existing_adset_id || null;
-                await executeSingleRow(config, sheetRowIndex, sheetTabName, existingAdsetId);
+                await executeSingleRowServer(config, sheetRowIndex, sheetTabName, existingAdsetId);
             } catch (err) {
                 addLogEntry(`Pipeline failed: ${err.message}`, 'error');
             }
@@ -3478,7 +3497,6 @@
     window.confirmBulkExecute = function () {
         const checked = [...document.querySelectorAll('.row-check:checked')].map(cb => parseInt(cb.dataset.idx));
         if (checked.length === 0) return alert('No rows selected.');
-        if (!META_ACCESS_TOKEN) return alert('Please configure Meta API credentials first.');
         $('confirmStatus').textContent = `BULK: ${checked.length} rows (${$('adsetStatus').value})`;
         $('confirmModal').classList.add('show');
         window._bulkRows = checked;
@@ -3490,6 +3508,7 @@
     // =========================================================================
     async function init() {
         loadSettingsIntoForm();
+        await loadServerMetaSettings();
         toggleBidAmount();
         toggleCreativeType();
         toggleBudgetType();
@@ -3501,19 +3520,17 @@
         $('startTime').value = now.toISOString().slice(0, 16);
 
         // Prefill settings inputs
-        if (META_ACCESS_TOKEN) $('metaAccessToken').value = META_ACCESS_TOKEN;
-        if (META_APPSECRET_PROOF) $('metaAppSecretProof').value = META_APPSECRET_PROOF;
         if (META_AD_ACCOUNT_ID) $('metaAdAccountId').value = META_AD_ACCOUNT_ID;
 
-        // If credentials exist, collapse settings and check connection
+        // Main flow is server-backed; load campaigns from the server regardless of browser token state.
         if (META_ACCESS_TOKEN && META_APPSECRET_PROOF) {
             $('settingsBody').classList.add('collapsed');
             $('settingsToggle').classList.add('collapsed');
-            await Promise.allSettled([
-                checkConnection(),
-                loadCampaigns(),
-            ]);
         }
+        await Promise.allSettled([
+            checkConnection(),
+            loadCampaigns(),
+        ]);
     }
 
     init();

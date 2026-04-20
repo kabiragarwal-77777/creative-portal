@@ -145,9 +145,9 @@
         var days = getSelectedDays();
 
         Promise.all([
-            fetch('/api/gc/creatives?days=' + days + '&type=all&performance=all')
+            fetch('api/gc/creatives?days=' + days + '&type=all&performance=all')
                 .then(function(r) { return r.json(); }),
-            fetch('/api/gc/learning/report')
+            fetch('api/gc/learning/report')
                 .then(function(r) { return r.json(); })
                 .catch(function() { return { success: false, data: null }; })
         ]).then(function(results) {

@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { getMetabaseSessionToken, refreshMetabaseSessionToken } = require('../config/env');
 
 const RESULTS_FILE = path.join(__dirname, '..', 'data_integrity_results.json');
 const SIX_HOURS = 6 * 60 * 60 * 1000;
@@ -31,21 +32,32 @@ function buildTests(config) {
     const META_ACCESS_TOKEN = config.metaAccessToken || '';
     const META_APP_SECRET_PROOF = config.metaAppSecretProof || '';
     const METABASE_URL = config.metabaseUrl || 'https://analytics.univest.in';
-    const METABASE_SESSION_TOKEN = config.metabaseSessionToken || '';
     const TARGET_CAMPAIGNS = config.targetCampaigns || [];
     const socialNetworkWhere = (prefix = '') => `(${prefix}network ILIKE '%facebook%' OR ${prefix}network ILIKE '%instagram%' OR ${prefix}network = 'Facebook')`;
 
+    function resolveMetabaseSessionToken() {
+        return getMetabaseSessionToken() || config.metabaseSessionToken || '';
+    }
+
     // Reusable: query Metabase with raw SQL, returns array of row objects
     async function metabaseQuery(sql) {
-        const res = await fetch(`${METABASE_URL}/api/dataset`, {
+        const request = (sessionToken) => fetch(`${METABASE_URL}/api/dataset`, {
             method: 'POST',
             headers: {
-                'X-Metabase-Session': METABASE_SESSION_TOKEN,
+                'X-Metabase-Session': sessionToken,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ database: 2, type: 'native', native: { query: sql } }),
         });
-        if (!res.ok) {
+        let token = resolveMetabaseSessionToken();
+        if (!token) token = await refreshMetabaseSessionToken('creative integrity tests').catch(() => '');
+        let res = token ? await request(token) : null;
+        if (res && res.status === 401) {
+            const refreshed = await refreshMetabaseSessionToken('creative integrity tests 401').catch(() => '');
+            if (refreshed) res = await request(refreshed);
+        }
+        if (!res || !res.ok) {
+            if (!res) throw new Error('Metabase token unavailable');
             const text = await res.text();
             throw new Error(`Metabase ${res.status}: ${text.slice(0, 200)}`);
         }
@@ -76,6 +88,11 @@ function buildTests(config) {
     }
 
     async function metaApiFetchAll(endpoint, extraParams = {}, maxPages = 20) {
+        const cacheKey = JSON.stringify({ endpoint, extraParams, maxPages });
+        if (!buildTests._metaApiAllCache) buildTests._metaApiAllCache = new Map();
+        const cached = buildTests._metaApiAllCache.get(cacheKey);
+        if (cached) return cached;
+
         const params = new URLSearchParams({
             access_token: META_ACCESS_TOKEN,
             appsecret_proof: META_APP_SECRET_PROOF,
@@ -91,11 +108,16 @@ function buildTests(config) {
             const res = await fetch(nextUrl);
             if (!res.ok) {
                 const text = await res.text();
-                throw new Error(`Meta API ${res.status}: ${text.slice(0, 200)}`);
+                const error = new Error(`Meta API ${res.status}: ${text.slice(0, 200)}`);
+                error.status = res.status;
+                error.body = text;
+                throw error;
             }
             const data = await res.json();
             if (data.error) {
-                throw new Error(`Meta API error: ${JSON.stringify(data.error).slice(0, 200)}`);
+                const error = new Error(`Meta API error: ${JSON.stringify(data.error).slice(0, 200)}`);
+                error.metaError = data.error;
+                throw error;
             }
             rows.push(...(data.data || []));
             if (data.paging && data.paging.next) {
@@ -106,7 +128,21 @@ function buildTests(config) {
             }
         }
 
+        buildTests._metaApiAllCache.set(cacheKey, rows);
         return rows;
+    }
+
+    function isMetaRateLimitError(err) {
+        const text = [
+            err && err.message,
+            err && err.body,
+            err && JSON.stringify(err.metaError || {})
+        ].filter(Boolean).join(' ').toLowerCase();
+        return text.includes('user request limit reached') ||
+            text.includes('too many api calls') ||
+            text.includes('error_subcode\":2446079') ||
+            text.includes('code\":17') ||
+            text.includes('oauthexception');
     }
 
     // Get CI database handle (lazy, same as engine uses)
@@ -367,10 +403,18 @@ function buildTests(config) {
                 }
 
                 // 2. Pull adset names from Meta API
-                const metaCampaigns = await metaApiFetchAll(`/${META_AD_ACCOUNT_ID}/campaigns`, {
-                    fields: 'name,id',
-                    limit: '500',
-                }, 5);
+                let metaCampaigns;
+                try {
+                    metaCampaigns = await metaApiFetchAll(`/${META_AD_ACCOUNT_ID}/campaigns`, {
+                        fields: 'name,id',
+                        limit: '500',
+                    }, 3);
+                } catch (err) {
+                    if (isMetaRateLimitError(err)) {
+                        return { pass: true, level: 'WARN', message: 'Meta API rate limit reached while loading campaigns — adset normalization skipped to avoid extra API burn' };
+                    }
+                    throw err;
+                }
                 const targetCampaignIds = new Set(
                     metaCampaigns
                         .filter(c => TARGET_CAMPAIGNS.includes((c.name || '').trim()))
@@ -381,10 +425,18 @@ function buildTests(config) {
                     return { pass: true, level: 'WARN', message: 'No target campaigns were returned from Meta API' };
                 }
 
-                const metaAdsetsData = await metaApiFetchAll(`/${META_AD_ACCOUNT_ID}/adsets`, {
-                    fields: 'name,id,campaign_id',
-                    limit: '500',
-                }, 20);
+                let metaAdsetsData;
+                try {
+                    metaAdsetsData = await metaApiFetchAll(`/${META_AD_ACCOUNT_ID}/adsets`, {
+                        fields: 'name,id,campaign_id',
+                        limit: '500',
+                    }, 5);
+                } catch (err) {
+                    if (isMetaRateLimitError(err)) {
+                        return { pass: true, level: 'WARN', message: 'Meta API rate limit reached while loading adsets — normalization check skipped to avoid failing integrity on quota pressure' };
+                    }
+                    throw err;
+                }
                 const metaAdsets = metaAdsetsData
                     .filter(a => targetCampaignIds.has(String(a.campaign_id || '').trim()))
                     .map(a => (a.name || '').toLowerCase().trim());

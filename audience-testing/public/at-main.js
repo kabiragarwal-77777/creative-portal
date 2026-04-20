@@ -51,6 +51,9 @@
             var ctx = window.getPortalAssistantContext ? window.getPortalAssistantContext() : null;
             var range = ctx && ctx.dateRange ? ctx.dateRange : {};
             var diag = ctx && ctx.diagnostics ? ctx.diagnostics : {};
+            if (ctx && typeof AT.writeRefreshStamp === 'function') {
+                AT.writeRefreshStamp(diag.lastUpdated || ctx.lastUpdated || new Date().toISOString(), 'portal');
+            }
             var signature = [
                 ctx && ctx.app || (isGooglePortal ? 'google' : 'meta'),
                 ctx && ctx.view || (isGooglePortal ? 'gcAudienceTesting' : 'audienceTesting'),
@@ -83,6 +86,9 @@
         if (!container) return;
 
         container.innerHTML = buildMainHTML();
+        if (typeof AT.bootstrapRefreshStamp === 'function') {
+            AT.bootstrapRefreshStamp();
+        }
 
         // Bind drawer close
         var overlay = document.getElementById('atDrawerOverlay');
@@ -99,11 +105,16 @@
     function buildMainHTML() {
         var platformLabel = isGooglePortal ? 'Google' : 'Meta';
         var viewId = isGooglePortal ? 'atGoogleView' : 'atMetaView';
+        var refreshLabel = typeof AT.formatRefreshStamp === 'function'
+            ? AT.formatRefreshStamp(AT.readRefreshStamp ? AT.readRefreshStamp() : null)
+            : '--';
 
         return '' +
             '<div class="at-platform-toggle">' +
                 '<span style="font-size:12px;font-weight:600;color:var(--text,#e4e4e7);padding:6px 12px">' + platformLabel + ' Audience Testing</span>' +
                 '<div style="flex:1"></div>' +
+                '<span id="atLastRefreshed" style="font-size:11px;color:var(--text-dim);padding:0 8px;white-space:nowrap">Last refreshed: ' + refreshLabel + '</span>' +
+                '<button class="at-scan-btn" style="margin:0 0 0 6px;padding:4px 12px;font-size:11px" onclick="AT.refreshCurrentView()">&#8635; Refresh View</button>' +
                 '<button class="at-scan-btn" style="margin:0;padding:4px 12px;font-size:11px" onclick="AT.triggerScan()">&#x1f504; Scan Now</button>' +
                 '<button class="at-scan-btn" style="margin:0 0 0 6px;padding:4px 12px;font-size:11px" onclick="AT.generateAudienceBrain()">&#x1f9e0; Generate Brain</button>' +
             '</div>' +

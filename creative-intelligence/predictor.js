@@ -413,6 +413,7 @@ Return ONLY valid JSON:
                             model: 'gpt-5.4-mini',
                             messages: [{ role: 'user', content: prompt }],
                             temperature: 0.3,
+                            max_completion_tokens: 1200,
                             response_format: { type: 'json_object' },
                         }),
                     });
@@ -1321,6 +1322,7 @@ Respond in JSON with these fields:
                             model: 'gpt-5.4',
                             messages: [{ role: 'user', content: prompt }],
                             temperature: 0.3,
+                            max_completion_tokens: 1200,
                             response_format: { type: 'json_object' },
                         }),
                     });

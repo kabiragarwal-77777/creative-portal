@@ -13,12 +13,14 @@
 
 module.exports = function (config) {
     const { getAtDb } = require('../db/at-db');
+    const { getInternalBase, getInternalAuthHeader } = require('../../config/env');
     const path = require('path');
     const fs = require('fs');
     const glob = require('path');
 
     const CI_DIR = path.join(__dirname, '..', '..', 'creative-intelligence');
-    const UPLOADER_BASE = config.uploaderBase || process.env.UPLOADER_BASE || `http://127.0.0.1:${process.env.PORT || 3000}`;
+    const UPLOADER_BASE = config.uploaderBase || process.env.UPLOADER_BASE || getInternalBase(process.env.UPLOADER_PORT || 3000);
+    const AUTH_HEADERS = getInternalAuthHeader();
 
     // --------------- helpers ---------------
 
@@ -471,7 +473,10 @@ module.exports = function (config) {
         for (const adset of adsets) {
             try {
                 const url = `${UPLOADER_BASE}/api/adset-details/${adset.meta_adset_id}`;
-                const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+                const res = await fetch(url, {
+                    signal: AbortSignal.timeout(10000),
+                    headers: { ...AUTH_HEADERS }
+                });
                 if (!res.ok) {
                     // Rate limited or error — stop trying
                     if (res.status === 429) {

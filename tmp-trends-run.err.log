@@ -1,0 +1,57 @@
+News RSS: failed for Moneycontrol Markets: Status code 503
+YouTube RSS: failed for Pranjal Kamra: Status code 404
+Google Trends RSS: failed: Status code 404
+YouTube RSS: failed for Shankar Nath: Status code 404
+YouTube RSS: failed for Groww: Status code 404
+YouTube RSS: failed for Zerodha Varsity: Status code 404
+YouTube RSS: failed for FinnovationZ: Status code 404
+YouTube RSS: failed for Asset Yogi: Status code 404
+News RSS: failed for BS Markets: Status code 403
+News RSS: failed for Financial Express Markets: Invalid character in entity name
+Line: 0
+Column: 220
+Char: &
+News RSS: failed for Inc42 Fintech: Feed not recognized as RSS 1 or 2.
+News RSS: failed for Reuters Finance: getaddrinfo ENOTFOUND feeds.reuters.com
+[TrendScanner] Scheduled scan failed: OpenAIError: The OPENAI_API_KEY environment variable is missing or empty; either provide it, or instantiate the OpenAI client with an apiKey option, like new OpenAI({ apiKey: 'My API Key' }).
+    at new OpenAI (C:\Users\Dell\Desktop\creative-portal\node_modules\openai\index.js:74:19)
+    at Object.synthesizeTrends (C:\Users\Dell\Desktop\creative-portal\trend-scanner\agents\synthAgent.js:6:18)
+    at runFullScan (C:\Users\Dell\Desktop\creative-portal\trend-scanner\routes.js:53:42)
+YouTube RSS: failed for Pranjal Kamra: Status code 404
+Google Trends RSS: failed: Status code 404
+News RSS: failed for Moneycontrol Markets: Status code 503
+News RSS: failed for BS Markets: Status code 403
+YouTube RSS: failed for Shankar Nath: Status code 404
+YouTube RSS: failed for Groww: Status code 404
+YouTube RSS: failed for Zerodha Varsity: Status code 404
+YouTube RSS: failed for FinnovationZ: Status code 404
+YouTube RSS: failed for Asset Yogi: Status code 404
+News RSS: failed for Financial Express Markets: Invalid character in entity name
+Line: 0
+Column: 220
+Char: &
+News RSS: failed for Inc42 Fintech: Feed not recognized as RSS 1 or 2.
+News RSS: failed for Reuters Finance: getaddrinfo ENOTFOUND feeds.reuters.com
+[TrendScanner] Scheduled scan failed: OpenAIError: The OPENAI_API_KEY environment variable is missing or empty; either provide it, or instantiate the OpenAI client with an apiKey option, like new OpenAI({ apiKey: 'My API Key' }).
+    at new OpenAI (C:\Users\Dell\Desktop\creative-portal\node_modules\openai\index.js:74:19)
+    at Object.synthesizeTrends (C:\Users\Dell\Desktop\creative-portal\trend-scanner\agents\synthAgent.js:6:18)
+    at runFullScan (C:\Users\Dell\Desktop\creative-portal\trend-scanner\routes.js:53:42)
+News RSS: failed for Moneycontrol Markets: Status code 403
+YouTube RSS: failed for Pranjal Kamra: Status code 404
+Google Trends RSS: failed: Status code 404
+News RSS: failed for BS Markets: Status code 403
+YouTube RSS: failed for Shankar Nath: Status code 404
+YouTube RSS: failed for Groww: Status code 404
+YouTube RSS: failed for Zerodha Varsity: Status code 404
+YouTube RSS: failed for FinnovationZ: Status code 404
+YouTube RSS: failed for Asset Yogi: Status code 404
+News RSS: failed for Financial Express Markets: Invalid character in entity name
+Line: 0
+Column: 220
+Char: &
+News RSS: failed for Inc42 Fintech: Feed not recognized as RSS 1 or 2.
+News RSS: failed for Reuters Finance: getaddrinfo ENOTFOUND feeds.reuters.com
+[TrendScanner] Scheduled scan failed: OpenAIError: The OPENAI_API_KEY environment variable is missing or empty; either provide it, or instantiate the OpenAI client with an apiKey option, like new OpenAI({ apiKey: 'My API Key' }).
+    at new OpenAI (C:\Users\Dell\Desktop\creative-portal\node_modules\openai\index.js:74:19)
+    at Object.synthesizeTrends (C:\Users\Dell\Desktop\creative-portal\trend-scanner\agents\synthAgent.js:6:18)
+    at runFullScan (C:\Users\Dell\Desktop\creative-portal\trend-scanner\routes.js:53:42)

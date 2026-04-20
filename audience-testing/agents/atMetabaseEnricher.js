@@ -5,21 +5,23 @@
  */
 
 const { getAtDb } = require('../db/at-db');
+const { getMetabaseSessionToken, refreshMetabaseSessionToken } = require('../../config/env');
 
 module.exports = function (config) {
     config = config || {};
 
     const METABASE_URL = config.metabaseUrl || process.env.METABASE_URL || 'https://analytics.univest.in';
-    const METABASE_SESSION_TOKEN = config.metabaseSessionToken || process.env.METABASE_SESSION_TOKEN || '';
+    function resolveMetabaseSessionToken() {
+        return getMetabaseSessionToken() || config.metabaseSessionToken || '';
+    }
 
     // ── Metabase query helper ───────────────────────────────────────────
 
     async function queryMetabase(sql) {
-        if (!METABASE_SESSION_TOKEN) throw new Error('METABASE_SESSION_TOKEN not set');
-        const response = await fetch(`${METABASE_URL}/api/dataset`, {
+        const request = async (sessionToken) => fetch(`${METABASE_URL}/api/dataset`, {
             method: 'POST',
             headers: {
-                'X-Metabase-Session': METABASE_SESSION_TOKEN,
+                'X-Metabase-Session': sessionToken,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -28,6 +30,16 @@ module.exports = function (config) {
                 native: { query: sql },
             }),
         });
+
+        let token = resolveMetabaseSessionToken();
+        if (!token) token = await refreshMetabaseSessionToken('audience-testing enricher').catch(() => '');
+        if (!token) throw new Error('METABASE_SESSION_TOKEN not set');
+
+        let response = await request(token);
+        if (response.status === 401) {
+            const refreshed = await refreshMetabaseSessionToken('audience-testing enricher 401').catch(() => '');
+            if (refreshed) response = await request(refreshed);
+        }
         if (!response.ok) {
             const text = await response.text();
             throw new Error(`Metabase query failed (${response.status}): ${text}`);

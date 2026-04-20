@@ -96,6 +96,7 @@ Respond ONLY with a JSON array of ${count} briefs. No markdown, no extra text.`;
         model: 'gpt-5.4-mini',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.8,
+        max_completion_tokens: 1200,
         response_format: { type: 'json_object' },
         timeout: 30000
       });
@@ -210,6 +211,7 @@ Respond ONLY with a JSON array of 3 objects. No markdown, no extra text.`;
         model: 'gpt-5.4-mini',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
+        max_completion_tokens: 1200,
         response_format: { type: 'json_object' },
         timeout: 30000
       });

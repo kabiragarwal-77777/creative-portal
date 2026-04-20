@@ -1,11 +1,14 @@
 const { insert, query, run } = require('../db/fe-db');
+const { getInternalBase, getInternalAuthHeader } = require('../../config/env');
 
 const PREFIX = '[FE:DataQuality]';
 const DEFAULT_LOOKBACK_DAYS = Number(process.env.FE_DATA_QUALITY_LOOKBACK_DAYS || 30);
+const FE_BASE = getInternalBase(process.env.FEEDBACK_PORT || process.env.PORT || 3000);
+const AUTH_HEADERS = getInternalAuthHeader();
 
 module.exports = function feDataQualityMonitor(config = {}) {
     const defaultPort = process.env.PORT || 3000;
-    const appBaseUrl = String(config.appBaseUrl || process.env.APP_BASE_URL || `http://127.0.0.1:${defaultPort}`).replace(/\/$/, '');
+    const appBaseUrl = String(config.appBaseUrl || process.env.APP_BASE_URL || FE_BASE).replace(/\/$/, '');
 
     function toIsoDate(date) {
         return new Date(date).toISOString().slice(0, 10);
@@ -153,7 +156,7 @@ module.exports = function feDataQualityMonitor(config = {}) {
         try {
             const response = await fetch(appBaseUrl + endpoint, {
                 method,
-                headers: body ? { 'Content-Type': 'application/json' } : undefined,
+                headers: body ? { 'Content-Type': 'application/json', ...AUTH_HEADERS } : { ...AUTH_HEADERS },
                 body: body ? JSON.stringify(body) : undefined,
                 signal: controller.signal,
             });

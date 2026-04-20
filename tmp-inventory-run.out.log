@@ -1,0 +1,6 @@
+[inventory-engine] Warming inventory name cache...
+[Inventory Scanner] Running on port 3002
+[Scheduler] All cron jobs started
+[Server] Scheduler started
+[inventory-engine] Cache warmed: 0 entries
+[Server] Inventory names loaded

@@ -14,6 +14,9 @@
 
         // Build layout immediately so sections are visible
         container.innerHTML = buildLayout();
+        if (typeof AT.bootstrapRefreshStamp === 'function') {
+            AT.bootstrapRefreshStamp();
+        }
 
         // Load all data in parallel
         try {
@@ -22,6 +25,9 @@
 
         renderAll();
         loadBrain();
+        if (typeof AT.touchRefreshStamp === 'function') {
+            AT.touchRefreshStamp('meta:init');
+        }
 
         // If completely empty, show a helpful empty state at top
         if (!_data.adsets.length && !_data.patterns.length && !_data.recommendations.tests?.length) {
@@ -40,6 +46,9 @@
         await Promise.all([loadFlags(), loadPatterns(), loadRecommendations(), loadAdsets(), loadSummary()]);
         renderAll();
         loadBrain();
+        if (typeof AT.touchRefreshStamp === 'function') {
+            AT.touchRefreshStamp('meta:refresh');
+        }
     };
 
     function buildLayout() {

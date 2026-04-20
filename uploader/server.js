@@ -9,11 +9,13 @@ const path = require('path');
 const os = require('os');
 const { pipeline } = require('stream/promises');
 const { redisGetJson, redisSetJson, redisScan, redisDel } = require('../utils/redis-cache');
+const { getInternalBase, getInternalAuthHeader, getPublicBase } = require('../config/env');
 let sharp = null;
 try { sharp = require('sharp'); } catch (_) { /* optional for image normalization */ }
 
-// Load .env for local development
-try { require('dotenv').config({ path: path.join(__dirname, '.env') }); } catch(e) { /* dotenv not installed, use env vars directly */ }
+// Load .env for local development.
+// Use override so uploader/.env wins over root .env when both are present.
+try { require('dotenv').config({ path: path.join(__dirname, '.env'), override: true }); } catch(e) { /* dotenv not installed, use env vars directly */ }
 
 // Detached local launches can lose their stdout/stderr pipe after startup.
 // Ignore broken-pipe writes so the web server stays alive instead of crashing
@@ -50,6 +52,11 @@ const OPTIMIZER_BRAIN_CACHE_VERSION = 3;
 const AI_ANALYZE_CACHE = new Map();
 const AI_ANALYZE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const REDIS_CACHE_PREFIX = 'creative-portal';
+const LIVE_METABASE_ENV_PATHS = [
+    path.join(__dirname, '.env'),
+    path.join(__dirname, '..', '.env'),
+    path.join(__dirname, '..', '.env.combined'),
+];
 
 const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID || '';
 const GOOGLE_SHEET_TAB = process.env.GOOGLE_SHEET_TAB || '';
@@ -59,12 +66,146 @@ const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
 const ANALYTICS_SHEET_ID = '1S_NYpXFsBgKe3N4nrL4BSvtzwydpfoqx4eMSWFYPVFY';
 const ANALYTICS_SHEET_GID = '1655578542';
 
-const METABASE_SESSION_TOKEN = process.env.METABASE_SESSION_TOKEN || '';
+let METABASE_SESSION_TOKEN = process.env.METABASE_SESSION_TOKEN || '';
 const METABASE_URL = 'https://analytics.univest.in';
+const METABASE_SESSION_CACHE_PATH = path.join(__dirname, 'metabase-session-cache.json');
+const METABASE_LOGIN_EMAIL = process.env.METABASE_LOGIN_EMAIL || process.env.METABASE_USER || '';
+const METABASE_LOGIN_PASSWORD = process.env.METABASE_LOGIN_PASSWORD || process.env.METABASE_PASSWORD || '';
+let METABASE_SESSION_REFRESH_PROMISE = null;
+
+function resolveMetabaseLoginCredentials() {
+    return {
+        email: String(process.env.METABASE_LOGIN_EMAIL || process.env.METABASE_USER || '').trim(),
+        password: String(process.env.METABASE_LOGIN_PASSWORD || process.env.METABASE_PASSWORD || '').trim(),
+    };
+}
+
+function loadMetabaseSessionCache() {
+    try {
+        if (!fs.existsSync(METABASE_SESSION_CACHE_PATH)) return '';
+        const cached = JSON.parse(fs.readFileSync(METABASE_SESSION_CACHE_PATH, 'utf-8'));
+        if (cached && typeof cached.token === 'string' && cached.token.trim()) return cached.token.trim();
+    } catch (e) {}
+    return '';
+}
+
+function readEnvFileValue(filePath, key) {
+    try {
+        if (!fs.existsSync(filePath)) return '';
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const line = content.split(/\r?\n/).find((entry) => entry.startsWith(`${key}=`));
+        if (!line) return '';
+        return line.slice(key.length + 1).trim();
+    } catch (e) {}
+    return '';
+}
+
+function persistMetabaseSessionToken(token) {
+    try {
+        fs.writeFileSync(METABASE_SESSION_CACHE_PATH, JSON.stringify({ ts: Date.now(), token: token || '' }));
+    } catch (e) {}
+    if (token) {
+        process.env.METABASE_SESSION = token;
+        process.env.METABASE_SESSION_TOKEN = token;
+    }
+}
+
+function getMetabaseSessionToken() {
+    if (process.env.METABASE_SESSION && process.env.METABASE_SESSION.trim()) return process.env.METABASE_SESSION.trim();
+    const cached = loadMetabaseSessionCache();
+    if (cached) {
+        METABASE_SESSION_TOKEN = cached;
+        return METABASE_SESSION_TOKEN;
+    }
+    if (METABASE_SESSION_TOKEN && METABASE_SESSION_TOKEN.trim()) return METABASE_SESSION_TOKEN.trim();
+    for (const envPath of LIVE_METABASE_ENV_PATHS) {
+        const alias = readEnvFileValue(envPath, 'METABASE_SESSION');
+        if (alias) {
+            METABASE_SESSION_TOKEN = alias;
+            return METABASE_SESSION_TOKEN;
+        }
+        const value = readEnvFileValue(envPath, 'METABASE_SESSION_TOKEN');
+        if (value) {
+            METABASE_SESSION_TOKEN = value;
+            return METABASE_SESSION_TOKEN;
+        }
+    }
+    return '';
+}
+
+METABASE_SESSION_TOKEN = getMetabaseSessionToken() || METABASE_SESSION_TOKEN;
+
+async function refreshMetabaseSessionToken(reason) {
+    const creds = resolveMetabaseLoginCredentials();
+    if (!creds.email || !creds.password) {
+        return '';
+    }
+    if (METABASE_SESSION_REFRESH_PROMISE) return METABASE_SESSION_REFRESH_PROMISE;
+    METABASE_SESSION_REFRESH_PROMISE = (async function() {
+        const response = await fetch(`${METABASE_URL}/api/session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: creds.email, password: creds.password })
+        });
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`Metabase login failed (${response.status}): ${text}`);
+        }
+        const result = await response.json();
+        const token = String(result.id || result.token || result.session_id || '').trim();
+        if (!token) {
+            throw new Error('Metabase login succeeded but no session token was returned');
+        }
+        METABASE_SESSION_TOKEN = token;
+        persistMetabaseSessionToken(token);
+        console.log(`[metabase] Session token refreshed${reason ? ` (${reason})` : ''}`);
+        return token;
+    })().finally(function() {
+        METABASE_SESSION_REFRESH_PROMISE = null;
+    });
+    return METABASE_SESSION_REFRESH_PROMISE;
+}
+
+async function queryMetabaseDataset(database, sql, options) {
+    options = options || {};
+    let token = getMetabaseSessionToken();
+    const refreshed = await refreshMetabaseSessionToken(options.reason || 'queryMetabaseDataset').catch(function() { return ''; });
+    if (refreshed) token = refreshed;
+    if (!token) {
+        throw new Error('Metabase session token is missing. Set METABASE_SESSION_TOKEN or login credentials and restart the server.');
+    }
+    const request = async function(sessionToken) {
+        return fetch(`${METABASE_URL}/api/dataset`, {
+            method: 'POST',
+            headers: {
+                'X-Metabase-Session': sessionToken,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                database: database,
+                type: 'native',
+                native: { query: sql },
+                constraints: { 'max-results': 100000, 'max-results-bare-rows': 100000 },
+            }),
+        });
+    };
+    let response = await request(token);
+    if (!response.ok && response.status === 401 && options.refreshOn401 !== false) {
+        const refreshed = await refreshMetabaseSessionToken(options.reason || '401 retry').catch(function() { return ''; });
+        if (refreshed) {
+            response = await request(refreshed);
+        }
+    }
+    return response;
+}
 const ASSET_UPLOAD_CACHE_PATH = path.join(__dirname, 'asset-upload-cache.json');
 const ASSET_UPLOAD_CACHE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 let assetUploadCache = null;
 let creativeDataCacheMirror = Object.create(null);
+
+function getServerBaseUrl() {
+    return getInternalBase(PORT);
+}
 
 function portalRedisKey(scope, key) {
     return `${REDIS_CACHE_PREFIX}:${scope}:${key}`;
@@ -373,6 +514,66 @@ function getOptimizerPlatform(runtimeContext) {
     return platform === 'google' ? 'google' : 'meta';
 }
 
+function getOptimizerAllowedActionTypes(platform) {
+    if (platform === 'google') {
+        return 'PAUSE_ADGROUP|ACTIVATE_ADGROUP|ACTIVATE_CAMPAIGN|PAUSE_CAMPAIGN|UPDATE_CAMPAIGN_BUDGET|MONITOR|CREATIVE_CHANGE';
+    }
+    return 'PAUSE_AD|ACTIVATE_AD|ACTIVATE_ADSET|PAUSE_ADSET|ACTIVATE_CAMPAIGN|PAUSE_CAMPAIGN|UPDATE_ADSET_BUDGET|UPDATE_CAMPAIGN_BUDGET|MONITOR|CREATIVE_CHANGE';
+}
+
+function sanitizeGoogleOptimizerBrainPayload(payload) {
+    if (!payload || typeof payload !== 'object') return payload;
+    const clone = JSON.parse(JSON.stringify(payload));
+    const plan = clone.optimizer_plan && typeof clone.optimizer_plan === 'object' ? clone.optimizer_plan : null;
+    if (!plan) return clone;
+
+    const normalizeAction = (action) => {
+        if (!action || typeof action !== 'object') return action;
+        const next = Object.assign({}, action);
+        const actionType = String(next.action_type || '').toUpperCase();
+        const entityType = String(next.entity_type || '').toLowerCase();
+        const mentionsAdsetBudget = actionType === 'UPDATE_ADSET_BUDGET' || actionType.indexOf('ADSET_BUDGET') !== -1 || /adset budget/i.test(JSON.stringify(next));
+        if (!mentionsAdsetBudget) return next;
+
+        if (next.campaign_id || next.campaign_name || entityType === 'campaign') {
+            next.action_type = 'UPDATE_CAMPAIGN_BUDGET';
+            next.entity_type = 'campaign';
+            next.entity_id = String(next.campaign_id || next.entity_id || '');
+            next.entity_name = String(next.campaign_name || next.entity_name || '');
+            if (!next.execute_label) next.execute_label = 'Update Campaign Budget';
+            if (!next.short_label) next.short_label = 'Campaign Budget';
+            if (!next.budget_action) next.budget_action = next.budget_action === 'decrease' ? 'decrease' : 'increase';
+            if (!next.change_pct) next.change_pct = '10';
+            return next;
+        }
+        return null;
+    };
+
+    if (Array.isArray(plan.actions)) {
+        plan.actions = plan.actions.map(normalizeAction).filter(Boolean);
+    }
+    if (Array.isArray(plan.do_not_touch)) {
+        plan.do_not_touch = plan.do_not_touch.filter(Boolean);
+    }
+    if (Array.isArray(plan.watch_list)) {
+        plan.watch_list = plan.watch_list.filter(Boolean);
+    }
+    if (plan.morning_brief && typeof plan.morning_brief === 'object') {
+        if (Array.isArray(plan.morning_brief.what_to_do_right_now)) {
+            plan.morning_brief.what_to_do_right_now = plan.morning_brief.what_to_do_right_now.filter(Boolean);
+        }
+        if (Array.isArray(plan.morning_brief.what_to_leave_alone)) {
+            plan.morning_brief.what_to_leave_alone = plan.morning_brief.what_to_leave_alone.filter(Boolean);
+        }
+        if (Array.isArray(plan.morning_brief.campaign_insights)) {
+            plan.morning_brief.campaign_insights = plan.morning_brief.campaign_insights.filter(Boolean);
+        }
+    }
+
+    clone.optimizer_plan = plan;
+    return clone;
+}
+
 function getOptimizerBrainConfig(runtimeContext) {
     const platform = getOptimizerPlatform(runtimeContext);
     if (platform === 'google') {
@@ -387,9 +588,10 @@ function getOptimizerBrainConfig(runtimeContext) {
                 'Use the user_request first, then the evidence, then the playbook rules.',
                 'Do not be vague. Give specific actions with exact entities and exact numbers where evidence allows.',
                 'If evidence is insufficient for an exact numeric change, say what data is missing and still give the next best concrete action.',
-                'You must factor: campaign settings, adgroup settings, ad or asset issues, search-term quality, geo or device waste, bid strategy, budget discipline, historical winners, external context, and risks not present in historical data.',
+                'You must factor: campaign settings, adgroup settings, ad or asset issues, search-term quality, geo or device waste, bid strategy, budget discipline, historical winners, external context, week-on-week trend shifts, and risks not present in historical data.',
                 'Prioritize google_operator_audit and data_integrity_gate before making any recommendation that depends on ROAS, CAC, or Google conversions.',
-                'Campaign budget shifts are allowed. Do not recommend adgroup budget shifts.',
+                'Campaign budget shifts are allowed. Never recommend adgroup budget shifts. If spend needs to move, move it only at the campaign level. If budget is not the right lever, recommend creative refresh, search-term cleanup, bid/target adjustment, geo/device cleanup, or asset replacement instead.',
+                'For Google, a weak previous week can be normal while the account is still trial-heavy or inside the learning window. Do not treat last week ROAS alone as failure if D0 trial cost, signups, and the downstream quality line are still evolving; explain the learning caveat and inspect search terms, geo/device mix, asset-group quality, and campaign structure before a hard cut.',
                 'For campaign deep dives, cover active adgroups and active ads or assets explicitly. Say which particular adgroups or assets are not working and why.',
                 'Keep the final answer operator-friendly, not analyst-style.'
             ].join('\n')
@@ -406,9 +608,10 @@ function getOptimizerBrainConfig(runtimeContext) {
             'Use the user_request first, then the evidence, then the playbook rules.',
             'Do not be vague. Give specific actions with exact entities and exact numbers where evidence allows.',
             'If evidence is insufficient for an exact numeric change, say what data is missing and still give the next best concrete action.',
-            'You must factor: campaign settings, adset settings, ad issues, audiences, location settings, placements, bid strategy, optimization event, historical winners, external context, and risks not present in historical data.',
+            'You must factor: campaign settings, adset settings, ad issues, audiences, location settings, placements, bid strategy, optimization event, historical winners, external context, week-on-week trend shifts, and risks not present in historical data.',
             'Prioritize meta_operator_audit and data_integrity_gate before making any recommendation that depends on ROAS/CAC.',
             'If Meta-side evidence says CPI, CTR, CPM, audience concentration, placement waste, geo inefficiency, or bid/learning issues are the real problem, say that directly.',
+            'Broaden the answer beyond budgets: always cover week-on-week trends, placement shifts, geo/device concentration, audience mix, creative fatigue, pacing, and account-level concentration before you choose a lever.',
             'For campaign deep dives, cover active adsets and active ads explicitly. Say which particular ads are not working and why.',
             'Keep the final answer operator-friendly, not analyst-style.'
         ].join('\n')
@@ -504,6 +707,8 @@ function buildOptimizerBrainEvidence(runtimeContext) {
         google_operator_audit: platform === 'google' ? operatorAudit : null,
         data_integrity_gate: dataIntegrity,
         external_context: runtimeContext && runtimeContext.external_context ? runtimeContext.external_context : null,
+        weekly_trend_summary: runtimeContext && (runtimeContext.weekly_trend_summary || runtimeContext.trend_summary) ? (runtimeContext.weekly_trend_summary || runtimeContext.trend_summary) : null,
+        advanced_trend_intelligence: runtimeContext && runtimeContext.advanced_trend_intelligence ? runtimeContext.advanced_trend_intelligence : null,
         playbook_rules: Array.isArray(runtimeContext && runtimeContext.playbook_rules) ? runtimeContext.playbook_rules.slice(0, 20) : [],
         account_metrics: runtimeContext && runtimeContext.performance_summary ? runtimeContext.performance_summary : {}
     };
@@ -649,17 +854,107 @@ button:hover{background:#7c6ef0}
 <div class="brand-icon">PM</div>
 <h1>Performance Marketing Auto</h1>
 <div class="sub">Sign in to access the portal</div>
-<form method="POST" action="/auth/login">
+<form id="loginForm" method="POST" action="/auth/login">
 <div class="error" id="err"></div>
 <input type="text" name="username" placeholder="Username" required autocomplete="username">
 <input type="password" name="password" placeholder="Password" required autocomplete="current-password">
 <button type="submit">Sign In</button>
 </form>
 </div>
+<script src="/shared/auth-helper.js"></script>
+<script src="shared/auth-helper.js"></script>
 <script>
 if(location.search.includes('error=1'))document.getElementById('err').style.display='block',document.getElementById('err').textContent='Invalid username or password';
+const loginForm = document.getElementById('loginForm');
+if (loginForm) {
+    loginForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const formData = new FormData(loginForm);
+        const username = String(formData.get('username') || '');
+        const password = String(formData.get('password') || '');
+        try {
+            const body = new URLSearchParams();
+            body.set('username', username);
+            body.set('password', password);
+            const response = await fetch('/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'fetch'
+                },
+                credentials: 'include',
+                body: body.toString()
+            });
+            const data = await response.json().catch(() => ({ success: false }));
+            if (data && data.success) {
+                if (data.token) {
+                    sessionStorage.setItem('portal_token', data.token);
+                    localStorage.setItem('portal_token', data.token);
+                }
+                sessionStorage.setItem('portal_user', username);
+                sessionStorage.setItem('portal_pass', password);
+                localStorage.setItem('portal_user', username);
+                localStorage.setItem('portal_pass', password);
+                window.location.href = '/';
+                return;
+            }
+        } catch (error) {
+            console.error('[Login] Failed:', error);
+        }
+        document.getElementById('err').style.display = 'block';
+        document.getElementById('err').textContent = 'Invalid username or password';
+    });
+}
 </script>
 </body></html>`;
+
+app.get([
+    '/shared/auth-helper.js',
+    '/creative-portal/shared/auth-helper.js',
+    '/auth/shared/auth-helper.js',
+    '/creative-portal/auth/shared/auth-helper.js'
+], (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.send(`(function () {
+  function getStored(name) {
+    try {
+      return sessionStorage.getItem(name) || localStorage.getItem(name) || '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function getHeaders(extra) {
+    const headers = Object.assign({ 'Content-Type': 'application/json' }, extra || {});
+    const token = getStored('portal_token');
+    const user = getStored('portal_user');
+    const pass = getStored('portal_pass');
+    if (token) {
+      headers.Authorization = token.startsWith('Bearer ') ? token : 'Bearer ' + token;
+    } else if (user && pass) {
+      headers.Authorization = 'Basic ' + btoa(user + ':' + pass);
+    }
+    return headers;
+  }
+
+  async function apiFetch(url, options) {
+    const opts = Object.assign({}, options || {});
+    opts.headers = getHeaders(opts.headers || {});
+    opts.credentials = 'include';
+    const response = await fetch(url, opts);
+    if (response.status === 401 && !String(url || '').includes('/auth/login')) {
+      try { window.location.href = '/auth/login'; } catch (_) {}
+    }
+    return response;
+  }
+
+  window.PortalAuth = {
+    getHeaders,
+    apiFetch
+  };
+})();`);
+});
 
 // Auth middleware — checks session cookie, skips login/auth routes and internal requests
 app.use((req, res, next) => {
@@ -700,7 +995,13 @@ app.post('/auth/login', (req, res) => {
     if (username === PORTAL_USER && password === PORTAL_PASS) {
         const sessionId = generateSessionId();
         authSessions.set(sessionId, { user: username, createdAt: Date.now(), lastAccess: Date.now() });
-        res.setHeader('Set-Cookie', `portal_session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`);
+        res.setHeader('Set-Cookie', [
+            `portal_session=${sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
+            `portal_token=${sessionId}; Path=/; SameSite=Lax; Max-Age=86400`
+        ]);
+        if ((req.headers.accept || '').includes('application/json') || req.headers['x-requested-with'] === 'fetch') {
+            return res.json({ success: true, token: sessionId, user: username });
+        }
         return res.redirect('/');
     }
     return res.redirect('/auth/login?error=1');
@@ -717,8 +1018,25 @@ app.get('/auth/logout', (req, res) => {
     const cookies = parseCookies(req.headers.cookie);
     const sessionId = cookies['portal_session'];
     if (sessionId) authSessions.delete(sessionId);
-    res.setHeader('Set-Cookie', 'portal_session=; Path=/; HttpOnly; Max-Age=0');
+    res.setHeader('Set-Cookie', [
+        'portal_session=; Path=/; HttpOnly; Max-Age=0',
+        'portal_token=; Path=/; Max-Age=0'
+    ]);
     res.redirect('/auth/login');
+});
+
+app.use('/analytics/api', (req, res, next) => {
+    if (req.headers.authorization) return next();
+    const cookies = parseCookies(req.headers.cookie);
+    const sessionId = cookies['portal_session'];
+    if (sessionId && authSessions.has(sessionId)) {
+        if (process.env.PORTAL_INTERNAL_AUTH_TOKEN) {
+            req.headers.authorization = `Bearer ${process.env.PORTAL_INTERNAL_AUTH_TOKEN}`;
+        } else if (PORTAL_USER && PORTAL_PASS) {
+            req.headers.authorization = `Basic ${Buffer.from(`${PORTAL_USER}:${PORTAL_PASS}`).toString('base64')}`;
+        }
+    }
+    next();
 });
 
 // Clean up expired sessions every hour (24h max age)
@@ -1254,6 +1572,47 @@ app.get('/api/campaigns', async (req, res) => {
     }
 });
 
+// 2a. Surface the active server-managed Meta config to the UI for auto-fill.
+app.get('/api/meta/settings', async (req, res) => {
+    res.json({
+        success: true,
+        meta_access_token: META_ACCESS_TOKEN,
+        meta_appsecret_proof: META_APP_SECRET_PROOF,
+        meta_ad_account_id: META_AD_ACCOUNT_ID,
+        server_managed: true,
+    });
+});
+
+// 2b. Create a campaign using server-side Meta credentials
+app.post('/api/create-campaign', async (req, res) => {
+    try {
+        const body = req.body || {};
+        const params = {
+            name: body.name,
+            objective: body.objective || 'OUTCOME_APP_PROMOTION',
+            status: body.status || 'PAUSED',
+            special_ad_categories: body.special_ad_categories != null
+                ? body.special_ad_categories
+                : JSON.stringify(['FINANCIAL_PRODUCTS_SERVICES']),
+            buying_type: body.buying_type || 'AUCTION',
+        };
+
+        if (!params.name) {
+            return res.status(400).json({ success: false, error: 'name is required' });
+        }
+        if (body.bid_strategy) params.bid_strategy = body.bid_strategy;
+        if (body.campaign_budget_optimization != null) params.campaign_budget_optimization = body.campaign_budget_optimization;
+        if (body.daily_budget != null) params.daily_budget = body.daily_budget;
+        if (body.lifetime_budget != null) params.lifetime_budget = body.lifetime_budget;
+        if (body.spend_cap != null) params.spend_cap = body.spend_cap;
+
+        const data = await metaPost(`/${META_AD_ACCOUNT_ID}/campaigns`, params);
+        res.json({ success: true, campaign_id: data.id, meta_response: data });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message, metaError: err.metaError });
+    }
+});
+
 // 3. Fetch adsets in a campaign
 app.get('/api/adsets/:campaignId', async (req, res) => {
     try {
@@ -1371,7 +1730,7 @@ app.get('/api/search-regions', async (req, res) => {
     try {
         const q = req.query.q;
         if (!q) return res.status(400).json({ success: false, error: 'q (search query) is required' });
-        const url = `https://graph.facebook.com/v21.0/search?type=adgeolocation&location_types=region&q=${encodeURIComponent(q)}&access_token=${META_ACCESS_TOKEN}&appsecret_proof=${APPSECRET_PROOF}`;
+        const url = `https://graph.facebook.com/v21.0/search?type=adgeolocation&location_types=region&q=${encodeURIComponent(q)}&access_token=${META_ACCESS_TOKEN}&appsecret_proof=${META_APP_SECRET_PROOF}`;
         const resp = await fetch(url);
         const data = await resp.json();
         if (data.error) throw new Error(data.error.message);
@@ -2899,18 +3258,7 @@ FROM signup_metrics sm
 GROUP BY 1,2,3
 ORDER BY SUM(sm.total_signup) DESC`;
 
-        const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
-            method: 'POST',
-            headers: {
-                'X-Metabase-Session': METABASE_SESSION_TOKEN,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                database: 2,
-                type: 'native',
-                native: { query: sql },
-            }),
-        });
+        const metabaseRes = await queryMetabaseDataset(2, sql, { reason: 'creative-metrics' });
 
         if (!metabaseRes.ok) {
             const errText = await metabaseRes.text();
@@ -3206,6 +3554,460 @@ function setCache(key, data) {
     void redisSetJson(portalRedisKey('api', key), payload, 30 * 60 * 1000);
 }
 
+const META_OPTIMIZER_DEFAULT_LOOKBACK_DAYS = 29;
+const META_OPTIMIZER_READY_STATUSES = new Set(['ok', 'stale-but-usable']);
+const META_OPTIMIZER_SCAN_STATE = {
+    last_successful_scan_at: '',
+    last_successful_scan_range: null,
+    last_successful_scan_integrity: '',
+    last_successful_snapshot_type: '',
+    last_rejected_scan_at: '',
+    last_rejected_scan_range: null,
+    last_rejected_scan_reason: '',
+};
+const META_OPTIMIZER_CANARY_INTERVAL_MS = 60 * 60 * 1000;
+const META_OPTIMIZER_CANARY_STATE = {
+    lastRunAt: '',
+    lastRunReason: '',
+    status: 'idle',
+    reason: '',
+    range: null,
+    sourceIntegrity: { meta: '', metabase: '' },
+    topLine: null,
+    lastGoodAt: '',
+    lastGoodRange: null,
+    lastGoodTopLine: null,
+};
+
+const META_OPTIMIZER_SOURCE_EVENTS = {
+    meta: null,
+    metabase: null,
+};
+
+function getDefaultMetaOptimizerRange(nowMs = Date.now()) {
+    const until = new Date(nowMs).toISOString().slice(0, 10);
+    const since = new Date(nowMs - META_OPTIMIZER_DEFAULT_LOOKBACK_DAYS * 86400000).toISOString().slice(0, 10);
+    return { dateFrom: since, dateTo: until };
+}
+
+function isDefaultMetaOptimizerRange(dateFrom, dateTo, nowMs = Date.now()) {
+    const expected = getDefaultMetaOptimizerRange(nowMs);
+    return expected.dateFrom === dateFrom && expected.dateTo === dateTo;
+}
+
+function buildMetaOptimizerRangeMeta(dateFrom, dateTo) {
+    return {
+        dateFrom: String(dateFrom || ''),
+        dateTo: String(dateTo || ''),
+        label: `${dateFrom || ''} -> ${dateTo || ''}`,
+    };
+}
+
+function getCacheEntry(key, maxAgeMs = 1800000) {
+    const entry = _apiCache[key];
+    if (entry && Date.now() - entry.ts < maxAgeMs) return entry;
+    return null;
+}
+
+function readJsonFileSafe(filePath) {
+    try {
+        if (!fs.existsSync(filePath)) return null;
+        return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    } catch (err) {
+        return null;
+    }
+}
+
+function buildMetaOptimizerFreshness(opts) {
+    const sourceTs = opts && opts.sourceTs ? Number(opts.sourceTs) : 0;
+    const ageMinutes = opts && opts.ageMinutes != null
+        ? Number(opts.ageMinutes)
+        : (sourceTs ? Math.max(0, Math.round((Date.now() - sourceTs) / 60000)) : null);
+    const stale = !!(opts && opts.stale);
+    return {
+        status: sourceTs ? (stale ? 'stale' : 'fresh') : 'unknown',
+        checkedAt: new Date().toISOString(),
+        snapshotAt: sourceTs ? new Date(sourceTs).toISOString() : null,
+        ageMinutes,
+        stale,
+    };
+}
+
+function sumNumericFields(rows, fields) {
+    const totals = {};
+    for (const field of fields) totals[field] = 0;
+    for (const row of Array.isArray(rows) ? rows : []) {
+        for (const field of fields) totals[field] += Number(row && row[field] || 0);
+    }
+    return totals;
+}
+
+function inferSourceSuspect(kind, rows, opts) {
+    const rowCount = Array.isArray(rows) ? rows.length : 0;
+    if (opts.failed || opts.suspect) return true;
+    if (!rowCount) return true;
+    if (kind === 'meta') {
+        if (opts.looksTruncated || opts.truncated || opts.paginationBroke) return opts.source !== 'disk';
+        const totals = sumNumericFields(rows, ['spend', 'impressions', 'clicks', 'installs']);
+        return rowCount >= 100 && totals.spend <= 0 && totals.impressions <= 0 && totals.clicks <= 0 && totals.installs <= 0;
+    }
+    const totals = sumNumericFields(rows, ['signups', 'total_trial', 'd0_trial', 'd6', 'd6_overall_con', 'd6_overall_revenue']);
+    return rowCount >= 50
+        && totals.signups <= 0
+        && totals.total_trial <= 0
+        && totals.d0_trial <= 0
+        && totals.d6 <= 0
+        && totals.d6_overall_con <= 0
+        && totals.d6_overall_revenue <= 0;
+}
+
+function classifyMetaOptimizerSourceIntegrity(kind, rows, opts) {
+    opts = opts || {};
+    if (opts.failed) return 'failed';
+    if (inferSourceSuspect(kind, rows, opts)) return 'suspect';
+    if (opts.stale) return 'stale-but-usable';
+    return 'ok';
+}
+
+function updateMetaOptimizerScanState() {
+    const defaultRange = getDefaultMetaOptimizerRange();
+    const meta = META_OPTIMIZER_SOURCE_EVENTS.meta;
+    const metabase = META_OPTIMIZER_SOURCE_EVENTS.metabase;
+    const bothDefaultRange = meta && metabase
+        && meta.range && metabase.range
+        && meta.range.dateFrom === defaultRange.dateFrom
+        && meta.range.dateTo === defaultRange.dateTo
+        && metabase.range.dateFrom === defaultRange.dateFrom
+        && metabase.range.dateTo === defaultRange.dateTo;
+    if (!bothDefaultRange) return;
+    if (META_OPTIMIZER_READY_STATUSES.has(meta.integrityStatus) && META_OPTIMIZER_READY_STATUSES.has(metabase.integrityStatus)) {
+        META_OPTIMIZER_SCAN_STATE.last_successful_scan_at = new Date().toISOString();
+        META_OPTIMIZER_SCAN_STATE.last_successful_scan_range = defaultRange;
+        META_OPTIMIZER_SCAN_STATE.last_successful_scan_integrity = `${meta.integrityStatus}/${metabase.integrityStatus}`;
+        META_OPTIMIZER_SCAN_STATE.last_successful_snapshot_type = `${meta.snapshotType || meta.source}/${metabase.snapshotType || metabase.source}`;
+        return;
+    }
+    const failedSource = !META_OPTIMIZER_READY_STATUSES.has(meta.integrityStatus) ? meta : metabase;
+    META_OPTIMIZER_SCAN_STATE.last_rejected_scan_at = new Date().toISOString();
+    META_OPTIMIZER_SCAN_STATE.last_rejected_scan_range = defaultRange;
+    META_OPTIMIZER_SCAN_STATE.last_rejected_scan_reason = failedSource.error || failedSource.warning || `${failedSource.kind || 'source'} ${failedSource.integrityStatus}`;
+}
+
+function recordMetaOptimizerSourceEvent(kind, payload) {
+    META_OPTIMIZER_SOURCE_EVENTS[kind] = {
+        kind,
+        checkedAt: new Date().toISOString(),
+        source: payload.source || 'unknown',
+        rowCount: Number(payload.rowCount || 0),
+        integrityStatus: payload.integrityStatus || 'unknown',
+        freshness: payload.freshness || null,
+        range: payload.range || null,
+        warning: payload.warning || '',
+        error: payload.error || '',
+        success: payload.success !== false,
+        snapshotType: payload.snapshotType || '',
+        snapshotTimestamp: payload.snapshotTimestamp || null,
+    };
+    updateMetaOptimizerScanState();
+}
+
+function buildMetaOptimizerSourcePayload(base, opts) {
+    const kind = String(opts.kind || 'meta');
+    const rows = Array.isArray(base.data)
+        ? base.data
+        : (Array.isArray(opts.rows) ? opts.rows : []);
+    const rowCount = Number(opts.rowCount != null ? opts.rowCount : (base.total != null ? base.total : rows.length));
+    const source = String(opts.source || 'unknown');
+    const freshness = buildMetaOptimizerFreshness({
+        sourceTs: opts.sourceTs,
+        ageMinutes: opts.ageMinutes,
+        stale: opts.stale,
+    });
+    const payload = Object.assign({}, base, {
+        source,
+        freshness,
+        rowCount,
+        integrityStatus: classifyMetaOptimizerSourceIntegrity(kind, rows, {
+            failed: !!opts.failed,
+            suspect: !!opts.suspect,
+            stale: freshness.stale,
+            source,
+            looksTruncated: !!opts.looksTruncated,
+            truncated: !!opts.truncated,
+            paginationBroke: !!opts.paginationBroke,
+        }),
+        range: buildMetaOptimizerRangeMeta(opts.dateFrom, opts.dateTo),
+        snapshotType: opts.snapshotType || (source === 'live' ? 'live' : 'cache'),
+        snapshotTimestamp: freshness.snapshotAt,
+    });
+    if (opts.recordEvent !== false) recordMetaOptimizerSourceEvent(kind, payload);
+    return payload;
+}
+
+function getMetaInsightsCacheSnapshot(dateFrom, dateTo) {
+    const cacheKey = `insights_${dateFrom}_${dateTo}`;
+    const diskFile = path.join(__dirname, '..', 'creative-intelligence', `insights-cache-${dateFrom}-${dateTo}.json`);
+    const cacheEntry = getCacheEntry(cacheKey);
+    if (cacheEntry && Array.isArray(cacheEntry.data) && cacheEntry.data.length) {
+        return buildMetaOptimizerSourcePayload(
+            { success: true, data: cacheEntry.data, total: cacheEntry.data.length },
+            {
+                kind: 'meta',
+                source: 'memory',
+                rows: cacheEntry.data,
+                rowCount: cacheEntry.data.length,
+                sourceTs: cacheEntry.ts,
+                dateFrom,
+                dateTo,
+                suspect: cacheEntry.data.length === 500,
+                looksTruncated: cacheEntry.data.length === 500,
+                snapshotType: 'cache',
+                recordEvent: false,
+            }
+        );
+    }
+    const disk = readJsonFileSafe(diskFile);
+    if (disk && Array.isArray(disk.data) && disk.data.length) {
+        const ageMin = disk.ts ? Math.round((Date.now() - disk.ts) / 60000) : null;
+        return buildMetaOptimizerSourcePayload(
+            { success: true, data: disk.data, total: disk.data.length },
+            {
+                kind: 'meta',
+                source: 'disk',
+                rows: disk.data,
+                rowCount: disk.data.length,
+                sourceTs: disk.ts || 0,
+                ageMinutes: ageMin,
+                stale: !!(disk.ts && (Date.now() - disk.ts) >= 2 * 3600000),
+                dateFrom,
+                dateTo,
+                suspect: disk.data.length === 500,
+                looksTruncated: disk.data.length === 500,
+                snapshotType: 'cache',
+                recordEvent: false,
+            }
+        );
+    }
+    return buildMetaOptimizerSourcePayload(
+        { success: false, total: 0, error: 'Meta insights cache is unavailable for the default optimizer range.' },
+        {
+            kind: 'meta',
+            source: 'missing',
+            rowCount: 0,
+            dateFrom,
+            dateTo,
+            failed: true,
+            snapshotType: 'missing',
+            recordEvent: false,
+        }
+    );
+}
+
+function getMetabaseFunnelCacheSnapshot(dateFrom, dateTo) {
+    const funnelCacheKey = `funnel_${dateFrom}_${dateTo}`;
+    const funnelDiskFile = path.join(__dirname, '..', 'creative-intelligence', `funnel-cache-${dateFrom}-${dateTo}.json`);
+    const cacheEntry = getCacheEntry(funnelCacheKey);
+    if (cacheEntry && Array.isArray(cacheEntry.data) && cacheEntry.data.length) {
+        return buildMetaOptimizerSourcePayload(
+            { success: true, data: cacheEntry.data, total: cacheEntry.data.length },
+            {
+                kind: 'metabase',
+                source: 'memory',
+                rows: cacheEntry.data,
+                rowCount: cacheEntry.data.length,
+                sourceTs: cacheEntry.ts,
+                dateFrom,
+                dateTo,
+                snapshotType: 'cache',
+                recordEvent: false,
+            }
+        );
+    }
+    const disk = readJsonFileSafe(funnelDiskFile);
+    if (disk && Array.isArray(disk.data) && disk.data.length) {
+        const ageMin = disk.ts ? Math.round((Date.now() - disk.ts) / 60000) : null;
+        return buildMetaOptimizerSourcePayload(
+            { success: true, data: disk.data, total: disk.data.length },
+            {
+                kind: 'metabase',
+                source: 'disk',
+                rows: disk.data,
+                rowCount: disk.data.length,
+                sourceTs: disk.ts || 0,
+                ageMinutes: ageMin,
+                stale: !!(disk.ts && (Date.now() - disk.ts) >= 2 * 3600000),
+                dateFrom,
+                dateTo,
+                snapshotType: 'cache',
+                recordEvent: false,
+            }
+        );
+    }
+    return buildMetaOptimizerSourcePayload(
+        { success: false, total: 0, error: 'Metabase funnel cache is unavailable for the default optimizer range.' },
+        {
+            kind: 'metabase',
+            source: 'missing',
+            rowCount: 0,
+            dateFrom,
+            dateTo,
+            failed: true,
+            snapshotType: 'missing',
+            recordEvent: false,
+        }
+    );
+}
+
+function buildMetaOptimizerReadiness() {
+    const defaultRange = getDefaultMetaOptimizerRange();
+    const meta = (META_OPTIMIZER_SOURCE_EVENTS.meta
+        && META_OPTIMIZER_SOURCE_EVENTS.meta.range
+        && META_OPTIMIZER_SOURCE_EVENTS.meta.range.dateFrom === defaultRange.dateFrom
+        && META_OPTIMIZER_SOURCE_EVENTS.meta.range.dateTo === defaultRange.dateTo)
+        ? META_OPTIMIZER_SOURCE_EVENTS.meta
+        : getMetaInsightsCacheSnapshot(defaultRange.dateFrom, defaultRange.dateTo);
+    const metabase = (META_OPTIMIZER_SOURCE_EVENTS.metabase
+        && META_OPTIMIZER_SOURCE_EVENTS.metabase.range
+        && META_OPTIMIZER_SOURCE_EVENTS.metabase.range.dateFrom === defaultRange.dateFrom
+        && META_OPTIMIZER_SOURCE_EVENTS.metabase.range.dateTo === defaultRange.dateTo)
+        ? META_OPTIMIZER_SOURCE_EVENTS.metabase
+        : getMetabaseFunnelCacheSnapshot(defaultRange.dateFrom, defaultRange.dateTo);
+    return {
+        defaultRange,
+        ready: META_OPTIMIZER_READY_STATUSES.has(meta.integrityStatus) && META_OPTIMIZER_READY_STATUSES.has(metabase.integrityStatus),
+        sources: {
+            meta,
+            metabase,
+        },
+        canary: Object.assign({}, META_OPTIMIZER_CANARY_STATE),
+        lastSuccessfulScan: {
+            at: META_OPTIMIZER_SCAN_STATE.last_successful_scan_at || null,
+            range: META_OPTIMIZER_SCAN_STATE.last_successful_scan_range || null,
+            integrity: META_OPTIMIZER_SCAN_STATE.last_successful_scan_integrity || '',
+            snapshotType: META_OPTIMIZER_SCAN_STATE.last_successful_snapshot_type || '',
+        },
+        lastRejectedScan: {
+            at: META_OPTIMIZER_SCAN_STATE.last_rejected_scan_at || null,
+            range: META_OPTIMIZER_SCAN_STATE.last_rejected_scan_range || null,
+            reason: META_OPTIMIZER_SCAN_STATE.last_rejected_scan_reason || '',
+        },
+    };
+}
+
+function buildMetaOptimizerTopLine(metaRows, metabaseRows) {
+    const meta = Array.isArray(metaRows) ? metaRows : [];
+    const funnel = Array.isArray(metabaseRows) ? metabaseRows : [];
+    const campaignIds = new Set();
+    const adsetIds = new Set();
+    const adIds = new Set();
+    let spend = 0;
+    let installs = 0;
+    for (const row of meta) {
+        spend += Number(row && row.spend || 0);
+        installs += Number(row && row.installs || 0);
+        if (row && row.campaign_id) campaignIds.add(String(row.campaign_id));
+        if (row && row.adset_id) adsetIds.add(String(row.adset_id));
+        if (row && row.ad_id) adIds.add(String(row.ad_id));
+    }
+    let signups = 0;
+    let d6 = 0;
+    let d6Revenue = 0;
+    for (const row of funnel) {
+        signups += Number(row && row.signups || 0);
+        d6 += Number(row && (row.d6_overall_con != null ? row.d6_overall_con : row.d6) || 0);
+        d6Revenue += Number(row && (row.d6_overall_revenue != null ? row.d6_overall_revenue : row.d6_revenue) || 0);
+    }
+    return {
+        spend: Math.round(spend * 100) / 100,
+        installs,
+        signups,
+        d6,
+        d6Revenue: Math.round(d6Revenue * 100) / 100,
+        campaigns: campaignIds.size,
+        adsets: adsetIds.size,
+        ads: adIds.size,
+        metaRows: meta.length,
+        metabaseRows: funnel.length,
+    };
+}
+
+function compareMetaOptimizerTopLineToLastGood(currentTopLine, currentRange) {
+    const lastGood = META_OPTIMIZER_CANARY_STATE.lastGoodTopLine;
+    const lastGoodRange = META_OPTIMIZER_CANARY_STATE.lastGoodRange;
+    const reasons = [];
+    if (!lastGood || !lastGoodRange) return reasons;
+    if (!currentRange || currentRange.dateFrom !== lastGoodRange.dateFrom || currentRange.dateTo !== lastGoodRange.dateTo) return reasons;
+    if (lastGood.metaRows >= 500 && currentTopLine.metaRows >= 500 && lastGood.spend > 0 && currentTopLine.spend <= 0) {
+        reasons.push('Meta spend collapsed to zero against the last good snapshot.');
+    }
+    if (lastGood.metabaseRows >= 100 && currentTopLine.metabaseRows >= 100 && lastGood.signups > 0 && currentTopLine.signups <= 0) {
+        reasons.push('Metabase signups collapsed to zero against the last good snapshot.');
+    }
+    if (lastGood.metabaseRows >= 100 && currentTopLine.metabaseRows >= 100 && lastGood.d6 > 0 && currentTopLine.d6 <= 0) {
+        reasons.push('Metabase D6 collapsed to zero against the last good snapshot.');
+    }
+    return reasons;
+}
+
+async function runMetaOptimizerCanary(reason = 'interval') {
+    const range = getDefaultMetaOptimizerRange();
+    const baseUrl = getServerBaseUrl();
+    const authHeaders = getInternalAuthHeader();
+    const nowIso = new Date().toISOString();
+    try {
+        const [metaResp, metabaseResp] = await Promise.all([
+            fetch(`${baseUrl}/api/meta/ad-insights-daily`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...authHeaders },
+                body: JSON.stringify(range),
+            }),
+            fetch(`${baseUrl}/api/metabase/ad-funnel`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...authHeaders },
+                body: JSON.stringify(range),
+            }),
+        ]);
+        const meta = await metaResp.json();
+        const metabase = await metabaseResp.json();
+        const reasons = [];
+        if (!META_OPTIMIZER_READY_STATUSES.has(String(meta && meta.integrityStatus || ''))) {
+            reasons.push(`Meta source ${String(meta && meta.integrityStatus || 'unknown')}`);
+        }
+        if (!META_OPTIMIZER_READY_STATUSES.has(String(metabase && metabase.integrityStatus || ''))) {
+            reasons.push(`Metabase source ${String(metabase && metabase.integrityStatus || 'unknown')}`);
+        }
+        const topLine = buildMetaOptimizerTopLine(meta && meta.data, metabase && metabase.data);
+        reasons.push(...compareMetaOptimizerTopLineToLastGood(topLine, range));
+        META_OPTIMIZER_CANARY_STATE.lastRunAt = nowIso;
+        META_OPTIMIZER_CANARY_STATE.lastRunReason = reason;
+        META_OPTIMIZER_CANARY_STATE.range = range;
+        META_OPTIMIZER_CANARY_STATE.sourceIntegrity = {
+            meta: String(meta && meta.integrityStatus || 'unknown'),
+            metabase: String(metabase && metabase.integrityStatus || 'unknown'),
+        };
+        META_OPTIMIZER_CANARY_STATE.topLine = topLine;
+        if (reasons.length) {
+            META_OPTIMIZER_CANARY_STATE.status = 'alert';
+            META_OPTIMIZER_CANARY_STATE.reason = reasons.join(' | ');
+            console.warn(`[MetaOptimizerCanary] ALERT (${reason}) ${META_OPTIMIZER_CANARY_STATE.reason}`);
+            return;
+        }
+        META_OPTIMIZER_CANARY_STATE.status = 'ok';
+        META_OPTIMIZER_CANARY_STATE.reason = '';
+        META_OPTIMIZER_CANARY_STATE.lastGoodAt = nowIso;
+        META_OPTIMIZER_CANARY_STATE.lastGoodRange = range;
+        META_OPTIMIZER_CANARY_STATE.lastGoodTopLine = topLine;
+        console.log(`[MetaOptimizerCanary] OK (${reason}) spend=${topLine.spend} signups=${topLine.signups} d6=${topLine.d6}`);
+    } catch (err) {
+        META_OPTIMIZER_CANARY_STATE.lastRunAt = nowIso;
+        META_OPTIMIZER_CANARY_STATE.lastRunReason = reason;
+        META_OPTIMIZER_CANARY_STATE.range = range;
+        META_OPTIMIZER_CANARY_STATE.status = 'error';
+        META_OPTIMIZER_CANARY_STATE.reason = err && err.message ? err.message : 'Unknown canary error';
+        console.warn(`[MetaOptimizerCanary] ERROR (${reason}) ${META_OPTIMIZER_CANARY_STATE.reason}`);
+    }
+}
+
 function extractMetaInstallMetrics(row) {
     const actions = row.actions || [];
     const costPerAction = row.cost_per_action_type || [];
@@ -3423,40 +4225,65 @@ app.delete('/api/browser-cache/:namespace/:key', async (req, res) => {
 });
 
 app.post('/api/meta/ad-insights-daily', async (req, res) => {
+    const { dateFrom, dateTo, noCache } = req.body || {};
+    if (!dateFrom || !dateTo) {
+        return res.status(400).json({ success: false, error: 'dateFrom and dateTo are required' });
+    }
+    const looksSuspiciouslyTruncatedInsights = (rows) => Array.isArray(rows) && rows.length === 500;
+    const cacheKey = `insights_${dateFrom}_${dateTo}`;
+    const diskFile = path.join(__dirname, '..', 'creative-intelligence', `insights-cache-${dateFrom}-${dateTo}.json`);
+    let diskCache = readJsonFileSafe(diskFile);
+    let diskAgeMin = diskCache && diskCache.ts ? Math.round((Date.now() - diskCache.ts) / 60000) : null;
     try {
-        const { dateFrom, dateTo, noCache } = req.body;
-        if (!dateFrom || !dateTo) {
-            return res.status(400).json({ success: false, error: 'dateFrom and dateTo are required' });
-        }
-
-        // Check memory cache, then disk cache
-        const cacheKey = `insights_${dateFrom}_${dateTo}`;
-        const diskFile = path.join(__dirname, '..', 'creative-intelligence', `insights-cache-${dateFrom}-${dateTo}.json`);
-        let diskCache = null;
-        let diskAgeMin = null;
-        try {
-            if (fs.existsSync(diskFile)) {
-                diskCache = JSON.parse(fs.readFileSync(diskFile, 'utf-8'));
-                diskAgeMin = diskCache.ts ? Math.round((Date.now() - diskCache.ts) / 60000) : null;
-            }
-        } catch(e) {}
         if (!noCache) {
-            const cached = getCached(cacheKey);
-            if (cached) {
+            const cacheEntry = getCacheEntry(cacheKey);
+            const cached = cacheEntry && Array.isArray(cacheEntry.data) ? cacheEntry.data : null;
+            if (cached && !looksSuspiciouslyTruncatedInsights(cached)) {
                 console.log(`[ad-insights] Serving from memory (${cached.length} rows)`);
-                return res.json({ success: true, data: cached, total: cached.length, cached: true });
+                return res.json(buildMetaOptimizerSourcePayload(
+                    { success: true, data: cached, total: cached.length, cached: true },
+                    {
+                        kind: 'meta',
+                        source: 'memory',
+                        rowCount: cached.length,
+                        sourceTs: cacheEntry.ts,
+                        dateFrom,
+                        dateTo,
+                        snapshotType: 'cache',
+                    }
+                ));
+            }
+            if (cached && looksSuspiciouslyTruncatedInsights(cached)) {
+                console.warn(`[ad-insights] Skipping suspicious 500-row memory cache for ${dateFrom} → ${dateTo}`);
             }
             if (diskCache && diskCache.data && diskCache.data.length > 0 && diskCache.ts && Date.now() - diskCache.ts < 6 * 3600000) {
-                console.log(`[ad-insights] Serving from disk (${diskCache.data.length} rows, ${diskAgeMin}min old)`);
-                setCache(cacheKey, diskCache.data);
-                return res.json({
-                    success: true,
-                    data: diskCache.data,
-                    total: diskCache.data.length,
-                    cached: true,
-                    stale: (Date.now() - diskCache.ts) >= 2 * 3600000,
-                    data_age_min: diskAgeMin,
-                });
+                if (looksSuspiciouslyTruncatedInsights(diskCache.data)) {
+                    console.warn(`[ad-insights] Skipping suspicious 500-row disk cache for ${dateFrom} → ${dateTo}`);
+                } else {
+                    console.log(`[ad-insights] Serving from disk (${diskCache.data.length} rows, ${diskAgeMin}min old)`);
+                    setCache(cacheKey, diskCache.data);
+                    return res.json(buildMetaOptimizerSourcePayload(
+                        {
+                            success: true,
+                            data: diskCache.data,
+                            total: diskCache.data.length,
+                            cached: true,
+                            stale: (Date.now() - diskCache.ts) >= 2 * 3600000,
+                            data_age_min: diskAgeMin,
+                        },
+                        {
+                            kind: 'meta',
+                            source: 'disk',
+                            rowCount: diskCache.data.length,
+                            sourceTs: diskCache.ts,
+                            ageMinutes: diskAgeMin,
+                            stale: (Date.now() - diskCache.ts) >= 2 * 3600000,
+                            dateFrom,
+                            dateTo,
+                            snapshotType: 'cache',
+                        }
+                    ));
+                }
             }
         }
 
@@ -3498,7 +4325,20 @@ app.post('/api/meta/ad-insights-daily', async (req, res) => {
             const data = await response.json();
 
             if (data.error) {
-                if (pageCount === 1) return res.status(400).json({ success: false, error: data.error.message });
+                if (pageCount === 1) {
+                    return res.status(400).json(buildMetaOptimizerSourcePayload(
+                        { success: false, data: [], total: 0, error: data.error.message },
+                        {
+                            kind: 'meta',
+                            source: 'live',
+                            rowCount: 0,
+                            dateFrom,
+                            dateTo,
+                            failed: true,
+                            snapshotType: 'live',
+                        }
+                    ));
+                }
                 console.error('[ad-insights] Pagination error on page', pageCount, ':', data.error.message || data.error);
                 paginationBroke = true;
                 break;
@@ -3522,11 +4362,31 @@ app.post('/api/meta/ad-insights-daily', async (req, res) => {
             try {
                 if (diskCache && diskCache.data) {
                     const disk = JSON.parse(fs.readFileSync(diskFile, 'utf-8'));
-                    if (disk.data && disk.data.length > allRows.length) {
+                    if (disk.data && disk.data.length > allRows.length && !looksSuspiciouslyTruncatedInsights(disk.data)) {
                         console.log(`[ad-insights] Disk cache has ${disk.data.length} rows vs truncated ${allRows.length} — using disk cache.`);
                         setCache(cacheKey, disk.data);
                         const ageMin = disk.ts ? Math.round((Date.now() - disk.ts) / 60000) : 9999;
-                        return res.json({ success: true, data: disk.data, total: disk.data.length, cached: true, data_age_min: ageMin, warning: `Meta API truncated at page ${pageCount}. Using cached data (${ageMin}min old, ${disk.data.length} rows).` });
+                        return res.json(buildMetaOptimizerSourcePayload(
+                            {
+                                success: true,
+                                data: disk.data,
+                                total: disk.data.length,
+                                cached: true,
+                                data_age_min: ageMin,
+                                warning: `Meta API truncated at page ${pageCount}. Using cached data (${ageMin}min old, ${disk.data.length} rows).`
+                            },
+                            {
+                                kind: 'meta',
+                                source: 'disk',
+                                rowCount: disk.data.length,
+                                sourceTs: disk.ts || 0,
+                                ageMinutes: ageMin,
+                                stale: true,
+                                dateFrom,
+                                dateTo,
+                                snapshotType: 'fallback',
+                            }
+                        ));
                     }
                 }
             } catch (e) { /* proceed with truncated data if disk read fails */ }
@@ -3561,11 +4421,15 @@ app.post('/api/meta/ad-insights-daily', async (req, res) => {
             };
         });
 
-        setCache(cacheKey, rows);
+        if (looksSuspiciouslyTruncatedInsights(rows)) {
+            console.warn(`[ad-insights] Fresh Meta response landed at exactly 500 rows for ${dateFrom} → ${dateTo}; not caching because it is likely truncated.`);
+        } else {
+            setCache(cacheKey, rows);
+        }
 
         // Only save to disk if we got a complete dataset (no pagination break)
         // Never overwrite disk cache with fewer rows — prevents poisoning from truncated API responses
-        if (!paginationBroke) {
+        if (!paginationBroke && !looksSuspiciouslyTruncatedInsights(rows)) {
             try {
                 let shouldWrite = true;
                 if (fs.existsSync(diskFile)) {
@@ -3582,11 +4446,33 @@ app.post('/api/meta/ad-insights-daily', async (req, res) => {
                     console.log(`[ad-insights] Saved to disk: ${rows.length} rows`);
                 }
             } catch(e) {}
-        } else {
+        } else if (paginationBroke) {
             console.log(`[ad-insights] Skipping disk write — pagination broke, data is truncated (${rows.length} rows).`);
+        } else {
+            console.log(`[ad-insights] Skipping disk write — exact 500-row Meta snapshot looks truncated (${rows.length} rows).`);
         }
 
-        res.json({ success: true, data: rows, total: rows.length, truncated: paginationBroke || false });
+        return res.json(buildMetaOptimizerSourcePayload(
+            {
+                success: true,
+                data: rows,
+                total: rows.length,
+                truncated: paginationBroke || false,
+            },
+            {
+                kind: 'meta',
+                source: 'live',
+                rowCount: rows.length,
+                sourceTs: Date.now(),
+                dateFrom,
+                dateTo,
+                truncated: paginationBroke || false,
+                paginationBroke,
+                looksTruncated: looksSuspiciouslyTruncatedInsights(rows),
+                suspect: looksSuspiciouslyTruncatedInsights(rows),
+                snapshotType: 'live',
+            }
+        ));
     } catch (err) {
         // Fallback to disk cache on error — flag with age so frontend knows
         try {
@@ -3595,16 +4481,48 @@ app.post('/api/meta/ad-insights-daily', async (req, res) => {
                 const ageMin = stale.ts ? Math.round((Date.now() - stale.ts) / 60000) : 9999;
                 console.log(`[ad-insights] Error fallback — disk cache (${stale.data.length} rows, ${ageMin}min old). Error: ${err.message}`);
                 setCache(cacheKey, stale.data);
-                return res.json({ success: true, data: stale.data, total: stale.data.length, cached: true, stale: true, data_age_min: ageMin, warning: `Data is ${ageMin}min old (Meta API error: ${err.message})` });
+                return res.json(buildMetaOptimizerSourcePayload(
+                    {
+                        success: true,
+                        data: stale.data,
+                        total: stale.data.length,
+                        cached: true,
+                        stale: true,
+                        data_age_min: ageMin,
+                        warning: `Data is ${ageMin}min old (Meta API error: ${err.message})`,
+                    },
+                    {
+                        kind: 'meta',
+                        source: 'disk',
+                        rowCount: stale.data.length,
+                        sourceTs: stale.ts || 0,
+                        ageMinutes: ageMin,
+                        stale: true,
+                        dateFrom,
+                        dateTo,
+                        snapshotType: 'fallback',
+                    }
+                ));
             }
         } catch(e2) {}
         console.error('Meta ad-insights-daily error:', err);
-        res.json({
-            success: true,
-            data: [],
-            total: 0,
-            warning: `Meta insights unavailable: ${err.message}`
-        });
+        return res.status(500).json(buildMetaOptimizerSourcePayload(
+            {
+                success: false,
+                data: [],
+                total: 0,
+                error: `Meta insights unavailable: ${err.message}`,
+            },
+            {
+                kind: 'meta',
+                source: 'live',
+                rowCount: 0,
+                dateFrom,
+                dateTo,
+                failed: true,
+                snapshotType: 'failed',
+            }
+        ));
     }
 });
 
@@ -4030,20 +4948,31 @@ app.get('/api/meta/ads-status', async (req, res) => {
 });
 
 app.post('/api/metabase/ad-funnel', async (req, res) => {
+    const { dateFrom, dateTo, noCache } = req.body || {};
+    if (!dateFrom || !dateTo) {
+        return res.status(400).json({ success: false, error: 'dateFrom and dateTo are required' });
+    }
+    const funnelCacheKey = `funnel_${dateFrom}_${dateTo}`;
+    const funnelDiskFile = path.join(__dirname, '..', 'creative-intelligence', `funnel-cache-${dateFrom}-${dateTo}.json`);
     try {
-        const { dateFrom, dateTo, noCache } = req.body;
-        if (!dateFrom || !dateTo) {
-            return res.status(400).json({ success: false, error: 'dateFrom and dateTo are required' });
-        }
-
         // Check memory cache, then disk cache
-        const funnelCacheKey = `funnel_${dateFrom}_${dateTo}`;
-        const funnelDiskFile = path.join(__dirname, '..', 'creative-intelligence', `funnel-cache-${dateFrom}-${dateTo}.json`);
         if (!noCache) {
-            const funnelCached = getCached(funnelCacheKey);
+            const funnelCacheEntry = getCacheEntry(funnelCacheKey);
+            const funnelCached = funnelCacheEntry && Array.isArray(funnelCacheEntry.data) ? funnelCacheEntry.data : null;
             if (funnelCached) {
                 console.log(`[ad-funnel] Serving from memory (${funnelCached.length} rows)`);
-                return res.json({ success: true, data: funnelCached, total: funnelCached.length, cached: true });
+                return res.json(buildMetaOptimizerSourcePayload(
+                    { success: true, data: funnelCached, total: funnelCached.length, cached: true },
+                    {
+                        kind: 'metabase',
+                        source: 'memory',
+                        rowCount: funnelCached.length,
+                        sourceTs: funnelCacheEntry.ts,
+                        dateFrom,
+                        dateTo,
+                        snapshotType: 'cache',
+                    }
+                ));
             }
             try {
                 if (fs.existsSync(funnelDiskFile)) {
@@ -4052,7 +4981,20 @@ app.post('/api/metabase/ad-funnel', async (req, res) => {
                         const ageMin = Math.round((Date.now() - disk.ts) / 60000);
                         console.log(`[ad-funnel] Serving from disk (${disk.data.length} rows, ${ageMin}min old)`);
                         setCache(funnelCacheKey, disk.data);
-                        return res.json({ success: true, data: disk.data, total: disk.data.length, cached: true, data_age_min: ageMin });
+                        return res.json(buildMetaOptimizerSourcePayload(
+                            { success: true, data: disk.data, total: disk.data.length, cached: true, data_age_min: ageMin },
+                            {
+                                kind: 'metabase',
+                                source: 'disk',
+                                rowCount: disk.data.length,
+                                sourceTs: disk.ts || 0,
+                                ageMinutes: ageMin,
+                                stale: (Date.now() - disk.ts) >= 2 * 3600000,
+                                dateFrom,
+                                dateTo,
+                                snapshotType: 'cache',
+                            }
+                        ));
                     }
                 }
             } catch(e) {}
@@ -4185,24 +5127,12 @@ FROM signup_metrics sm
 GROUP BY 1,2,3,4,5
 ORDER BY SUM(sm.total_signup) DESC`;
 
-        if (!METABASE_SESSION_TOKEN) {
-            throw new Error('Metabase session token is missing. Set METABASE_SESSION_TOKEN in uploader/.env and restart the server.');
+        if (!getMetabaseSessionToken()) {
+            throw new Error('Metabase session token is missing. Set METABASE_SESSION_TOKEN in uploader/.env or add Metabase login credentials and restart the server.');
         }
 
         console.log('[ad-funnel] Running Metabase query...');
-        const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
-            method: 'POST',
-            headers: {
-                'X-Metabase-Session': METABASE_SESSION_TOKEN,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                database: 2,
-                type: 'native',
-                native: { query: sql },
-                constraints: { 'max-results': 100000, 'max-results-bare-rows': 100000 },
-            }),
-        });
+        const metabaseRes = await queryMetabaseDataset(2, sql, { reason: 'ad-funnel' });
 
         if (!metabaseRes.ok) {
             const errText = await metabaseRes.text();
@@ -4228,25 +5158,70 @@ ORDER BY SUM(sm.total_signup) DESC`;
             try { fs.writeFileSync(funnelDiskFile, JSON.stringify({ ts: Date.now(), data: rows })); } catch(e) {}
         }
 
-        res.json({ success: true, data: rows, total: rows.length, truncated });
+        return res.json(buildMetaOptimizerSourcePayload(
+            {
+                success: true,
+                data: rows,
+                total: rows.length,
+                truncated,
+            },
+            {
+                kind: 'metabase',
+                source: 'live',
+                rowCount: rows.length,
+                sourceTs: Date.now(),
+                dateFrom,
+                dateTo,
+                truncated: !!truncated,
+                snapshotType: 'live',
+            }
+        ));
     } catch (err) {
         try {
             if (fs.existsSync(funnelDiskFile)) {
                 const stale = JSON.parse(fs.readFileSync(funnelDiskFile, 'utf-8'));
                 console.log(`[ad-funnel] Error fallback — disk (${stale.data.length} rows)`);
                 setCache(funnelCacheKey, stale.data);
-                return res.json({
-                    success: true,
-                    data: stale.data,
-                    total: stale.data.length,
-                    cached: true,
-                    stale: true,
-                    warning: err.message,
-                });
+                return res.json(buildMetaOptimizerSourcePayload(
+                    {
+                        success: true,
+                        data: stale.data,
+                        total: stale.data.length,
+                        cached: true,
+                        stale: true,
+                        warning: err.message,
+                    },
+                    {
+                        kind: 'metabase',
+                        source: 'disk',
+                        rowCount: stale.data.length,
+                        sourceTs: stale.ts || 0,
+                        stale: true,
+                        dateFrom,
+                        dateTo,
+                        snapshotType: 'fallback',
+                    }
+                ));
                 }
         } catch(e2) {}
         console.error('Metabase ad-funnel error:', err);
-        res.status(500).json({ success: false, error: err.message });
+        return res.status(500).json(buildMetaOptimizerSourcePayload(
+            {
+                success: false,
+                data: [],
+                total: 0,
+                error: err.message,
+            },
+            {
+                kind: 'metabase',
+                source: 'live',
+                rowCount: 0,
+                dateFrom,
+                dateTo,
+                failed: true,
+                snapshotType: 'failed',
+            }
+        ));
     }
 });
 
@@ -4377,19 +5352,7 @@ SELECT
 FROM user_breakdown ub
 ORDER BY row_type, revenue_first_6d_all_payments DESC NULLS LAST`;
 
-        const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
-            method: 'POST',
-            headers: {
-                'X-Metabase-Session': METABASE_SESSION_TOKEN,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                database: 2,
-                type: 'native',
-                native: { query: sql },
-                constraints: { 'max-results': 10000, 'max-results-bare-rows': 10000 },
-            }),
-        });
+        const metabaseRes = await queryMetabaseDataset(2, sql, { reason: 'debug-user-attribution' });
 
         if (!metabaseRes.ok) {
             const errText = await metabaseRes.text();
@@ -4635,18 +5598,7 @@ GROUP BY 1,2,3
 ORDER BY SUM(sm.total_signup) DESC`;
 
                 try {
-                    const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
-                        method: 'POST',
-                        headers: {
-                            'X-Metabase-Session': METABASE_SESSION_TOKEN,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            database: 2,
-                            type: 'native',
-                            native: { query: sql },
-                        }),
-                    });
+                    const metabaseRes = await queryMetabaseDataset(2, sql, { reason: 'ci-historical-data' });
 
                     if (metabaseRes.ok) {
                         const result = await metabaseRes.json();
@@ -4681,6 +5633,47 @@ const TARGET_CAMPAIGNS = [
 ];
 
 const KNOWN_CREATIVES_FILE = path.join(ciDir, 'known-creatives.json');
+
+function selectCiLearningCreatives(compactCreatives, limit = 100) {
+    const source = Array.isArray(compactCreatives) ? compactCreatives.slice() : [];
+    const chosen = [];
+    const seen = new Set();
+    const keyFor = (item) => [
+        String(item && (item.n || '')).trim().toLowerCase(),
+        String(item && (item.cmp || '')).trim().toLowerCase(),
+        String(item && (item.ads || '')).trim().toLowerCase()
+    ].join('::');
+    const push = (item) => {
+        if (!item) return;
+        const key = keyFor(item);
+        if (seen.has(key)) return;
+        seen.add(key);
+        chosen.push(item);
+    };
+    const spendRank = source.slice().sort((a, b) => (Number(b.sp || 0) - Number(a.sp || 0)));
+    spendRank.slice(0, Math.min(60, limit)).forEach(push);
+    const funnelRank = source
+        .filter(c => Number(c.su || 0) > 0 || Number(c.d6 || 0) > 0 || Number(c.d0 || 0) > 0)
+        .sort((a, b) => {
+            const scoreA = Number(a.d6x || 0) + Number(a.ox || 0);
+            const scoreB = Number(b.d6x || 0) + Number(b.ox || 0);
+            return scoreB - scoreA;
+        });
+    funnelRank.slice(0, Math.min(20, limit)).forEach(push);
+    const underperformers = source
+        .filter(c => Number(c.sp || 0) >= 10000)
+        .sort((a, b) => {
+            const scoreA = Number(a.d6x || 0) + Number(a.ox || 0);
+            const scoreB = Number(b.d6x || 0) + Number(b.ox || 0);
+            return scoreA - scoreB;
+        });
+    underperformers.slice(0, Math.min(15, limit)).forEach(push);
+    const mature = source
+        .filter(c => Number(c.dy || 0) >= 14)
+        .sort((a, b) => Number(b.dy || 0) - Number(a.dy || 0));
+    mature.slice(0, Math.min(10, limit)).forEach(push);
+    return chosen.slice(0, limit);
+}
 
 // Route 2: Learn patterns — auto-fetches Meta + Metabase data server-side
 app.post('/api/ci/learn', async (req, res) => {
@@ -4905,18 +5898,7 @@ ORDER BY SUM(sm.total_signup) DESC`;
         let funnelData = [];
         try {
             console.log('[ci/learn] Fetching Metabase funnel data...');
-            const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
-                method: 'POST',
-                headers: {
-                    'X-Metabase-Session': METABASE_SESSION_TOKEN,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    database: 2,
-                    type: 'native',
-                    native: { query: sql },
-                }),
-            });
+            const metabaseRes = await queryMetabaseDataset(2, sql, { reason: 'ci-learn' });
 
             if (metabaseRes.ok) {
                 const result = await metabaseRes.json();
@@ -5107,9 +6089,9 @@ ORDER BY SUM(sm.total_signup) DESC`;
             lv: c.go_live_date, dy: c.days_live,
         }));
 
-        // Sort by spend desc and cap at top 150 creatives to stay within token limits
+        // Select a balanced learning sample instead of sending the full spend-sorted tail.
         compactCreatives.sort((a, b) => b.sp - a.sp);
-        const creativesForAI = compactCreatives.slice(0, 150);
+        const creativesForAI = selectCiLearningCreatives(compactCreatives, 100);
 
         // Build aggregated summaries for context
         const dowSummary = {};
@@ -5613,6 +6595,7 @@ app.post('/api/optimizer/brain', async (req, res) => {
 
         const strategistSystem = brainConfig.strategistSystem;
 
+        const allowedActionTypes = getOptimizerAllowedActionTypes(brainConfig.platform);
         const strategistPrompt = JSON.stringify({
             platform: brainConfig.platform,
             user_request: userRequest,
@@ -5626,7 +6609,7 @@ app.post('/api/optimizer/brain', async (req, res) => {
                         {
                             action_id: 'ACT-001',
                             priority: 'P1|P2|P3',
-                            action_type: 'PAUSE_AD|ACTIVATE_AD|ACTIVATE_ADSET|PAUSE_ADSET|ACTIVATE_CAMPAIGN|PAUSE_CAMPAIGN|UPDATE_ADSET_BUDGET|UPDATE_CAMPAIGN_BUDGET|MONITOR|CREATIVE_CHANGE',
+                            action_type: allowedActionTypes,
                             entity_type: 'account|campaign|adset|ad|adgroup|creative|keyword',
                             entity_id: 'meta id if known',
                             entity_name: 'entity name',
@@ -5666,6 +6649,9 @@ app.post('/api/optimizer/brain', async (req, res) => {
             ]
         });
         let strategyJson = safeJsonParse(strategy.choices[0].message.content, {}) || {};
+        if (brainConfig.platform === 'google') {
+            strategyJson = sanitizeGoogleOptimizerBrainPayload(strategyJson);
+        }
 
         const qaSystem = [
             'You are the final optimizer-answer QA gate.',
@@ -5694,6 +6680,9 @@ app.post('/api/optimizer/brain', async (req, res) => {
             const qaJson = safeJsonParse(qa.choices[0].message.content, null);
             if (qaJson && qaJson.tightened_answer && typeof qaJson.tightened_answer === 'object') {
                 strategyJson = qaJson.tightened_answer;
+                if (brainConfig.platform === 'google') {
+                    strategyJson = sanitizeGoogleOptimizerBrainPayload(strategyJson);
+                }
             }
             let qaGate = analyzeOptimizerDraftQuality(strategyJson);
             if (!qaGate.passed) {
@@ -5727,6 +6716,9 @@ app.post('/api/optimizer/brain', async (req, res) => {
                     const repairedJson = safeJsonParse(repair.choices[0].message.content, null);
                     if (repairedJson && typeof repairedJson === 'object') {
                         strategyJson = repairedJson;
+                        if (brainConfig.platform === 'google') {
+                            strategyJson = sanitizeGoogleOptimizerBrainPayload(strategyJson);
+                        }
                         qaGate = analyzeOptimizerDraftQuality(strategyJson);
                     }
                 } catch (repairErr) {
@@ -6047,12 +7039,8 @@ SELECT sm.tracker_name, sm.tracker_campaign_name AS campaign_name, sm.meta_campa
 FROM signup_metrics sm GROUP BY 1,2,3 ORDER BY SUM(sm.total_signup) DESC`;
 
         let funnelData = [];
-        try {
-            const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
-                method: 'POST',
-                headers: { 'X-Metabase-Session': METABASE_SESSION_TOKEN, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ database: 2, type: 'native', native: { query: funnelSql } }),
-            });
+                try {
+                    const metabaseRes = await queryMetabaseDataset(2, funnelSql, { reason: 'ci-simulate-all-funnel' });
             if (metabaseRes.ok) {
                 const result = await metabaseRes.json();
                 const columns = result.data.cols.map(c => c.name);
@@ -6465,7 +7453,7 @@ try {
         metaAccessToken: META_ACCESS_TOKEN,
         metaAppSecretProof: META_APP_SECRET_PROOF,
         metabaseUrl: METABASE_URL,
-        metabaseSessionToken: METABASE_SESSION_TOKEN,
+        metabaseSessionToken: getMetabaseSessionToken(),
         openaiApiKey: OPENAI_API_KEY,
         targetCampaigns: TARGET_CAMPAIGNS,
     });
@@ -6525,6 +7513,622 @@ function createGoogleAdsCustomer(options = {}) {
         refresh_token: process.env.GOOGLE_ADS_REFRESH_TOKEN,
     }, hooks);
 }
+
+var GOOGLE_APP_ASSET_REPORT_CACHE = {
+    sourceKey: '',
+    sourceMode: '',
+    filePath: '',
+    mtimeMs: 0,
+    payload: null
+};
+
+function getGoogleAppAssetReportPath() {
+    var configured = String(process.env.GOOGLE_APP_ASSET_REPORT_PATH || '').trim();
+    if (configured) return configured;
+    return 'C:\\Users\\Dell\\Downloads\\App asset performance (3).csv';
+}
+
+function cleanGoogleAssetCell(value) {
+    return String(value == null ? '' : value).replace(/^\uFEFF/, '').replace(/^"|"$/g, '').trim();
+}
+
+function parseGoogleAssetNumber(value) {
+    var text = cleanGoogleAssetCell(value).replace(/,/g, '');
+    if (!text) return 0;
+    var num = Number(text);
+    return isFinite(num) ? num : 0;
+}
+
+function parseGoogleAssetPct(value) {
+    var text = cleanGoogleAssetCell(value).replace(/%/g, '').replace(/,/g, '');
+    if (!text) return 0;
+    var num = Number(text);
+    return isFinite(num) ? num : 0;
+}
+
+function parseGoogleAssetRow(line, headers) {
+    var cells = String(line || '').split('\t');
+    var out = {};
+    headers.forEach(function(header, idx) {
+        out[header] = cleanGoogleAssetCell(cells[idx] || '');
+    });
+    return out;
+}
+
+function normalizeGoogleAppAssetType(fieldType, assetType, assetText) {
+    var raw = cleanGoogleAssetCell(fieldType || assetType || '').toUpperCase().replace(/[^A-Z0-9_]+/g, '_');
+    if (raw.indexOf('DESCRIPTION') !== -1) return 'Description';
+    if (raw.indexOf('HEADLINE') !== -1 || raw.indexOf('LONG_HEADLINE') !== -1) return 'Headline';
+    if (raw.indexOf('DEEP_LINK') !== -1) return 'App deep link';
+    if (raw.indexOf('YOUTUBE_VIDEO') !== -1 || raw.indexOf('VIDEO') !== -1) return 'YouTube video';
+    if (raw.indexOf('IMAGE') !== -1 || raw.indexOf('MARKETING_IMAGE') !== -1) return 'Horizontal image';
+    if (raw.indexOf('CALL_TO_ACTION') !== -1) return 'Call to action';
+    if (raw.indexOf('BUSINESS_NAME') !== -1) return 'Business name';
+    if (raw.indexOf('LOGO') !== -1) return 'Logo';
+    if (raw.indexOf('CALL') !== -1) return 'Call';
+    if (assetText) {
+        var textKey = cleanGoogleAssetCell(assetText).toLowerCase();
+        if (textKey.indexOf('learn more') !== -1 || textKey.indexOf('signup') !== -1) return 'Headline';
+    }
+    return String(fieldType || assetType || 'Unknown')
+        .replace(/_/g, ' ')
+        .toLowerCase()
+        .replace(/\b\w/g, function(ch) { return ch.toUpperCase(); });
+}
+
+function extractGoogleAdsAppAssetText(row) {
+    if (!row || typeof row !== 'object') return '';
+    var asset = row.asset || {};
+    var textAsset = asset.text_asset || asset.textAsset || {};
+    var videoAsset = asset.youtube_video_asset || asset.youtubeVideoAsset || {};
+    var deepLinkAsset = asset.app_deep_link_asset || asset.appDeepLinkAsset || {};
+    var imageAsset = asset.image_asset || asset.imageAsset || {};
+    return cleanGoogleAssetCell(
+        textAsset.text ||
+        textAsset.headline ||
+        textAsset.description ||
+        textAsset.full_text ||
+        deepLinkAsset.app_deep_link_uri ||
+        deepLinkAsset.link_url ||
+        deepLinkAsset.link ||
+        videoAsset.youtube_video_title ||
+        videoAsset.video_title ||
+        imageAsset.full_size?.url ||
+        asset.name ||
+        asset.resource_name ||
+        ''
+    );
+}
+
+async function fetchGoogleAppAssetPerformanceLive(dateFrom, dateTo) {
+    if (!process.env.GOOGLE_ADS_DEVELOPER_TOKEN || !process.env.GOOGLE_ADS_REFRESH_TOKEN) {
+        return { rows: [], warning: 'Google Ads API credentials not configured' };
+    }
+    const from = String(dateFrom || '').trim();
+    const to = String(dateTo || '').trim();
+    if (!from || !to) {
+        return { rows: [], warning: 'dateFrom and dateTo required for live Google Ads asset performance' };
+    }
+
+    const customer = createGoogleAdsCustomer();
+    const query = `
+        SELECT
+            campaign.id,
+            campaign.name,
+            campaign.advertising_channel_type,
+            ad_group.id,
+            ad_group.name,
+            ad_group_ad_asset_view.field_type,
+            ad_group_ad_asset_view.performance_label,
+            asset.resource_name,
+            asset.name,
+            asset.type,
+            asset.text_asset.text,
+            asset.youtube_video_asset.youtube_video_title,
+            asset.app_deep_link_asset.app_deep_link_uri,
+            metrics.impressions,
+            metrics.clicks,
+            metrics.cost_micros,
+            metrics.conversions,
+            metrics.all_conversions,
+            metrics.all_conversions_value
+        FROM ad_group_ad_asset_view
+        WHERE segments.date BETWEEN '${from}' AND '${to}'
+          AND campaign.advertising_channel_type IN (APP_CAMPAIGN, PERFORMANCE_MAX)
+        ORDER BY metrics.impressions DESC
+        LIMIT 10000
+    `;
+    try {
+        const rows = await customer.query(query);
+        return { rows: rows || [], warning: '' };
+    } catch (err) {
+        const errMsg = err && (err.message || err.details || err.toString()) || 'Unknown Google Ads API error';
+        console.error('[google-app-asset-live] query failed:', errMsg);
+        throw new Error(errMsg);
+    }
+}
+
+function normalizeGoogleAppAssetLiveRows(rows) {
+    return (rows || []).map(function(row) {
+        var campaignName = cleanGoogleAssetCell(row.campaign && row.campaign.name || '');
+        var adGroupName = cleanGoogleAssetCell(row.ad_group && row.ad_group.name || '');
+        var assetText = extractGoogleAdsAppAssetText(row);
+        var fieldType = cleanGoogleAssetCell(row.ad_group_ad_asset_view && row.ad_group_ad_asset_view.field_type || '');
+        var assetType = normalizeGoogleAppAssetType(fieldType, row.asset && row.asset.type || '', assetText);
+        var impressions = Number(row.metrics && row.metrics.impressions) || 0;
+        var clicks = Number(row.metrics && row.metrics.clicks) || 0;
+        var cost = Math.round((Number(row.metrics && row.metrics.cost_micros) || 0) / 1000);
+        var conversions = Number(row.metrics && row.metrics.conversions) || 0;
+        var allConversions = Number(row.metrics && row.metrics.all_conversions) || 0;
+        var installConversions = Number(row.metrics && row.metrics.biddable_app_install_conversions) || 0;
+        var inAppActions = Number(row.metrics && row.metrics.biddable_app_post_install_conversions) || 0;
+        var viewThroughConv = Math.max(0, Math.round(allConversions - conversions));
+        var convRate = impressions > 0 ? +(conversions / impressions * 100).toFixed(2) : 0;
+        var installRate = impressions > 0 ? +(installConversions / impressions * 100).toFixed(2) : 0;
+        var actionRate = impressions > 0 ? +(inAppActions / impressions * 100).toFixed(2) : 0;
+        var installsPer1k = impressions > 0 ? Math.round((installConversions / impressions) * 1000) : 0;
+        return {
+            Campaign: campaignName,
+            'Ad group': adGroupName,
+            'App asset': assetText,
+            'App asset type': assetType,
+            Conversions: conversions,
+            'Currency code': 'INR',
+            Cost: cost,
+            Installations: installConversions,
+            'In-app actions': inAppActions,
+            'View-through conv.': viewThroughConv,
+            'Conv. rate': convRate,
+            'Conv. rate (install)': installRate,
+            'Conv. rate (in-app action)': actionRate,
+            'Installs per (1000) impressions': installsPer1k,
+            _source_mode: 'google_ads_api',
+            _field_type: fieldType,
+            _performance_label: cleanGoogleAssetCell(row.ad_group_ad_asset_view && row.ad_group_ad_asset_view.performance_label || ''),
+            _asset_type: cleanGoogleAssetCell(row.asset && row.asset.type || '')
+        };
+    });
+}
+
+function appAssetGuidanceForType(type) {
+    var key = String(type || '').toLowerCase();
+    if (key === 'description') {
+        return {
+            action: 'REUSE THIS DESCRIPTION',
+            next_step: 'Reuse this offer-led description in the next RSA/UAC test and keep the copy-led structure live.',
+            why: 'Description is the strongest volume driver in the report.'
+        };
+    }
+    if (key === 'headline') {
+        return {
+            action: 'SWAP THE HEADLINE',
+            next_step: 'Keep the winning description and swap weaker headlines around it instead of rebuilding the whole ad group.',
+            why: 'Headline is the next major support lever after description.'
+        };
+    }
+    if (key === 'app deep link') {
+        return {
+            action: 'KEEP THE DEEP LINK',
+            next_step: 'Keep the deep link as the primary path and test surrounding copy, not the conversion path.',
+            why: 'Deep links are strong in activated and trial-style pockets.'
+        };
+    }
+    if (key === 'youtube video') {
+        return {
+            action: 'USE VIDEO AS SUPPORT',
+            next_step: 'Use video only as supporting proof unless the hook matches a proven offer line.',
+            why: 'Video contributes volume, but it should support the winning message rather than replace it.'
+        };
+    }
+    if (key === 'horizontal image') {
+        return {
+            action: 'PAUSE IMAGE-FIRST VARIANTS',
+            next_step: 'Pause or replace image-first variants before cutting campaign budget.',
+            why: 'Horizontal image is the weakest asset type by CPA in the shared report.'
+        };
+    }
+    return {
+        action: 'TEST ONLY IF MATCHED',
+        next_step: 'Test this asset only if it matches the winning offer pattern already proven in the account.',
+        why: 'This asset type is not a proven primary lever in the shared report.'
+    };
+}
+
+function summarizeGoogleAppAssetPerformance(rows, sourcePath, sourceRange, mtimeMs) {
+    var normalized = [];
+    var typeBuckets = {};
+    var groupBuckets = {};
+
+    function ensureType(type) {
+        var key = String(type || 'Unknown');
+        if (!typeBuckets[key]) {
+            typeBuckets[key] = {
+                app_asset_type: key,
+                conversions: 0,
+                installations: 0,
+                in_app_actions: 0,
+                view_through_conv: 0,
+                cost: 0,
+                rows: 0,
+                nonzero_rows: 0,
+                top_asset_text: '',
+                top_asset_score: -Infinity,
+                weakest_asset_text: '',
+                weakest_asset_score: Infinity,
+                top_campaign_name: '',
+                top_adgroup_name: '',
+                weakest_campaign_name: '',
+                weakest_adgroup_name: '',
+                guidance: appAssetGuidanceForType(key)
+            };
+        }
+        return typeBuckets[key];
+    }
+
+    function ensureGroup(campaignName, adGroupName) {
+        var key = campaignName + '|||' + adGroupName;
+        if (!groupBuckets[key]) {
+            groupBuckets[key] = {
+                campaign_name: campaignName,
+                adgroup_name: adGroupName,
+                conversions: 0,
+                installations: 0,
+                in_app_actions: 0,
+                view_through_conv: 0,
+                cost: 0,
+                rows: 0,
+                nonzero_rows: 0,
+                type_buckets: {},
+                top_asset_type: '',
+                top_asset_text: '',
+                top_asset_score: -Infinity,
+                weakest_asset_type: '',
+                weakest_asset_text: '',
+                weakest_asset_score: Infinity,
+                guidance: {
+                    action: '',
+                    next_step: '',
+                    why: ''
+                }
+            };
+        }
+        return groupBuckets[key];
+    }
+
+    (rows || []).forEach(function(row) {
+        var campaignName = cleanGoogleAssetCell(row.Campaign || row.campaign || '');
+        var adGroupName = cleanGoogleAssetCell(row['Ad group'] || row.adgroup || row['Ad group name'] || row.adgroup_name || '');
+        var assetText = cleanGoogleAssetCell(row['App asset'] || row.app_asset || '');
+        var assetDisplayText = assetText.split(';')[0].trim();
+        var assetType = cleanGoogleAssetCell(row['App asset type'] || row.app_asset_type || 'Unknown') || 'Unknown';
+        var conversions = parseGoogleAssetNumber(row.Conversions || row.conversions);
+        var cost = parseGoogleAssetNumber(row.Cost || row.cost);
+        var installations = parseGoogleAssetNumber(row.Installations || row.installations);
+        var inAppActions = parseGoogleAssetNumber(row['In-app actions'] || row.in_app_actions);
+        var viewThroughConv = parseGoogleAssetNumber(row['View-through conv.'] || row.view_through_conv);
+        var convRate = parseGoogleAssetPct(row['Conv. rate'] || row.conv_rate);
+        var installRate = parseGoogleAssetPct(row['Conv. rate (install)'] || row.conv_rate_install);
+        var actionRate = parseGoogleAssetPct(row['Conv. rate (in-app action)'] || row.conv_rate_in_app_action);
+        var installsPer1k = parseGoogleAssetNumber(row['Installs per (1000) impressions'] || row.installs_per_1000);
+        var effective = (conversions * 2) + installations + (inAppActions * 0.5) + (viewThroughConv * 0.1) - (cost / 10000);
+        var cpa = conversions > 0 ? (cost / conversions) : (installations > 0 ? (cost / installations) : null);
+        var normRow = {
+            campaign_name: campaignName,
+            adgroup_name: adGroupName,
+            app_asset: assetDisplayText,
+            app_asset_type: assetType,
+            conversions: conversions,
+            currency_code: cleanGoogleAssetCell(row['Currency code'] || row.currency_code || 'INR') || 'INR',
+            cost: cost,
+            installations: installations,
+            in_app_actions: inAppActions,
+            view_through_conv: viewThroughConv,
+            conv_rate: convRate,
+            conv_rate_install: installRate,
+            conv_rate_in_app_action: actionRate,
+            installs_per_1000_impressions: installsPer1k,
+            cpa: cpa,
+            score: effective
+        };
+        normalized.push(normRow);
+
+        var typeBucket = ensureType(assetType);
+        typeBucket.rows++;
+        typeBucket.conversions += conversions;
+        typeBucket.installations += installations;
+        typeBucket.in_app_actions += inAppActions;
+        typeBucket.view_through_conv += viewThroughConv;
+        typeBucket.cost += cost;
+        if (conversions > 0 || installations > 0 || inAppActions > 0) typeBucket.nonzero_rows++;
+        if (effective > typeBucket.top_asset_score) {
+            typeBucket.top_asset_score = effective;
+            typeBucket.top_asset_text = assetDisplayText;
+            typeBucket.top_campaign_name = campaignName;
+            typeBucket.top_adgroup_name = adGroupName;
+        }
+        if (effective < typeBucket.weakest_asset_score) {
+            typeBucket.weakest_asset_score = effective;
+            typeBucket.weakest_asset_text = assetDisplayText;
+            typeBucket.weakest_campaign_name = campaignName;
+            typeBucket.weakest_adgroup_name = adGroupName;
+        }
+
+        var groupBucket = ensureGroup(campaignName, adGroupName);
+        groupBucket.rows++;
+        groupBucket.conversions += conversions;
+        groupBucket.installations += installations;
+        groupBucket.in_app_actions += inAppActions;
+        groupBucket.view_through_conv += viewThroughConv;
+        groupBucket.cost += cost;
+        if (conversions > 0 || installations > 0 || inAppActions > 0) groupBucket.nonzero_rows++;
+        if (!groupBucket.type_buckets[assetType]) {
+            groupBucket.type_buckets[assetType] = {
+                app_asset_type: assetType,
+                conversions: 0,
+                installations: 0,
+                in_app_actions: 0,
+                view_through_conv: 0,
+                cost: 0,
+                score: 0,
+                top_asset_text: '',
+                top_asset_score: -Infinity,
+                weakest_asset_text: '',
+                weakest_asset_score: Infinity
+            };
+        }
+        var groupTypeBucket = groupBucket.type_buckets[assetType];
+        groupTypeBucket.conversions += conversions;
+        groupTypeBucket.installations += installations;
+        groupTypeBucket.in_app_actions += inAppActions;
+        groupTypeBucket.view_through_conv += viewThroughConv;
+        groupTypeBucket.cost += cost;
+        groupTypeBucket.score += effective;
+        if (effective > groupTypeBucket.top_asset_score) {
+            groupTypeBucket.top_asset_score = effective;
+            groupTypeBucket.top_asset_text = assetDisplayText;
+        }
+        if (effective < groupTypeBucket.weakest_asset_score) {
+            groupTypeBucket.weakest_asset_score = effective;
+            groupTypeBucket.weakest_asset_text = assetDisplayText;
+        }
+    });
+
+    var typeRows = Object.keys(typeBuckets).map(function(type) {
+        var bucket = typeBuckets[type];
+        var cpa = bucket.conversions > 0 ? (bucket.cost / bucket.conversions) : (bucket.installations > 0 ? (bucket.cost / bucket.installations) : null);
+        return Object.assign({}, bucket, {
+            cpa: cpa,
+            next_step: bucket.guidance.next_step,
+            why: bucket.guidance.why
+        });
+    }).sort(function(a, b) {
+        return (b.conversions || 0) - (a.conversions || 0) || ((a.cpa == null ? 1e12 : a.cpa) - (b.cpa == null ? 1e12 : b.cpa));
+    });
+
+    var groupRows = Object.keys(groupBuckets).map(function(key) {
+        var bucket = groupBuckets[key];
+        var types = Object.keys(bucket.type_buckets).map(function(type) {
+            var t = bucket.type_buckets[type];
+            var cpa = t.conversions > 0 ? (t.cost / t.conversions) : (t.installations > 0 ? (t.cost / t.installations) : null);
+            return Object.assign({}, t, { cpa: cpa });
+        }).sort(function(a, b) {
+            return (b.score || 0) - (a.score || 0) || (b.conversions || 0) - (a.conversions || 0) || ((a.cpa == null ? 1e12 : a.cpa) - (b.cpa == null ? 1e12 : b.cpa));
+        });
+        var topType = types[0] || null;
+        var weakestType = types.slice().sort(function(a, b) {
+            return ((a.cpa == null ? 1e12 : a.cpa) - (b.cpa == null ? 1e12 : b.cpa)) || (a.score || 0) - (b.score || 0);
+        })[0] || null;
+        var guidance = topType ? appAssetGuidanceForType(topType.app_asset_type) : appAssetGuidanceForType('Unknown');
+        var whyBits = [];
+        if (topType) whyBits.push('Top asset type: ' + topType.app_asset_type);
+        if (topType && topType.top_asset_text) whyBits.push('Winning asset: ' + topType.top_asset_text);
+        if (weakestType && weakestType.app_asset_type) whyBits.push('Weakest asset type: ' + weakestType.app_asset_type);
+        if (weakestType && weakestType.weakest_asset_text) whyBits.push('Weakest asset: ' + weakestType.weakest_asset_text);
+        return {
+            campaign_name: bucket.campaign_name,
+            adgroup_name: bucket.adgroup_name,
+            conversions: bucket.conversions,
+            installations: bucket.installations,
+            in_app_actions: bucket.in_app_actions,
+            view_through_conv: bucket.view_through_conv,
+            cost: bucket.cost,
+            cpa: bucket.conversions > 0 ? (bucket.cost / bucket.conversions) : (bucket.installations > 0 ? (bucket.cost / bucket.installations) : null),
+            winning_asset_type: topType ? topType.app_asset_type : '',
+            winning_asset_text: topType ? topType.top_asset_text : '',
+            weakest_asset_type: weakestType ? weakestType.app_asset_type : '',
+            weakest_asset_text: weakestType ? weakestType.weakest_asset_text : '',
+            next_step: guidance.next_step,
+            why: guidance.why + (whyBits.length ? ' | ' + whyBits.join(' | ') : ''),
+            asset_signal: guidance.action,
+            top_type_rows: types.slice(0, 3)
+        };
+    }).sort(function(a, b) {
+        return (b.conversions || 0) - (a.conversions || 0) || ((a.cpa == null ? 1e12 : a.cpa) - (b.cpa == null ? 1e12 : b.cpa));
+    });
+
+    return {
+        source_path: sourcePath,
+        source_range: sourceRange,
+        source_mtime_ms: mtimeMs || 0,
+        total_rows: normalized.length,
+        nonzero_rows: normalized.filter(function(row) {
+            return (row.conversions || 0) > 0 || (row.installations || 0) > 0 || (row.in_app_actions || 0) > 0;
+        }).length,
+        type_rows: typeRows,
+        top_type_rows: typeRows.slice(0, 5),
+        weak_type_rows: typeRows.slice(-5).reverse(),
+        group_rows: groupRows.slice(0, 24),
+        top_groups: groupRows.slice(0, 10),
+        weak_groups: groupRows.slice(-10).reverse()
+    };
+}
+
+async function getGoogleAppAssetPerformancePayload(forceRefresh, range) {
+    var sourcePath = getGoogleAppAssetReportPath();
+    var dateFrom = range && range.dateFrom ? String(range.dateFrom).slice(0, 10) : '';
+    var dateTo = range && range.dateTo ? String(range.dateTo).slice(0, 10) : '';
+    var sourceKey = dateFrom && dateTo ? ('google_ads_api:' + dateFrom + ':' + dateTo) : ('csv:' + sourcePath);
+
+    if (!forceRefresh && GOOGLE_APP_ASSET_REPORT_CACHE.payload && GOOGLE_APP_ASSET_REPORT_CACHE.sourceKey === sourceKey) {
+        return GOOGLE_APP_ASSET_REPORT_CACHE.payload;
+    }
+
+    var liveWarning = '';
+    if (dateFrom && dateTo) {
+        try {
+            var live = await fetchGoogleAppAssetPerformanceLive(dateFrom, dateTo);
+            if (Array.isArray(live.rows) && live.rows.length) {
+                var livePayload = summarizeGoogleAppAssetPerformance(normalizeGoogleAppAssetLiveRows(live.rows), 'Google Ads API', dateFrom + ' → ' + dateTo, Date.now());
+                livePayload.source_path = 'Google Ads API';
+                livePayload.source_mode = 'google_ads_api';
+                livePayload.source_range = dateFrom + ' → ' + dateTo;
+                livePayload.warning = live.warning || '';
+                GOOGLE_APP_ASSET_REPORT_CACHE = {
+                    sourceKey: sourceKey,
+                    sourceMode: 'google_ads_api',
+                    filePath: 'Google Ads API',
+                    mtimeMs: Date.now(),
+                    payload: livePayload
+                };
+                return livePayload;
+            }
+            liveWarning = live.warning || 'Google Ads API returned no asset rows';
+        } catch (liveErr) {
+            liveWarning = 'Live Google Ads API query failed: ' + liveErr.message;
+        }
+    }
+
+    if (fs.existsSync(sourcePath)) {
+        var stat = fs.statSync(sourcePath);
+        var text = fs.readFileSync(sourcePath, 'utf16le');
+        var lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/).filter(function(line) {
+            return String(line || '').trim() !== '';
+        });
+        var sourceRange = cleanGoogleAssetCell(lines[1] || '');
+        var headers = (lines[2] || '').split('\t').map(cleanGoogleAssetCell);
+        var dataRows = lines.slice(3).map(function(line) { return parseGoogleAssetRow(line, headers); });
+        var payload = summarizeGoogleAppAssetPerformance(dataRows, sourcePath, sourceRange, stat.mtimeMs);
+        payload.source_mode = 'csv_fallback';
+        if (liveWarning) payload.warning = liveWarning;
+        GOOGLE_APP_ASSET_REPORT_CACHE = {
+            sourceKey: sourceKey,
+            sourceMode: 'csv_fallback',
+            filePath: sourcePath,
+            mtimeMs: stat.mtimeMs,
+            payload: payload
+        };
+        return payload;
+    }
+
+    var emptyPayload = {
+        source_path: sourcePath,
+        source_range: '',
+        source_mode: 'missing',
+        total_rows: 0,
+        nonzero_rows: 0,
+        type_rows: [],
+        top_type_rows: [],
+        weak_type_rows: [],
+        group_rows: [],
+        top_groups: [],
+        weak_groups: [],
+        warning: liveWarning || 'Google app asset performance report not found'
+    };
+    GOOGLE_APP_ASSET_REPORT_CACHE = {
+        sourceKey: sourceKey,
+        sourceMode: 'missing',
+        filePath: sourcePath,
+        mtimeMs: 0,
+        payload: emptyPayload
+    };
+    return emptyPayload;
+}
+
+app.get('/api/google/app-asset-performance', async (req, res) => {
+    try {
+        var payload = await getGoogleAppAssetPerformancePayload(String(req.query && req.query.refresh || '') === '1', {
+            dateFrom: req.query && req.query.dateFrom ? String(req.query.dateFrom) : '',
+            dateTo: req.query && req.query.dateTo ? String(req.query.dateTo) : ''
+        });
+        res.json({
+            success: true,
+            data: payload,
+            total: payload.total_rows || 0,
+            cached: !!(GOOGLE_APP_ASSET_REPORT_CACHE && GOOGLE_APP_ASSET_REPORT_CACHE.payload && GOOGLE_APP_ASSET_REPORT_CACHE.sourceMode !== 'google_ads_api'),
+            source_mode: payload.source_mode || (GOOGLE_APP_ASSET_REPORT_CACHE && GOOGLE_APP_ASSET_REPORT_CACHE.sourceMode) || 'unknown',
+            warning: payload.warning || ''
+        });
+    } catch (err) {
+        console.error('[google-app-asset-performance] Error:', err);
+        res.status(500).json({
+            success: false,
+            error: err && err.message ? err.message : 'Failed to load Google app asset performance report',
+            data: {
+                total_rows: 0,
+                nonzero_rows: 0,
+                type_rows: [],
+                top_type_rows: [],
+                weak_type_rows: [],
+                group_rows: [],
+                top_groups: [],
+                weak_groups: []
+            }
+        });
+    }
+});
+
+app.get('/api/google/creatives', (req, res) => {
+    try {
+        const { getGcDb } = require('../google-creative/db/gc-db');
+        const db = getGcDb();
+        const days = parseInt(req.query.days, 10) || 90;
+        const type = String(req.query.type || 'all');
+        const performance = String(req.query.performance || 'all');
+
+        let sql = `
+            SELECT c.*, s.gcps_score, s.score_breakdown_json, sig.signals_json
+            FROM gc_creatives c
+            LEFT JOIN gc_creative_scores s ON s.creative_id = c.id
+            LEFT JOIN gc_creative_signals sig ON sig.creative_id = c.id
+            WHERE c.merged_at >= datetime('now', '-' || ? || ' days')
+        `;
+        const params = [days];
+
+        if (type !== 'all') {
+            sql += ' AND c.ad_type = ?';
+            params.push(type.toUpperCase());
+        }
+        if (performance !== 'all') {
+            sql += ' AND c.asset_performance_label = ?';
+            params.push(performance.toUpperCase());
+        }
+
+        sql += ' ORDER BY s.gcps_score DESC NULLS LAST';
+        const rows = db.prepare(sql).all(...params);
+        res.json({ success: true, data: rows, total: rows.length });
+    } catch (err) {
+        console.error('[google-creatives] Error:', err.message);
+        res.status(500).json({ success: false, error: err.message, data: [] });
+    }
+});
+
+app.get('/api/google/ads/daily', (req, res) => {
+    try {
+        const { getGcDb } = require('../google-creative/db/gc-db');
+        const db = getGcDb();
+        const days = parseInt(req.query.days, 10) || 90;
+        const rows = db.prepare(`
+            SELECT *
+            FROM gc_ad_daily
+            WHERE date >= date('now', '-' || ? || ' days')
+            ORDER BY date DESC, cost_micros DESC
+        `).all(days);
+        res.json({ success: true, data: rows, total: rows.length });
+    } catch (err) {
+        console.error('[google-ads-daily] Error:', err.message);
+        res.status(500).json({ success: false, error: err.message, data: [] });
+    }
+});
 
 // Route 1: POST /api/google/ad-insights-daily
 app.post('/api/google/ad-insights-daily', async (req, res) => {
@@ -6629,6 +8233,36 @@ app.post('/api/google/ad-funnel', async (req, res) => {
 
         const funnelCacheKey = `gc_funnel_${dateFrom}_${dateTo}`;
         const funnelDiskFile = path.join(__dirname, '..', 'google-creative', `gc-funnel-cache-${dateFrom}-${dateTo}.json`);
+        const funnelCacheDirs = [
+            path.join(__dirname, '..', 'google-creative'),
+            path.join(process.cwd(), 'google-creative')
+        ];
+        function loadBestFunnelDiskFallback() {
+            const candidates = [];
+            for (const funnelCacheDir of funnelCacheDirs) {
+                try {
+                    const files = fs.readdirSync(funnelCacheDir);
+                    for (const file of files) {
+                        if (!file.startsWith('gc-funnel-cache-') || !file.endsWith('.json')) continue;
+                        const fullPath = path.join(funnelCacheDir, file);
+                        try {
+                            const parsed = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
+                            const data = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.data) ? parsed.data : null);
+                            if (data && data.length > 0) {
+                                candidates.push({
+                                    file: fullPath,
+                                    ts: Number(parsed && parsed.ts) || fs.statSync(fullPath).mtimeMs || 0,
+                                    data: data
+                                });
+                            }
+                        } catch (e) {}
+                    }
+                } catch (e) {}
+            }
+            candidates.sort((a, b) => b.ts - a.ts);
+            return candidates.length ? candidates[0] : null;
+        }
+        const bestFunnelDiskFallback = loadBestFunnelDiskFallback();
         if (!noCache) {
             const funnelCached = getCached(funnelCacheKey);
             if (funnelCached) {
@@ -6763,29 +8397,41 @@ FROM signup_metrics sm
 GROUP BY 1,2,3,4
 ORDER BY SUM(sm.total_signup) DESC`;
 
-        if (!METABASE_SESSION_TOKEN) {
-            throw new Error('Metabase session token is missing. Set METABASE_SESSION_TOKEN in uploader/.env and restart the server.');
+        if (!getMetabaseSessionToken()) {
+            throw new Error('Metabase session token is missing. Set METABASE_SESSION_TOKEN in uploader/.env or add Metabase login credentials and restart the server.');
         }
 
         console.log('[gc-ad-funnel] Running Metabase query...');
-        const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
-            method: 'POST',
-            headers: {
-                'X-Metabase-Session': METABASE_SESSION_TOKEN,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                database: 2,
-                type: 'native',
-                native: { query: sql },
-                constraints: { 'max-results': 100000, 'max-results-bare-rows': 100000 },
-            }),
-        });
+        const metabaseRes = await queryMetabaseDataset(2, sql, { reason: 'google-ad-funnel' });
 
         if (!metabaseRes.ok) {
             const errText = await metabaseRes.text();
             if (metabaseRes.status === 401) {
+                if (bestFunnelDiskFallback && bestFunnelDiskFallback.data) {
+                    console.log(`[gc-ad-funnel] 401 fallback — nearest disk cache (${bestFunnelDiskFallback.data.length} rows)`);
+                    setCache(funnelCacheKey, bestFunnelDiskFallback.data);
+                    return res.json({
+                        success: true,
+                        data: bestFunnelDiskFallback.data,
+                        total: bestFunnelDiskFallback.data.length,
+                        cached: true,
+                        stale: true,
+                        warning: errText,
+                    });
+                }
                 throw new Error(`Metabase session expired or is invalid (401): ${errText}`);
+            }
+            if (bestFunnelDiskFallback && bestFunnelDiskFallback.data) {
+                console.log(`[gc-ad-funnel] Error fallback — nearest disk cache (${bestFunnelDiskFallback.data.length} rows)`);
+                setCache(funnelCacheKey, bestFunnelDiskFallback.data);
+                return res.json({
+                    success: true,
+                    data: bestFunnelDiskFallback.data,
+                    total: bestFunnelDiskFallback.data.length,
+                    cached: true,
+                    stale: true,
+                    warning: errText,
+                });
             }
             throw new Error(`Metabase API error (${metabaseRes.status}): ${errText}`);
         }
@@ -7013,7 +8659,7 @@ try {
     const gcRoutes = require('../google-creative/server');
     const gcRouter = gcRoutes({
         metabaseUrl: METABASE_URL,
-        metabaseSessionToken: METABASE_SESSION_TOKEN,
+        metabaseSessionToken: getMetabaseSessionToken(),
         openaiApiKey: OPENAI_API_KEY,
     });
     app.use('/api/gc', gcRouter);
@@ -7065,7 +8711,7 @@ try {
 // =============================================================================
 try {
     const feedbackRoutes = require('../feedback-engine/server');
-    const feRouter = feedbackRoutes({ metabaseUrl: METABASE_URL, metabaseSessionToken: METABASE_SESSION_TOKEN, openaiApiKey: OPENAI_API_KEY });
+    const feRouter = feedbackRoutes({ metabaseUrl: METABASE_URL, metabaseSessionToken: getMetabaseSessionToken(), openaiApiKey: OPENAI_API_KEY });
     app.use('/api/fe', feRouter);
     require('../feedback-engine/agents/feScheduler');
     console.log('[FeedbackEngine] Self-learning routes mounted at /api/fe');
@@ -7082,7 +8728,7 @@ try {
         metaAccessToken: META_ACCESS_TOKEN,
         metaAdAccountId: META_AD_ACCOUNT_ID,
         metabaseUrl: METABASE_URL,
-        metabaseSessionToken: METABASE_SESSION_TOKEN,
+        metabaseSessionToken: getMetabaseSessionToken(),
         anthropicApiKey: process.env.ANTHROPIC_API_KEY,
     });
     app.use('/api/at', atRouter);
@@ -7101,35 +8747,160 @@ try {
 if (process.env.VERCEL) {
     module.exports = app;
 } else {
-    PORTAL_CACHE_HYDRATION.finally(() => {
-        app.listen(PORT, () => {
-            console.log(`Meta Ad Upload Server running on http://localhost:${PORT}`);
-            console.log(`Ad Account: ${META_AD_ACCOUNT_ID}`);
-            console.log(`API Version: ${META_API_VERSION}`);
+    app.listen(PORT, () => {
+        console.log(`Meta Ad Upload Server running on port ${PORT}`);
+        console.log(`Ad Account: ${META_AD_ACCOUNT_ID}`);
+        console.log(`API Version: ${META_API_VERSION}`);
 
-            // Pre-warm cache after 5 seconds (let server settle + avoid competing with ROAS tracker)
-            setTimeout(() => {
-                const warmTo = new Date().toISOString().slice(0, 10);
-                const warmFrom = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-                console.log(`[Cache] Pre-warming insights cache (${warmFrom} to ${warmTo})...`);
-                Promise.all([
-                    fetch(`http://localhost:${PORT}/api/meta/ad-insights-daily`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ dateFrom: warmFrom, dateTo: warmTo })
-                    }).then(r => r.json()).then(d => {
-                        console.log(`[Cache] Insights pre-warmed: ${d.total || 0} rows`);
-                    }),
-                    fetch(`http://localhost:${PORT}/api/metabase/ad-funnel`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ dateFrom: warmFrom, dateTo: warmTo })
-                    }).then(r => r.json()).then(d => {
-                        console.log(`[Cache] Funnel pre-warmed: ${d.total || 0} rows`);
-                    }),
-                    fetch(`http://localhost:${PORT}/api/meta/ads-status`).then(r => r.json()).then(d => {
-                        console.log(`[Cache] Ads-status pre-warmed: ${d.total || 0} ads`);
-                    })
-                ]).catch(e => console.warn('[Cache] Pre-warm failed:', e.message));
-            }, 5000);
-        });
+        // Pre-warm cache after 5 seconds (let server settle + avoid competing with ROAS tracker)
+        setTimeout(() => {
+            const defaultRange = getDefaultMetaOptimizerRange();
+            const warmFrom = defaultRange.dateFrom;
+            const warmTo = defaultRange.dateTo;
+            console.log(`[Cache] Pre-warming insights cache (${warmFrom} to ${warmTo})...`);
+            const baseUrl = getServerBaseUrl();
+            const authHeaders = getInternalAuthHeader();
+            Promise.all([
+                fetch(`${baseUrl}/api/meta/ad-insights-daily`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders },
+                    body: JSON.stringify({ dateFrom: warmFrom, dateTo: warmTo })
+                }).then(r => r.json()).then(d => {
+                    console.log(`[Cache] Insights pre-warmed: ${d.total || 0} rows`);
+                }),
+                fetch(`${baseUrl}/api/metabase/ad-funnel`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders },
+                    body: JSON.stringify({ dateFrom: warmFrom, dateTo: warmTo })
+                }).then(r => r.json()).then(d => {
+                    console.log(`[Cache] Funnel pre-warmed: ${d.total || 0} rows`);
+                }),
+                fetch(`${baseUrl}/api/meta/ads-status`, { headers: authHeaders }).then(r => r.json()).then(d => {
+                    console.log(`[Cache] Ads-status pre-warmed: ${d.total || 0} ads`);
+                })
+            ]).catch(e => console.warn('[Cache] Pre-warm failed:', e.message));
+        }, 5000);
+        setTimeout(() => {
+            runMetaOptimizerCanary('startup').catch(err => {
+                console.warn(`[MetaOptimizerCanary] Startup canary failed: ${err.message}`);
+            });
+        }, 12000);
+        setInterval(() => {
+            runMetaOptimizerCanary('hourly').catch(err => {
+                console.warn(`[MetaOptimizerCanary] Hourly canary failed: ${err.message}`);
+            });
+        }, META_OPTIMIZER_CANARY_INTERVAL_MS);
+    });
+    PORTAL_CACHE_HYDRATION.catch(err => {
+        console.warn(`[RedisCache] Initial hydrate failed: ${err.message}`);
     });
 }
+
+app.post('/api/meta/optimizer-scan-status', express.json(), (req, res) => {
+    try {
+        const body = req.body || {};
+        const status = String(body.status || '').trim().toLowerCase();
+        const nowIso = new Date().toISOString();
+        if (status === 'success') {
+            META_OPTIMIZER_SCAN_STATE.last_successful_scan_at = nowIso;
+            META_OPTIMIZER_SCAN_STATE.last_successful_scan_range = body.range || null;
+            META_OPTIMIZER_SCAN_STATE.last_successful_scan_integrity = String(body.integrityStatus || '');
+            META_OPTIMIZER_SCAN_STATE.last_successful_snapshot_type = String(body.snapshotType || '');
+        } else if (status === 'rejected' || status === 'failed') {
+            META_OPTIMIZER_SCAN_STATE.last_rejected_scan_at = nowIso;
+            META_OPTIMIZER_SCAN_STATE.last_rejected_scan_range = body.range || null;
+            META_OPTIMIZER_SCAN_STATE.last_rejected_scan_reason = String(body.reason || body.integrityStatus || 'Unknown scan rejection');
+        } else {
+            return res.status(400).json({ success: false, error: 'status must be success, rejected, or failed' });
+        }
+        return res.json({ success: true, updatedAt: nowIso });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.get('/api/meta/optimizer-debug', (req, res) => {
+    try {
+        const dateFrom = String(req.query.dateFrom || '').trim();
+        const dateTo = String(req.query.dateTo || '').trim();
+        const range = dateFrom && dateTo ? { dateFrom, dateTo } : getDefaultMetaOptimizerRange();
+        const meta = getMetaInsightsCacheSnapshot(range.dateFrom, range.dateTo);
+        const metabase = getMetabaseFunnelCacheSnapshot(range.dateFrom, range.dateTo);
+        return res.json({
+            success: true,
+            range,
+            readiness: buildMetaOptimizerReadiness(),
+            meta,
+            metabase,
+            canary: Object.assign({}, META_OPTIMIZER_CANARY_STATE),
+            lastSuccessfulScan: {
+                at: META_OPTIMIZER_SCAN_STATE.last_successful_scan_at || null,
+                range: META_OPTIMIZER_SCAN_STATE.last_successful_scan_range || null,
+                integrity: META_OPTIMIZER_SCAN_STATE.last_successful_scan_integrity || '',
+                snapshotType: META_OPTIMIZER_SCAN_STATE.last_successful_snapshot_type || '',
+            },
+            lastRejectedScan: {
+                at: META_OPTIMIZER_SCAN_STATE.last_rejected_scan_at || null,
+                range: META_OPTIMIZER_SCAN_STATE.last_rejected_scan_range || null,
+                reason: META_OPTIMIZER_SCAN_STATE.last_rejected_scan_reason || '',
+            }
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.get('/api/health', async (req, res) => {
+    const loopbackBase = (port) => `http://127.0.0.1:${port}`;
+    const services = [
+        { name: 'intelligence', url: `${loopbackBase(3008)}/api/intel/health` },
+        { name: 'inventory-scanner', url: `${loopbackBase(3002)}/api/health` },
+        { name: 'google-creative', url: `${loopbackBase(3003)}/api/health` },
+        { name: 'audience-testing', url: `${loopbackBase(3004)}/api/health` },
+        { name: 'feedback-engine', url: `${loopbackBase(3005)}/api/health` },
+        { name: 'trend-scanner', url: `${loopbackBase(3006)}/api/health` },
+        { name: 'creative-intelligence', url: `${loopbackBase(3007)}/api/health` },
+    ];
+    const authHeaders = getInternalAuthHeader();
+    const results = await Promise.allSettled(services.map(async (svc) => {
+        const start = Date.now();
+        try {
+            const resp = await fetch(svc.url, {
+                headers: authHeaders,
+                signal: AbortSignal.timeout(5000)
+            });
+            return { name: svc.name, status: resp.ok ? 'up' : 'degraded', httpStatus: resp.status, latencyMs: Date.now() - start };
+        } catch (err) {
+            return { name: svc.name, status: 'down', error: err.message, latencyMs: Date.now() - start };
+        }
+    }));
+
+    const fs = require('fs');
+    const path = require('path');
+    const dbFiles = [
+        ['creative-intelligence', '../creative-intelligence/ci.db'],
+        ['intelligence', '../intelligence/database/intel.db'],
+        ['inventory-scanner', '../inventory-scanner/database/scanner.db'],
+        ['audience-testing', '../audience-testing/audience-testing.db'],
+        ['feedback-engine', '../feedback-engine/feedback-engine.db'],
+        ['google-creative', '../google-creative/google-creative.db'],
+    ];
+    const databases = {};
+    for (const [name, relPath] of dbFiles) {
+        databases[name] = fs.existsSync(path.join(__dirname, relPath)) ? 'present' : 'missing';
+    }
+
+    const serviceResults = results.map(r => r.value || r.reason);
+    const allUp = serviceResults.every(s => s.status === 'up');
+    const metaOptimizer = buildMetaOptimizerReadiness();
+    res.status(allUp ? 200 : 207).json({
+        status: allUp ? 'healthy' : 'degraded',
+        timestamp: new Date().toISOString(),
+        environment: {
+            NODE_ENV: process.env.NODE_ENV,
+            PORTAL_INTERNAL_BASE_URL: process.env.PORTAL_INTERNAL_BASE_URL || 'not set',
+            PORTAL_PUBLIC_BASE_URL: process.env.PORTAL_PUBLIC_BASE_URL || 'not set',
+        },
+        services: serviceResults,
+        databases,
+        meta_optimizer: metaOptimizer
+    });
+});

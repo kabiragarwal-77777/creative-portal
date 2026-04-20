@@ -7,10 +7,13 @@
  */
 
 const { getGcDb, logPipelineRun, updatePipelineRun } = require('../db/gc-db');
+const { getMetabaseSessionToken, refreshMetabaseSessionToken } = require('../../config/env');
 
 module.exports = function (config) {
     const METABASE_URL = config.metabaseUrl || process.env.METABASE_URL || 'https://analytics.univest.in';
-    const METABASE_SESSION_TOKEN = config.metabaseSessionToken || process.env.METABASE_SESSION_TOKEN || '';
+    function resolveMetabaseSessionToken() {
+        return getMetabaseSessionToken() || config.metabaseSessionToken || '';
+    }
 
     // Google Ads API credentials — all optional; we gracefully skip if missing
     const GA_CLIENT_ID = process.env.GOOGLE_ADS_CLIENT_ID || '';
@@ -53,14 +56,10 @@ module.exports = function (config) {
      * and returns an array of row objects.
      */
     async function queryMetabase(sql) {
-        if (!METABASE_SESSION_TOKEN) {
-            throw new Error('METABASE_SESSION_TOKEN is not set — cannot query Metabase');
-        }
-
-        const response = await fetch(`${METABASE_URL}/api/dataset`, {
+        const request = async (sessionToken) => fetch(`${METABASE_URL}/api/dataset`, {
             method: 'POST',
             headers: {
-                'X-Metabase-Session': METABASE_SESSION_TOKEN,
+                'X-Metabase-Session': sessionToken,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -69,6 +68,20 @@ module.exports = function (config) {
                 native: { query: sql },
             }),
         });
+
+        let token = resolveMetabaseSessionToken();
+        if (!token) {
+            token = await refreshMetabaseSessionToken('google-creative data fetcher').catch(() => '');
+        }
+        if (!token) {
+            throw new Error('METABASE_SESSION_TOKEN is not set — cannot query Metabase');
+        }
+
+        let response = await request(token);
+        if (response.status === 401) {
+            const refreshed = await refreshMetabaseSessionToken('google-creative data fetcher 401').catch(() => '');
+            if (refreshed) response = await request(refreshed);
+        }
 
         if (!response.ok) {
             const text = await response.text();

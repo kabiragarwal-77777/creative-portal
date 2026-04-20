@@ -8,7 +8,14 @@
     "start:scanner": "npm --prefix inventory-scanner start",
     "start:all": "concurrently \"npm --prefix uploader start\" \"npm --prefix intelligence start\"",
     "install-deps": "npm install",
-    "postinstall": "npm --prefix uploader install && npm --prefix intelligence install && npm --prefix inventory-scanner install && npm --prefix google-creative install"
+    "postinstall": "npm --prefix uploader install && npm --prefix intelligence install && npm --prefix inventory-scanner install && npm --prefix google-creative install",
+    "deploy:prep": "node scripts/bump-version.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:restart": "pm2 restart ecosystem.config.js",
+    "pm2:stop": "pm2 stop ecosystem.config.js",
+    "pm2:logs": "pm2 logs",
+    "rebuild:native": "npm rebuild better-sqlite3 --build-from-source && npm --prefix uploader rebuild sharp --build-from-source",
+    "deploy": "node scripts/bump-version.js && pm2 restart ecosystem.config.js"
   },
   "engines": {
     "node": ">=18.0.0"

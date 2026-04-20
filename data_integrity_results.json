@@ -1,49 +1,49 @@
 {
-  "runAt": "2026-04-13T14:12:58.731Z",
-  "duration": 24121,
+  "runAt": "2026-04-20T07:07:53.620Z",
+  "duration": 7,
   "summary": {
     "total": 5,
-    "passed": 3,
-    "failed": 1,
-    "warnings": 1,
+    "passed": 2,
+    "failed": 3,
+    "warnings": 0,
     "skipped": 0
   },
   "overallStatus": "FAIL",
   "tests": [
     {
       "name": "Campaign ID extraction",
-      "pass": true,
-      "level": "OK",
-      "message": "All 10 rows have non-empty campaign ID extraction",
-      "durationMs": 129
+      "pass": false,
+      "level": "FAIL",
+      "message": "Exception: METABASE_SESSION_TOKEN is not defined",
+      "durationMs": 1
     },
     {
       "name": "Campaign ID <-> Meta API match rate",
-      "pass": true,
-      "level": "OK",
-      "message": "Campaign match rate 100.0% (3/3)",
-      "durationMs": 13823
+      "pass": false,
+      "level": "FAIL",
+      "message": "Exception: METABASE_SESSION_TOKEN is not defined",
+      "durationMs": 0
     },
     {
       "name": "ROAS sanity check",
       "pass": true,
-      "level": "WARN",
-      "message": "WARN: 93.0% of ads (480/516) have null/zero D6 ROAS",
-      "durationMs": 10
+      "level": "OK",
+      "message": "94 ads checked — ROAS values within expected ranges (avg D6: 32.8%)",
+      "durationMs": 5
     },
     {
       "name": "Revenue window alignment",
       "pass": true,
       "level": "OK",
-      "message": "25 ads checked — all revenue windows correctly ordered (D6 <= D15 <= D30 <= D60 <= Overall)",
-      "durationMs": 2
+      "message": "47 ads checked — all revenue windows correctly ordered (D6 <= D15 <= D30 <= D60 <= Overall)",
+      "durationMs": 1
     },
     {
       "name": "Adset name normalization",
       "pass": false,
       "level": "FAIL",
-      "message": "Exception: Meta API 400: {\"error\":{\"message\":\"User request limit reached\",\"type\":\"OAuthException\",\"is_transient\":false,\"code\":17,\"error_subcode\":2446079,\"error_user_title\":\"Ad account has too many API calls\",\"error_user_msg\":",
-      "durationMs": 10156
+      "message": "Exception: METABASE_SESSION_TOKEN is not defined",
+      "durationMs": 0
     }
   ]
 }

@@ -9,7 +9,7 @@
 
     AT.api = async function(path, opts) {
         try {
-            var res = await fetch('/api/at' + path, opts || {});
+            var res = await fetch('api/at' + path.replace(/^\//, ''), opts || {});
             return await res.json();
         } catch(e) { console.error('[AT]', e); return { success: false, error: e.message }; }
     };
@@ -98,5 +98,53 @@
         var s = (status || '').toUpperCase();
         if (s === 'ACTIVE' || s === 'ENABLED') return '<span class="at-status active">Active</span>';
         return '<span class="at-status paused">Paused</span>';
+    };
+
+    AT.getRefreshStampKey = function() {
+        return 'at_last_refresh_' + String(AT.currentPlatform || 'meta');
+    };
+
+    AT.formatRefreshStamp = function(value) {
+        if (!value) return '--';
+        var dt = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(dt.getTime())) return String(value);
+        return dt.toLocaleString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    AT.readRefreshStamp = function() {
+        try {
+            var raw = localStorage.getItem(AT.getRefreshStampKey());
+            if (!raw) return null;
+            var parsed = JSON.parse(raw);
+            return parsed && parsed.ts ? parsed.ts : null;
+        } catch (e) {
+            return null;
+        }
+    };
+
+    AT.writeRefreshStamp = function(value, source) {
+        var ts = value || new Date().toISOString();
+        try {
+            localStorage.setItem(AT.getRefreshStampKey(), JSON.stringify({ ts: ts, source: source || 'manual' }));
+        } catch (e) {}
+        var el = document.getElementById('atLastRefreshed');
+        if (el) el.textContent = AT.formatRefreshStamp(ts);
+        return ts;
+    };
+
+    AT.bootstrapRefreshStamp = function(value, source) {
+        var ts = value || AT.readRefreshStamp() || new Date().toISOString();
+        AT.writeRefreshStamp(ts, source || 'bootstrap');
+        return ts;
+    };
+
+    AT.touchRefreshStamp = function(source) {
+        return AT.writeRefreshStamp(new Date().toISOString(), source || 'manual');
     };
 })();

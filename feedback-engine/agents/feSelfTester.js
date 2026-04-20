@@ -6,8 +6,8 @@
 
 const { callAI, callAIJson } = require('./feAI');
 const { insert, update, getOne, getAll, query, logSchedulerStart, logSchedulerEnd } = require('../db/fe-db');
+const { getMetabaseSessionToken, refreshMetabaseSessionToken } = require('../../config/env');
 const METABASE_URL = process.env.METABASE_URL || 'https://analytics.univest.in';
-const METABASE_TOKEN = process.env.METABASE_SESSION_TOKEN;
 const TAG = '[FE:SelfTester]';
 
 module.exports = function (config = {}) {
@@ -118,15 +118,16 @@ Return valid JSON array only, no markdown fences.`;
 
             // Fetch relevant historical data from Metabase
             let metabaseData = null;
-            if (METABASE_TOKEN) {
+            let metabaseToken = getMetabaseSessionToken();
+            if (!metabaseToken) metabaseToken = await refreshMetabaseSessionToken('feedback self tester').catch(() => '');
+            if (metabaseToken) {
                 try {
                     const fetch = (await import('node-fetch')).default;
-                    // Query historical ad performance for retrospective analysis
-                    const mbResponse = await fetch(`${METABASE_URL}/api/dataset`, {
+                    const request = (sessionToken) => fetch(`${METABASE_URL}/api/dataset`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-Metabase-Session': METABASE_TOKEN
+                            'X-Metabase-Session': sessionToken
                         },
                         body: JSON.stringify({
                             database: 1,
@@ -146,6 +147,12 @@ Return valid JSON array only, no markdown fences.`;
                             }
                         })
                     });
+                    // Query historical ad performance for retrospective analysis
+                    let mbResponse = await request(metabaseToken);
+                    if (mbResponse.status === 401) {
+                        const refreshed = await refreshMetabaseSessionToken('feedback self tester 401').catch(() => '');
+                        if (refreshed) mbResponse = await request(refreshed);
+                    }
                     if (mbResponse.ok) {
                         const mbJson = await mbResponse.json();
                         metabaseData = mbJson.data ? mbJson.data.rows : null;

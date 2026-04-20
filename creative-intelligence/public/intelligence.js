@@ -388,11 +388,15 @@
 
         // Auto-render from cache if available
         if (window.AI_CACHE) {
-            var cached = window.AI_CACHE.get(window.getAIViewCacheKey ? window.getAIViewCacheKey('intelligence_v2') : 'intelligence_v2');
+            var cachedKey = window.getAIViewCacheKey ? window.getAIViewCacheKey('intelligence_v2') : 'intelligence_v2';
+            var cached = window.AI_CACHE.get(cachedKey);
             if (cached) {
                 renderIntelligence(cached, resultsContainer);
                 regenBtn.style.display = '';
-                statusEl.textContent = 'Showing cached result';
+                var cachedAt = window.AI_CACHE.timestamps ? window.AI_CACHE.timestamps[cachedKey] : null;
+                statusEl.textContent = cachedAt
+                    ? 'Showing cached result from ' + new Date(cachedAt).toLocaleString('en-IN')
+                    : 'Showing cached result';
                 statusEl.style.color = 'var(--text-dim)';
             }
         }

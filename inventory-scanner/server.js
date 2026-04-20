@@ -119,7 +119,7 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`[Inventory Scanner] Running on http://localhost:${PORT}`);
+  console.log(`[Inventory Scanner] Running on port ${PORT}`);
 
   // Start scheduler
   try {

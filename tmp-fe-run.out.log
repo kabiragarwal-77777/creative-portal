@@ -1,0 +1,168 @@
+[FeedbackEngine] Database initialized at C:\Users\Dell\Desktop\creative-portal\feedback-engine\feedback-engine.db
+[FE:Scheduler] Initializing scheduler with 11 jobs...
+[FE:Scheduler]   Registered: watcher-refresh (0 * * * *) — feWatcher incremental refresh
+[FE:Scheduler]   Registered: anomaly-check (0 */3 * * *) — feAnomalyDetector runAllChecks
+[FE:Scheduler]   Registered: data-quality-check (15 * * * *) — feDataQualityMonitor runAudit
+[FE:Scheduler]   Registered: proposal-generate (0 */6 * * *) — feProposalGenerator generateProposals
+[FE:Scheduler]   Registered: knowledge-crawl-tier1 (30 */6 * * *) — feKnowledgeCrawler crawlAll (Tier 1)
+[FE:Scheduler]   Registered: knowledge-crawl-all (0 */12 * * *) — feKnowledgeCrawler crawlAll (all tiers)
+[FE:Scheduler]   Registered: hypothesis-generate (0 0 * * *) — feSelfTester generateHypotheses
+[FE:Scheduler]   Registered: memory-consolidate (30 20 * * *) — feMemory nightly consolidation
+[FE:Scheduler]   Registered: accuracy-audit (0 3 * * 0) — feAccuracyAuditor runAudit
+[FE:Scheduler]   Registered: proposal-expiry (0 4 1 * *) — Expire old pending proposals (>30 days)
+[FE:Scheduler]   Registered: verify-applied-changes (0 5 * * 0) — feApprovalEngine verifyAppliedChanges
+[FE:Scheduler] Scheduler started. Initial checks will run in 30 seconds.
+Feedback Engine running on port 3005
+[FE:Scheduler] Running initial startup checks...
+[FE:Scheduler] Starting job: watcher-refresh
+[FE:Watcher] Refreshing Meta prediction accuracy...
+[FE:Watcher] Meta predictions: 0 processed, 1337 skipped
+[FE:Watcher] Refreshing Google prediction accuracy...
+[FE:Watcher] Google predictions: 0 processed, 0 skipped
+[FE:Watcher] Refreshing recommendation tracking...
+[FE:Watcher] ci_recommendations not found: no such table: ci_recommendations
+[FE:Watcher] Recommendation tracking: 0 processed
+[FE:Watcher] Refreshing competitor signal accuracy...
+[FE:Watcher] Competitor signals: 0 processed
+[FE:Watcher] Full refresh complete: 0 records processed
+[FE:Scheduler] Completed job: watcher-refresh (1104ms, 1 records)
+[FE:Scheduler] Starting job: anomaly-check
+[FE:AnomalyDetector] Running all anomaly detection checks...
+[FE:AnomalyDetector] Duplicate anomaly "Model drift detected for meta predictions" (unresolved or recently resolved) — skipping.
+[FE:AnomalyDetector] No competitor signal data available. Skipping competitor checks.
+[FE:AnomalyDetector] All checks complete. 0 new anomalies detected.
+[FE:Scheduler] Completed job: anomaly-check (24ms, 0 records)
+[FE:Scheduler] Starting job: data-quality-check
+[FE:DataQuality] Running audit (2026-03-15 -> 2026-04-14, forceFresh=false)
+[FE:Scheduler] Completed job: data-quality-check (47ms, 1 records)
+[FE:Scheduler] Initial startup checks complete.
+[FE:Scheduler] Starting job: watcher-refresh
+[FE:Watcher] Refreshing Meta prediction accuracy...
+[FE:Watcher] Meta predictions: 0 processed, 1337 skipped
+[FE:Watcher] Refreshing Google prediction accuracy...
+[FE:Watcher] Google predictions: 0 processed, 0 skipped
+[FE:Watcher] Refreshing recommendation tracking...
+[FE:Watcher] ci_recommendations not found: no such table: ci_recommendations
+[FE:Watcher] Recommendation tracking: 0 processed
+[FE:Watcher] Refreshing competitor signal accuracy...
+[FE:Watcher] Competitor signals: 0 processed
+[FE:Watcher] Full refresh complete: 0 records processed
+[FE:Scheduler] Completed job: watcher-refresh (384ms, 1 records)
+[FE:Scheduler] Starting job: data-quality-check
+[FE:DataQuality] Running audit (2026-03-15 -> 2026-04-14, forceFresh=false)
+[FE:DataQuality] Audit complete. status=FAIL findings=14
+[FE:Scheduler] Completed job: data-quality-check (2367ms, 14 records)
+[FE:Scheduler] Starting job: watcher-refresh
+[FE:Watcher] Refreshing Meta prediction accuracy...
+[FE:Watcher] Meta predictions: 0 processed, 1337 skipped
+[FE:Watcher] Refreshing Google prediction accuracy...
+[FE:Watcher] Google predictions: 0 processed, 0 skipped
+[FE:Watcher] Refreshing recommendation tracking...
+[FE:Watcher] ci_recommendations not found: no such table: ci_recommendations
+[FE:Watcher] Recommendation tracking: 0 processed
+[FE:Watcher] Refreshing competitor signal accuracy...
+[FE:Watcher] Competitor signals: 0 processed
+[FE:Watcher] Full refresh complete: 0 records processed
+[FE:Scheduler] Completed job: watcher-refresh (488ms, 1 records)
+[FE:Scheduler] Starting job: data-quality-check
+[FE:DataQuality] Running audit (2026-03-15 -> 2026-04-14, forceFresh=false)
+[FE:DataQuality] Audit complete. status=FAIL findings=14
+[FE:Scheduler] Completed job: data-quality-check (1878ms, 14 records)
+[FE:Scheduler] Starting job: proposal-generate
+[FE:ProposalGenerator] Generating improvement proposals...
+[FE:Scheduler] Starting job: knowledge-crawl-all
+[FE:KnowledgeCrawler] Crawling Tier 1 (Ad Library data)...
+[FE:KnowledgeCrawler] Tier1 CI db scan skipped: no such table: ci_competitor_ads
+[FE:KnowledgeCrawler] Tier1 GC db scan skipped: no such table: gc_competitor_ads
+[FE:KnowledgeCrawler] Tier 1: 0 new items
+[FE:KnowledgeCrawler] Crawling Tier 2 (Financial RSS)...
+[FE:KnowledgeCrawler] Crawling RSS: MoneyControl Technicals (https://www.moneycontrol.com/rss/technicals.xml)
+[FE:Scheduler] Starting job: watcher-refresh
+[FE:Watcher] Refreshing Meta prediction accuracy...
+[FE:Watcher] Meta predictions: 0 processed, 1337 skipped
+[FE:Watcher] Refreshing Google prediction accuracy...
+[FE:Watcher] Google predictions: 0 processed, 0 skipped
+[FE:Watcher] Refreshing recommendation tracking...
+[FE:Watcher] ci_recommendations not found: no such table: ci_recommendations
+[FE:Watcher] Recommendation tracking: 0 processed
+[FE:Watcher] Refreshing competitor signal accuracy...
+[FE:Watcher] Competitor signals: 0 processed
+[FE:Watcher] Full refresh complete: 0 records processed
+[FE:Scheduler] Completed job: watcher-refresh (727ms, 1 records)
+[FE:KnowledgeCrawler] MoneyControl Technicals: 0 new, 4 skipped
+[FE:KnowledgeCrawler] Crawling RSS: ET Markets (https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms)
+[FE:ProposalGenerator] Proposal #97: [SCORING_FORMULA_UPDATE] Cap and calibrate extreme Meta D7 ROAS predictions
+[FE:ProposalGenerator] Proposal #98: [NEW_SIGNAL] Add prediction maturity and uncertainty signals for fresh ad
+[FE:ProposalGenerator] Proposal #99: [WEIGHT_RECALIBRATION] Reduce overweighting of Meta source prior in recommendation 
+[FE:ProposalGenerator] Proposal #100: [RECOMMENDATION_IMPROVEMENT] Gate creative recommendations on calibrated score plus evide
+[FE:ProposalGenerator] Generated 4 proposals (expire 2026-04-28T12:00:27.076Z)
+[FE:Scheduler] Completed job: proposal-generate (26847ms, 1 records)
+[FE:KnowledgeCrawler] ET Markets: 50 new, 0 skipped
+[FE:KnowledgeCrawler] Tier 2: 50 new items
+[FE:KnowledgeCrawler] Crawling Tier 3 (Social/Reviews)...
+[FE:KnowledgeCrawler] Tier 3: 0 new items
+[FE:KnowledgeCrawler] Pending TAXONOMY_EXPANSION proposal already exists
+[FE:KnowledgeCrawler] Total crawled: 50 new items
+[FE:Scheduler] Completed job: knowledge-crawl-all (485652ms, 1 records)
+[FE:Scheduler] Starting job: data-quality-check
+[FE:DataQuality] Running audit (2026-03-15 -> 2026-04-14, forceFresh=false)
+[FE:DataQuality] Audit complete. status=FAIL findings=14
+[FE:Scheduler] Completed job: data-quality-check (2912ms, 14 records)
+[FE:Scheduler] Starting job: knowledge-crawl-tier1
+[FE:KnowledgeCrawler] Pending TAXONOMY_EXPANSION proposal already exists
+[FE:KnowledgeCrawler] Total crawled: 0 new items
+[FE:Scheduler] Completed job: knowledge-crawl-tier1 (17ms, 1 records)
+[FE:Scheduler] Starting job: watcher-refresh
+[FE:Watcher] Refreshing Meta prediction accuracy...
+[FE:Watcher] Meta predictions: 0 processed, 1337 skipped
+[FE:Watcher] Refreshing Google prediction accuracy...
+[FE:Watcher] Google predictions: 0 processed, 0 skipped
+[FE:Watcher] Refreshing recommendation tracking...
+[FE:Watcher] ci_recommendations not found: no such table: ci_recommendations
+[FE:Watcher] Recommendation tracking: 0 processed
+[FE:Watcher] Refreshing competitor signal accuracy...
+[FE:Watcher] Competitor signals: 0 processed
+[FE:Watcher] Full refresh complete: 0 records processed
+[FE:Scheduler] Completed job: watcher-refresh (401ms, 1 records)
+[FE:Scheduler] Starting job: data-quality-check
+[FE:DataQuality] Running audit (2026-03-15 -> 2026-04-14, forceFresh=false)
+[FE:DataQuality] Audit complete. status=FAIL findings=14
+[FE:Scheduler] Completed job: data-quality-check (205701ms, 14 records)
+[FE:Scheduler] Starting job: watcher-refresh
+[FE:Watcher] Refreshing Meta prediction accuracy...
+[FE:Watcher] Meta predictions: 0 processed, 1337 skipped
+[FE:Watcher] Refreshing Google prediction accuracy...
+[FE:Watcher] Google predictions: 0 processed, 0 skipped
+[FE:Watcher] Refreshing recommendation tracking...
+[FE:Watcher] ci_recommendations not found: no such table: ci_recommendations
+[FE:Watcher] Recommendation tracking: 0 processed
+[FE:Watcher] Refreshing competitor signal accuracy...
+[FE:Watcher] Competitor signals: 0 processed
+[FE:Watcher] Full refresh complete: 0 records processed
+[FE:Scheduler] Completed job: watcher-refresh (670ms, 1 records)
+[FE:Scheduler] Starting job: data-quality-check
+[FE:DataQuality] Running audit (2026-03-15 -> 2026-04-14, forceFresh=false)
+[FE:DataQuality] Audit complete. status=OK findings=14
+[FE:Scheduler] Completed job: data-quality-check (2274ms, 14 records)
+[FE:Scheduler] Starting job: memory-consolidate
+[FE:Memory] Starting nightly memory consolidation...
+[FE:Memory] No new data to consolidate. Skipping.
+[FE:Scheduler] Completed job: memory-consolidate (2ms, 1 records)
+[FE:Scheduler] Starting job: watcher-refresh
+[FE:Watcher] Refreshing Meta prediction accuracy...
+[FE:Watcher] Meta predictions: 0 processed, 1337 skipped
+[FE:Watcher] Refreshing Google prediction accuracy...
+[FE:Watcher] Google predictions: 0 processed, 0 skipped
+[FE:Watcher] Refreshing recommendation tracking...
+[FE:Watcher] ci_recommendations not found: no such table: ci_recommendations
+[FE:Watcher] Recommendation tracking: 0 processed
+[FE:Watcher] Refreshing competitor signal accuracy...
+[FE:Watcher] Competitor signals: 0 processed
+[FE:Watcher] Full refresh complete: 0 records processed
+[FE:Scheduler] Completed job: watcher-refresh (428ms, 1 records)
+[FE:Scheduler] Starting job: anomaly-check
+[FE:AnomalyDetector] Running all anomaly detection checks...
+[FE:AnomalyDetector] Duplicate anomaly "Model drift detected for meta predictions" (unresolved or recently resolved) — skipping.
+[FE:AnomalyDetector] No competitor signal data available. Skipping competitor checks.
+[FE:AnomalyDetector] All checks complete. 0 new anomalies detected.
+[FE:Scheduler] Completed job: anomaly-check (8ms, 0 records)

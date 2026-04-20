@@ -1,0 +1,44 @@
+[CampaignSync] No Meta access token configured — skipping API fetch
+[CampaignSync] Could not fetch Meta ad IDs — skipping dedup
+[roas-tracker] Error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Promise.all (index 0)
+    at async snapshotAndTrackLiveAds (C:\Users\Dell\Desktop\creative-portal\creative-intelligence\engine.js:1063:42) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:3000
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1611:16) {
+    errno: -4078,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 3000
+  }
+}
+[roas-tracker] Initial run failed: fetch failed
+[roas-tracker] Error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at async Promise.all (index 0)
+    at async snapshotAndTrackLiveAds (C:\Users\Dell\Desktop\creative-portal\creative-intelligence\engine.js:1063:42) {
+  [cause]: HeadersTimeoutError: Headers Timeout Error
+      at FastTimer.onParserTimeout [as _onTimeout] (node:internal/deps/undici/undici:6363:32)
+      at Timeout.onTick [as _onTimeout] (node:internal/deps/undici/undici:2326:17)
+      at listOnTimeout (node:internal/timers:581:17)
+      at process.processTimers (node:internal/timers:519:7) {
+    code: 'UND_ERR_HEADERS_TIMEOUT',
+    [Symbol(undici.error.UND_ERR)]: true,
+    [Symbol(undici.error.UND_ERR_HEADERS_TIMEOUT)]: true
+  }
+}
+[roas-tracker] Scheduled run failed: fetch failed
+[roas-tracker] Error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14902:13
+    at async Promise.all (index 0)
+    at async snapshotAndTrackLiveAds (C:\Users\Dell\Desktop\creative-portal\creative-intelligence\engine.js:1063:42) {
+  [cause]: Error: read ECONNRESET
+      at TCP.onStreamRead (node:internal/stream_base_commons:218:20) {
+    errno: -4077,
+    code: 'ECONNRESET',
+    syscall: 'read'
+  }
+}
+[roas-tracker] Scheduled run failed: fetch failed

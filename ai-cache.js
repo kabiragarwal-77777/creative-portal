@@ -179,13 +179,18 @@
             renderFn(parsed, containerEl);
 
         } catch (err) {
+            var cachedAfterFailure = AI_CACHE.get(scopedKey);
+            if (cachedAfterFailure) {
+                renderFn(cachedAfterFailure, containerEl);
+                showCacheNotice(containerEl, AI_CACHE.timestamps[scopedKey]);
+                console.warn('AI call failed, showing cached result instead:', err);
+                return;
+            }
             if (containerEl) containerEl.innerHTML =
                 '<div class="ai-error">' +
                     '<div class="ai-error-title">Analysis failed</div>' +
                     '<div class="ai-error-msg">' + escapeHtml(err.message) + '</div>' +
                     '<button onclick="window.aiRegenerate && window.aiRegenerate(\'' + scopedKey + '\')" class="btn-ci-primary" style="margin-top:12px;">Try Again</button>' +
-                    (AI_CACHE.get(scopedKey) ?
-                        '<button onclick="window.aiShowCached && window.aiShowCached(\'' + scopedKey + '\')" class="btn-ci-primary" style="margin-top:12px;margin-left:8px;background:var(--border);">Show Last Result</button>' : '') +
                 '</div>';
             console.error('AI call failed:', err);
         }

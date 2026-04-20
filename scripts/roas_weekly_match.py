@@ -1,5 +1,6 @@
 import csv
 import json
+import os
 import sys
 import urllib.request
 import zipfile
@@ -11,7 +12,8 @@ from pathlib import Path
 
 ROOT = Path(r"c:\Users\Dell\Desktop\creative-portal")
 WORKBOOK = Path(r"c:\Users\Dell\Downloads\kabir_analysis_2026-04-09T05_57_51.376350329Z.xlsx")
-LOCAL_META_URL = "http://localhost:3000/api/meta/ad-insights-daily"
+PORTAL_INTERNAL_BASE_URL = os.environ.get("PORTAL_INTERNAL_BASE_URL", "http://[::1]:3000").rstrip("/")
+LOCAL_META_URL = f"{PORTAL_INTERNAL_BASE_URL}/api/meta/ad-insights-daily"
 ANALYSIS_START = date(2025, 11, 21)
 ANALYSIS_END = date(2026, 4, 9)
 META_CHUNK_CACHE = ROOT / "tmp_meta_insights_chunk_cache.json"

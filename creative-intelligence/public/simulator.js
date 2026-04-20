@@ -9,6 +9,7 @@
     var CACHE_VERSION = 'v2';
     var DASHBOARD_CACHE_KEY = 'ci2.roas.simulator.dashboard.' + CACHE_VERSION;
     var TRENDLINE_CACHE_PREFIX = 'ci2.roas.simulator.trendline.' + CACHE_VERSION + '.';
+    var REFRESH_STATE_KEY = 'ci2.roas.simulator.refresh-state.' + CACHE_VERSION;
 
     var CHECKPOINT_META = {
         P0: { color: '#8b5cf6', label: 'P0', checkpointLabel: 'Day 0' },
@@ -89,6 +90,25 @@
         }
     }
 
+    function updateLastRefreshLabel(ts) {
+        var el = document.getElementById('rtLastRefreshed');
+        if (!el) return;
+        el.textContent = ts ? 'Last refreshed: ' + fmtCachedAt(ts) : 'Last refreshed: --';
+    }
+
+    function updateCacheStateLabel(cachedAt, refreshState) {
+        var el = document.getElementById('rtCacheState');
+        if (!el) return;
+        var cacheText = cachedAt ? 'Cached version: ' + fmtCachedAt(cachedAt) : 'Cached version: --';
+        var refreshText = 'Refresh: idle';
+        if (refreshState && refreshState.status === 'running') {
+            refreshText = 'Reloading now since ' + fmtCachedAt(refreshState.requestedAt) + ' (cache stays visible)';
+        } else if (refreshState && refreshState.status === 'done') {
+            refreshText = 'Last rebuild: ' + fmtCachedAt(refreshState.lastCompletedAt || refreshState.requestedAt);
+        }
+        el.textContent = cacheText + ' · ' + refreshText;
+    }
+
     function getCachedDashboard() {
         return readCache(DASHBOARD_CACHE_KEY);
     }
@@ -98,6 +118,26 @@
             savedAt: new Date().toISOString(),
             data: data
         });
+    }
+
+    function getRefreshState() {
+        var state = readCache(REFRESH_STATE_KEY);
+        if (!state || typeof state !== 'object') {
+            return { status: 'idle', requestedAt: null, lastCompletedAt: null, lastCachedAt: null };
+        }
+        return state;
+    }
+
+    function setRefreshState(nextState) {
+        var current = getRefreshState();
+        var merged = {
+            status: nextState && nextState.status != null ? nextState.status : current.status || 'idle',
+            requestedAt: Object.prototype.hasOwnProperty.call(nextState || {}, 'requestedAt') ? nextState.requestedAt : (current.requestedAt || null),
+            lastCompletedAt: Object.prototype.hasOwnProperty.call(nextState || {}, 'lastCompletedAt') ? nextState.lastCompletedAt : (current.lastCompletedAt || null),
+            lastCachedAt: Object.prototype.hasOwnProperty.call(nextState || {}, 'lastCachedAt') ? nextState.lastCachedAt : (current.lastCachedAt || null)
+        };
+        writeCache(REFRESH_STATE_KEY, merged);
+        return merged;
     }
 
     function getCachedTrendline(adId) {
@@ -170,6 +210,7 @@
     }
 
     function buildHTML() {
+        var cached = getCachedDashboard();
         return '' +
             '<div class="ci-panel">' +
                 '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;">' +
@@ -178,6 +219,8 @@
                         '<p style="font-size:13px;color:var(--text-dim);max-width:760px;">Actual portal ROAS vs frozen checkpoint forecasts for immature ad cohorts. P0, P2, P8, and P14 now start from the exact achieved ROAS at that checkpoint day, then forecast only the remaining path to D6, D15, D30, D60, and D180.</p>' +
                     '</div>' +
                     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+                        '<span id="rtCacheState" style="display:inline-flex;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-card);font-size:11px;color:var(--text-dim);">Cached version: ' + esc(cached && cached.savedAt ? fmtCachedAt(cached.savedAt) : '--') + ' · Refresh: idle</span>' +
+                        '<span id="rtLastRefreshed" style="display:inline-flex;align-items:center;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-card);font-size:11px;color:var(--text-dim);">Last refreshed: ' + esc(cached && cached.savedAt ? fmtCachedAt(cached.savedAt) : '--') + '</span>' +
                         '<button id="rtRefreshBtn" class="btn-ci-primary" style="font-size:12px;padding:8px 16px;">Refresh View</button>' +
                         '<button id="rtSnapshotBtn" class="btn-ci-primary" style="font-size:12px;padding:8px 16px;background:var(--green, #10b981);border-color:var(--green, #10b981);">Run Live Refresh</button>' +
                     '</div>' +
@@ -209,17 +252,22 @@
 
     function fetchDashboard() {
         var cached = getCachedDashboard();
+        var refreshState = getRefreshState();
         if (cached && cached.data) {
             _dashboardData = cached.data;
             renderStats(cached.data.summary);
             renderLearningPanel(cached.data);
             renderTable(cached.data.ads || []);
             showProgress('Showing cached simulator state from ' + fmtCachedAt(cached.savedAt) + ' while fresh Meta + Metabase data loads.');
+            updateLastRefreshLabel(cached.savedAt);
+            updateCacheStateLabel(cached.savedAt, refreshState);
         } else {
             showProgress('Loading fresh simulator data...');
+            updateLastRefreshLabel(null);
+            updateCacheStateLabel(null, refreshState);
         }
 
-        fetch('/api/ci2/roas-simulator/dashboard')
+        fetch('api/ci2/roas-simulator/dashboard')
             .then(function(res) { return res.json(); })
             .then(function(result) {
                 if (!result.success || !result.data) {
@@ -229,9 +277,12 @@
                 }
                 _dashboardData = result.data;
                 setCachedDashboard(result.data);
+                setRefreshState({ status: 'done', lastCompletedAt: new Date().toISOString(), lastCachedAt: new Date().toISOString() });
                 renderStats(result.data.summary);
                 renderLearningPanel(result.data);
                 renderTable(result.data.ads || []);
+                updateLastRefreshLabel(new Date().toISOString());
+                updateCacheStateLabel(new Date().toISOString(), getRefreshState());
                 hideProgress();
             })
             .catch(function(err) {
@@ -241,6 +292,7 @@
                 } else {
                     showFlash('Fresh simulator fetch failed; showing cached state: ' + err.message, 'var(--red, #ef4444)');
                 }
+                updateCacheStateLabel(cached && cached.savedAt ? cached.savedAt : null, getRefreshState());
             });
 
         // Do not auto-trigger the heavy refresh route on page load.
@@ -249,12 +301,17 @@
 
     function runRefresh(manual) {
         _lastRefreshRequestAt = Date.now();
+        setRefreshState({
+            status: 'running',
+            requestedAt: new Date().toISOString(),
+            lastCachedAt: (getCachedDashboard() && getCachedDashboard().savedAt) || null
+        });
 
         var snapshotBtn = document.getElementById('rtSnapshotBtn');
-        showProgress('Refreshing Meta + Metabase snapshots and checkpoint forecasts... Cached simulator data will stay visible until the rebuild lands.');
+        showProgress('Refreshing Meta + Metabase snapshots and checkpoint forecasts... Cached simulator data stays visible below while the rebuild runs.');
         if (manual && snapshotBtn) snapshotBtn.disabled = true;
 
-        fetch('/api/ci2/roas-simulator/refresh', {
+        fetch('api/ci2/roas-simulator/refresh', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: '{}'
@@ -280,12 +337,18 @@
                     var checkpoints = result.data && result.data.checkpoints ? result.data.checkpoints : {};
                     showFlash('Refresh complete: ' + (snap.tracked || 0) + ' ads tracked, ' + (checkpoints.created || 0) + ' checkpoint lines created.', 'var(--green, #10b981)');
                 }
+                setRefreshState({
+                    status: 'done',
+                    lastCompletedAt: new Date().toISOString(),
+                    lastCachedAt: (getCachedDashboard() && getCachedDashboard().savedAt) || null
+                });
                 fetchDashboard();
             })
             .catch(function(err) {
                 hideProgress();
                 if (manual && snapshotBtn) snapshotBtn.disabled = false;
                 if (manual) showFlash('Refresh failed: ' + err.message, 'var(--red, #ef4444)');
+                updateCacheStateLabel((getCachedDashboard() && getCachedDashboard().savedAt) || null, getRefreshState());
             });
     }
 
@@ -297,6 +360,8 @@
         renderLearningPanel(cached.data);
         renderTable(cached.data.ads || []);
         showProgress('Showing cached simulator state from ' + fmtCachedAt(cached.savedAt) + ' while fresh Meta + Metabase data loads.');
+        updateLastRefreshLabel(cached.savedAt);
+        updateCacheStateLabel(cached.savedAt, getRefreshState());
     }
 
     function showFlash(msg, color) {
@@ -523,7 +588,7 @@
             chartContainer.innerHTML = '<div style="font-size:12px;color:var(--text-dim);">Loading simulator line chart...</div>';
         }
 
-        fetch('/api/ci2/roas-simulator/trendline/' + encodeURIComponent(adId))
+        fetch('api/ci2/roas-simulator/trendline/' + encodeURIComponent(adId))
             .then(function(res) { return res.json(); })
             .then(function(result) {
                 if (!result.success || !result.data) {

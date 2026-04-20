@@ -5,63 +5,79 @@ module.exports = function(agents) {
 
     console.log('[GC Scheduler] Initializing...');
 
-    // Every 6 hours: fetch -> classify -> score
-    cron.schedule('0 */6 * * *', async () => {
-        console.log('[GC Scheduler] Starting 6-hour cycle...');
-        try {
-            await dataFetcher.runFullFetch(90);
-            console.log('[GC Scheduler] Fetch complete, classifying...');
-            await classifier.classifyAll({ incrementalOnly: true });
-            console.log('[GC Scheduler] Classification complete, scoring...');
-            await scoring.scoreAll();
-            console.log('[GC Scheduler] Scoring complete.');
-        } catch(err) {
-            console.error('[GC Scheduler] 6-hour cycle error:', err.message);
+    const running = {};
+
+    async function runJob(name, fn) {
+        if (running[name]) {
+            console.log(`[GC Scheduler] ${name} already running, skipping`);
+            return;
         }
-    }, { timezone: 'Asia/Kolkata' });
-
-    // Every 12 hours: recommendations refresh
-    cron.schedule('0 */12 * * *', async () => {
-        console.log('[GC Scheduler] Starting 12-hour recommendations refresh...');
+        running[name] = true;
+        console.log(`[GC Scheduler] Starting ${name}...`);
         try {
-            await recommendations.generateBriefs('all');
-            console.log('[GC Scheduler] Recommendations refresh complete.');
-        } catch(err) {
-            console.error('[GC Scheduler] 12-hour recommendations error:', err.message);
+            const result = await fn();
+            console.log(`[GC Scheduler] ${name} completed`, result ? '' : '');
+            return result;
+        } catch (err) {
+            console.error(`[GC Scheduler] ${name} error:`, err.message);
+            throw err;
+        } finally {
+            running[name] = false;
         }
-    }, { timezone: 'Asia/Kolkata' });
+    }
 
-    // Daily 6 AM IST: forecast actuals + divergence check + market signals
-    cron.schedule('0 6 * * *', async () => {
-        console.log('[GC Scheduler] Starting daily 6 AM cycle...');
-        try {
-            console.log('[GC Scheduler] Updating forecast actuals...');
-            const forecastResult = await forecast.updateForecasts();
-            console.log(`[GC Scheduler] Forecast updated: ${forecastResult.updated} rows, ${forecastResult.alerts} new alerts`);
+    function scheduleJob(cronExpr, name, fn) {
+        cron.schedule(cronExpr, () => {
+            runJob(name, fn).catch(err => {
+                console.error(`[GC Scheduler] ${name} failed:`, err.message);
+            });
+        }, { timezone: 'Asia/Kolkata' });
+    }
 
-            console.log('[GC Scheduler] Fetching market signals...');
-            const marketResult = await signals.fetchMarketSignals();
-            console.log(`[GC Scheduler] Market signals: ${marketResult.market_sentiment} (source: ${marketResult.source})`);
+    // Every 6 hours: data fetch only
+    scheduleJob('0 */6 * * *', 'data-fetch', () => dataFetcher.runFullFetch(90));
 
-            console.log('[GC Scheduler] Daily 6 AM cycle complete.');
-        } catch(err) {
-            console.error('[GC Scheduler] Daily 6 AM cycle error:', err.message);
-        }
-    }, { timezone: 'Asia/Kolkata' });
+    // Every 6 hours, offset: classification only
+    scheduleJob('10 */6 * * *', 'classify', () => classifier.classifyAll({ incrementalOnly: true }));
 
-    console.log('[GC Scheduler] Cron jobs registered (6h fetch/classify/score, 12h recommendations, daily 6AM forecast+signals)');
+    // Every 6 hours, offset: scoring only
+    scheduleJob('20 */6 * * *', 'score', () => scoring.scoreAll());
 
-    // Run initial fetch after 30 seconds (let server settle)
-    setTimeout(async () => {
-        console.log('[GC Scheduler] Running initial data fetch...');
-        try {
-            await dataFetcher.runFullFetch(90);
-            await classifier.classifyAll({ incrementalOnly: true });
-            await scoring.scoreAll();
-            await signals.fetchMarketSignals();
-            console.log('[GC Scheduler] Initial cycle complete.');
-        } catch(err) {
-            console.error('[GC Scheduler] Initial cycle error:', err.message);
-        }
+    // Every 12 hours: brief generation split by brief type
+    scheduleJob('0 */12 * * *', 'briefs-rsa', () => recommendations.generateBriefs('rsa'));
+    scheduleJob('20 */12 * * *', 'briefs-video', () => recommendations.generateBriefs('video'));
+    scheduleJob('40 */12 * * *', 'briefs-pmax', () => recommendations.generateBriefs('pmax'));
+
+    // Daily 6 AM IST: forecast actuals only
+    scheduleJob('0 6 * * *', 'forecast', () => forecast.updateForecasts());
+
+    // Daily 6:20 AM IST: market signals only
+    scheduleJob('20 6 * * *', 'signals', () => signals.fetchMarketSignals());
+
+    console.log('[GC Scheduler] Cron jobs registered (data fetch, classify, score, briefs by type, forecast, signals)');
+
+    // Bootstrap each job separately so startup does not bundle analysis steps
+    setTimeout(() => {
+        runJob('data-fetch', () => dataFetcher.runFullFetch(90)).catch(err => {
+            console.error('[GC Scheduler] Initial data fetch error:', err.message);
+        });
     }, 30000);
+
+    setTimeout(() => {
+        runJob('classify', () => classifier.classifyAll({ incrementalOnly: true })).catch(err => {
+            console.error('[GC Scheduler] Initial classify error:', err.message);
+        });
+    }, 60000);
+
+    setTimeout(() => {
+        runJob('score', () => scoring.scoreAll()).catch(err => {
+            console.error('[GC Scheduler] Initial score error:', err.message);
+        });
+    }, 90000);
+
+    setTimeout(() => {
+        runJob('signals', () => signals.fetchMarketSignals()).catch(err => {
+            console.error('[GC Scheduler] Initial signals error:', err.message);
+        });
+    }, 120000);
 };

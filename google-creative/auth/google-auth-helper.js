@@ -11,6 +11,7 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const url = require('url');
+const { getPublicBase } = require('../../config/env');
 
 // --------------- Load environment variables ---------------
 
@@ -51,7 +52,9 @@ if (!CLIENT_ID || !CLIENT_SECRET) {
 
 const SCOPES = ['https://www.googleapis.com/auth/adwords'];
 const REDIRECT_PORT = 8089;
-const REDIRECT_URI = `http://localhost:${REDIRECT_PORT}`;
+const REDIRECT_URI = process.env.PORTAL_PUBLIC_BASE_URL
+    ? `${getPublicBase()}/auth/callback`
+    : `http://[::1]:${REDIRECT_PORT}`;
 
 async function run() {
     let OAuth2Client;
@@ -108,7 +111,7 @@ async function run() {
         });
 
         server.listen(REDIRECT_PORT, () => {
-            console.log(`   Waiting for authorization on http://localhost:${REDIRECT_PORT}...\n`);
+            console.log(`   Waiting for authorization on port ${REDIRECT_PORT}...\n`);
         });
 
         server.on('error', (err) => {

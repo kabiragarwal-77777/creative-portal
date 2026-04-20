@@ -5,6 +5,7 @@
 
 const cron = require('node-cron');
 const { getAtDb, logSchedulerRun, updateSchedulerRun } = require('../db/at-db');
+const { getMetabaseSessionToken } = require('../../config/env');
 
 // Mutex to prevent overlapping runs
 const running = {};
@@ -34,7 +35,7 @@ const config = {
     metaAccessToken: process.env.META_ACCESS_TOKEN,
     metaAdAccountId: process.env.META_AD_ACCOUNT_ID,
     metabaseUrl: process.env.METABASE_URL || 'https://analytics.univest.in',
-    metabaseSessionToken: process.env.METABASE_SESSION_TOKEN,
+    metabaseSessionToken: getMetabaseSessionToken(),
     anthropicApiKey: process.env.ANTHROPIC_API_KEY,
 };
 
@@ -54,40 +55,38 @@ const jobMap = {
     'enrich-google': () => enricher.enrichGoogle(),
     'learn-meta': () => learningEngine.runMetaAnalysis(),
     'learn-google': () => learningEngine.runGoogleAnalysis(),
-    'recommend-all': () => recommendationEngine.generateAll(),
+    'recommend-meta': () => recommendationEngine.generatePlatformRecommendations('meta'),
+    'recommend-google': () => recommendationEngine.generatePlatformRecommendations('google'),
     'scan-meta-full': () => metaScanner.runFullScan(),
     'scan-google-full': () => googleScanner.runFullScan(),
 };
 
 // --------------- Cron schedules (Asia/Kolkata) ---------------
 
+function scheduleJob(cronExpr, jobName) {
+    cron.schedule(cronExpr, () => {
+        runJob(jobName, jobMap[jobName]);
+    }, { timezone: 'Asia/Kolkata' });
+}
+
 // Every 6 hours: optimizer health check
-cron.schedule('0 */6 * * *', () => {
-    runJob('optimizer-health', jobMap['optimizer-health']);
-}, { timezone: 'Asia/Kolkata' });
+scheduleJob('0 */6 * * *', 'optimizer-health');
 
 // Every 12 hours: enrich meta + google from Metabase
-cron.schedule('0 */12 * * *', () => {
-    runJob('enrich-meta', jobMap['enrich-meta']);
-    runJob('enrich-google', jobMap['enrich-google']);
-}, { timezone: 'Asia/Kolkata' });
+scheduleJob('0 */12 * * *', 'enrich-meta');
+scheduleJob('10 */12 * * *', 'enrich-google');
 
 // Daily at 3 AM: learning engine analysis
-cron.schedule('0 3 * * *', () => {
-    runJob('learn-meta', jobMap['learn-meta']);
-    runJob('learn-google', jobMap['learn-google']);
-}, { timezone: 'Asia/Kolkata' });
+scheduleJob('0 3 * * *', 'learn-meta');
+scheduleJob('15 3 * * *', 'learn-google');
 
 // Every 48 hours (2 AM on even days): recommendation generation
-cron.schedule('0 2 */2 * *', () => {
-    runJob('recommend-all', jobMap['recommend-all']);
-}, { timezone: 'Asia/Kolkata' });
+scheduleJob('0 2 */2 * *', 'recommend-meta');
+scheduleJob('20 2 */2 * *', 'recommend-google');
 
 // Weekly Sunday 1 AM: full platform scans
-cron.schedule('0 1 * * 0', () => {
-    runJob('scan-meta-full', jobMap['scan-meta-full']);
-    runJob('scan-google-full', jobMap['scan-google-full']);
-}, { timezone: 'Asia/Kolkata' });
+scheduleJob('0 1 * * 0', 'scan-meta-full');
+scheduleJob('20 1 * * 0', 'scan-google-full');
 
 // --------------- On-load bootstrap (45s delay) ---------------
 // Only run a quick health check — do NOT auto-trigger full scans
@@ -133,12 +132,13 @@ function getSchedulerStatus() {
     const cronSchedules = [
         { job: 'optimizer-health', schedule: 'Every 6 hours (0 */6 * * *)' },
         { job: 'enrich-meta', schedule: 'Every 12 hours (0 */12 * * *)' },
-        { job: 'enrich-google', schedule: 'Every 12 hours (0 */12 * * *)' },
+        { job: 'enrich-google', schedule: 'Every 12 hours (10 */12 * * *)' },
         { job: 'learn-meta', schedule: 'Daily at 3 AM (0 3 * * *)' },
-        { job: 'learn-google', schedule: 'Daily at 3 AM (0 3 * * *)' },
-        { job: 'recommend-all', schedule: 'Every 48 hours (0 2 */2 * *)' },
+        { job: 'learn-google', schedule: 'Daily at 3 AM (15 3 * * *)' },
+        { job: 'recommend-meta', schedule: 'Every 48 hours (0 2 */2 * *)' },
+        { job: 'recommend-google', schedule: 'Every 48 hours (20 2 */2 * *)' },
         { job: 'scan-meta-full', schedule: 'Weekly Sunday 1 AM (0 1 * * 0)' },
-        { job: 'scan-google-full', schedule: 'Weekly Sunday 1 AM (0 1 * * 0)' },
+        { job: 'scan-google-full', schedule: 'Weekly Sunday 1 AM (20 1 * * 0)' },
     ];
 
     return {

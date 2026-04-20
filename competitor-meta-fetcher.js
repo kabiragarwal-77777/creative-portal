@@ -16,6 +16,20 @@ module.exports = function (config) {
     RA: (process.env.COMPETITOR_LIST_RA || 'Samco,StockGro,Sensibull,Definedge,Weekend Investing,Capitalmind,Dhan').split(',').map(s => s.trim()),
     Broking: (process.env.COMPETITOR_LIST_BROKING || 'Zerodha,Groww,Angel One,Upstox,5paisa,Dhan,Paytm Money').split(',').map(s => s.trim())
   };
+  const COMPETITOR_PAGE_IDS = {
+    Zerodha: '339370099543',
+    Groww: '1926251767620923',
+    'Angel One': '198760073595085',
+    Upstox: '111558890555136',
+    '5paisa': '478824185626498',
+    Dhan: '107069418095538',
+    'Paytm Money': '1657695184444869',
+    Samco: '278017019045484',
+    StockGro: '351567829380488',
+    Sensibull: '1760523587530073',
+    Definedge: '557036714651398',
+    'Weekend Investing': '106519748232552'
+  };
 
   const AD_LIBRARY_BASE = 'https://graph.facebook.com/v19.0/ads_archive';
   const AD_FIELDS = 'id,ad_creative_body,ad_creative_link_caption,ad_creative_link_title,ad_delivery_start_time,ad_delivery_stop_time,ad_snapshot_url,page_name,impressions,spend,currency,publisher_platforms';
@@ -85,8 +99,8 @@ module.exports = function (config) {
     const sinceDate = ninetyDaysAgo();
     const allAds = [];
     let url = AD_LIBRARY_BASE;
+    const pageId = COMPETITOR_PAGE_IDS[competitorName];
     let params = {
-      search_terms: competitorName,
       ad_reached_countries: 'IN',
       fields: AD_FIELDS,
       access_token: META_ACCESS_TOKEN,
@@ -94,13 +108,18 @@ module.exports = function (config) {
       limit: PER_PAGE_LIMIT,
       ad_delivery_date_min: sinceDate
     };
+    if (pageId) {
+      params.search_page_ids = pageId;
+    } else {
+      params.search_terms = competitorName;
+    }
 
-    log(`Fetching ads for competitor: ${competitorName}`);
+    log(`Fetching ads for competitor: ${competitorName}${pageId ? ` (page_id=${pageId})` : ''}`);
 
     let page = 0;
     while (url) {
       const data = await fetchWithRetry(url, params);
-      const ads = data.data || [];
+      const ads = (data.data || []).map(ad => ({ ...ad, page_id: pageId || ad.page_id || null }));
       allAds.push(...ads);
       page++;
 
@@ -119,7 +138,48 @@ module.exports = function (config) {
       }
     }
 
-    log(`Fetched ${allAds.length} ads for ${competitorName}`);
+      log(`Fetched ${allAds.length} ads for ${competitorName}`);
+      if (!allAds.length && pageId) {
+        log(`No page_id results for ${competitorName}, retrying with search_terms fallback`);
+        return fetchAdsForCompetitorFallback(competitorName, sinceDate);
+      }
+      return allAds;
+  }
+
+  async function fetchAdsForCompetitorFallback(competitorName, sinceDate) {
+    const allAds = [];
+    let url = AD_LIBRARY_BASE;
+    let params = {
+      search_terms: competitorName,
+      ad_reached_countries: 'IN',
+      fields: AD_FIELDS,
+      access_token: META_ACCESS_TOKEN,
+      appsecret_proof: META_APP_SECRET_PROOF,
+      limit: PER_PAGE_LIMIT,
+      ad_delivery_date_min: sinceDate
+    };
+
+    let page = 0;
+    while (url) {
+      const data = await fetchWithRetry(url, params);
+      const ads = (data.data || []).map(ad => ({ ...ad, page_id: ad.page_id || null }));
+      allAds.push(...ads);
+      page++;
+
+      if (data.paging && data.paging.next) {
+        url = data.paging.next;
+        params = {};
+      } else {
+        url = null;
+      }
+
+      if (page >= 10) {
+        log(`Reached page cap (10) for ${competitorName} fallback, stopping pagination`);
+        break;
+      }
+    }
+
+    log(`Fetched ${allAds.length} ads for ${competitorName} via fallback`);
     return allAds;
   }
 
@@ -385,6 +445,10 @@ module.exports = function (config) {
     };
   }
 
+  function getTrackedCompetitors() {
+    return [...new Set(Object.values(COMPETITORS).flat())];
+  }
+
   // ---------- Demo seed data (used when Ad Library API is unavailable) ----------
 
   function seedDemoData() {
@@ -559,6 +623,7 @@ module.exports = function (config) {
     fetchUnivest,
     getAds,
     getLastFetchTime,
-    getCacheStatus
+    getCacheStatus,
+    getTrackedCompetitors
   };
 };

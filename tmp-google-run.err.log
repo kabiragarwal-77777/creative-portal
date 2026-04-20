@@ -1,0 +1,9 @@
+[gcClassifier] OPENAI_API_KEY not set — using rule-based classification only
+[gc/dataFetcher] Pipeline error: METABASE_SESSION_TOKEN is not set — cannot query Metabase
+[GC Scheduler] data-fetch error: METABASE_SESSION_TOKEN is not set — cannot query Metabase
+[GC Scheduler] Initial data fetch error: METABASE_SESSION_TOKEN is not set — cannot query Metabase
+[gc/dataFetcher] Pipeline error: METABASE_SESSION_TOKEN is not set — cannot query Metabase
+[GC Scheduler] data-fetch error: METABASE_SESSION_TOKEN is not set — cannot query Metabase
+[GC Scheduler] data-fetch failed: METABASE_SESSION_TOKEN is not set — cannot query Metabase
+[GC Scheduler] briefs-pmax error: Missing OPENAI_API_KEY
+[GC Scheduler] briefs-pmax failed: Missing OPENAI_API_KEY

@@ -6,6 +6,7 @@ const {
     getRoasTrackerAds, getUnpredictedTrackerAds,
 } = require('./db');
 const { cachedAsync } = require('../utils/ai-cache');
+const { getInternalBase, getInternalAuthHeader, getMetabaseSessionToken, refreshMetabaseSessionToken } = require('../config/env');
 
 module.exports = function (config) {
     // config = { metaApiBase, metaAdAccountId, metaAccessToken, metaAppSecretProof,
@@ -18,9 +19,10 @@ module.exports = function (config) {
     const META_ACCESS_TOKEN = config.metaAccessToken || '';
     const META_APP_SECRET_PROOF = config.metaAppSecretProof || '';
     const METABASE_URL = config.metabaseUrl || 'https://analytics.univest.in';
-    const METABASE_SESSION_TOKEN = config.metabaseSessionToken || '';
     const OPENAI_API_KEY = config.openaiApiKey || '';
     const TARGET_CAMPAIGNS = config.targetCampaigns || [];
+    const INTERNAL_BASE = getInternalBase(process.env.CI_PORT || 3001);
+    const AUTH_HEADERS = getInternalAuthHeader();
 
     // --- Scheduler state ---
     let schedulerInterval = null;
@@ -36,6 +38,10 @@ module.exports = function (config) {
             appsecret_proof: META_APP_SECRET_PROOF,
             ...extra,
         };
+    }
+
+    function resolveMetabaseSessionToken() {
+        return getMetabaseSessionToken() || config.metabaseSessionToken || '';
     }
 
     // =========================================================================
@@ -272,10 +278,12 @@ ORDER BY SUM(sm.total_signup) DESC`;
             let funnelData = [];
             try {
                 console.log('[ci/engine] Fetching Metabase funnel data...');
-                const metabaseRes = await fetch(`${METABASE_URL}/api/dataset`, {
+                let metabaseToken = resolveMetabaseSessionToken();
+                if (!metabaseToken) metabaseToken = await refreshMetabaseSessionToken('creative intelligence engine').catch(() => '');
+                const metabaseRequest = (sessionToken) => fetch(`${METABASE_URL}/api/dataset`, {
                     method: 'POST',
                     headers: {
-                        'X-Metabase-Session': METABASE_SESSION_TOKEN,
+                        'X-Metabase-Session': sessionToken,
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
@@ -284,8 +292,13 @@ ORDER BY SUM(sm.total_signup) DESC`;
                         native: { query: sql },
                     }),
                 });
+                let metabaseRes = metabaseToken ? await metabaseRequest(metabaseToken) : null;
+                if (metabaseRes && metabaseRes.status === 401) {
+                    const refreshed = await refreshMetabaseSessionToken('creative intelligence engine 401').catch(() => '');
+                    if (refreshed) metabaseRes = await metabaseRequest(refreshed);
+                }
 
-                if (metabaseRes.ok) {
+                if (metabaseRes && metabaseRes.ok) {
                     const result = await metabaseRes.json();
                     const columns = result.data.cols.map(c => c.name);
                     funnelData = result.data.rows.map(row => {
@@ -294,7 +307,7 @@ ORDER BY SUM(sm.total_signup) DESC`;
                         return obj;
                     });
                     console.log(`[ci/engine] Metabase done. ${funnelData.length} funnel rows.`);
-                } else {
+                } else if (metabaseRes) {
                     console.error('[ci/engine] Metabase error:', await metabaseRes.text());
                 }
             } catch (mbErr) {
@@ -763,6 +776,7 @@ Provide a comprehensive analysis in JSON format:
                             model: 'gpt-5.4',
                             messages: [{ role: 'user', content: prompt }],
                             temperature: 0.3,
+                            max_completion_tokens: 3000,
                             response_format: { type: 'json_object' },
                         }),
                     });
@@ -1055,16 +1069,16 @@ Provide a comprehensive analysis in JSON format:
         try {
             // 1. Use the SAME cached data as the dashboard (no separate fetch)
             //    Call the regular API endpoints — they use the cache from pre-warm
-            const metaUrl = `http://localhost:${process.env.PORT || 3000}`;
+            const metaUrl = INTERNAL_BASE;
             const [metaRes, funnelRes] = await Promise.all([
                 fetch(`${metaUrl}/api/meta/ad-insights-daily`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', ...AUTH_HEADERS },
                     body: JSON.stringify({ dateFrom: ROAS_TRACKER_START_DATE, dateTo, noCache: forceRefresh || false }),
                 }).then(r => r.json()),
                 fetch(`${metaUrl}/api/metabase/ad-funnel`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', ...AUTH_HEADERS },
                     body: JSON.stringify({ dateFrom: ROAS_TRACKER_START_DATE, dateTo, noCache: forceRefresh || false }),
                 }).then(r => r.json()),
             ]);
@@ -1248,7 +1262,7 @@ Provide a comprehensive analysis in JSON format:
 
             // Also add zero-spend test campaign ads from ads-status (never delivered but should be tracked)
             try {
-                const statusRes = await fetch(`${metaUrl}/api/meta/ads-status`).then(r => r.json());
+                const statusRes = await fetch(`${metaUrl}/api/meta/ads-status`, { headers: AUTH_HEADERS }).then(r => r.json());
                 if (statusRes.success && statusRes.data) {
                     const existingAdIds = new Set(combinedCreatives.map(c => c.ad_id));
                     statusRes.data.forEach(ad => {

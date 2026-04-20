@@ -329,44 +329,59 @@ Return JSON array:
         return rows.length;
     }
 
-    // --------------- generateAll ---------------
+    // --------------- generatePlatformRecommendations ---------------
 
-    async function generateAll() {
-        log('=== Generating all recommendations ===');
+    async function generatePlatformRecommendations(platform) {
+        const normalizedPlatform = String(platform || '').toLowerCase() === 'google' ? 'google' : 'meta';
+        log(`=== Generating recommendations for ${normalizedPlatform} ===`);
         const db = getAtDb();
         const startTime = Date.now();
 
-        // Clear old pending recommendations
-        const deleted = db.prepare("DELETE FROM at_recommendations WHERE status = 'pending'").run();
-        log(`Cleared ${deleted.changes} old pending recommendations.`);
+        const deleted = db.prepare(`
+            DELETE FROM at_recommendations
+            WHERE status = 'pending' AND platform = ?
+        `).run(normalizedPlatform);
+        log(`Cleared ${deleted.changes} old pending recommendations for ${normalizedPlatform}.`);
 
         let totalTests = 0;
         let totalOptimizations = 0;
 
-        // Generate tests for all verticals on both platforms
         for (const vertical of VERTICALS) {
-            const metaTests = await generateFutureTests('meta', vertical);
-            totalTests += metaTests;
-
-            const googleTests = await generateFutureTests('google', vertical);
-            totalTests += googleTests;
+            const tests = await generateFutureTests(normalizedPlatform, vertical);
+            totalTests += tests;
         }
 
-        // Generate optimizations for both platforms
-        const metaOpts = await generateCurrentOptimizations('meta');
-        totalOptimizations += metaOpts;
-
-        const googleOpts = await generateCurrentOptimizations('google');
-        totalOptimizations += googleOpts;
+        totalOptimizations += await generateCurrentOptimizations(normalizedPlatform);
 
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
         const summary = {
+            platform: normalizedPlatform,
             tests: totalTests,
             optimizations: totalOptimizations,
             total: totalTests + totalOptimizations,
             elapsedSeconds: parseFloat(elapsed)
         };
 
+        log(`=== ${normalizedPlatform} recommendations generated in ${elapsed}s ===`, JSON.stringify(summary));
+        return summary;
+    }
+
+    // --------------- generateAll ---------------
+
+    async function generateAll() {
+        log('=== Generating all recommendations ===');
+        const startTime = Date.now();
+        const meta = await generatePlatformRecommendations('meta');
+        const google = await generatePlatformRecommendations('google');
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        const summary = {
+            meta,
+            google,
+            tests: (meta.tests || 0) + (google.tests || 0),
+            optimizations: (meta.optimizations || 0) + (google.optimizations || 0),
+            total: (meta.total || 0) + (google.total || 0),
+            elapsedSeconds: parseFloat(elapsed)
+        };
         log(`=== All recommendations generated in ${elapsed}s ===`, JSON.stringify(summary));
         return summary;
     }
@@ -447,6 +462,7 @@ Return JSON array:
     // --------------- public API ---------------
 
     return {
+        generatePlatformRecommendations,
         generateAll,
         getRecommendations,
         markImplemented,

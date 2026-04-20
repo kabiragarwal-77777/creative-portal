@@ -8,6 +8,7 @@ module.exports = function (config) {
   const {
     fetchAllCompetitorAds,
     fetchUnivest,
+    getApifyIntel,
     classifyNewAds,
     computeTrends,
     generateRadar,
@@ -17,6 +18,7 @@ module.exports = function (config) {
   const state = {
     jobs: {
       fetch:    { lastRun: null, nextRun: null, duration: null, status: 'idle', recordCount: 0, error: null },
+      apify:    { lastRun: null, nextRun: null, duration: null, status: 'idle', recordCount: 0, error: null },
       classify: { lastRun: null, nextRun: null, duration: null, status: 'idle', recordCount: 0, error: null },
       trends:   { lastRun: null, nextRun: null, duration: null, status: 'idle', recordCount: 0, error: null },
       radar:    { lastRun: null, nextRun: null, duration: null, status: 'idle', recordCount: 0, error: null },
@@ -28,6 +30,7 @@ module.exports = function (config) {
 
   let pipelineCron = null;
   let briefsCron = null;
+  let apifyCron = null;
   let initialTimeout = null;
 
   // ── helpers ────────────────────────────────────────────────────────
@@ -53,6 +56,8 @@ module.exports = function (config) {
       } else if (result && typeof result === 'object' && typeof result.count === 'number') {
         count = result.count;
         passthrough = result.data !== undefined ? result.data : result;
+      } else if (result && typeof result === 'object' && Array.isArray(result.records)) {
+        count = result.records.length;
       } else if (typeof result === 'number') {
         count = result;
       }
@@ -87,9 +92,9 @@ module.exports = function (config) {
       const competitorAds = await runStep('fetch', async () => {
         await fetchAllCompetitorAds();
         try { await fetchUnivest(); } catch (e) { log('fetchUnivest skipped: ' + e.message); }
-        // After fetching, get ALL raw ads from the fetcher cache for classification
-        const allRawAds = config.getAds ? config.getAds() : [];
-        return allRawAds;
+        const metaAds = config.getAds ? config.getAds() : [];
+        const apifyIntel = getApifyIntel ? await getApifyIntel({}) : [];
+        return [].concat(metaAds || [], apifyIntel || []);
       });
 
       // Step 2 — classify only new ads
@@ -129,9 +134,10 @@ module.exports = function (config) {
     const sixH = 6 * 60 * 60 * 1000;
     const twelveH = 12 * 60 * 60 * 1000;
 
-    ['fetch', 'classify', 'trends', 'radar'].forEach((k) => {
+    ['fetch', 'apify', 'classify', 'trends', 'radar'].forEach((k) => {
       const last = state.jobs[k].lastRun ? new Date(state.jobs[k].lastRun).getTime() : now;
-      state.jobs[k].nextRun = new Date(last + sixH).toISOString();
+      const delta = k === 'apify' ? 24 * 60 * 60 * 1000 : sixH;
+      state.jobs[k].nextRun = new Date(last + delta).toISOString();
     });
     const lastBriefs = state.jobs.briefs.lastRun ? new Date(state.jobs.briefs.lastRun).getTime() : now;
     state.jobs.briefs.nextRun = new Date(lastBriefs + twelveH).toISOString();
@@ -151,9 +157,14 @@ module.exports = function (config) {
 
     const fnMap = {
       fetch: async () => {
-        const ads = await fetchAllCompetitorAds();
-        const univest = await fetchUnivest();
-        return [].concat(ads || [], univest || []);
+        await fetchAllCompetitorAds();
+        await fetchUnivest();
+        const ads = config.getAds ? config.getAds() : [];
+        const apifyIntel = getApifyIntel ? await getApifyIntel({}) : [];
+        return [].concat(ads || [], apifyIntel || []);
+      },
+      apify: async () => {
+        return getApifyIntel ? await getApifyIntel({}) : [];
       },
       classify: classifyNewAds,
       trends: computeTrends,
@@ -189,6 +200,11 @@ module.exports = function (config) {
       runBriefs().catch((err) => log(`Cron briefs error: ${err.message}`));
     });
 
+    // Daily Apify metadata refresh — cheap account-level lookups + small samples
+    apifyCron = cron.schedule('15 3 * * *', () => {
+      runJob('apify').catch((err) => log(`Cron apify error: ${err.message}`));
+    });
+
     // Initial run after 10-second delay to let server settle
     initialTimeout = setTimeout(() => {
       log('Running initial pipeline + briefs');
@@ -197,13 +213,14 @@ module.exports = function (config) {
         .catch((err) => log(`Initial run error: ${err.message}`));
     }, 10_000);
 
-    log('Cron jobs registered — pipeline every 6h, briefs every 12h');
+    log('Cron jobs registered — pipeline every 6h, briefs every 12h, apify cache refresh daily');
   }
 
   function stop() {
     log('Stopping scheduler');
     if (pipelineCron) { pipelineCron.stop(); pipelineCron = null; }
     if (briefsCron) { briefsCron.stop(); briefsCron = null; }
+    if (apifyCron) { apifyCron.stop(); apifyCron = null; }
     if (initialTimeout) { clearTimeout(initialTimeout); initialTimeout = null; }
     state.startedAt = null;
     log('All cron jobs stopped');

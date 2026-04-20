@@ -92,6 +92,7 @@ Return ONLY valid JSON, no markdown fences.`;
             { role: 'user', content: userPrompt }
           ],
           temperature: 0.4,
+          max_completion_tokens: 1200,
           response_format: { type: 'json_object' }
         },
         { signal: controller.signal }

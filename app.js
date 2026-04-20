@@ -21,6 +21,10 @@ let currentDataMode = { type: 'na', label: 'Mode: --', detail: '' };
 let currentDiagnostics = { source: 'Meta + Metabase', matchedKeys: 0, unmatchedKeys: 0 };
 window.__portalExplicitDateRange = false;
 window.__portalSelectedDateRange = null;
+function portalAuthHeaders(extra) {
+    const base = (window.PortalAuth && typeof window.PortalAuth.getHeaders === 'function') ? window.PortalAuth.getHeaders() : {};
+    return Object.assign({}, base, extra || {});
+}
 const APP_URL_PARAMS = new URLSearchParams(window.location.search || '');
 const APP_INITIAL_VIEW = APP_URL_PARAMS.get('view') || 'dashboard';
 const APP_STANDALONE_MODE = APP_URL_PARAMS.get('standalone') === '1';
@@ -407,13 +411,13 @@ async function runViewAssistantQuery() {
             }
             return;
         }
-        const res = await fetch('/api/ai/analyze', {
+        const res = await fetch('api/ai/analyze', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
                 system: 'You are an AI intelligent analyzer for the current Meta portal view. Answer like a sharp performance marketing analyst. Prioritize practical decisions, especially scale/cut/debug questions. Return strict JSON with keys answer, checks, next_steps.',
                 prompt: `Active Meta portal context:\n${JSON.stringify(context, null, 2)}\n\nUser question:\n${prompt}`,
-                max_tokens: 2200
+                max_tokens: 1800
             })
         });
         const data = await res.json();
@@ -513,7 +517,7 @@ function matureFunnelRow(row, asOfDateStr) {
 
 // Force refresh — clears all server caches then re-fetches
 window.forceRefresh = async function() {
-    try { await fetch('/api/cache/clear', { method: 'POST' }); } catch(e) {}
+    try { await fetch('api/cache/clear', { method: 'POST' }); } catch(e) {}
     fetchLiveData();
 };
 
@@ -539,17 +543,17 @@ async function fetchLiveData(customDateFrom, customDateTo) {
 
         // Parallel fetch: Meta insights + Metabase funnel (required) + Ad statuses (optional)
         const [metaRes, funnelRes, adsStatusRes] = await Promise.all([
-            fetch('/api/meta/ad-insights-daily', {
+            fetch('api/meta/ad-insights-daily', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ dateFrom, dateTo })
             }).then(r => r.json()),
-            fetch('/api/metabase/ad-funnel', {
+            fetch('api/metabase/ad-funnel', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ dateFrom, dateTo })
             }).then(r => r.json()),
-            fetch('/api/meta/ads-status').then(r => r.json()).catch(() => ({ success: false, data: [] }))
+            fetch('api/meta/ads-status', { headers: portalAuthHeaders() }).then(r => r.json()).catch(() => ({ success: false, data: [] }))
         ]);
 
         if (!metaRes.success && !metaRes.data) {
@@ -1154,14 +1158,14 @@ async function fetchVerificationDelta(dateFrom, dateTo) {
     }
 
     const [metaRes, funnelRes] = await Promise.all([
-        fetch('/api/meta/ad-insights-daily', {
+        fetch('api/meta/ad-insights-daily', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ dateFrom, dateTo })
         }).then(r => r.json()).catch(() => ({ success: false, data: [] })),
-        fetch('/api/metabase/ad-funnel', {
+        fetch('api/metabase/ad-funnel', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ dateFrom, dateTo })
         }).then(r => r.json()).catch(() => ({ success: false, data: [] })),
     ]);
@@ -2918,7 +2922,7 @@ init();
 // =========================================================================
 // CAMPAIGN TREE — Hierarchical campaign → adset → ad analysis
 // =========================================================================
-const TREE_SERVER = window.location.origin || `${window.location.protocol}//${window.location.host}`;
+const TREE_SERVER = '';
 
 function dateToExcelSerial(dateStr) {
     const [y, m, d] = dateStr.split('-').map(Number);
@@ -2940,8 +2944,12 @@ function buildMetabaseKey(dateStr, campaignName, adsetName, trackerName) {
 }
 
 window.fetchCampaignTree = async function () {
-    const dateFrom = document.getElementById('treeDateFrom').value;
-    const dateTo = document.getElementById('treeDateTo').value;
+    const treeFromEl = document.getElementById('treeDateFrom');
+    const treeToEl = document.getElementById('treeDateTo');
+    const fallbackFrom = document.getElementById('optDateFrom')?.value || document.getElementById('dateFrom')?.value || '';
+    const fallbackTo = document.getElementById('optDateTo')?.value || document.getElementById('dateTo')?.value || '';
+    const dateFrom = treeFromEl.value || fallbackFrom;
+    const dateTo = treeToEl.value || fallbackTo;
     const spendOnly = document.getElementById('treeSpendFilter').checked;
     const status = document.getElementById('treeStatus');
     const container = document.getElementById('treeContainer');
@@ -2949,6 +2957,8 @@ window.fetchCampaignTree = async function () {
     const btn = document.getElementById('treeAnalyzeBtn');
 
     if (!dateFrom || !dateTo) { status.textContent = 'Please select both dates.'; return; }
+    if (treeFromEl && !treeFromEl.value) treeFromEl.value = dateFrom;
+    if (treeToEl && !treeToEl.value) treeToEl.value = dateTo;
 
     btn.disabled = true;
     status.textContent = 'Fetching data from Meta API + Metabase...';
@@ -2964,14 +2974,14 @@ window.fetchCampaignTree = async function () {
     try {
         // Fetch both sources in parallel
         const [metaRes, funnelRes] = await Promise.all([
-            fetch(`${TREE_SERVER}/api/meta/ad-insights-daily`, {
+            fetch(`${TREE_SERVER}api/meta/ad-insights-daily`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ dateFrom, dateTo }),
             }).then(r => r.json()),
-            fetch(`${TREE_SERVER}/api/metabase/ad-funnel`, {
+            fetch(`${TREE_SERVER}api/metabase/ad-funnel`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ dateFrom, dateTo }),
             }).then(r => r.json()),
         ]);
@@ -3528,9 +3538,9 @@ window.pauseAd = async function(adId, btn) {
     btn.innerHTML = '⏳ Pausing...';
     btn.disabled = true;
     try {
-        const res = await fetch('/api/meta/ad-status', {
+        const res = await fetch('api/meta/ad-status', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ ad_id: adId, status: 'PAUSED' })
         });
         const data = await res.json();
@@ -3558,9 +3568,9 @@ window.updateBudget = async function(endpoint, idParam, entityId, action, btn) {
     btn.disabled = true;
     try {
         const body = { [idParam]: entityId, action };
-        const res = await fetch(`/api/meta/${endpoint}`, {
+        const res = await fetch(`api/meta/${endpoint}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: portalAuthHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify(body)
         });
         const data = await res.json();
@@ -3708,8 +3718,8 @@ window.fetchWeeklyBreakdown = async function () {
             const bucketMetaCacheKey = `creativePortal.meta.weekly.bucket.${bkt.from}.${bkt.to}`;
             const bucketMbCacheKey = `creativePortal.metabase.weekly.bucket.${bkt.from}.${bkt.to}`;
             const [metaRes, mbRes] = await Promise.all([
-                fetchJsonSafe(`${TREE_SERVER}/api/meta/ad-insights-daily`, { dateFrom: bkt.from, dateTo: bkt.to }, bucketMetaCacheKey),
-                fetchJsonSafe(`${TREE_SERVER}/api/metabase/ad-funnel`, { dateFrom: bkt.from, dateTo: bkt.to }, bucketMbCacheKey),
+                fetchJsonSafe(`${TREE_SERVER}api/meta/ad-insights-daily`, { dateFrom: bkt.from, dateTo: bkt.to }, bucketMetaCacheKey),
+                fetchJsonSafe(`${TREE_SERVER}api/metabase/ad-funnel`, { dateFrom: bkt.from, dateTo: bkt.to }, bucketMbCacheKey),
             ]);
             console.log(`[Weekly] Bucket ${idx} (${bkt.label}): Meta=${metaRes.total || 0} MB=${mbRes.total || 0}`);
             bucketResults.push({ meta: metaRes, mb: mbRes, bucketIdx: idx });
